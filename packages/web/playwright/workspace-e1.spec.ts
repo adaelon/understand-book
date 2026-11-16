@@ -43,11 +43,11 @@ test('E1 shared learning, personal preparation, video, history and allowance rem
       await target.goto('/');await target.getByRole('button',{name:'浏览共享预构建工作区',exact:true}).click();
       await target.locator('.shared-card').filter({hasText:'深度学习 · 书与视频'}).getByRole('button',{name:'查看目标与路线',exact:true}).click();
       const detail=target.getByRole('article',{name:'共享工作区详情',exact:true});await detail.getByLabel('确认你的学习目标').fill(goal);await detail.getByRole('button',{name:'确认目标并开始学习',exact:true}).click();
-      await expect(target.locator('.workspace-goal-bar')).toContainText(goal);return scene(target);
+      await expect.poll(async () => (await scene(target))?.learning_workspace_goal?.text).toBe(goal);return scene(target);
     };
     const goal='用书籍与视频理解深度学习';const first=await use(page,goal),second=await use(other,'保持原版，按自己的节奏学习');
     expect(first.learning_workspace_id).not.toBe(second.learning_workspace_id);
-    const manage=async()=>{await page.getByRole('button',{name:'工作区与资料',exact:true}).click();await expect(page.getByRole('region',{name:'当前工作区',exact:true})).toBeVisible();};
+    const manage=async()=>{await page.getByRole('button',{name:'学习资料',exact:true}).click();await expect(page.getByRole('region',{name:'当前工作区',exact:true})).toBeVisible();};
     await manage();const panel=page.getByRole('region',{name:'个人资料准备',exact:true}),zone=panel.getByRole('group',{name:'资料上传区'});
     await page.setViewportSize({width:1440,height:1000});await panel.screenshot({path:path.join(output,'upload-desktop.png')});
     await page.setViewportSize({width:390,height:844});await panel.scrollIntoViewIfNeeded();expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);await panel.screenshot({path:path.join(output,'upload-mobile.png')});

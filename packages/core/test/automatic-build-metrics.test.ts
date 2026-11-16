@@ -277,7 +277,7 @@ describe("automatic build task metrics", () => {
     expect(existsSync(summaryPath)).toBe(true);
     rmSync(summaryPath);
     const rebuilt = writeAutomaticBuildStageMetricsSummary(target, "pass1");
-    expect(rebuilt.digest).toBe(first.digest);
+    expect(rebuilt).toEqual(first);
   });
 
   it("rebuilds attempts and all terminal failures from the canonical file union without metrics", () => {

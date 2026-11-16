@@ -1,5 +1,6 @@
 //! Fixed real-source Tutor scenarios reused for TB1/TB2 comparisons.
 use super::*;
+use crate::tests::tutor_loop_tests::prepare_activity_chat as prepare_agent_chat;
 use runtime::model_spend::{ChargeScope, ModelSpendPort, SendIdentity, SendOutcome, SpendStop};
 use runtime::provider_stream::ModelDelta;
 use std::sync::Mutex;
@@ -65,8 +66,8 @@ fn tutor_tb1_fixture_replays_distinct_starts_and_source() {
         let run = prepare_agent_chat(&mut state, &request.to_string(), "tb1")
             .unwrap_or_else(|r| panic!("{}", r.body));
         let context = run.tutor.as_ref().unwrap();
-        assert_eq!(context["status"], "active");
-        assert_eq!(context["default_teaching_intent"], "guided_inquiry");
+        assert_eq!(context["status"], "practice");
+        assert!(context["default_teaching_intent"].is_null());
         assert_eq!(
             context["learner_context"]["current_request"],
             request["message"]
@@ -80,7 +81,7 @@ fn tutor_tb1_fixture_replays_distinct_starts_and_source() {
         let direct = case["id"] == "direct-explanation";
         let mut movement = json!({"operation":"select","move":{
             "move_id":"fixture-probe","object_ids":[],"capability":"explanation",
-            "kind":if direct {"explain"} else {"question"},
+            "kind":if direct {"explain"} else {"compare"},
             "interaction_intent":if direct {"direct_explanation"} else {"guided_inquiry"},
             "intent_origin":if direct {"current_request"} else {"session_default"},
             "intent_quote":if direct {case["request"].clone()} else {Value::Null},
@@ -123,7 +124,7 @@ fn tutor_tb1_fixture_replays_distinct_starts_and_source() {
                     tool_calls: vec![ToolCall {
                         id: "select".into(),
                         name: "tutor.step".into(),
-                        arguments: movement.to_string(),
+                        arguments: super::tutor_loop_tests::fixture_model_input(movement.clone()).to_string(),
                     }],
                 },
                 AssistantTurn {
@@ -171,7 +172,7 @@ pub(super) fn om3_replay(
     let body = selection["move"]["delivery_text"].as_str().unwrap().to_owned();
     let call = |id: &str, name: &str, arguments: Value| AssistantTurn {
         provider_continuation: None, text: None, usage_total_tokens: Some(1),
-        tool_calls: vec![ToolCall { id: id.into(), name: name.into(), arguments: arguments.to_string() }],
+        tool_calls: vec![ToolCall { id: id.into(), name: name.into(), arguments: super::tutor_loop_tests::fixture_model_input(arguments).to_string() }],
     };
     let samples = Arc::new(Mutex::new(Vec::new()));
     let adapter = super::tutor_continuation_tests::TutorRequestRecorder {
@@ -246,7 +247,7 @@ fn om3_operational_barrier_delivers_a_method_without_a_new_test() {
     assert!(report["main_input"].to_string().contains(request));
     assert!(report["prepare"]["learner_context"]["interpretations"].as_array().unwrap().is_empty());
     assert!(state.user.learning_store().unwrap().learner_projection(&state.workspace.book.base.book_id).unwrap()
-        .0.unwrap().rows.is_empty(), "a worked method supplies no independent-performance evidence");
+        .0.is_none_or(|view|view.rows.is_empty()), "a worked method supplies no independent-performance evidence");
 }
 
 #[derive(Default)]
@@ -293,33 +294,13 @@ fn tutor_tb2_sol_outputs_replay_through_real_delivery() {
             let stage = self.stage.get();
             self.stage.set(stage + 1);
             let call = |id: &str, name: &str, arguments: Value| ToolCall {
-                id: id.into(), name: name.into(), arguments: arguments.to_string(),
+                id: id.into(), name: name.into(), arguments: super::tutor_loop_tests::fixture_model_input(arguments).to_string(),
             };
             let (text, tool_calls) = match stage {
                 0 => (None, vec![call("read", "book.text", json!({"lid":"1.1","end_lid":"1.1"}))]),
                 1 => (None, self.sources.iter().enumerate().map(|(index, source)|
                     call(&format!("source-{index}"), "source.present", json!({"quote":source["quote"]}))).collect()),
-                2 => {
-                    let output=self.rebound(plan);
-                    let target=&output["select"]["move"]["target"];
-                    (None,vec![call("design","tutor.step",json!({"operation":"design","operation_id":"frozen-borrowing","design":{
-                        "target":target,"organizing_model":"Borrowing provides access to a value while its owner keeps ownership.",
-                        "representation":{"kind":"text","reason":"The frozen explanation compares the expressions and their types."},
-                        "blocks":[{"block_id":"borrowed-access","relation":"Creating a shared reference does not transfer the referenced value.",
-                            "purpose":target["expected_performance"],"source_bindings":target["source_bindings"]}],
-                        "connections":[],"focus_block_refs":["borrowed-access"],"basis_refs":[],"open_question_refs":[],
-                        "previous_ref":null,"revision_reason":"Bind the frozen explanation to its source relationship."}}))])
-                },
-                3 => {
-                    let output=self.rebound(plan);
-                    let mut request=output["select"].clone();
-                    request["move"]["design_ref"]=super::tutor_continuation_tests::accepted_design(plan,"design")["design_ref"].clone();
-                    request["move"]["block_refs"]=json!(["borrowed-access"]);
-                    request["move"]["delivery_text"]=output["answer"].clone();
-                    super::tutor_loop_tests::fixture_participation(&mut request["move"]);
-                    (None,vec![call("select","tutor.step",request)])
-                },
-                4 => (Some(self.rebound(plan)["answer"].as_str().unwrap().to_string()), vec![]),
+                2 => (Some(self.rebound(plan)["answer"].as_str().unwrap().to_string()), vec![]),
                 _ => panic!("frozen output required an unexpected repair: {:?}", plan.input.last()),
             };
             Ok(AssistantTurn { provider_continuation: None, text, tool_calls, usage_total_tokens: None })
@@ -335,7 +316,7 @@ fn tutor_tb2_sol_outputs_replay_through_real_delivery() {
             let output: Value = serde_json::from_str(&std::fs::read_to_string(dir.join("output.json")).unwrap()).unwrap();
             let adapter = RecordedTeaching { output, sources: packet["presented_sources"].as_array().unwrap().clone(), source_references:Default::default(), stage: Default::default() };
             let (root, mut state) = fixture();
-            let run = prepare_agent_chat(&mut state, &input(case).to_string(), "tb2-sol").unwrap_or_else(|r| panic!("{}", r.body));
+            let run = crate::prepare_agent_chat(&mut state, &input(case).to_string(), "tb2-sol").unwrap_or_else(|r| panic!("{}", r.body));
             let session = run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_string();
             let turn = run.turn_ref.clone();
             let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
@@ -347,8 +328,8 @@ fn tutor_tb2_sol_outputs_replay_through_real_delivery() {
             assert!(!outcome.answer.as_ref().unwrap().contains("source_ref_"));
             let store = state.user.learning_store().unwrap();
             let facts = store.teaching_turn_events(&session, &turn.turn_id).unwrap();
-            assert_eq!(facts.iter().filter(|f| f.kind == memory::teaching::TeachingFact::MoveSelected).count(), 1);
-            assert_eq!(facts.iter().filter(|f| f.kind == memory::teaching::TeachingFact::MessageDelivered).count(), 1);
+            assert!(!facts.iter().any(|f|matches!(f.kind,memory::teaching::TeachingFact::MoveSelected|memory::teaching::TeachingFact::DesignRevised)));
+            assert!(facts.iter().any(|f|f.kind==memory::teaching::TeachingFact::UsageObserved && f.payload["usage"]["kind"]=="assistant_delivery"));
             assert!(store.evidence_page(&state.workspace.book.base.book_id, 0, 100).unwrap().is_empty());
             save(root.path(), "replay.json", &json!({"http_status":result.reply.status,"outcome":outcome,"facts":facts,
                 "external_provider_calls":0,"source_identity_rebound_from_exact_quotes":true}));

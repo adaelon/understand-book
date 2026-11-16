@@ -16,6 +16,7 @@ export const DEFAULT_VISUAL_SCAN: VisualScanOptions = {
 };
 export interface VisualSample { pts_ms: number; change: number }
 export interface VisualScan {
+  timeline?: 'relative.v1';
   options: VisualScanOptions; samples: VisualSample[]; candidate_indices: number[];
   elapsed_ms: number; decoded_bytes: number;
 }
@@ -63,7 +64,8 @@ export async function scanVideoVisualCandidates(file: string, options = DEFAULT_
   control.signal?.throwIfAborted();
   validateScanOptions(options);
   const start = Date.now(), width = 480, height = 270, size = width * height;
-  const args = ['-hide_banner', '-loglevel', 'info', '-copyts',
+  // Keep the source's frame spacing, on the same zero-origin timeline as audio chunks.
+  const args = ['-hide_banner', '-loglevel', 'info', '-copyts', '-start_at_zero',
     ...(range ? ['-ss', String(range.start_ms / 1000), '-t', String((range.end_ms - range.start_ms) / 1000)] : []), '-i', file,
     '-map', '0:V:0', '-an', '-vf', `select='isnan(prev_selected_t)+gte(t-prev_selected_t,${options.interval_ms / 1000})',scale=${width}:${height},format=gray,showinfo=checksum=0`,
     '-fps_mode', 'passthrough', '-f', 'rawvideo', 'pipe:1'];
@@ -99,11 +101,11 @@ export async function scanVideoVisualCandidates(file: string, options = DEFAULT_
   });
   if (pending.length || pictures.length || times.length || samples.some(s => !Number.isFinite(s.pts_ms))) throw new Error(`Visual scan frame/PTS mismatch: ${pending.length} bytes, ${pictures.length} pictures, ${times.length} timestamps; ${tail}`);
   if (control.duration_ms) control.onProgress?.({ phase: 'visual_scan', completed: control.duration_ms, total: control.duration_ms, unit: 'milliseconds' });
-  return { options, samples, candidate_indices: selectVisualCandidates(samples, options), elapsed_ms: Date.now() - start, decoded_bytes: bytes };
+  return { timeline: 'relative.v1', options, samples, candidate_indices: selectVisualCandidates(samples, options), elapsed_ms: Date.now() - start, decoded_bytes: bytes };
 }
 export async function extractVisualFrame(file: string, source: VideoSourceAsset, requested_ms: number, output: string) {
   mkdirSync(path.dirname(output), { recursive: true });
-  const { stderr } = await run(ffmpeg(), ['-hide_banner', '-loglevel', 'info', '-copyts', '-ss', String(requested_ms / 1000),
+  const { stderr } = await run(ffmpeg(), ['-hide_banner', '-loglevel', 'info', '-copyts', '-start_at_zero', '-ss', String(requested_ms / 1000),
     '-i', file, '-map', '0:V:0', '-vf', 'showinfo=checksum=0', '-frames:v', '1', '-fps_mode', 'passthrough', '-y', output], { windowsHide: true });
   const base = /config in time_base: (\d+)\/(\d+)/.exec(stderr);
   const decoded = /n:\s*0\s+pts:\s*(-?\d+)\s+pts_time:.*?\bs:(\d+)x(\d+)/.exec(stderr);
@@ -127,7 +129,7 @@ export async function extractVisualFrames(file: string, source: VideoSourceAsset
   // A filter file avoids the Windows command-line length limit on an entire lecture.
   const filter=path.join(directory,'selection.fffilter');
   writeFileSync(filter,`[0:V:0]select='${expression}',showinfo=checksum=0,split=2[full][crop];[crop]format=rgb24,crop=${w}:${h}:${x}:${y}[pixels]`);
-  const child=spawn(control.ffmpeg ?? ffmpeg(),['-hide_banner','-loglevel','info','-copyts','-ss',String(ordered[0]/1000),'-i',file,
+  const child=spawn(control.ffmpeg ?? ffmpeg(),['-hide_banner','-loglevel','info','-copyts','-start_at_zero','-ss',String(ordered[0]/1000),'-i',file,
     '-filter_complex_script',filter,'-map','[full]','-frames:v',String(ordered.length),'-fps_mode','passthrough','-threads','1','-y',path.join(directory,'f%05d.png'),
     '-map','[pixels]','-frames:v',String(ordered.length),'-fps_mode','passthrough','-f','rawvideo','pipe:1'],{windowsHide:true,stdio:['ignore','pipe','pipe'], signal: control.signal});
   let pending=Buffer.alloc(0), log='', tail='', numerator=0, denominator=0;

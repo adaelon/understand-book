@@ -1,0 +1,102 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>一台相机的内外</title><style>
+*{box-sizing:border-box}body{margin:0;padding:clamp(10px,2vw,24px);background:#e5e9e8;color:#223238;font:15px/1.5 system-ui,sans-serif}main{max-width:1000px;margin:auto}header{display:flex;gap:12px;align-items:baseline;border-bottom:1px solid #b9c5c6}h1{font-size:clamp(22px,4vw,33px);margin:0 0 4px}small{color:#4c6568}p{margin:7px 0}.stage{background:#dde4e5}canvas,#fallback{display:block;width:100%;height:clamp(160px,52vh,440px);touch-action:none}#fallback[hidden],canvas[hidden]{display:none}.tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:6px 0}.tools input{min-width:70px;flex:1;min-height:44px;accent-color:#135c68}.tools button{border:1px solid #879e9d;border-radius:3px;font:inherit;min-height:44px;padding:5px 9px;background:#f6f9f5;color:#22383c}#readout{font-weight:650}output{font-family:monospace}#fallback text{font:12px system-ui;fill:#263e41}
+.stage{position:relative}#labels{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}#labels text{font:600 13px system-ui;fill:#244649;paint-order:stroke;stroke:#dde4e5;stroke-width:4px}#labels path{stroke:#6b8383;stroke-width:1;fill:none}
+</style></head><body><main><header><h1>一台相机的内外</h1><small>结构示意</small></header><p>沿镜头中心的光轴拆开，找出镜组、光圈和感光板的位置。<span id="gesture">拖动画面或用方向键换视角。</span></p><div class="stage"><canvas id="camera" tabindex="0" aria-label="可旋转的相机装配模型"></canvas><svg id="labels" aria-hidden="true"></svg><svg id="fallback" hidden viewBox="0 0 320 130" role="img" aria-label="沿光轴的部件侧视图"></svg></div>
+<div class="tools"><label for="explode">拆解 <output id="percent">0%</output></label><input id="explode" type="range" min="0" max="100" step="1" value="0"><button id="apart">拆开</button><button id="angle">换视角</button></div><p id="readout" aria-live="polite"></p><small>镜组汇聚入射光，光圈控制通光口径，感光面记录图像。拆解只用于辨认，行程不代表实际机型尺寸。</small></main>
+<script data-presentation-library="three" src="libraries/three-0.180.0.min.js"></script><script>(()=>{// Both studies redraw on input or resize. The camera changes only the view.
+function inspectionStage(canvas,state,vertical,redraw,commit){
+  if(!window.THREE)return null;
+  let renderer;try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,preserveDrawingBuffer:true})}catch{return null}
+  const scene=new THREE.Scene(),camera=new THREE.OrthographicCamera(-1,1,1,-1,.01,150);
+  camera.up.set(0,vertical==='z'?0:1,vertical==='z'?1:0);
+  const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+  function orbit(dx,dy){state.yaw+=dx;state.pitch=clamp(state.pitch+dy,-1.15,1.15);redraw()}
+  let drag=null;
+  canvas.onpointerdown=e=>{if(drag||e.button!==0)return;canvas.setPointerCapture(e.pointerId);drag=[e.pointerId,e.clientX,e.clientY]};
+  canvas.onpointermove=e=>{if(drag?.[0]!==e.pointerId)return;const dx=e.clientX-drag[1],dy=e.clientY-drag[2];drag=[e.pointerId,e.clientX,e.clientY];orbit(-dx*.009,dy*.009)};
+  canvas.onlostpointercapture=()=>{if(drag){drag=null;commit()}};
+  canvas.onkeydown=e=>{const delta={ArrowLeft:[-.14,0],ArrowRight:[.14,0],ArrowUp:[0,.1],ArrowDown:[0,-.1]}[e.key];if(delta){e.preventDefault();orbit(...delta);commit()}};
+  let w=0,h=0;
+  function draw(bounds){
+    const width=canvas.clientWidth,height=canvas.clientHeight;if(!width||!height)return;
+    if(width!==w||height!==h){w=width;h=height;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));renderer.setSize(w,h,false)}
+    const center=bounds.getCenter(new THREE.Vector3()),c=Math.cos(state.pitch),s=Math.sin(state.pitch),a=state.yaw;
+    const dir=vertical==='z'?new THREE.Vector3(c*Math.sin(a),-c*Math.cos(a),s):new THREE.Vector3(c*Math.sin(a),s,c*Math.cos(a));
+    const right=new THREE.Vector3().crossVectors(camera.up,dir).normalize(),up=new THREE.Vector3().crossVectors(dir,right),v=new THREE.Vector3();
+    let xr=0,yr=0;
+    for(const x of [bounds.min.x,bounds.max.x])for(const y of [bounds.min.y,bounds.max.y])for(const z of [bounds.min.z,bounds.max.z]){
+      v.set(x,y,z).sub(center);xr=Math.max(xr,Math.abs(v.dot(right)));yr=Math.max(yr,Math.abs(v.dot(up)));
+    }
+    const half=Math.max(yr,xr*h/w,.1)*1.1;camera.top=half;camera.bottom=-half;camera.right=half*w/h;camera.left=-camera.right;
+    camera.position.copy(center).addScaledVector(dir,42);camera.lookAt(center);camera.updateProjectionMatrix();renderer.render(scene,camera)
+  }
+  const resize=new ResizeObserver(redraw);resize.observe(canvas);
+  window.addEventListener('pagehide',e=>{if(!e.persisted){resize.disconnect();renderer.dispose()}});
+  return {scene,camera,draw};
+}
+const $=id=>document.getElementById(id),host=window.presentation,defaults={explode:0,yaw:-.88,pitch:.28},s={...defaults};
+const names=['镜组','光圈','外壳','感光板','后盖'],commit=()=>host?.commitState();let stage,parts=[],box;
+function model(){
+ const T=THREE,scene=stage.scene;scene.background=new T.Color(0xdde4e5);
+ scene.add(new T.HemisphereLight(0xffffff,0x7d8d97,2.4));
+ const sun=new T.DirectionalLight(0xfff0d8,3.2);sun.position.set(-5,9,8);scene.add(sun);
+ const rim=new T.DirectionalLight(0xb1dcff,2.2);rim.position.set(7,3,-5);scene.add(rim);
+ const mat=(c,m=.2,r=.48)=>new T.MeshStandardMaterial({color:c,metalness:m,roughness:r});
+ const skin=mat(0x262b2d,.08,.76),band=mat(0x485459,.52,.3),silver=mat(0xc7cfd0,.55,.27),charcoal=mat(0x1c272b,.32,.43),blade=mat(0x687574,.37,.45),glass=mat(0x409f9d,.36,.15),pcb=mat(0x386b59,.22),gold=mat(0xd6a85e,.43);
+ const group=()=>new T.Group(),mesh=(p,g,m,x=0,y=0,z=0)=>{const o=new T.Mesh(g,m);o.position.set(x,y,z);p.add(o);return o};
+ const block=(p,w,h,d,m,x,y,z)=>mesh(p,new T.BoxGeometry(w,h,d),m,x,y,z);
+ function plate(p,w,h,d,m,z,hole=0){const shape=new T.Shape(),x=w/2,y=h/2,r=.19;
+  shape.moveTo(-x+r,-y);shape.lineTo(x-r,-y);shape.quadraticCurveTo(x,-y,x,-y+r);shape.lineTo(x,y-r);shape.quadraticCurveTo(x,y,x-r,y);shape.lineTo(-x+r,y);shape.quadraticCurveTo(-x,y,-x,y-r);shape.lineTo(-x,-y+r);shape.quadraticCurveTo(-x,-y,-x+r,-y);
+  if(hole){const aperture=new T.Path();aperture.absarc(0,0,hole,0,Math.PI*2,true);shape.holes.push(aperture)}
+  return mesh(p,new T.ExtrudeGeometry(shape,{depth:d,bevelEnabled:true,bevelSize:.035,bevelThickness:.035,bevelSegments:2,curveSegments:36}),m,0,0,z-d/2)}
+ function ring(p,outer,inner,d,m,z){const sh=new T.Shape(),h=new T.Path();sh.absarc(0,0,outer,0,Math.PI*2,false);h.absarc(0,0,inner,0,Math.PI*2,true);sh.holes.push(h);
+  return mesh(p,new T.ExtrudeGeometry(sh,{depth:d,bevelEnabled:false,curveSegments:48}),m,0,0,z-d/2)}
+ const lens=group(),iris=group(),body=group(),sensor=group(),back=group();parts=[lens,iris,body,sensor,back];scene.add(...parts);
+ // All rings and optical surfaces share +Z. Top controls use the vertical Y axis.
+ ring(lens,1.43,1.05,.3,silver,.14);ring(lens,1.40,1.05,.54,charcoal,.55);ring(lens,1.29,.88,.35,band,.97);ring(lens,1.15,.87,.15,charcoal,1.20);
+ const ridge=new T.BoxGeometry(.07,.09,.39);for(let i=0;i<52;i++){const a=2*Math.PI*i/52;mesh(lens,ridge,band,1.39*Math.cos(a),1.39*Math.sin(a),.55).rotation.z=a}
+ const optic=mesh(lens,new T.SphereGeometry(.90,48,24),glass,0,0,1.15);optic.scale.z=.18;
+ ring(iris,1.10,.72,.12,band,0);for(let i=0;i<8;i++){const a=i*Math.PI/4,sh=new T.Shape();sh.moveTo(.41,0);sh.lineTo(.88,-.38);sh.quadraticCurveTo(1.1,.04,.83,.48);sh.lineTo(.28,.30);sh.closePath();
+  mesh(iris,new T.ExtrudeGeometry(sh,{depth:.023,bevelEnabled:false}),i%2?blade:band,0,0,.06+i*.002).rotation.z=a}
+ plate(body,5.8,3.2,.22,skin,.70,1.16);block(body,.24,3.1,1.55,skin,-2.78,0,0);block(body,.24,3.1,1.55,skin,2.78,0,0);block(body,5.6,.20,1.55,skin,0,-1.48,0);
+ const lid=plate(body,5.86,1.58,.35,silver,0);lid.rotation.x=-Math.PI/2;lid.position.set(0,1.46,0);
+ for(const [x,rad] of [[-1.75,.48],[1.74,.32]])mesh(body,new T.CylinderGeometry(rad,rad,.22,32),band,x,1.93,0);
+ block(body,.75,.33,.13,glass,-1.95,.91,.90);for(let i=0;i<9;i++)block(body,.09,1.46,.09,band,1.68+i*.1,-.23,.86);
+ block(sensor,3.65,2.46,.15,pcb,0,0,0);block(sensor,1.97,1.53,.10,band,0,0,.14);block(sensor,1.69,1.26,.07,glass,0,0,.22);
+ for(let i=0;i<7;i++)block(sensor,.05,.54,.03,gold,1.18+i*.075,-.76,.10);
+ plate(back,5.7,3.1,.18,skin,0);block(back,3.6,2.1,.08,band,-.25,0,-.15);
+ box=new T.Box3();
+}
+function labelParts(){
+ const overlay=$('labels'),w=$('camera').clientWidth,h=$('camera').clientHeight;
+ const side=Math.sin(s.yaw)<0?-1:1;
+ // Anchor to an optical surface, iris blade, body panel, board corner and rear plate.
+ const anchors=[[0,0,1.3],[.72*side,.24,.10],[1.85*side,-.85,.80],[1.62*side,1.03,.09],[2.2*side,1.02,0]];
+ const marks=parts.map((part,i)=>{
+  const p=part.localToWorld(new THREE.Vector3(...anchors[i])).project(stage.camera);
+  return {name:names[i],x:(p.x+1)*w/2,y:(1-p.y)*h/2};
+ }).sort((a,b)=>a.x-b.x);
+ if(s.explode<.4||marks[4].x-marks[0].x<w*.16){overlay.replaceChildren();return}
+ overlay.setAttribute('viewBox','0 0 '+w+' '+h);
+ overlay.innerHTML=marks.map((mark,i)=>{
+  const x=w*(i+.5)/marks.length;
+  return '<path d="M'+mark.x+' '+mark.y+' L'+x+' '+(h-24)+'"/><text x="'+x+'" y="'+(h-7)+'" text-anchor="middle">'+mark.name+'</text>';
+ }).join('');
+}
+function sideView(q){
+ const colors=['#409f9d','#687574','#262b2d','#386b59','#485459'];
+ $('fallback').innerHTML='<path d="M15 56H305" stroke="#768f91" stroke-dasharray="3 4"/>'+names.map((name,i)=>{
+  const x=156+(i-2)*(13+48*q),labelX=32+i*64;
+  return '<rect x="'+(x-5)+'" y="32" width="10" height="48" fill="'+colors[i]+'"/><path d="M'+x+' 80 L'+labelX+' 101" fill="none" stroke="#698280"/><text x="'+labelX+'" y="117" text-anchor="middle">'+name+'</text>';
+ }).join('');
+}
+function draw(){const q=s.explode,z=[.86+6.3*q,.64+2.9*q,0,-.30-2.85*q,-.90-5.65*q];$('explode').value=Math.round(q*100);$('percent').value=Math.round(q*100)+'%';$('apart').textContent=q>.5?'装回':'拆开';
+ $('readout').textContent=(q<.02?'装配：镜组在前，感光面位于机身内。':'沿光轴从前到后：镜组 → 光圈 → 外壳 → 感光板 → 后盖。')+' 拆解 '+Math.round(q*100)+'%。';
+ if(stage){box.makeEmpty();parts.forEach((g,i)=>{g.position.z=z[i];g.updateMatrixWorld(true);box.expandByObject(g)});stage.draw(box);labelParts()}
+ else {$('camera').hidden=true;$('angle').hidden=true;$('gesture').textContent='侧视图中的引线标出每个部件。';$('fallback').removeAttribute('hidden');sideView(q)}}
+function restore(v={}){for(const k of ['explode','yaw','pitch'])s[k]=Number.isFinite(v[k])?v[k]:defaults[k];s.explode=Math.min(1,Math.max(0,s.explode));s.pitch=Math.max(-1.15,Math.min(1.15,s.pitch));draw()}
+stage=inspectionStage($('camera'),s,'y',draw,commit);if(stage)model();restore(host?.initialState);
+$('explode').oninput=e=>{s.explode=+e.target.value/100;draw()};$('apart').onclick=()=>{s.explode=s.explode>.5?0:1;draw()};$('angle').onclick=()=>{s.yaw+=Math.PI/2;draw()};
+host?.registerStateReader(()=>{draw();return{values:{...s},visible_step:s.explode?'拆解':'装配',observation:{summary:$('readout').textContent,state:{explode:s.explode}}}});
+host?.registerStateRestorer(saved=>restore(saved.values.page));
+})();</script></body></html>

@@ -31,7 +31,7 @@ interface Material {
   material_id: string; label: string; target_input?: string; root_dir?: string;
   pass2?: 'enabled' | 'disabled'; max_parallel?: 1 | 2 | 3;
   published_book_ref?: {book_id:string;publication_id:string};
-  material_kind?: 'book' | 'video' | 'music'; build_tutor?: boolean; required_capabilities?: string[];
+  material_kind?: 'book' | 'video' | 'music'; build_tutor?: boolean; build_course?: boolean; course_goal?:string; required_capabilities?: string[];
   plan?: OperatorBuildPlan | OperatorVideoPlan | OperatorMusicPlan; invocation_ref?: string; workspace_dir?: string;
 }
 interface Task {
@@ -92,7 +92,7 @@ export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig
         const base = `${endpoint}/materials/${encodeURIComponent(material.material_id)}`;
         if (material.material_kind === 'music') {
           if (task.user_id) throw new Error('operator_music_requires_curated_public_source');
-          if (material.build_tutor) throw new Error('operator_music_tutor_unsupported');
+          if (material.build_tutor || material.build_course) throw new Error('operator_music_tutor_unsupported');
           const plan = material.plan as OperatorMusicPlan | undefined ?? {
             version:'operator_music_plan.v1' as const, target_input:material.target_input!, build_tutor:false as const,
             workspace_dir:path.resolve(material.root_dir!,task.task_id,`music-${material.material_id}`),
@@ -122,7 +122,7 @@ export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig
         const video = material.material_kind === 'video' || /\.mp4$/iu.test(material.target_input ?? '')
           || !!material.target_input && ['video_import.json','video_source_manifest.json'].some(file=>existsSync(path.join(material.target_input!,file)));
         if (video) {
-          if (material.build_tutor) throw new Error('operator_video_tutor_unsupported');
+          if (material.build_tutor || material.build_course) throw new Error('operator_video_tutor_unsupported');
           if (!host.video) throw new Error('operator_video_configuration_required');
           const plan = material.plan as OperatorVideoPlan | undefined ?? {
             version:'operator_video_plan.v1' as const, target_input:path.resolve(material.target_input!), build_tutor:false as const,
@@ -159,7 +159,7 @@ export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig
           continue;
         }
         const input = {target_input:material.target_input!,root_dir:material.root_dir!,pass2:material.pass2 ?? 'disabled',
-          max_parallel:material.max_parallel ?? 1,build_tutor:material.build_tutor ?? false};
+          max_parallel:material.max_parallel ?? 1,build_course:material.build_course ?? false,...(material.course_goal ? {course_goal:material.course_goal} : {}),build_tutor:material.build_tutor ?? false};
         if (task.action === 'prepare') {
           if (!material.plan) {
             const plan = await control.prepareOperator(agent, signal, input);
@@ -175,16 +175,22 @@ export function createOperatorBuildHost(ctx: Context, config: BuildControlConfig
           invocation = result.invocation_ref;
         }
         await request(`${base}/progress`, {...owner,state:'running',invocation_ref:invocation,workspace_dir:material.plan.workspace_dir});
-        const result = await control.run(agent, signal, invocation, true, async boundary => {
-          await request(`${base}/progress`, {...owner,state:'running',invocation_ref:invocation,workspace_dir:material.plan!.workspace_dir,
-            observation:boundary?{waiting_for_decision:true,...boundary}:null});
-        }) as {step?:{action:{kind:string}};yielded?:boolean};
-        const complete = result.step?.action.kind === 'DONE';
-        await request(`${base}/progress`, {...owner,state:complete?'complete':'interrupted',invocation_ref:invocation,
-          workspace_dir:material.plan.workspace_dir,observation:result});
-        if (!complete) {
-          await request(`${endpoint}/finish`, {...owner,state:'interrupted'});
-          return true;
+        for (;;) {
+          if (signal.aborted) throw new Error('build_cancelled');
+          const result = await control.run(agent, signal, invocation, true, async boundary => {
+            await request(`${base}/progress`, {...owner,state:'running',invocation_ref:invocation,workspace_dir:material.plan!.workspace_dir,
+              observation:boundary?{waiting_for_decision:true,...boundary}:null});
+          }) as {step?:{action:{kind:string}};yielded?:boolean};
+          const complete = result.step?.action.kind === 'DONE';
+          const yielded = result.yielded === true && !signal.aborted;
+          const progress = await request(`${base}/progress`, {...owner,state:complete?'complete':yielded?'running':'interrupted',invocation_ref:invocation,
+            workspace_dir:material.plan.workspace_dir,observation:result});
+          if (complete) break;
+          if (!yielded) {
+            await request(`${endpoint}/finish`, {...owner,state:'interrupted'});
+            return true;
+          }
+          if (progress.pause_requested) cancellation.abort();
         }
         await request(`${base}/import`, {...owner,invocation_ref:invocation,workspace_dir:material.plan.workspace_dir});
       }

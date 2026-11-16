@@ -28,11 +28,14 @@ impl SessionPaths {
 pub(crate) struct SessionStore {
     pub paths: SessionPaths,
     pub logs: BTreeMap<String, SessionLog>,
+    pub learning_tasks: Vec<crate::learning_task::LearningTaskSelection>,
 }
 
 #[derive(Serialize, Deserialize, Default)]
 struct Selection {
     active_by_book: BTreeMap<String, String>,
+    #[serde(default)]
+    learning_tasks: Vec<crate::learning_task::LearningTaskSelection>,
 }
 
 /// Persistent chats always start from JSONL. Old snapshots remain untouched.
@@ -166,7 +169,7 @@ impl SessionStore {
             .sessions
             .sort_by(|a, b| a.created_at.cmp(&b.created_at).then(a.id.cmp(&b.id)));
         repair_selection(&mut history);
-        Ok((Self { paths, logs }, history))
+        Ok((Self { paths, logs, learning_tasks: selection.learning_tasks }, history))
     }
 
     pub fn create(
@@ -260,11 +263,30 @@ impl SessionStore {
     }
 
     fn save_selection(&self, active_by_book: &BTreeMap<String, String>) -> Result<(), ToolError> {
+        self.write_selection(active_by_book, &self.learning_tasks)
+    }
+
+    pub fn select_learning_task(
+        &mut self,
+        history: &AgentHistory,
+        task: crate::learning_task::LearningTaskSelection,
+    ) -> Result<(), ToolError> {
+        let mut tasks = self.learning_tasks.clone();
+        tasks.retain(|existing| !existing.same_target(&task));
+        tasks.insert(0, task);
+        tasks.sort_by(|a, b| b.selected_at.cmp(&a.selected_at));
+        self.write_selection(&history.active_by_book, &tasks)?;
+        self.learning_tasks = tasks;
+        Ok(())
+    }
+
+    fn write_selection(&self, active_by_book: &BTreeMap<String, String>, learning_tasks: &[crate::learning_task::LearningTaskSelection]) -> Result<(), ToolError> {
         let path = &self.paths.selection;
         memory::ReaderPrivateStorageGate::enforce(path)?;
         recover_interrupted_agent_history_commit(path)?;
         let bytes = serde_json::to_vec(&Selection {
             active_by_book: active_by_book.clone(),
+            learning_tasks: learning_tasks.to_vec(),
         })
         .map_err(|e| agent_history_internal(e.to_string()))?;
         let temp = agent_history_temporary_path(path);

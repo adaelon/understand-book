@@ -5,6 +5,9 @@ import {
   createMarkdownDomSourceMap,
   markMarkdownDomSourceRanges,
   sourceTextForRanges,
+  alignMarkdownSource,
+  bindMarkdownSourceMap,
+  projectMarkdownDom,
 } from "./markdown-source-map";
 
 function rendered(source: string): HTMLDivElement {
@@ -21,6 +24,32 @@ function selectText(node: Node, start: number, end: number): Range {
 }
 
 describe("Markdown DOM/source mapping", () => {
+  it.each(['sub', 'sup'].flatMap(tag => ['c', 's', 'u', 'b', 'sup', 'max'].map(body => ({ tag, body }))))('keeps $tag $body tied to its body rather than tag letters', async ({ tag, body }) => {
+    const source = `μ<${tag}>${body}</${tag}> + X<sup>T</sup> tail`;
+    const root = rendered(source);
+    const node = root.querySelector(tag)!.firstChild!;
+    const range = selectText(node, 0, body.length);
+    const expected = [{ start: 6, end: 6 + body.length }];
+    const map = createMarkdownDomSourceMap(source, root);
+    expect(map.sourceRangesForRange(range)).toEqual(expected);
+    const projection = projectMarkdownDom(root);
+    const paginated = bindMarkdownSourceMap(source, projection, await alignMarkdownSource(source, projection.text));
+    expect(paginated.sourceRangesForRange(range)).toEqual(expected);
+    markMarkdownDomSourceRanges(source, root, [{ ...expected[0], className: 'hl-mark source-focus-mark' }]);
+    expect(root.querySelector(`${tag} > mark`)?.textContent).toBe(body);
+    expect(root.querySelectorAll('mark')).toHaveLength(1);
+  });
+
+  it('retains literal code tags alongside formatted subscripts and maps a selection across both', () => {
+    const source = '`<sub>s</sub>` C<sub>c</sub>、μ<sub>c</sub> 为质心';
+    const root = rendered(source);
+    const range = document.createRange(); range.selectNodeContents(root);
+    const map = createMarkdownDomSourceMap(source, root);
+    expect(sourceTextForRanges(source, map.sourceRangesForRange(range))).toBe('<sub>s</sub> Cc、μc 为质心');
+    const selected = root.querySelectorAll('sub')[1].firstChild!;
+    const start = source.lastIndexOf('c</sub>');
+    expect(map.sourceRangesForRange(selectText(selected, 0, 1))).toEqual([{ start, end: start + 1 }]);
+  });
   it("keeps literal HTML table source selectable when it is displayed as text", () => {
     const source = '<table><tr><td><strong>same</strong></td></tr></table>';
     const root = rendered(source);

@@ -2,6 +2,79 @@ use super::*;
 use super::mu5_tests::Fixture;
 
 #[test]
+fn board_search_scopes_personal_notes_before_ranking_and_limit() {
+    let f = Fixture::new();
+    let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+    let (visible, outside) = {
+        let mut user = handle.lock().unwrap();
+        let content = |text: String| serde_json::from_value(json!({"content":text,"authorship":"user"})).unwrap();
+        let mut outside = String::new();
+        for index in 0..101 {
+            let note = user.store.create_personal_note(content("entropy".into()), &format!("outside-{index}"), "1").unwrap();
+            outside = note.note_id;
+        }
+        let visible = user.store.create_personal_note(content("待补充的卡片".into()), "visible", "1").unwrap();
+        (visible.note_id, outside)
+    };
+    let first = f.create(&f.a, &f.x, "scoped-search");
+    let board = f.action(&f.a, &first, "scoped-search", "boards/create", json!({"title":"范围内卡片"}))["result"].clone();
+    let add = |window: &Value, attachment: &str, board: &Value, note_id: &str| {
+        f.action(&f.a, window, attachment, "boards/import", json!({
+            "board_id":board["board_id"],"board_revision":board["revision"],
+            "source":{"kind":"personal_note","reference":{"note_id":note_id}},
+        }))["result"].clone()
+    };
+    let board = add(&first, "scoped-search", &board, &visible);
+    let other = f.create(&f.a, &f.y, "outside-search");
+    let other_board = f.action(&f.a, &other, "outside-search", "boards/create", json!({"title":"其他资料"}))["result"].clone();
+    add(&other, "outside-search", &other_board, &outside);
+    {
+        let mut user = handle.lock().unwrap();
+        user.store.revise_personal_note(&visible, 1, serde_json::from_value(json!({
+            "content":format!("entropy {}", "context ".repeat(60)), "authorship":"user",
+        })).unwrap(), "visible-revision", "2").unwrap();
+        let global = user.store.search_personal_notes("entropy", None, 100).unwrap();
+        assert_eq!(global.len(), 100);
+        assert!(!global.iter().any(|hit| hit.reference.note_id == visible), "fixture must put the board note beyond the global cutoff");
+    }
+    let found = f.action(&f.a, &first, "scoped-search", "boards/search", json!({"query":"entropy","limit":1}));
+    let hits = found["result"]["items"].as_array().unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0]["board_id"], board["board_id"]);
+    assert_eq!(hits[0]["item_id"], board["items"][0]["item_id"]);
+    assert!(hits[0]["snippet"].as_str().unwrap().contains("entropy"));
+
+    let scope = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({"goal":{"text":"跨资料检索"},"members":[f.x,f.y]}))["learning_workspace_id"].clone();
+    let open = |reference: &base_schema::PublishedBookRef, attachment: &str| f.ok(&f.a, "POST", "/api/workspaces", json!({
+        "published_book_ref":reference,"learning_workspace_id":scope,"attachment_id":attachment,
+    }));
+    let scoped_first = open(&f.x, "scope-first");
+    let scoped_board = f.action(&f.a, &scoped_first, "scope-first", "boards/create", json!({"title":"共同目标"}))["result"].clone();
+    let scoped_board = add(&scoped_first, "scope-first", &scoped_board, &visible);
+    let scoped_other = open(&f.y, "scope-other");
+    let across_books = f.action(&f.a, &scoped_other, "scope-other", "boards/search", json!({"query":"entropy","limit":1}));
+    assert_eq!(across_books["result"]["items"][0]["board_id"], scoped_board["board_id"]);
+}
+
+#[test]
+fn board_library_lists_owned_boards_across_materials_and_workspaces_without_a_reader_stamp() {
+    let f = Fixture::new();
+    assert_eq!(f.ok(&f.a, "GET", "/api/me/boards", Value::Null)["items"], json!([]));
+    let first = f.create(&f.a, &f.x, "board-library-first");
+    let unscoped = f.action(&f.a, &first, "board-library-first", "boards/create", json!({"title":"理解第一份资料"}))["result"].clone();
+    let learning = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({"goal":{"text":"跨资料理解"},"members":[f.x,f.y]}))["learning_workspace_id"].clone();
+    let second = f.ok(&f.a, "POST", "/api/workspaces", json!({"published_book_ref":f.y,"attachment_id":"board-library-second","learning_workspace_id":learning}));
+    let scoped = f.action(&f.a, &second, "board-library-second", "boards/create", json!({"title":"比较两个概念"}))["result"].clone();
+    let library = f.ok(&f.a, "GET", "/api/me/boards", Value::Null);
+    let items = library["items"].as_array().unwrap();
+    assert_eq!(items.len(), 2);
+    assert!(items.iter().any(|item| item["board_id"] == unscoped["board_id"] && item["learning_workspace_id"].is_null()));
+    assert!(items.iter().any(|item| item["board_id"] == scoped["board_id"] && item["learning_workspace_id"] == learning && item["publication_id"] == f.y.publication_id));
+    assert!(items.iter().all(|item| item.get("items").is_none()));
+    assert_eq!(f.ok(&f.b, "GET", "/api/me/boards", Value::Null)["items"], json!([]));
+}
+
+#[test]
 fn mind_map_network_edits_use_board_revision_and_survive_another_window() {
     let f = Fixture::new();
     let first = f.create(&f.a, &f.x, "mind-map-first");

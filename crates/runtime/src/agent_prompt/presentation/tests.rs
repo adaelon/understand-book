@@ -396,9 +396,12 @@ fn common_modules_are_identical_across_sampling_selections() {
         Some(PresentationGuidance { phase: PresentationPhase::Local, needs: vec![PresentationNeed::Manim] }),
         Some(PresentationGuidance { phase: PresentationPhase::Review, needs: vec![PresentationNeed::Editing] }),
     ] {
-        let (selected, common): (Vec<_>, Vec<_>) = modules(guidance.as_ref()).into_iter().partition(is_sampling_module);
-        assert_eq!(selected, selected_modules(guidance.as_ref()));
-        assert_eq!(common, *stable.get_or_insert(common.clone()));
+        let selected = selected_modules(guidance.as_ref());
+        let all = modules(guidance.as_ref());
+        assert!(all.iter().all(is_sampling_module), "all presentation guidance belongs to the current sampling");
+        let (common, actual_selected) = all.split_at(common_modules().len());
+        assert_eq!(actual_selected, selected);
+        assert_eq!(common, stable.get_or_insert_with(|| common.to_vec()));
         assert!(common.iter().all(|m| !m.text.contains("Presentation phase:")));
     }
 }

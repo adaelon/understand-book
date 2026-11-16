@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ExtractorContractError } from "./extractor-contract";
 import { checkTeachingBindings, SourceBindingZ, type FormalObjects, type TeachingSource, type TeachingSourceBinding } from "./teaching-map";
 import { advanceCognitiveWork, cognitiveRangeWasRead, newCognitiveWork, type CognitiveWork } from "./cognitive-materials";
 
@@ -50,14 +51,21 @@ export function teachingReviewInput(source: TeachingSource, sample: TeachingSamp
     notes: work.reading.notes, readings: work.reading.readings.slice(-1), searches: work.reading.searches.slice(-1),
     read_ranges: work.reading.readings.map(r => ({ lid: r.lid, start: r.start ?? 0, end: r.end ?? r.text.length })) };
 }
-export function acceptTeachingReview(source: TeachingSource, samples: TeachingSample[], candidate: unknown): TeachingReview {
+export function acceptTeachingReview(source: TeachingSource, samples: TeachingSample[], candidate: unknown, reviewPath = ""): TeachingReview {
   const review = TeachingReviewZ.parse(candidate);
   if (review.samples.length !== samples.length || new Set(review.samples.map(s => s.sample_id)).size !== review.samples.length) throw new Error("teaching review coverage incomplete");
-  for (const sample of review.samples) {
+  for (const [index, sample] of review.samples.entries()) {
     const expected = samples.find(s => s.sample_id === sample.sample_id);
     if (!expected) throw new Error("teaching review sample mismatch");
     checkTeachingBindings(sample.source_bindings, source);
-    if (expected.evidence_lids.some(lid => !sample.source_bindings.some(b => b.lid === lid))) throw new Error("teaching review omits sampled source");
+    const cited = new Set(sample.source_bindings.map(b => b.lid));
+    const missing = expected.evidence_lids.filter(lid => !cited.has(lid));
+    if (missing.length) throw new ExtractorContractError({
+      version: "automatic_build_extractor_diagnostic.v1", code: "schema_invalid",
+      json_pointer: `${reviewPath}/samples/${index}/source_bindings`,
+      expected: `Verify and cite every evidence_lids entry for pass or fail. Missing LIDs: ${missing.join(", ")}`,
+      actual: { missing_count: missing.length },
+    });
   }
   return review;
 }
@@ -66,7 +74,7 @@ export function advanceTeachingReview(source: TeachingSource, sample: TeachingSa
   if (work.review) throw new Error("teaching review already complete");
   if (action.kind === "finish") {
     if (reviewRanges(source, sample).some(r => !cognitiveRangeWasRead(work.reading, r.lid, r))) throw new Error("teaching review source coverage incomplete");
-    return { ...work, review: acceptTeachingReview(source, [sample], action.review) };
+    return { ...work, review: acceptTeachingReview(source, [sample], action.review, "/review") };
   }
   if (!["read", "search", "preview", "retain"].includes(action.kind ?? "")) throw new Error("invalid teaching review action");
   // The caller's BuildPlan still owns the aggregate token/time limits. A review

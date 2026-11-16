@@ -240,7 +240,7 @@ for (const kind of ['ordinary answer', 'missing result', 'failed', 'cancelled', 
 for (const hidden of ['bookshelf', 'background', 'reduced motion', 'mobile reader'] as const) test(`YY7 consumes completion while hidden by ${hidden}`, async ({ page }) => {
   await page.setViewportSize({ width: hidden === 'mobile reader' ? 390 : 1440, height: 900 });
   const fixture = await reader(page, { goals: [yy7Goal] }); await fixture.send();
-  if (hidden === 'bookshelf') await page.getByRole('button', { name: '打开书', exact: true }).click();
+  if (hidden === 'bookshelf') await page.getByRole('button', { name: '学习资料', exact: true }).click();
   if (hidden === 'background') await visibility(page, false);
   if (hidden === 'reduced motion') await page.emulateMedia({ reducedMotion: 'reduce' });
   if (hidden === 'mobile reader') await page.getByRole('button', { name: '返回阅读', exact: true }).click();
@@ -259,7 +259,7 @@ test('YY7 invalidates a completion when the host hides and returns during the sa
   fixture.holdHistory(); const reads = fixture.historyReads;
   await fixture.finish([yy7Completed]); await expect.poll(() => fixture.historyReads).toBeGreaterThan(reads);
   expect(await nods(page)).toEqual([]);
-  await page.getByRole('button', { name: '打开书', exact: true }).click();
+  await page.getByRole('button', { name: '学习资料', exact: true }).click();
   await page.getByRole('button', { name: '继续阅读', exact: true }).click();
   const read = page.waitForResponse(response => response.url().endsWith('/chat/history'));
   fixture.releaseHistory(); await (await read).finished();
@@ -337,7 +337,7 @@ test('YY6 bookshelf coverage, focus and background stop the retained reader and 
   const welcome = page.locator('.welcome-mascot');
   await advance(page, 16_000); await expect(welcome).toHaveAttribute('data-yeye-playing', 'true');
   await page.locator('.agent-input textarea').fill('保留的草稿');
-  await page.getByRole('button', { name: '打开书', exact: true }).click();
+  await page.getByRole('button', { name: '学习资料', exact: true }).click();
   await expect(welcome).toBeHidden(); await expect(welcome.locator('svg')).toHaveCount(0);
   await expect(page.locator('.resumption-mascot')).toHaveAttribute('data-yeye-active', 'true');
   await advance(page, 16_000); await expect(page.locator('.resumption-mascot')).toHaveAttribute('data-yeye-playing', 'true');

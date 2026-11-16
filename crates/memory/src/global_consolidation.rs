@@ -744,6 +744,7 @@ mod tests {
             .commit_review_result(
                 &job_a.job_id,
                 &["turn-a1".into(), "turn-a2".into()],
+                &[],
                 &[
                     review_candidate("book-a", "session-a", "turn-a1"),
                     review_candidate("book-a", "session-a", "turn-a2"),
@@ -768,6 +769,7 @@ mod tests {
             .commit_review_result(
                 &job_b.job_id,
                 &["turn-b1".into()],
+                &[],
                 &[review_candidate("book-b", "session-b", "turn-b1")],
                 &[],
                 "2026-07-14T00:04:00Z",

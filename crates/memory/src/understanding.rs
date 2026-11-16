@@ -27,12 +27,46 @@ CREATE TABLE understanding_note_evidence (note_id TEXT NOT NULL, revision INTEGE
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
 #[serde(deny_unknown_fields)]
 pub struct UnderstandingObservation {
+    /// Learner-facing account of what changed, separate from the teacher's plan.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub learner_summary: Option<LearnerUnderstandingSummary>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub knowledge_links: Vec<read_tools::knowledge::KnowledgeLink>,
     #[serde(default)]
     pub demonstrated: Vec<String>,
     #[serde(default)]
     pub difficulties: Vec<String>,
     #[serde(default)]
     pub unconfirmed: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+#[serde(deny_unknown_fields)]
+pub struct LearnerUnderstandingSummary {
+    /// One short title naming the most important change in understanding or specific question, without listing several conclusions.
+    pub headline: String,
+    /// One or two sentences summarizing the relationship actually expressed and the help received. Keep detailed values in the evidence and do not infer unexpressed views.
+    pub explanation: String,
+    /// An optional action related to the current question; null for ordinary course continuation. Do not write instructions for the teacher.
+    pub next_step: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PreviousUnderstanding {
+    pub evidence_ref: String,
+    pub learner_quote: String,
+    pub assistance: String,
+}
+
+fn assistance_label(e: &LearningEvidence) -> String {
+    if !e.assistance_refs.is_empty() || !e.support_delivery_refs.is_empty() {
+        "在已提供帮助下"
+    } else if e.attempt > 1 {
+        "修改回答后"
+    } else {
+        "本次未记录提示或先前讲解"
+    }.to_owned()
 }
 
 #[cfg(test)]
@@ -79,6 +113,82 @@ mod tests {
             .unwrap();
         let e:LearningEvidence=serde_json::from_value(json!({"evidence_id":format!("e:{id}"),"action_ref":id,"session_id":"stage","source_id":"book","source_revision":"v1","nature":"hypothesis","target":t,"fact_refs":[id],"teaching_implication":"比较含停车的一次行程","label":t.learning_focus,"capability":t.capability,"assistance_refs":[],"attempt":0,"status":"unassessed","interpretation":"按实际表达保留观察","learner_quote":words,"interpreter_version":"test","source_quotes":[],"understanding":understanding,"note_refs":[{"note_id":"note-a","revision":1}]})).unwrap();
         store.append_evidence(&e).unwrap()
+    }
+    #[test]
+    fn learner_summary_keeps_the_change_and_never_exposes_the_teacher_plan() {
+        let root=tempfile::tempdir().unwrap();
+        let mut store=LearningStore::open(&root.path().join("learning.db"),false).unwrap();
+        let first=hypothesis(&mut store,"first","2026-11-12T10:00:00Z","停车不计入时间",json!({"difficulties":["忽略停车时间"]}));
+        assert!(store.understanding_summaries("book","v1").unwrap()[0].next_step.is_empty());
+        hypothesis(&mut store,"later","2026-11-12T10:01:00Z","停车也算在全程时间里",json!({
+            "demonstrated":["说明停车时间属于全程时间"],"unconfirmed":["尚未在新情况中独立应用"],
+            "learner_summary":{"headline":"你把停车时间补进了原来的解释。","explanation":"现在你能说明全程时间包含停车。","next_step":"换一次行程，试着自己判断。"}
+        }));
+        let summaries=store.understanding_summaries("book","v1").unwrap();
+        let current=&summaries[0];
+        assert_eq!(current.learner_summary.as_ref().unwrap().headline,"你把停车时间补进了原来的解释。");
+        assert_eq!(current.previous.as_ref().unwrap().evidence_ref,first.evidence_id);
+        assert_eq!(current.previous.as_ref().unwrap().learner_quote,"停车不计入时间");
+        assert_eq!(current.next_step,"换一次行程，试着自己判断。");
+        assert!(current.difficulties.is_empty());
+        assert_eq!(current.demonstrated.len(),1);
+    }
+
+    #[test]
+    fn course_response_freezes_understanding_from_an_earlier_conversation() {
+        use crate::course::{InquiryCourse,CourseMutation,CourseAction,CourseResponse};
+        let root=tempfile::tempdir().unwrap();
+        let mut store=LearningStore::open(&root.path().join("learning.db"),false).unwrap().with_workspace(Some("learner"));
+        let old=hypothesis(&mut store,"previous-chat","2026-11-12T09:00:00Z","停车也算在全程时间里",json!({"demonstrated":["解释总时间"],"unconfirmed":["尚未独立应用"]}));
+        let mut course:InquiryCourse=serde_json::from_str(include_str!("../../../docs/examples/inquiry-course/ai-infra-resource-bounds.course.json")).unwrap();
+        let lesson=&mut course.lessons[0];
+        lesson.summary.source.publication.book_id="book".into();lesson.summary.source.source_revision="v1".into();
+        let mut view=store.mutate_course(&CourseMutation{operation_id:"start".into(),run_id:None,expected_revision:0,release_version:1,action:CourseAction::Start{lesson_id:lesson.summary.id.clone()}},Some(("release",1,lesson)),1,"2026-11-12T10:00:00Z",None).unwrap();
+        for (id,action) in [("advance",CourseAction::Advance),("predict",CourseAction::Predict{response:CourseResponse{choice:lesson.prediction.options[0].id.clone(),reason:"先比较两个时间".into()}})] {
+            view=store.mutate_course(&CourseMutation{operation_id:id.into(),run_id:Some(view.progress.run_id.clone()),expected_revision:view.progress.revision,release_version:1,action},None,1,"2026-11-12T10:01:00Z",None).unwrap();
+        }
+        let job_ref=&view.expressions[0].job_ref;
+        let job=store.coach_job(job_ref).unwrap().unwrap();
+        let prior=&job.input.context["teaching_context"]["learner_context"]["current_understanding"];
+        assert_eq!(prior[0]["evidence_ref"],old.evidence_id);
+        assert_eq!(prior[0]["unconfirmed"][0],"尚未独立应用");
+        hypothesis(&mut store,"future-chat","2026-11-12T11:00:00Z","这是后来的表达",json!({"demonstrated":["不能回填旧任务"]}));
+        let saved=store.coach_job(job_ref).unwrap().unwrap();
+        assert_eq!(&saved.input.context["teaching_context"]["learner_context"]["current_understanding"],prior);
+    }
+
+    #[test]
+    fn a_new_expression_changes_the_current_view_without_moving_the_old_branch_quote() {
+        let root=tempfile::tempdir().unwrap();
+        let mut store=LearningStore::open(&root.path().join("learning.db"),false).unwrap();
+        let observation=|artifact:&str,entry:&str,quote:&str|json!({"knowledge_links":[{"reference":{"source_id":"book","source_revision":"v1","publication_id":null,"artifact":artifact,"entry_id":entry},"quote":quote}]});
+        let first=hypothesis(&mut store,"before","2026-11-05T10:00:00Z","停车不算时间",observation("discourse","1.1","停车不算时间"));
+        let later=hypothesis(&mut store,"after","2026-11-05T10:01:00Z","停车也算总时间",observation("pass1","concept:time","停车也算总时间"));
+        let summaries=store.understanding_summaries("book","v1").unwrap();
+        let old=summaries.iter().find(|s|s.evidence_ref==first.evidence_id).unwrap();
+        let current=summaries.iter().find(|s|s.evidence_ref==later.evidence_id).unwrap();
+        assert_eq!(old.focus_ref,current.focus_ref);
+        assert_eq!(old.later_evidence_ref.as_deref(),Some(later.evidence_id.as_str()));
+        assert!(current.later_evidence_ref.is_none());
+        assert_eq!(old.learner_quote,"停车不算时间");
+        assert_eq!(old.knowledge_links[0].reference.artifact,"discourse");
+        assert_eq!(current.learner_quote,"停车也算总时间");
+        assert_eq!(current.knowledge_links[0].reference.artifact,"pass1");
+        assert_eq!(summaries.iter().filter(|s|s.later_evidence_ref.is_none()).count(),1);
+    }
+
+    #[test]
+    fn knowledge_links_keep_each_branches_original_expression() {
+        let root=tempfile::tempdir().unwrap();let mut store=LearningStore::open(&root.path().join("learning.db"),false).unwrap();
+        let observation=|entry:&str,quote:&str|json!({"knowledge_links":[{"reference":{"source_id":"book","source_revision":"v1","publication_id":null,"artifact":"pass1","entry_id":entry},"quote":quote}]});
+        let first=hypothesis(&mut store,"a","2026-11-01T10:00:00+08:00","停车也算时间",observation("claim:time","停车也算时间"));
+        let second=hypothesis(&mut store,"b","2026-11-01T11:00:00+08:00","回程也算路程",observation("claim:distance","回程也算路程"));
+        hypothesis(&mut store,"c","2026-11-01T12:00:00+08:00","我还想继续看看",json!({"unconfirmed":["尚未表达进一步理解"]}));
+        let summaries=store.understanding_summaries("book","v1").unwrap();
+        assert_eq!(summaries.len(),3);
+        assert_eq!(summaries.iter().find(|s|s.evidence_ref==first.evidence_id).unwrap().learner_quote,"停车也算时间");
+        assert_eq!(summaries.iter().find(|s|s.evidence_ref==second.evidence_id).unwrap().knowledge_links[0].reference.entry_id,"claim:distance");
+        assert_eq!(store.understanding_timeline(&second.evidence_id,0,20).unwrap().len(),3);
     }
     #[test]
     fn current_understanding_uses_expression_order_keeps_history_and_scopes_corrections() {
@@ -255,6 +365,13 @@ pub struct NoteEvidenceLink {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UnderstandingSummary {
+    pub learner_summary: Option<LearnerUnderstandingSummary>,
+    pub previous: Option<PreviousUnderstanding>,
+    /// A newer expression about the same relationship and capability exists.
+    /// This branch keeps its original quote, without presenting it as current.
+    pub later_evidence_ref: Option<String>,
+    #[serde(default)]
+    pub knowledge_links: Vec<read_tools::knowledge::KnowledgeLink>,
     pub focus_ref: String,
     pub source_id: String,
     pub source_revision: String,
@@ -624,7 +741,8 @@ impl LearningStore {
         revision: &str,
         focuses: &[String],
     ) -> Result<Vec<UnderstandingSummary>, ToolError> {
-        let mut groups: BTreeMap<(String, String), UnderstandingSummary> = BTreeMap::new();
+        let mut groups: BTreeMap<(String, String, String), UnderstandingSummary> = BTreeMap::new();
+        let mut latest: BTreeMap<(String, String), String> = BTreeMap::new();
         let mut order = Vec::new();
         for e in self.understanding_evidence(source, revision, focuses)? {
             if self.evidence_is_questionable(&e)? {
@@ -644,7 +762,23 @@ impl LearningStore {
                 }
             }
             let key = relationship_key(&e);
-            if let Some(current) = groups.get_mut(&(key.clone(), e.capability.clone())) {
+            let relationship=(key.clone(),e.capability.clone());
+            let later_evidence_ref=latest.get(&relationship).cloned();
+            latest.entry(relationship).or_insert_with(||e.evidence_id.clone());
+            // A later observation about another branch must not relocate the old
+            // expression, or replace its quote with an unrelated latest answer.
+            let mut references:Vec<_>=e.understanding.knowledge_links.iter().map(|l|json!(l.reference).to_string()).collect();
+            references.sort();references.dedup();
+            let group_key=(key.clone(),e.capability.clone(),json!(references).to_string());
+            if let Some(current) = groups.get_mut(&group_key) {
+                if current.previous.is_none() && current.correction.is_none()
+                    && e.correction.is_none() && !e.learner_quote.is_empty()
+                    && current.learner_quote != e.learner_quote {
+                    current.previous = Some(PreviousUnderstanding {
+                        evidence_ref: e.evidence_id.clone(), learner_quote: e.learner_quote.clone(),
+                        assistance: assistance_label(&e),
+                    });
+                }
                 // All original versions remain navigable even when later evidence
                 // about the same relationship was produced from another note.
                 for reference in e.note_refs {
@@ -656,14 +790,7 @@ impl LearningStore {
             }
             let metadata = self.evidence_chronology(&e.evidence_id)?;
             let assisted = !e.assistance_refs.is_empty() || !e.support_delivery_refs.is_empty();
-            let assistance = if assisted {
-                "在已提供帮助下"
-            } else if e.attempt > 1 {
-                "修改回答后"
-            } else {
-                "本次未记录提示或先前讲解"
-            }
-            .to_owned();
+            let assistance = assistance_label(&e);
             let mut observation = e.understanding.clone();
             if e.correction.is_some() {
                 observation = UnderstandingObservation {
@@ -697,10 +824,14 @@ impl LearningStore {
             {
                 observation.unconfirmed.push(e.interpretation.clone());
             }
-            order.push((key.clone(), e.capability.clone()));
+            order.push(group_key.clone());
             groups.insert(
-                (key.clone(), e.capability.clone()),
+                group_key,
                 UnderstandingSummary {
+                    learner_summary: observation.learner_summary.clone(),
+                    previous: None,
+                    later_evidence_ref,
+                    knowledge_links: e.understanding.knowledge_links,
                     focus_ref: key,
                     source_id: e.source_id,
                     source_revision: e.source_revision,
@@ -714,7 +845,7 @@ impl LearningStore {
                     evidence_ref: e.evidence_id.clone(),
                     evidence_refs: vec![e.evidence_id],
                     note_refs: e.note_refs,
-                    next_step: e.teaching_implication,
+                    next_step: observation.learner_summary.as_ref().and_then(|s|s.next_step.clone()).unwrap_or_default(),
                     occurred_at: metadata["occurred_at"].as_str().map(str::to_owned),
                     source_session_id: metadata["source_session_id"].as_str().map(str::to_owned),
                     source_turn_id: metadata["source_turn_id"].as_str().map(str::to_owned),

@@ -81,3 +81,22 @@ it('keeps legacy Windows separate from website uploads instead of disguising clo
   expect(fetch).not.toHaveBeenCalled();
   wrapper.unmount();
 });
+
+it('does not revive a cloud copy when the workspace is closed before its storage check returns', async () => {
+  let release!: (value: Response) => void;
+  const fetch = vi.fn(() => new Promise<Response>(resolve => { release = resolve; }));
+  vi.stubGlobal('fetch', fetch);
+  native.invoke.mockImplementation(async (command: string) => {
+    if (command === 'desktop_local_materials') return [item];
+    if (command === 'desktop_local_material_cloud_copy') return { ...item, cloud_copy: { scope, upload_id: 'upload', task_id: 'task', operation_id: 'operation', complete: false } };
+    throw new Error(`Cancelled sync must not read bytes: ${command}`);
+  });
+  const wrapper = mount(LocalMaterials, { props: { scope }, global: { stubs: { LocalMaterialReader: true } } });
+  await flushPromises();
+  await wrapper.findAll('button').find(b => b.text() === '同步到云端')!.trigger('click');
+  wrapper.unmount();
+  release(Response.json({ can_upload: true, available_bytes: 10, max_file_bytes: 10, items: [] }));
+  await flushPromises();
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(native.invoke.mock.calls.some(([command]) => command === 'desktop_read_local_material_chunk')).toBe(false);
+});

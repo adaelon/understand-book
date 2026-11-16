@@ -455,6 +455,7 @@ impl MemoryStore {
             .expect("candidate cloned from current document");
         fact.status = FactStatus::Confirmed;
         fact.updated_at = now.into();
+        fact.observed_at_ms = crate::profile_timestamp_ms(now).or(fact.observed_at_ms);
         reconcile_global_promotions(&mut candidate, &[semantic_key], now)?;
         Ok(ReducedGovernanceAction {
             candidate: Some(candidate),
@@ -978,6 +979,7 @@ mod tests {
             .commit_review_result(
                 &job.job_id,
                 &["review-turn".into()],
+                &[],
                 &[blocked],
                 &[],
                 "2026-07-14T00:04:00Z",

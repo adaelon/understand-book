@@ -236,7 +236,7 @@ describe("incremental profile refill", () => {
       const slice = task.task.descriptor.input_basis.slices[0];
       writeProfileSidecarDiscourseShadowCandidate({ target, source: fixture.source, task: task.task,
         candidate: { version: "profile_sidecar_discourse_observation.v1", parent_lid: task.task.route.parent_lid,
-          source_slice_ordinal: slice.ordinal, core_sha256: slice.core_sha256,
+          source_slice_ordinal: slice.ordinal,
           mode_candidates: [{ value: "informative", confidence: 0.9 }], local_function_candidates: [],
           rhetorical_move_candidates: [], summary_fragments: ["Bounded observation."], relation_candidates: [] },
         provenance: { executor: "incremental-test", attempt: 1, generated_at: new Date().toISOString() } });

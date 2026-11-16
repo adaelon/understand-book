@@ -4,8 +4,10 @@ import { createRequestDiffTracker } from './request-diff.mjs';
 // Classify only signatures owned by the production request builders. User/tool
 // text is deliberately excluded: a quoted policy is not the request's purpose.
 export function requestPurpose(request) {
-  const system = (request?.messages ?? []).filter(m => m.role === 'system' || m.role === 'developer')
-    .map(m => typeof m.content === 'string' ? m.content : '').join('\n');
+  const nativeSystem = typeof request?.system === 'string' ? request.system
+    : (request?.system ?? []).map(block => block.text ?? '').join('\n');
+  const system = [nativeSystem, ...(request?.messages ?? []).filter(m => m.role === 'system' || m.role === 'developer')
+    .map(m => typeof m.content === 'string' ? m.content : '')].filter(Boolean).join('\n');
   if (system.includes('source_answer_repair.v3')) return 'source_repair';
   if (system.includes('finalization_sampling.v1')) return 'finalization';
   if (system.includes('agent-compaction.generation.v1')) return 'compaction';
@@ -15,6 +17,53 @@ export function requestPurpose(request) {
   if (system.includes('You are the resident reading agent for the current book.')) return 'business_loop';
   if (system.startsWith('你是封闭原文阅读助手。仅依据提供的原文证据自然地回答')) return 'business_loop';
   return 'unclassified';
+}
+
+const publicBlocks = blocks => (blocks ?? []).filter(block => !['thinking', 'redacted_thinking'].includes(block.type));
+function messagesUsage(usage) {
+  const fields = ['input_tokens', 'cache_read_input_tokens', 'cache_creation_input_tokens', 'output_tokens'];
+  const complete = fields.every(key => Number.isFinite(usage?.[key]));
+  return { ...usage, total_tokens: complete ? fields.reduce((sum, key) => sum + usage[key], 0) : null };
+}
+function messagesResponse(record, response) {
+  const blocks = publicBlocks(response.content);
+  record.usage = messagesUsage(response.usage);
+  record.response = { id: response.id, model: response.model,
+    choices: [{ finish_reason: ({ end_turn: 'stop', tool_use: 'tool_calls', max_tokens: 'length' })[response.stop_reason] ?? response.stop_reason,
+      message: { role: 'assistant', content: blocks.filter(block => block.type === 'text').map(block => block.text).join(''),
+        tool_calls: blocks.filter(block => block.type === 'tool_use').map(block => ({ id: block.id, type: 'function',
+          function: { name: block.name, arguments: block.arguments ?? JSON.stringify(block.input) } })) } }] };
+  record.response_complete = !!response.stop_reason;
+}
+function recordMessagesStreamResponse(record, text) {
+  const response = { content: [], usage: {} }, blocks = new Map();
+  record.stream_done = false;
+  for (const event of text.split(/\r?\n\r?\n/)) {
+    const data = event.split(/\r?\n/).filter(line => line.startsWith('data:')).map(line => line.slice(5).trimStart()).join('\n').trim();
+    if (!data) continue;
+    const value = JSON.parse(data);
+    if (value.type === 'message_start') {
+      response.id = value.message.id; response.model = value.message.model;
+      Object.assign(response.usage, value.message.usage);
+    }
+    if (value.type === 'content_block_start' && publicBlocks([value.content_block]).length) {
+      const block = { ...value.content_block };
+      blocks.set(value.index, block); response.content.push(block);
+    }
+    if (value.type === 'content_block_delta') {
+      const block = blocks.get(value.index);
+      if (block && value.delta.type === 'text_delta') block.text = (block.text ?? '') + value.delta.text;
+      if (block && value.delta.type === 'input_json_delta') block.arguments = (block.arguments ?? '') + value.delta.partial_json;
+    }
+    if (value.type === 'message_delta') {
+      if (value.delta?.stop_reason) response.stop_reason = value.delta.stop_reason;
+      Object.assign(response.usage, value.usage);
+    }
+    if (value.type === 'message_stop') record.stream_done = true;
+    if (value.type === 'error') record.provider_error = value.error?.message ?? value.error;
+  }
+  messagesResponse(record, response);
+  record.response_complete &&= record.stream_done;
 }
 
 export function usageByPurpose(records) {
@@ -73,18 +122,21 @@ function recordStreamResponse(record, text) {
 // retain no HTTP credentials and omit provider reasoning text from local records.
 export async function startProviderRecorder(providerBase, { tokenLimit = null, intercept = null } = {}) {
   const records = [];
+  const metadataRequests = [];
   const budgetRejections = [];
   const pending = new Set();
   const requestDiffs = createRequestDiffTracker();
   const server = http.createServer(async (req, res) => {
-    if (tokenLimit !== null && records.reduce((n, r) => n + (r.usage?.total_tokens ?? 0), 0) >= tokenLimit) {
+    const metadata = req.method === 'GET' && req.url?.split('?')[0] === '/models';
+    if (!metadata && tokenLimit !== null && records.reduce((n, r) => n + (r.usage?.total_tokens ?? 0), 0) >= tokenLimit) {
       budgetRejections.push({ at: new Date().toISOString(), reason: 'actual_provider_token_limit' });
       res.writeHead(402, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ error: { message: 'EXPERIMENT_TOKEN_BUDGET' } }));
       return;
     }
-    const record = { ordinal: records.length + 1, started_at: new Date().toISOString() };
-    records.push(record);
+    const destination = metadata ? metadataRequests : records;
+    const record = { ordinal: destination.length + 1, started_at: new Date().toISOString(), method: req.method, path: req.url };
+    destination.push(record);
     const started = performance.now();
     const controller = new AbortController();
     pending.add(controller);
@@ -92,14 +144,14 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
       const buffers = [];
       for await (const b of req) buffers.push(b);
       const body = Buffer.concat(buffers);
-      const request = JSON.parse(body.toString('utf8'));
+      const request = metadata ? {} : JSON.parse(body.toString('utf8'));
       record.purpose = requestPurpose(request);
       record.request_diff = requestDiffs.observe(request, record.purpose, record.ordinal);
       record.request = { ...request, ...(request.messages ? { messages: request.messages.map(message => {
         const { reasoning_content, ...publicMessage } = message;
-        return publicMessage;
+        return { ...publicMessage, ...(Array.isArray(publicMessage.content) ? { content: publicBlocks(publicMessage.content) } : {}) };
       }) } : {}) };
-      const scripted = intercept ? await intercept(request, records) : null;
+      const scripted = !metadata && intercept ? await intercept(request, records) : null;
       if (scripted) {
         record.scripted = true;
         record.status = 200;
@@ -109,17 +161,24 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
         res.end(JSON.stringify(scripted));
         return;
       }
-      const upstream = await fetch(providerBase.replace(/\/$/, '') + req.url, {
-        method: req.method, body, signal: controller.signal,
+      const nativeMessages = req.url?.split('?')[0] === '/messages';
+      const origin = new URL(providerBase).origin;
+      const upstreamUrl = nativeMessages && origin === 'https://api.deepseek.com'
+        ? origin + '/anthropic/v1/messages' : providerBase.replace(/\/$/, '') + req.url;
+      const upstream = await fetch(upstreamUrl, {
+        method: req.method, ...(metadata ? {} : { body }), signal: controller.signal,
         headers: { 'content-type': req.headers['content-type'] ?? 'application/json',
-          ...(req.headers.authorization ? { authorization: req.headers.authorization } : {}) },
+          ...Object.fromEntries(['authorization', 'x-api-key', 'anthropic-version', 'anthropic-beta']
+            .filter(key => req.headers[key]).map(key => [key, req.headers[key]])) },
       });
       const bytes = Buffer.from(await upstream.arrayBuffer());
       record.status = upstream.status;
       record.usage = null;
       try {
-        if ((upstream.headers.get('content-type') ?? '').includes('text/event-stream')) {
-          recordStreamResponse(record, bytes.toString('utf8'));
+        if (metadata) {
+          record.response = JSON.parse(bytes.toString('utf8'));
+        } else if ((upstream.headers.get('content-type') ?? '').includes('text/event-stream')) {
+          (nativeMessages ? recordMessagesStreamResponse : recordStreamResponse)(record, bytes.toString('utf8'));
         } else {
           const response = JSON.parse(bytes.toString('utf8'));
           record.usage = response.usage ?? null;
@@ -129,6 +188,7 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
               message: { role: c.message?.role, content: c.message?.content, tool_calls: c.message?.tool_calls } })) };
           record.response_complete = !!response.choices?.length
             && response.choices.every(choice => choice.finish_reason != null);
+          if (nativeMessages && Array.isArray(response.content)) messagesResponse(record, response);
         }
       } catch { record.non_json_response = true; }
       res.writeHead(upstream.status, { 'content-type': upstream.headers.get('content-type') ?? 'application/json' });
@@ -143,7 +203,7 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
     }
   });
   await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
-  return { url: `http://127.0.0.1:${server.address().port}`, records, budgetRejections,
+  return { url: `http://127.0.0.1:${server.address().port}`, records, metadataRequests, budgetRejections,
     async stop(waitMs = 0) {
       // The Reader may exit while its already-issued background review is in flight.
       // Let the upstream response finish so its real billable usage is not lost.

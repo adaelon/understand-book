@@ -1,4 +1,7 @@
 //! Service-wide capacity and per-request permits. No business state lives here.
+#[cfg(test)]
+#[path = "provider_capacity_tests.rs"]
+mod provider_capacity_tests;
 use runtime::provider_stream::{ModelDelta, ModelObserver, ModelUsage};
 use runtime::run_context::CancellationToken;
 use runtime::{
@@ -45,11 +48,11 @@ impl Default for ServiceLimits {
     fn default() -> Self {
         Self {
             http_workers: 4,
-            active_runs: 4,
+            active_runs: 8,
             user_active_runs: 1,
             queued_runs: 20,
             user_queued_runs: 4,
-            model_slots: 2,
+            model_slots: 8,
             user_model_slots: 1,
             model_request_timeout_seconds: 600,
             background_model_request_timeout_seconds: 180,
@@ -441,11 +444,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn capacity_200_candidate_loads_without_changing_existing_defaults() {
+    fn capacity_200_candidate_overrides_default_capacity() {
         let root = tempfile::tempdir().unwrap();
         let defaults = ServiceLimits::load(root.path()).unwrap();
         assert_eq!(defaults.http_workers, 4);
-        assert_eq!(defaults.active_runs, 4);
+        assert_eq!(defaults.active_runs, 8);
+        assert_eq!(defaults.model_slots, 8);
         assert_eq!(defaults.resident_users, 10);
         assert_eq!(defaults.model_request_timeout_seconds, 600);
         std::fs::write(root.path().join("service-limits.json"), include_str!(
@@ -454,7 +458,7 @@ mod tests {
         let candidate = ServiceLimits::load(root.path()).unwrap();
         assert_eq!(candidate.http_workers, 8);
         assert_eq!(candidate.active_runs, 64);
-        assert_eq!(candidate.model_slots, 16);
+        assert_eq!(candidate.model_slots, 8);
         assert_eq!(candidate.resident_users, 300);
         assert_eq!(candidate.sse_connections, 256);
         assert_eq!(candidate.background_model_request_timeout_seconds, 180);

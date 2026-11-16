@@ -50,10 +50,10 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
   const command = (request: unknown, signal?: AbortSignal) => engineCommand(config, ["build.step"], request, signal);
 
   async function prepareAndConfirmOwned(agent: Agent, signal: AbortSignal,
-    input: { target_input: string; root_dir: string; pass2?: "enabled" | "disabled"; build_tutor?:boolean; budget?: BuildPlanV1["budget"]; max_parallel?: 1 | 2 | 3;
+    input: { target_input: string; root_dir: string; pass2?: "enabled" | "disabled"; build_tutor?:boolean; build_course?:boolean; course_goal?:string; budget?: BuildPlanV1["budget"]; max_parallel?: 1 | 2 | 3;
       retrieval?: { retrieval_mode: "lexical_only" | "semantic_required"; budget: BuildRetrievalPlan["budget"] } }) {
     assertRoot(agent);
-    if (!input || Object.keys(input).some(k => !["target_input", "root_dir", "pass2", "budget", "max_parallel", "retrieval", "build_tutor"].includes(k))
+    if (!input || Object.keys(input).some(k => !["target_input", "root_dir", "pass2", "budget", "max_parallel", "retrieval", "build_tutor", "build_course", "course_goal"].includes(k))
       || typeof input.target_input !== "string" || typeof input.root_dir !== "string"
       || (input.pass2 !== undefined && !["enabled", "disabled"].includes(input.pass2))) throw new Error("build_prepare_arguments_invalid");
     if (checkHarnessCapabilities(ctx).status !== "available") throw new Error("build_harness_unsupported");
@@ -184,7 +184,7 @@ export function createBuildControl(ctx: Context, config: BuildControlConfig, pre
       cost_accounting: cost?.binding.metering === "provider_calls_v1" ? "provider_calls" : cost ? "platform_pending_receipts" : "operator_unaccounted",
       ...(costIssue ? { cost_issue: costIssue } : {}),
       capacity: { limit: Math.min(saved.max_parallel, 3), source: "agent_registry_conservative" },
-      ...(launched >= config.handoffsPerCall && last?.action.kind !== "DONE" ? { yielded: true } : {}),
+      ...(!stop && !signal.aborted && launched >= config.handoffsPerCall && last?.action.kind !== "DONE" ? { yielded: true } : {}),
       ...(reports.some(r => r.outcome !== "receipt") ? { host_observations: reports.filter(r => r.outcome !== "receipt") } : {}) });
     async function consume() {
       while (ready.length) {

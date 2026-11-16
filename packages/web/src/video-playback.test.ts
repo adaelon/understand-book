@@ -39,3 +39,13 @@ it('uses native HLS when MSE is unavailable', async () => {
   expect(video.getAttribute('src')).toBe('/index.m3u8');
   expect(state.instances).toHaveLength(0); dispose();
 });
+it('reports original timestamps when HLS cannot be used by the browser', async () => {
+  state.supported = false;
+  const video = document.createElement('video'), timeline = vi.fn();
+  vi.spyOn(video, 'canPlayType').mockReturnValue('');
+  const dispose = attachVideoPlayback(video, '/original', '/index.m3u8', 0, vi.fn(), timeline);
+  await flushPromises();
+  expect(video.getAttribute('src')).toBe('/original');
+  expect(timeline).toHaveBeenCalledWith(true);
+  dispose();
+});

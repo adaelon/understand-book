@@ -1,6 +1,7 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -25,6 +26,7 @@ import {
 interface Operations {
   busy: boolean;
   blocked: boolean;
+  error: string;
   submit: (
     title: string,
     path: string,
@@ -41,7 +43,9 @@ const fieldNames: Record<string, string> = {
   delta_units: "次数差额（次）",
   amount_fen: "实际收款（元）",
   delta_fen: "收款差额（元）",
-  delta_micro_cny: "内部额度差额（元）",
+  delta_micro_cny: "AI 预算调整（元）",
+  budget_micro_cny: "AI 使用预算（元）",
+  initial_grant_micro_cny: "赠送 AI 预算（元）",
   delta_milli_percent: "增加 / 调整额度",
   basis_version: "固定基准版本",
   title: "方案名称",
@@ -190,7 +194,7 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
       }
     });
   return (
-    <Context.Provider value={{ busy, blocked: !!pending, submit }}>
+    <Context.Provider value={{ busy, blocked: !!pending, error, submit }}>
       {pending && (
         <section
           className="mb-6 rounded-lg border border-amber-500 bg-amber-50 p-4 text-slate-900"
@@ -250,22 +254,18 @@ export function OperationsProvider({ children }: { children: ReactNode }) {
           className="mb-5 rounded-md border bg-muted/40 p-4"
         >
           <strong>操作已完成 · {receipt.user_id}</strong>
-          <p className="break-all text-sm">
-            回执 {receipt.operation_id} · {date(receipt.created_at)}
-          </p>
           {receipt.allowance_period != null && (
             <p>
               提交后可用额度：
-              {(receipt.allowance_period as Period).balance.unlimited ? '内测不限额度' : percentage((receipt.allowance_period as Period).balance.percentages?.available)}
+              {(receipt.allowance_period as Period).balance.unlimited ? '内测不限额度' : `${money((receipt.allowance_period as Period).balance.available_micro_cny)} 元 AI 预算`}
 
             </p>
           )}
-          {receipt.parameters && !receipt.kind.startsWith("mcp-") && <SubmissionSummary body={receipt.parameters} />}
-          {receipt.receipt_id != null && (
-            <p className="break-all text-sm">
-              收款记录：{String(receipt.receipt_id)}
-            </p>
-          )}
+          {!receipt.kind.startsWith("mcp-") && <details className="mt-2 text-sm"><summary className="cursor-pointer">查看收款与操作详情</summary>
+            {receipt.parameters && <SubmissionSummary body={receipt.parameters} />}
+            <p className="break-all">回执 {receipt.operation_id} · {date(receipt.created_at)}</p>
+            {receipt.receipt_id != null && <p className="break-all">收款记录：{String(receipt.receipt_id)}</p>}
+          </details>}
           {receipt.workspace_release != null && (() => { const release = receipt.workspace_release as {release_id: string; version: number; readiness_at_publication:{status:string}}; return <p>共享发布 {release.release_id} · v{release.version}：{release.readiness_at_publication.status === 'ready' ? '完整可用' : '尚未完整就绪，请查看版本中的资料与授权情况。'}</p>; })()}
           {receipt.operator_build != null && <p>运营任务已保存，可打开任务查看最新准备状态与费用。</p>}
           {receipt.entitlement != null && (() => {
@@ -333,6 +333,8 @@ export function OperationDialog({
 }) {
   const ops = useOperations();
   const [error, setError] = useState("");
+  const [attempted, setAttempted] = useState(false);
+  useEffect(() => { setError(""); setAttempted(false); }, [open]);
   return (
     <Dialog
       open={open}
@@ -352,10 +354,10 @@ export function OperationDialog({
           onSubmit={async (event) => {
             event.preventDefault();
             setError("");
+            setAttempted(true);
             const data = new FormData(event.currentTarget);
             try {
-              await onSubmit(data);
-              onOpenChange(false);
+              if (await onSubmit(data)) onOpenChange(false);
             } catch (failure) {
               setError(
                 failure instanceof Error ? failure.message : String(failure),
@@ -366,12 +368,13 @@ export function OperationDialog({
           <fieldset disabled={ops.busy || ops.blocked}>
             {children}
             <p role="alert" className="my-2 text-destructive">
-              {error}
+              {error || (attempted ? ops.error : "")}
             </p>
             <Button className="mt-3 w-full" type="submit">
               {ops.busy ? "正在提交…" : submitLabel}
             </Button>
           </fieldset>
+          {ops.blocked && !ops.busy && <Button type="button" variant="outline" className="mt-3 w-full" onClick={() => onOpenChange(false)}>关闭并核对原操作</Button>}
         </form>
       </DialogContent>
     </Dialog>

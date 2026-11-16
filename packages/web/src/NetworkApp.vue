@@ -5,9 +5,19 @@ import { useAccountPresence } from './account-presence';
 import LanguageSwitcher from './components/LanguageSwitcher.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from './App.vue';
+import BoardLibrary from './components/BoardLibrary.vue';
+import WorkspaceDestinations from './components/WorkspaceDestinations.vue';
+import LearningHomeTask from './components/LearningHomeTask.vue';
+import { inquiryCourse } from './inquiry-course';
+import type { CourseLaunchTarget, LearningTaskView } from './learning-tasks';
+import { readLearningCollection, learningCollectionUrl, type LearningCollectionTarget } from './learning-collections';
+import UnderstandingEntry from './components/UnderstandingEntry.vue';
+import ProductTour from './components/ProductTour.vue';
+import type { ProductTourContext, ProductTourStep } from './product-tour';
+import type { BoardSummary } from './generated/BoardSummary';
 import NotesWorkspace from './components/NotesWorkspace.vue';
 import BoardSourcePreview from './components/BoardSourcePreview.vue';
-import type { SourcePopupView, WorkspaceNoteSourceRequest } from './api';
+import type { SourcePopupView, SourceWindowLoader, WorkspaceNoteSourceRequest } from './api';
 import { pendingNoteSource, noteSourceError } from './personal-notes';
 import { isTauri } from '@tauri-apps/api/core';
 import DesktopAuthorization from './components/DesktopAuthorization.vue';
@@ -17,7 +27,7 @@ import { preloadVideoPlayback } from './video-playback';
 import type { PreparingVideo } from './video-api';
 const videos = ref<PreparingVideo[]>([]), selectedVideo = ref<PreparingVideo | null>(null);
 import MaterialCover from './components/MaterialCover.vue';
-import { ArrowUpRight, ArrowRight, Plus, ChevronDown, BookOpen, Layers, Settings2 } from '@lucide/vue';
+import { ArrowUpRight, ArrowRight, Plus, ChevronDown, BookOpen, Layers, Settings2, UserRound } from '@lucide/vue';
 import type { SharedBook } from './shared-workspaces';
 import YeyeMascot from './components/YeyeMascot.vue';
 import brandLogo from './assets/brand/understand-book-logo.svg';
@@ -32,7 +42,7 @@ import SharedWorkspaceInstance from './components/SharedWorkspaceInstance.vue';
 import ExamSprintPanel from './components/ExamSprintPanel.vue';
 import PersonalMaterials from './components/PersonalMaterials.vue';
 import { readMcpSource, sourceParams, type McpSource } from './mcp-source';
-import { readBoardRoute } from './board-route';
+import { readBoardRoute, boardRouteUrl } from './board-route';
 import AccountAccess from './components/AccountAccess.vue';
 import { takeAccountLink, type AccountView } from './account-forms';
 import AgentPresentation from './components/AgentPresentation.vue';
@@ -40,11 +50,11 @@ import SourceExcerpt from './components/SourceExcerpt.vue';
 import { api, ApiError } from './api';
 import { invalidateLinkedWindows, isLinkedReaderChange } from './network-presentation';
 import { network, installIdentity, installWorkspace, forgetNetwork, sceneKey, readerKey, savedWorkspace, saveWorkspace, type ChatDraft, type NetworkIdentity, type NetworkWorkspace, type PublishedBookRef, type LearningWorkspace } from './network-context';
-import { networkFetch, recoverWorkspaceBinding, requestWorkspaceRecovery, recoverSubmissions, pendingSubmissions, retrySubmission, readReadingResumption, learningWorkspaces, openLearningMaterial, openLibraryMaterial, type ReadingResumption, type PendingSubmission } from './network-client';
+import { abortable, networkFetch, recoverWorkspaceBinding, requestWorkspaceRecovery, recoverSubmissions, unconfirmedSubmissions, retrySubmission, readReadingResumption, learningWorkspaces, openLearningMaterial, openLibraryMaterial, type ReadingResumption, type PendingSubmission } from './network-client';
 import { savedLearningSelection, saveLearningSelection, learningDraftKey, readLearningDraft, saveLearningDraft } from './learning-workspace-state';
 import { targetPublication, type RecapTarget } from './session-recap';
 const username = ref(''), password = ref(''), error = ref(''), busy = ref(false), checking = ref(true);
-type BookOpening = { kind: 'book'; reference: PublishedBookRef; learningId: string | null; members?: PublishedBookRef[]; title: string }
+type BookOpening = { kind: 'book'; reference: PublishedBookRef; learningId: string | null; members?: PublishedBookRef[]; title: string; board?: { id?: string; title: string }; course?: { lessonId: string; runId?: string; chatSessionId?: string }; task?: LearningTaskView; reading?: boolean }
   | { kind: 'resume'; record: ReadingResumption; title: string };
 const openingRequest = ref<BookOpening | null>(null), opening = ref(false), openingError = ref('');
 let openingController: AbortController | null = null;
@@ -73,7 +83,7 @@ function accountLogin(email?: string, notice?: string) {
   checking.value = false;
 }
 function passwordChanged() {
-  forgetNetwork(); books.value = []; pending.value = 0; settingsOpen.value = false;
+  forgetNetwork(); books.value = []; pendingItems.value = []; settingsOpen.value = false;
   accountLogin(undefined, uiText('密码已更新，请使用新密码重新登录。'));
   channel?.postMessage('changed');
 }
@@ -90,15 +100,10 @@ const materialTitle = (reference: PublishedBookRef) => bookLabel(materialFor(ref
 const learningSpaces = ref<LearningWorkspace[]>([]), learningError = ref(''), learningLoading = ref(false);
 const selectedLearningId = ref<string | null>(network.value.workspace?.learning_workspace_id ?? savedLearningSelection());
 const selectedLearning = computed(() => learningSpaces.value.find(space => space.learning_workspace_id === selectedLearningId.value) ?? null);
-const currentLearningGoal = computed(() => {
-  const scene = network.value.workspace?.learning_workspace_goal;
-  const saved = learningSpaces.value.find(space => space.learning_workspace_id === network.value.workspace?.learning_workspace_id)?.goal;
-  return saved && (!scene || saved.revision >= scene.revision) ? saved : scene;
-});
 const createGoal = ref(''), goalDraft = ref(''), editingGoal = ref(false), createOpen = ref(false);
 const materialsOpen = ref(false);
 const recordsOpen = ref(false), legacyRecordsOpen = ref(false);
-const sharedOpen = ref(false);
+const sharedOpen = ref(true);
 const memberBooks = computed(() => selectedLearning.value?.members.map(member => ({ ...member,
   book: materialFor(member.published_book_ref),
 })) ?? []);
@@ -122,12 +127,25 @@ function updateLearning(space: LearningWorkspace) {
 async function createLearning() {
   if (!createGoal.value.trim() || busy.value) return;
   busy.value = true; error.value = '';
-  try { const space = await learningWorkspaces.create(createGoal.value.trim()); updateLearning(space); selectLearning(space); createGoal.value = ''; createOpen.value = false; }
+  try { const space = await learningWorkspaces.create(createGoal.value.trim()); updateLearning(space); selectLearning(space); coursesHome.value = false; sharedOpen.value = false; createGoal.value = ''; createOpen.value = false; }
   catch (failure) { showFailure(failure); }
   finally { busy.value = false; }
 }
-async function startSharedLearning(space: LearningWorkspace, message?: string) {
-  updateLearning(space); sharedOpen.value = false; await enterLearning(space);
+async function startSharedLearning(space: LearningWorkspace, message?: string, preparedCourse = false, target?: CourseLaunchTarget) {
+  updateLearning(space); sharedOpen.value = false;
+  selectLearning(space);
+  if (preparedCourse && !message) {
+    try {
+      if (target) {
+        const task = learningTasks.value.find(item => item.learning_workspace_id === space.learning_workspace_id && item.course_run_id === target.runId && item.status !== 'unavailable');
+        if (task) await continueLearningTask(task);
+        else await openBookCourse(target, space.learning_workspace_id);
+      }
+      else await enterLearning(space);
+    } catch (failure) { showFailure(failure); }
+    return;
+  }
+  await enterLearning(space);
   if (message && network.value.workspace?.learning_workspace_id === space.learning_workspace_id && !libraryOpen.value) {
     await nextTick(); readerApp.value?.prepareExamQuestion(message);
   }
@@ -189,6 +207,17 @@ async function changeMember(reference: PublishedBookRef, add: boolean) {
 async function enterLearning(space: LearningWorkspace) {
   if (busy.value) return;
   selectLearning(space);
+  const task = learningTasks.value.find(item => item.learning_workspace_id === space.learning_workspace_id && item.status !== 'unavailable');
+  if (task) { await continueLearningTask(task); return; }
+  if (space.shared_release) {
+    try {
+      const catalog = await inquiryCourse.catalog(space.learning_workspace_id);
+      const run = catalog.progress.find(item => item.goal_revision === space.goal.revision && ['active', 'paused'].includes(item.status));
+      const lesson = catalog.course?.lessons.find(item => item.id === run?.lesson_id) ?? catalog.course?.lessons[0];
+      if (lesson) { await openBookCourse({ publication: lesson.source.publication, lessonId: lesson.id, runId: run?.run_id }, space.learning_workspace_id); return; }
+    } catch (failure) { showFailure(failure); return; }
+  }
+  if (resumption.value?.learning_workspace_id === space.learning_workspace_id) { await continueReading(); return; }
   const members = space.members.filter(item => item.readable).map(item => item.published_book_ref);
   if (members.length) await openBook(members[0], space.learning_workspace_id, members);
 }
@@ -196,8 +225,66 @@ function manageCurrentLearning() {
   selectedLearningId.value = network.value.workspace?.learning_workspace_id ?? null;
   saveLearningSelection(selectedLearningId.value); void showLibrary();
 }
-const libraryOpen = ref(!network.value.workspace);
+const libraryOpen = ref(!network.value.workspace || ['boards', 'courses', 'learning', 'materials'].includes(new URLSearchParams(location.search).get('view') ?? ''));
+const coursesHome = ref(!['boards', 'materials'].includes(new URLSearchParams(location.search).get('view') ?? ''));
+const collectionTarget = ref<LearningCollectionTarget | null>(readLearningCollection(location.search));
+watch(collectionTarget, target => {
+  if (libraryOpen.value && coursesHome.value) history.replaceState(history.state, '', learningCollectionUrl(location.href, target));
+});
+const boardsHome = ref(new URLSearchParams(location.search).get('view') === 'boards');
+const readerBoardOpen = ref(false);
+const readerUnderstandingOpen = ref(false);
+const boardsActive = computed(() => libraryOpen.value ? boardsHome.value : readerBoardOpen.value);
 const resumption = ref<ReadingResumption | null>(null), resumptionError = ref(''), resumptionLoading = ref(false);
+const learningTasks = ref<LearningTaskView[]>([]), learningTasksLoading = ref(false), learningTasksError = ref('');
+let learningTasksRead = 0;
+async function loadLearningTasks() {
+  const ticket = ++learningTasksRead, owner = network.value.identity?.user_id;
+  if (!owner) return;
+  learningTasksLoading.value = true; learningTasksError.value = '';
+  try {
+    const value = await networkFetch<{ tasks: LearningTaskView[] }>('GET', '/me/learning-tasks');
+    if (ticket === learningTasksRead && owner === network.value.identity?.user_id) learningTasks.value = value.tasks;
+  } catch (failure) {
+    if (ticket === learningTasksRead && owner === network.value.identity?.user_id) learningTasksError.value = uiText('学习任务暂时无法读取，请重试。');
+  } finally { if (ticket === learningTasksRead) learningTasksLoading.value = false; }
+}
+async function continueLearningTask(task: LearningTaskView) {
+  if (busy.value || task.status === 'unavailable') return;
+  await runBookOpening({ kind: 'book', reference: task.published_book_ref, learningId: task.learning_workspace_id, title: task.title, task });
+}
+async function showCourses() {
+  await showLearningCollection(null);
+}
+async function showLearningCollection(target: LearningCollectionTarget | null) {
+  if (busy.value) return;
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('打开学习'))) return;
+  boardsHome.value = false; coursesHome.value = true; sharedOpen.value = true; selectedVideo.value = null;
+  libraryOpen.value = true; error.value = ''; collectionTarget.value = target;
+  if (target?.learningWorkspaceId) {
+    const space = learningSpaces.value.find(space => space.learning_workspace_id === target.learningWorkspaceId);
+    if (space) selectLearning(space);
+  }
+  const url = learningCollectionUrl(boardRouteUrl(location.href, null).href, target); history.replaceState(history.state, '', url);
+  const id = network.value.workspace?.workspace_id ?? savedWorkspace()?.workspace_id;
+  if (id) saveWorkspace(id, 'library');
+  try { await catalog(); } catch (failure) { showFailure(failure); }
+}
+async function readCollectionBook(reference: PublishedBookRef, learningId?: string) {
+  await runBookOpening({ kind: 'book', reference, learningId: learningId ?? null, title: materialTitle(reference), reading: true });
+}
+async function useOwnMaterials() {
+  await showLibrary();
+  createOpen.value = !learningSpaces.value.length;
+  materialsOpen.value = true;
+  await nextTick();
+  document.querySelector<HTMLElement>(createOpen.value ? '.learning-create input' : '.materials-heading')?.focus();
+}
+async function scrollCourseCatalog() {
+  sharedOpen.value = true;
+  await nextTick();
+  document.querySelector('.shared-catalog')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
 const resumptionBook = computed(() => materialBooks.value.find(book =>
   book.published_book_ref.book_id === resumption.value?.published_book_ref.book_id
   && book.published_book_ref.publication_id === resumption.value?.published_book_ref.publication_id));
@@ -219,11 +306,44 @@ async function loadResumption() {
 }
 async function showLibrary() {
   if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('返回书架'))) return;
+  boardsHome.value = false; coursesHome.value = false; sharedOpen.value = false; selectedVideo.value = null; collectionTarget.value = null;
+  const url = learningCollectionUrl(boardRouteUrl(location.href, null).href, null); url.searchParams.set('view', 'materials'); history.replaceState(history.state, '', url);
   libraryOpen.value = true; error.value = '';
   const id = network.value.workspace?.workspace_id ?? savedWorkspace()?.workspace_id;
   if (id) saveWorkspace(id, 'library');
   try { await catalog(); await loadResumption(); }
   catch (failure) { showFailure(failure); }
+}
+async function showBoards() {
+  if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('打开学习画板'))) return;
+  boardsHome.value = true; coursesHome.value = false; libraryOpen.value = true; selectedVideo.value = null; error.value = ''; collectionTarget.value = null;
+  const url = learningCollectionUrl(boardRouteUrl(location.href, null).href, null); url.searchParams.set('view', 'boards'); history.replaceState(history.state, '', url);
+  const id = network.value.workspace?.workspace_id ?? savedWorkspace()?.workspace_id;
+  if (id) saveWorkspace(id, 'library');
+  try { await catalog(); } catch (failure) { showFailure(failure); }
+}
+async function showCurrentReader() {
+  if (!network.value.workspace || !readerApp.value) return;
+  if (!await readerApp.value.beforeNoteLeave(uiText('继续阅读'))) return;
+  readerApp.value.closeBoard(); readerApp.value.closeUnderstanding(); libraryOpen.value = false; selectedVideo.value = null;
+  const url = new URL(location.href); url.searchParams.delete('view'); history.replaceState(history.state, '', url);
+  saveWorkspace(network.value.workspace.workspace_id, 'reader');
+}
+async function showUnderstanding() {
+  if(busy.value)return;
+  if(libraryOpen.value && selectedLearning.value && selectedLearning.value.learning_workspace_id!==network.value.workspace?.learning_workspace_id) {
+    await enterLearning(selectedLearning.value);
+  } else { await showCurrentReader(); }
+  await nextTick();
+  if(!readerApp.value || libraryOpen.value || openingError.value){error.value=openingError.value||'先在工作区打开一份学习资料，就可以查看对应的理解。';return;}
+  readerApp.value.openUnderstanding();
+}
+async function openLibraryBoard(board: BoardSummary, publication: PublishedBookRef) {
+  await runBookOpening({ kind: 'book', reference: publication, learningId: board.learning_workspace_id,
+    title: board.title, board: { id: board.board_id, title: board.title } });
+}
+async function createLibraryBoard(title: string, publication: PublishedBookRef) {
+  await runBookOpening({ kind: 'book', reference: publication, learningId: null, title, board: { title } });
 }
 async function continueReading() {
   if (!resumption.value || busy.value) return;
@@ -233,7 +353,8 @@ async function restoreLastVisit() {
   const saved = savedWorkspace();
   await loadResumption();
   if (saved && saved.view !== 'library' && saved.workspace_id === resumption.value?.workspace_id
-    && !pendingSource && !pendingBoard && !mcpRequested) await continueReading();
+    && !pendingSource && !pendingBoard && !mcpRequested && !boardsHome.value
+    && !['courses', 'learning', 'materials'].includes(new URLSearchParams(location.search).get('view') ?? '')) await continueReading();
 }
 function bookLabel(book: CatalogBook) {
   const title = bookTitle({ title: materialFor(book.published_book_ref)?.title ?? book.title, book_id: book.published_book_ref.book_id });
@@ -247,6 +368,11 @@ const homeNotesError = ref(''), homeNotePreview = ref<SourcePopupView | null>(nu
 const homeNoteSourceRequest = ref<WorkspaceNoteSourceRequest | null>(null);
 const homeNoteSourcePublication = ref<PublishedBookRef | null>(null);
 const homeNoteSourceAvailable = ref(false);
+const readHomeNoteSource = computed<SourceWindowLoader | undefined>(() => {
+  const request = homeNoteSourceRequest.value, scope = homeNotes.value?.learning_workspace_id;
+  return request && scope ? options => api.workspaceNoteSourceRead({ ...request, ...options }, scope) : undefined;
+});
+let homeNoteSourceSequence = 0;
 async function openHomeNotes(space: LearningWorkspace) {
   if (readerApp.value && !await readerApp.value.beforeNoteLeave()) return;
   homeNotes.value = space; homeNotesError.value = '';
@@ -274,17 +400,25 @@ async function notebookReader(action: (app: InstanceType<typeof App>) => unknown
 }
 async function homeNoteSource(request: WorkspaceNoteSourceRequest) {
   const space = homeNotes.value; if (!space) return;
+  const sequence = ++homeNoteSourceSequence;
   try {
     const note = await api.workspaceNote(request.note_id, space.learning_workspace_id);
     const binding = note.source_bindings.find(item => item.source_ref_id === request.source_ref_id);
     if (!binding) return;
+    const source = await api.workspaceNoteSourceResolve(request, space.learning_workspace_id).catch(error => {
+      if (!(error instanceof ApiError) || ![403, 404, 409].includes(error.status)) throw error;
+      return { source_ref_id: binding.source_ref_id, label: binding.label_snapshot,
+        highlighted_quote: binding.preview_snapshot, context_before: '', context_after: '',
+        stale: true, can_open_in_reader: false, unavailable_reason: uiText('这是保存笔记时保留的来源摘录。') };
+    });
+    if (sequence !== homeNoteSourceSequence || homeNotes.value !== space) return;
     homeNoteSourceRequest.value = request;
     homeNoteSourceAvailable.value = !space.archived && space.members.some(item => item.readable && item.published_book_ref.book_id === binding.book_id && (!binding.publication_id || item.published_book_ref.publication_id === binding.publication_id));
     homeNoteSourcePublication.value = space.members.find(item => item.readable && item.published_book_ref.book_id === binding.book_id && (!binding.publication_id || item.published_book_ref.publication_id === binding.publication_id))?.published_book_ref ?? null;
-    homeNotePreview.value = { source_ref_id: binding.source_ref_id, label: binding.label_snapshot,
-      highlighted_quote: binding.preview_snapshot, context_before: '', context_after: '',
-      stale: true, can_open_in_reader: false, unavailable_reason: uiText('这是保存笔记时保留的来源摘录。') };
-  } catch (failure) { homeNotesError.value = failure instanceof Error ? failure.message : String(failure); }
+    homeNotePreview.value = source;
+  } catch (failure) {
+    if (sequence === homeNoteSourceSequence && homeNotes.value === space) homeNotesError.value = failure instanceof Error ? failure.message : String(failure);
+  }
 }
 watch(() => network.value.epoch, () => { homeNotes.value = null; homeNotePreview.value = null; });
 const key = computed(sceneKey);
@@ -407,11 +541,10 @@ function pageHide() {
   }).catch(() => {});
   if (n.linked) { network.value = { ...n, workspace: null, epoch: n.epoch + 1 }; linkedPresentation.value = null; }
 }
-const pending = ref(0);
 const pendingItems = ref<PendingSubmission[]>([]);
 watch(() => network.value.identity?.user_id, () => {
   videos.value = []; selectedVideo.value = null;
-  pendingItems.value = []; pending.value = 0; linkedPresentation.value = null; books.value = []; learningSpaces.value = [];
+  pendingItems.value = []; linkedPresentation.value = null; books.value = []; learningSpaces.value = [];
   selectedLearningId.value = savedLearningSelection(); sharedOpen.value = false;
 }, { flush: 'sync' });
 let identityCheck: Promise<void> | null = null;
@@ -429,7 +562,7 @@ function scheduleRecoveryRetry() {
   }, recoveryRetryDelay);
   recoveryRetryDelay = Math.min(recoveryRetryDelay * 2, 30_000);
 }
-watch(() => network.value.identity?.user_id, () => { clearRecoveryRetry(); recoveryRetryDelay = 1000; });
+watch(() => network.value.identity?.user_id, () => { clearRecoveryRetry(); recoveryRetryDelay = 1000; learningTasksRead++; learningTasks.value = []; learningTasksError.value = ''; });
 let restoreOnLoad = true;
 const channel = typeof BroadcastChannel === 'undefined' ? null : new BroadcastChannel('understand-book:authentication');
 network.value = { ...network.value, enabled: true };
@@ -437,14 +570,16 @@ async function catalog() {
   books.value = (await networkFetch<{ books: typeof books.value }>('GET', '/library')).books;
   videos.value = (await networkFetch<{ videos: PreparingVideo[] }>('GET', '/videos')).videos;
   await loadLearningSpaces();
+  await loadLearningTasks();
 }
 async function restore() {
   await recoverWorkspaceBinding();
   await recover();
 }
 async function recover() {
-  try { await recoverSubmissions(); pendingChanged(); }
+  try { await recoverSubmissions(); }
   catch (failure) { showFailure(failure); }
+  finally { pendingChanged(); }
 }
 async function retryOriginal(key: string) {
   try { await retrySubmission(key); pendingChanged(); }
@@ -505,7 +640,7 @@ async function logout() {
   if (readerApp.value && !await readerApp.value.beforeNoteLeave(uiText('退出登录'))) return;
   const n = network.value, w = n.workspace;
   const detach = w ? networkFetch('POST', `/workspaces/${w.workspace_id}/detach`, { attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision }).catch(() => {}) : Promise.resolve();
-  forgetNetwork(); books.value = []; pending.value = 0; error.value = '';
+  forgetNetwork(); books.value = []; pendingItems.value = []; error.value = '';
   busy.value = true;
   try {
     // Clear private UI immediately, but detach before revoking its Cookie.
@@ -531,6 +666,16 @@ watch(pendingNoteSource, async target => {
     noteSourceError.value = `原资料暂时无法打开：${openingError.value || '尚未切换到原资料，请重试。'}`; pendingNoteSource.value = null;
   }
 });
+async function openBookCourse(target: CourseLaunchTarget, learningId: string | null = selectedLearningId.value) {
+  await runBookOpening({ kind: 'book', reference: target.publication, learningId,
+    title: materialTitle(target.publication), course: { lessonId: target.lessonId, runId: target.runId, chatSessionId: target.chatSessionId } });
+}
+async function openCourseUnderstanding(reference: PublishedBookRef) {
+  await openBook(reference, selectedLearningId.value);
+  if (!openingError.value && network.value.workspace?.published_book_ref.publication_id === reference.publication_id) {
+    await nextTick(); readerApp.value?.openTutorPanel('understanding');
+  }
+}
 async function openBook(reference: PublishedBookRef, learningId: string | null = selectedLearningId.value, members?: PublishedBookRef[]) {
   if (busy.value) return;
   if (materialFor(reference)?.media_kind === 'video') void preloadVideoPlayback().catch(() => {});
@@ -554,12 +699,30 @@ async function runBookOpening(request: BookOpening) {
     selectedLearningId.value = network.value.workspace?.learning_workspace_id ?? null; saveLearningSelection(selectedLearningId.value);
     libraryOpen.value = false; suspended.value = false;
     saveWorkspace(network.value.workspace!.workspace_id, 'reader');
+    const url = new URL(location.href); url.searchParams.delete('view'); history.replaceState(history.state, '', url);
+    await nextTick();
+    if (request.kind === 'book' && request.board) {
+      if (!request.board.id) request.board.id = (await api.boardCreate(request.board.title)).board_id;
+      await readerApp.value?.openBoardLocation({ board_id: request.board.id });
+    }
+    if (request.kind === 'book' && (request.course || request.task)) {
+      if (!readerApp.value) throw new Error(uiText('学习现场尚未准备好，请重试。'));
+      if (request.task) await abortable(readerApp.value.resumeLearningTask(request.task,controller.signal), controller.signal);
+      else await abortable(readerApp.value.openCourse(request.course,controller.signal), controller.signal);
+    }
+    if (request.kind === 'book' && request.reading) {
+      if (!readerApp.value) throw new Error(uiText('学习现场尚未准备好，请重试。'));
+      await abortable(readerApp.value.openReading(controller.signal), controller.signal);
+    }
     openingRequest.value = null;
     void recover();
   } catch (failure) {
     if (controller.signal.aborted && controller.signal.reason?.name === 'AbortError') return;
     if (failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE') { openingRequest.value = null; return; }
-    openingError.value = controller.signal.aborted ? controller.signal.reason.message : failure instanceof Error ? failure.message : String(failure);
+    openingError.value = controller.signal.aborted ? controller.signal.reason.message
+      : failure instanceof ApiError && failure.errorCode === 'WORKSPACE_CAPACITY'
+        ? uiText('当前阅读窗口已达到上限，请稍后重试。学习记录已保留。')
+        : failure instanceof Error ? failure.message : String(failure);
     if (request.kind === 'resume') void loadResumption();
   } finally {
     clearTimeout(timeout);
@@ -576,7 +739,7 @@ function retryBookOpening() {
   if (request.kind === 'resume' && resumption.value) void continueReading();
   else void runBookOpening(request);
 }
-function pendingChanged() { pendingItems.value = pendingSubmissions(); pending.value = pendingItems.value.length; }
+function pendingChanged() { pendingItems.value = unconfirmedSubmissions(); }
 function onVisible() {
   clearRecoveryRetry();
   if (document.visibilityState !== 'hidden' && !opening.value) { recoveryRetryDelay = 1000; void checkIdentity(); }
@@ -587,7 +750,7 @@ function onLearningGoalChanged(event: Event) {
 async function onAccountChange(event: MessageEvent) {
   if (event.data === 'profile-changed') { void checkIdentity(); return; }
   const previous = identityCheck;
-  forgetNetwork(); books.value = []; pending.value = 0;
+  forgetNetwork(); books.value = []; pendingItems.value = [];
   if (previous) await previous;
   void checkIdentity();
 }
@@ -613,6 +776,18 @@ onBeforeUnmount(() => {
   channel?.close(); document.removeEventListener('visibilitychange', onVisible);
   window.removeEventListener('pageshow', onVisible); window.removeEventListener('online', onVisible); window.removeEventListener('focus', onVisible);
 });
+const readerHeader = computed(() => !!network.value.workspace && !network.value.linked && !linkedRequested
+  && !suspended.value && !openingRecap.value && !selectedVideo.value && !libraryOpen.value && !readerBoardOpen.value);
+const productTourContext = computed<ProductTourContext | null>(() => {
+  if (checking.value || busy.value || opening.value || !network.value.identity || network.value.linked || linkedRequested
+    || selectedVideo.value || settingsOpen.value || allowanceOpen.value || accountView.value || suspended.value) return null;
+  if (libraryOpen.value || !network.value.workspace) return boardsHome.value ? 'boards' : 'library';
+  return readerApp.value?.productTourReady ? readerBoardOpen.value ? 'board' : 'reader' : null;
+});
+async function prepareProductTour(step: ProductTourStep) {
+  if (productTourContext.value === 'reader' || productTourContext.value === 'board') return await readerApp.value?.prepareProductTour(step) ?? false;
+  return true;
+}
 </script>
 <template>
   <DesktopAuthorization />
@@ -631,6 +806,11 @@ onBeforeUnmount(() => {
     <p role="status">{{ error }}</p>
   </main>
   <div v-else class="network-shell">
+    <header v-if="!network.linked && !linkedRequested && !readerHeader" class="network-page-bar">
+      <WorkspaceDestinations :busy="busy" :current="!libraryOpen && readerUnderstandingOpen ? 'understanding' : boardsActive ? 'boards' : libraryOpen ? (coursesHome ? 'courses' : 'materials') : undefined" @courses="showCourses" @materials="showLibrary" @boards="showBoards" @understanding="showUnderstanding" />
+      <button v-if="network.workspace" type="button" class="network-current-reader" :disabled="busy" @click="showCurrentReader">{{ materialFor(network.workspace.published_book_ref)?.media_kind === 'video' ? uiText('继续观看') : uiText('继续阅读') }}<ArrowRight :size="15" aria-hidden="true" /></button>
+      <ProductTour class="network-tour" :context="productTourContext" :owner="network.identity.user_id" :prepare="prepareProductTour" :open-boards="showBoards" />
+    </header>
     <aside v-if="network.identity.is_guest && !network.linked" class="guest-session-notice"><span>{{ uiText('游客体验 · 已赠送 5 元额度，示例材料已开通') }}</span><button @click="allowanceOpen = true">{{ uiText('查看剩余额度') }}</button></aside>
     <details v-if="network.linked" class="network-account network-linked-account">
       <summary>{{ uiText('账号') }}</summary>
@@ -641,23 +821,25 @@ onBeforeUnmount(() => {
         <button @click="logout">{{ uiText('退出登录') }}</button>
       </div>
     </details>
-    <div v-if="pending || error || sourceError" class="network-notices">
+    <div v-if="pendingItems.length || error || sourceError" class="network-notices">
       <span v-if="sourceError" role="alert">{{ sourceError }} <button v-if="pendingSource" :disabled="busy" @click="openPendingSource">{{ uiText('重试打开来源') }}</button></span>
-      <span v-if="pending" role="status">{{ pending }} {{ uiText('个问题提交待核对') }} <button @click="recover">{{ uiText('核对原问题') }}</button></span>
+      <span v-if="pendingItems.length" role="status">{{ pendingItems.length }} {{ uiText('个问题提交待核对') }} <button @click="recover">{{ uiText('核对原问题') }}</button></span>
       <span v-for="item in pendingItems" :key="item.key">{{ item.body.display_user || item.body.message }} <button @click="retryOriginal(item.key)">{{ uiText('重试原提交') }}</button></span>
       <span v-if="error" role="alert">{{ error }}</span>
     </div>
     <AgentPresentation v-if="!suspended && network.linked && linkedPresentation && network.workspace" :key="key" :session-id="linkedPresentation.session_id" :turn-id="linkedPresentation.turn_id" :reference="linkedPresentation.reference" @follow-up="followUp" @source="showLinkedSource" />
     <VideoReaderPane v-else-if="!suspended && selectedVideo" :key="`${selectedVideo.video.media_id}/${selectedVideo.video.media_revision}`" :initial="selectedVideo" :owner="network.identity.user_id" @close="selectedVideo = null" @ready="reference => { selectedVideo = null; openBook(reference); }" />
     <main v-else-if="openingRecap || (suspended && network.workspace && !network.linked)" class="network-loading"><LoadingAnimation /></main>
-    <section v-if="!selectedVideo && !libraryOpen && network.workspace?.learning_workspace_id && currentLearningGoal" class="workspace-goal-bar" :aria-label="uiText('工作区大目标')">
-      <div><span>{{ uiText('工作区大目标') }}</span><p>{{ currentLearningGoal.text }}</p></div>
-      <button v-if="!network.linked" :disabled="busy" @click="manageCurrentLearning">{{ uiText('工作区与资料') }}</button>
-    </section>
-    <App ref="readerApp" v-if="!suspended && !network.linked && !openingRecap && network.workspace" v-show="!selectedVideo && !libraryOpen" :reader-visible="!selectedVideo && !libraryOpen" :material-title="materialTitle(network.workspace.published_book_ref)" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication">
+    <App :learning-workspace="learningSpaces.find(space => space.learning_workspace_id === network.workspace?.learning_workspace_id) ?? null" ref="readerApp" v-if="!suspended && !network.linked && !openingRecap && network.workspace" v-show="!selectedVideo && !libraryOpen" :reader-visible="!selectedVideo && !libraryOpen" :material-title="materialTitle(network.workspace.published_book_ref)" :key="appKey" v-model:chat-draft="chatDraft" :recap-target="recapTarget" :mcp-source="sourceTarget" @mcp-source-consumed="sourceConsumed" @mcp-source-error="sourceFailed" @show-library="showLibrary" @learning-collection="showLearningCollection" @course-launch="openBookCourse" @show-allowance="allowanceOpen = true" @recap-consumed="recapTarget = null" @recap-publication="openRecapPublication" @board-visibility="readerBoardOpen = $event" @understanding-visibility="readerUnderstandingOpen = $event">
+      <template v-if="readerHeader" #navigation>
+        <WorkspaceDestinations :busy="busy" :current="readerUnderstandingOpen ? 'understanding' : undefined" @courses="showCourses" @understanding="showUnderstanding" @materials="network.workspace?.learning_workspace_id ? manageCurrentLearning() : showLibrary()" @boards="showBoards" />
+      </template>
+      <template v-if="readerHeader" #help>
+        <ProductTour :context="productTourContext" :owner="network.identity.user_id" :prepare="prepareProductTour" :open-boards="showBoards" />
+      </template>
       <template #account>
         <details class="network-account">
-          <summary>{{ uiText('账号') }}</summary>
+          <summary><UserRound aria-hidden="true" />{{ uiText('账号') }}<ChevronDown class="account-chevron" aria-hidden="true" /></summary>
           <div class="network-account-menu">
             <span>{{ network.identity.is_guest ? uiText('游客身份') : network.identity.email || network.identity.user_id }}</span>
             <button @click="settingsOpen = true">{{ uiText('个人设置') }}</button> <button @click="showMcp">{{ uiText('MCP 接入') }}</button> <button @click="allowanceOpen = true">{{ uiText('使用额度') }}</button>
@@ -669,9 +851,10 @@ onBeforeUnmount(() => {
       </template>
     </App>
     <p v-if="linkedRequested && !linkedPresentation" role="status">{{ uiText('请保持原阅读窗口打开；附属连接失效后请从原窗口重新打开。') }}</p>
-    <main v-if="!selectedVideo && !linkedRequested && (libraryOpen || !network.workspace)" class="network-library" :class="{ 'is-opening': opening }" :aria-busy="opening">
-      <header class="network-library-head">
-        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="24" height="24" alt="" />UNDERSTAND BOOK</p><h1>{{ uiText('学习工作区') }}<span>{{ uiText('把资料变成自己的理解。') }}</span></h1></div>
+    <BoardLibrary v-if="!selectedVideo && !linkedRequested && (libraryOpen || !network.workspace) && boardsHome" :key="network.identity.user_id" :materials="materialBooks" :workspaces="learningSpaces" :busy="busy" @open="openLibraryBoard" @create="createLibraryBoard" @materials="showLibrary" />
+    <main v-if="!selectedVideo && !linkedRequested && (libraryOpen || !network.workspace) && !boardsHome" class="network-library" :class="{ 'is-opening': opening, 'collection-open': coursesHome && collectionTarget }" :aria-busy="opening">
+      <header class="network-library-head" data-tour="learning-purpose">
+        <div><p class="network-library-kicker brand-signature"><img :src="brandLogo" class="brand-logo" width="24" height="24" alt="" />UNDERSTAND BOOK</p><h1 v-if="!coursesHome || !collectionTarget">{{ uiText(coursesHome ? '今天，从这里开始' : '学习资料') }}<span>{{ uiText('把资料变成自己的理解。') }}</span></h1></div>
         <div class="library-head-actions">
           <LanguageSwitcher />
           <button class="create-workspace-toggle" :aria-expanded="createOpen" @click="createOpen = !createOpen"><Plus :size="16" />{{ uiText('新建工作区') }}</button>
@@ -680,12 +863,13 @@ onBeforeUnmount(() => {
           </details>
         </div>
       </header>
-      <form v-show="createOpen || !learningSpaces.length" class="learning-create" @submit.prevent="createLearning">
+      <LearningHomeTask v-if="coursesHome && !collectionTarget" :tasks="learningTasks" :books="materialBooks" :loading="learningTasksLoading" :error="learningTasksError" :busy="busy" @resume="continueLearningTask" @collection="showLearningCollection" @courses="scrollCourseCatalog" @materials="useOwnMaterials" @retry="loadLearningTasks" />
+      <form v-show="createOpen" class="learning-create" @submit.prevent="createLearning">
         <label>{{ uiText('这次想学会什么？') }}<input v-model="createGoal" :placeholder="uiText('比如：学习深度学习，或期末考试冲刺')" required :disabled="busy" /></label>
         <button :disabled="busy || !createGoal.trim()">{{ uiText('创建工作区') }}<ArrowRight :size="16" /></button>
       </form>
-      <div class="learning-layout" :class="{ 'has-selection': selectedLearning }">
-      <section class="learning-spaces" :aria-label="uiText('学习工作区')" :aria-busy="learningLoading">
+      <div class="learning-layout" :class="{ 'has-selection': selectedLearning, 'is-courses': coursesHome }">
+      <section v-show="!coursesHome" class="learning-spaces" :aria-label="uiText('学习工作区')" :aria-busy="learningLoading">
         <div class="learning-nav-heading"><span>{{ uiText('我的工作区') }}</span><span>{{ learningSpaces.length.toString().padStart(2, '0') }}</span></div>
         <p v-if="learningError" role="alert">{{ uiText('工作区暂时无法读取：') }}{{ learningError }} <button @click="loadLearningSpaces">{{ uiText('重试工作区') }}</button></p>
         <div class="learning-space-list">
@@ -698,17 +882,19 @@ onBeforeUnmount(() => {
           </article>
         </div>
         <button v-if="selectedLearning" class="learning-legacy" :disabled="busy" @click="selectLearning(null)"><Layers :size="16" />{{ uiText('全部资料') }}</button>
-        <div class="shared-entry"><button :aria-expanded="sharedOpen" @click="sharedOpen = !sharedOpen"><BookOpen :size="16" />{{ sharedOpen ? uiText('收起共享工作区') : uiText('浏览共享预构建工作区') }}<ArrowUpRight :size="14" /></button><p>{{ uiText('从准备好的课程与学习路线开始。') }}</p></div>
+        <div class="shared-entry"><button @click="showCourses"><BookOpen :size="16" />{{ uiText('浏览课程') }}<ArrowUpRight :size="14" /></button><p>{{ uiText('从准备好的课程与学习路线开始。') }}</p></div>
       </section>
       <div class="learning-content">
-      <SharedWorkspaceCatalog v-if="sharedOpen" :books="materialBooks" @started="startSharedLearning" />
-      <section v-if="selectedLearning" class="learning-details" :aria-label="uiText('当前工作区')">
+      <SharedWorkspaceCatalog v-if="coursesHome || sharedOpen" v-model:target="collectionTarget" :books="materialBooks" :workspaces="learningSpaces" :learning-tasks="learningTasks" @reading="readCollectionBook" @started="startSharedLearning" />
+      <section v-if="selectedLearning && !coursesHome" class="learning-details" :aria-label="uiText('当前工作区')">
         <header class="learning-goal-heading"><div><span class="network-library-kicker">{{ uiText('当前学习目标') }} <span class="goal-revision">{{ uiText('· 第') }} {{ selectedLearning.goal.revision }} {{ uiText('版') }}</span></span><h2>{{ selectedLearning.goal.text }}</h2><p v-if="selectedLearning.goal.constraints.length" class="goal-constraints">{{ selectedLearning.goal.constraints.join('；') }}</p></div>
           <div class="goal-actions"><button class="workspace-primary" :disabled="busy || selectedLearning.archived || !memberBooks.some(member => member.readable)" @click="enterLearning(selectedLearning)">{{ uiText('继续学习') }}<ArrowRight :size="16" /></button><button class="goal-edit-button" :disabled="busy" @click="openHomeNotes(selectedLearning)">{{ uiText('空间笔记') }}</button><button class="goal-edit-button" :disabled="busy || selectedLearning.archived" @click="goalDraft = selectedLearning.goal.text; editingGoal = true">{{ uiText('修改大目标') }}</button></div></header>
         <form v-if="editingGoal" class="learning-goal-edit" @submit.prevent="reviseGoal">
           <label>{{ uiText('工作区大目标') }}<textarea v-model="goalDraft" required :disabled="busy" /></label>
           <button :disabled="busy || !goalDraft.trim()">{{ uiText('保存大目标') }}</button><button type="button" :disabled="busy" @click="editingGoal = false">{{ uiText('取消修改') }}</button>
         </form>
+        <UnderstandingEntry :key="selectedLearning.learning_workspace_id" :workspace-id="selectedLearning.learning_workspace_id" :disabled="busy || !memberBooks.some(member=>member.readable)" @open="reference=>reference?openCourseUnderstanding(reference):showUnderstanding()"/>
+        <SharedWorkspaceInstance :workspace="selectedLearning" :books="materialBooks" @updated="updateSharedLearning" @understanding="openCourseUnderstanding" @launch="openBookCourse" />
         <div class="materials-heading"><div><h3>{{ uiText('工作区资料') }} <span>{{ memberBooks.length }}</span></h3><p>{{ uiText('从一份资料开始，带着问题继续探索。') }}</p></div><button :disabled="busy || selectedLearning.archived" :aria-expanded="materialsOpen" @click="materialsOpen = !materialsOpen"><Plus :size="16" />{{ uiText('添加资料') }}</button></div>
         <p v-if="!memberBooks.length" class="learning-empty"><BookOpen :size="32" />{{ uiText('工作区已创建。加入资料后，即可围绕这个目标开始阅读与讨论。') }}</p>
         <div class="learning-members" :class="{ 'few-materials': memberBooks.length <= 2 }">
@@ -728,7 +914,6 @@ onBeforeUnmount(() => {
           <p v-if="!availableBooks.length">{{ uiText('当前可用资料均已加入。') }}</p>
         </details>
         </div>
-        <SharedWorkspaceInstance :workspace="selectedLearning" :books="materialBooks" @updated="updateSharedLearning" />
         <ExamSprintPanel :workspace="selectedLearning" @updated="updateLearning" @begin="beginExamLearning" @practice="beginExamPractice" />
         <details class="workspace-settings"><summary><Settings2 :size="16" />{{ uiText('工作区管理与学习记录') }}<ChevronDown :size="14" /></summary><div class="workspace-settings-body">
         <button class="learning-records-toggle" :disabled="busy" :aria-expanded="recordsOpen" @click="recordsOpen = !recordsOpen">{{ recordsOpen ? uiText('收起已有学习记录') : uiText('带入已有学习记录') }}</button>
@@ -737,11 +922,11 @@ onBeforeUnmount(() => {
         <button class="learning-legacy" :disabled="busy" @click="selectLearning(null)">{{ uiText('返回书架') }}</button>
         </div></details>
       </section>
-      <section v-if="!selectedLearning" class="learning-records-entry">
+      <section v-if="!selectedLearning && !coursesHome" class="learning-records-entry">
         <button :aria-expanded="legacyRecordsOpen" @click="legacyRecordsOpen = !legacyRecordsOpen">{{ legacyRecordsOpen ? uiText('收起旧记录') : uiText('旧聊天与学习记录') }}</button>
         <LearningRecordsPanel v-if="legacyRecordsOpen" />
       </section>
-      <section v-if="!selectedLearning && resumption && resumptionBook" class="reading-resumption" :aria-label="uiText('阅读接续')" :aria-busy="resumptionLoading">
+      <section v-if="!coursesHome && !selectedLearning && resumption && resumptionBook" class="reading-resumption" :aria-label="uiText('阅读接续')" :aria-busy="resumptionLoading">
         <div class="resumption-cover"><MaterialCover :paused="opening" :title="bookLabel(resumptionBook)" :cover="resumptionBook.cover" :video="resumptionBook.media_kind === 'video'" :music="resumptionBook.media_kind === 'music'" /></div>
         <div class="resumption-content">
           <p class="network-library-kicker">{{ uiText('接着上次读') }}</p>
@@ -753,10 +938,10 @@ onBeforeUnmount(() => {
         </div>
         <YeyeMascot class="resumption-mascot" :size="144" :motion="busy || resumptionLoading || resumptionError ? 'static' : 'idle'" />
       </section>
-      <p v-if="resumptionLoading && !resumptionBook" class="resumption-status" role="status">{{ uiText('正在读取接续记录…') }}</p>
-      <p v-else-if="resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">{{ uiText('重试') }}</button></p>
-      <h2 v-if="!selectedLearning" class="library-section-title">{{ uiText('全部资料') }}<span>{{ uiText('你的书籍、课程与阅读收藏') }}</span></h2>
-      <div v-if="!selectedLearning" class="network-library-grid">
+      <p v-if="!coursesHome && resumptionLoading && !resumptionBook" class="resumption-status" role="status">{{ uiText('正在读取接续记录…') }}</p>
+      <p v-else-if="!coursesHome && resumptionError" class="resumption-status" role="status">{{ resumptionError }} <button :disabled="busy" @click="showLibrary">{{ uiText('重试') }}</button></p>
+      <h2 v-if="!selectedLearning && !coursesHome" class="library-section-title">{{ uiText('全部资料') }}<span>{{ uiText('你的书籍、课程与阅读收藏') }}</span></h2>
+      <div v-if="!selectedLearning && !coursesHome" class="network-library-grid">
         <button v-for="video in pendingVideos" :key="video.video.media_id" class="network-book-card" :disabled="busy" @click="video.publication ? openBook(video.publication) : selectedVideo = video"><span class="shelf-cover"><MaterialCover :paused="opening" :title="video.title" video /></span><strong>{{ video.title }}</strong><span>{{ video.english_ready ? uiText('视频 · 英文已发布') : uiText('视频 · 转写准备中') }}</span></button>
         <button v-for="book in materialBooks" :key="book.published_book_ref.publication_id" class="network-book-card" :disabled="busy" @click="openBook(book.published_book_ref)">
           <span class="shelf-cover"><MaterialCover :paused="opening" :title="bookLabel(book)" :cover="book.cover" :video="book.media_kind === 'video'" :music="book.media_kind === 'music'" /></span>
@@ -764,7 +949,7 @@ onBeforeUnmount(() => {
           <span>{{ book.media_kind === 'music' ? uiText('音乐伴听') : book.media_kind === 'video' ? uiText('课程视频') : uiText('阅读资料') }}</span>
         </button>
       </div>
-      <p v-if="!books.length && !videos.length">{{ uiText('账号已创建，等待管理员开通材料。') }}</p>
+      <p v-if="!coursesHome && !books.length && !videos.length">{{ uiText('添加自己的资料，或从准备好的课程开始。') }} <button @click="useOwnMaterials">{{ uiText('添加资料') }}</button></p>
       </div></div>
     </main>
     <aside v-if="openingRequest && (opening || openingError)" class="book-opening" :class="{ 'book-opening-failed': !opening }" :role="opening ? 'status' : 'alert'" aria-live="polite" aria-atomic="true">
@@ -780,7 +965,7 @@ onBeforeUnmount(() => {
         @close="closeHomeNotes" @open-board="request => notebookReader(app => app.openBoard({ kind: 'note', note_id: request.noteId }))"
         @ask="request => notebookReader(app => app.prepareWorkspaceNoteQuestion(request))" @source="homeNoteSource" />
     </div>
-    <BoardSourcePreview v-if="homeNotePreview" :source="homeNotePreview" context="note" :can-open="homeNoteSourceAvailable" @open="homeNotePreview = null; homeNoteSourceRequest && notebookReader(app => app.navigateWorkspaceNoteSource(homeNoteSourceRequest), homeNoteSourcePublication)" @close="homeNotePreview = null" />
+    <BoardSourcePreview v-if="homeNotePreview" :source="homeNotePreview" :read-window="readHomeNoteSource" context="note" :can-open="homeNoteSourceAvailable && !homeNotePreview.stale" @open="homeNotePreview = null; homeNoteSourceRequest && notebookReader(app => app.navigateWorkspaceNoteSource(homeNoteSourceRequest), homeNoteSourcePublication)" @close="homeNotePreview = null" />
     <AccountSettings v-if="settingsOpen" @close="settingsOpen = false" @bound="channel?.postMessage('profile-changed')" @password-changed="passwordChanged" />
     <AccountAllowance v-if="allowanceOpen" :key="key" @close="allowanceOpen = false" />
     <aside v-if="linkedSource" class="network-source" :aria-label="uiText('演示来源')">
@@ -797,12 +982,6 @@ onBeforeUnmount(() => {
 .home-notes-overlay > .notes-workspace { flex: 1; min-height: 0; }
 .home-notes-notice { margin: 0; padding: 12px 24px; background: var(--surface-soft); color: var(--ink); font-size: 13px; line-height: 1.8; }
 .home-notes-notice button { margin-left: 12px; border: 0; background: transparent; color: var(--brand-accent-deep); }
-.workspace-goal-bar { flex: none; display: flex; align-items: center; gap: 16px; justify-content: space-between; padding: 8px 24px; background: var(--surface-soft, #f4f0e8); border-bottom: 1px solid var(--line); }
-.workspace-goal-bar > div { min-width: 0; }
-.workspace-goal-bar span { color: var(--muted); font-size: 11px; }
-.workspace-goal-bar p { margin: 2px 0; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.workspace-goal-bar button { flex: none; background: transparent; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); }
-@media (max-width: 540px) { .workspace-goal-bar { padding: 6px 12px; gap: 8px; }.workspace-goal-bar button { min-height: 44px; font-size: 12px; } }
 .network-loading { height: 100%; flex: 1; min-height: 0; display: grid; place-items: center; background: var(--reader-canvas); }
 .network-login { max-width: 32rem; margin: 12vh auto; padding: 1.5rem; }
 .guest-session-notice { display: flex; align-items: center; justify-content: center; gap: 16px; flex-wrap: wrap; padding: 8px 16px; font-size: 12px; color: var(--steel, #6c6a64); background: var(--surface); border-bottom: 1px solid var(--line); }
@@ -838,7 +1017,15 @@ onBeforeUnmount(() => {
 label { display: grid; gap: .5rem; margin: 1rem 0; }
 input, button { font: inherit; padding: .6rem; }
 .network-shell { height: 100%; min-height: 0; display: flex; flex-direction: column; }
-.network-shell > :deep(.app) { flex: 1; min-height: 0; height: auto; }
+.network-shell > :deep(.app) { flex: 1; min-height: 0; height: auto; position: relative; }
+.network-shell > :deep(.app .board-workspace-overlay) { position: absolute; }
+.network-page-bar { display: flex; align-items: center; gap: 8px; flex: 0 0 48px; height: 48px; padding-inline: clamp(12px, 1.6vw, 28px); border-bottom: 1px solid var(--line); background: var(--reader-canvas); }
+.network-page-bar > nav { margin-right: auto; }
+.network-current-reader { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 0; border-radius: 5px; background: transparent; color: var(--brand-accent-deep); font: 500 13px var(--sans); white-space: nowrap; }
+.network-current-reader:hover { background: var(--brand-accent-soft); }
+.network-page-bar :deep(.product-tour-launch) { min-height: 36px; border: 0; background: transparent; }
+.account-chevron { margin-left: auto; }
+@media (max-width: 640px) { .network-page-bar { padding-inline: 6px; gap: 2px; } }
 .network-notices { flex: none; max-height: 25%; overflow: auto; display: flex; flex-wrap: wrap; gap: .7rem; padding: .3rem .8rem; background: var(--surface); }
 .network-account { position: relative; font-size: .85rem; }
 .network-linked-account { position: fixed; right: .6rem; bottom: .4rem; z-index: 100; background: var(--canvas); }
@@ -852,3 +1039,7 @@ input, button { font: inherit; padding: .6rem; }
 </style>
 
 <style scoped src="./learning-library.css"></style>
+<style scoped>
+.learning-layout.is-courses { grid-template-columns: minmax(0, 1fr); }
+.learning-layout.is-courses .learning-content { min-width: 0; }
+</style>

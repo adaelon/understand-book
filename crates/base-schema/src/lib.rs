@@ -61,6 +61,17 @@ pub struct LearningWorkspace {
     pub created_at: i64,
     #[ts(type = "number")]
     pub updated_at: i64,
+    /// The selected public course version, when this is a private course instance.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub shared_release: Option<WorkspaceReleaseSelection>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS, JsonSchema)]
+#[ts(export, export_to = "../../../packages/core/src/generated/")]
+pub struct WorkspaceReleaseSelection {
+    pub release_id: String,
+    pub version: u32,
 }
 
 impl PublishedBookRef {

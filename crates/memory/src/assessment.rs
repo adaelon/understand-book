@@ -14,6 +14,9 @@ pub struct RubricItem {
     pub id: String,
     /// Includes necessary conditions, accepted equivalents and permitted omissions.
     pub criterion: String,
+    /// A solution-free prompt the learner may see while revising this item.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub retry_prompt: Option<String>,
     /// The single relationship/capability this criterion can actually distinguish.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub target: Option<crate::teaching::TeachingTarget>,
@@ -392,13 +395,13 @@ mod tests {
         let c = AssessmentContract {
             rule: ScoringRule::Open {
                 items: vec![
-                    RubricItem { target:None, note_refs:Vec::new(),
+                    RubricItem { target:None, note_refs:Vec::new(), retry_prompt:None,
                         id: "distance".into(),
                         criterion: "Uses total distance, equivalent wording accepted".into(),
                         source_lids: vec!["1".into()],
                         source_ref_ids: vec![],
                     },
-                    RubricItem { target:None, note_refs:Vec::new(),
+                    RubricItem { target:None, note_refs:Vec::new(), retry_prompt:None,
                         id: "time".into(),
                         criterion: "Uses total time".into(),
                         source_lids: vec!["1".into()],

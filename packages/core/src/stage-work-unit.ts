@@ -33,7 +33,7 @@ export type WorkUnitStage =
   | "profile_sidecar"
   | "pass2"
   | "book_structure"
-  | "formal_objects" | "cognitive_materials" | "teaching_publish";
+  | "course" | "formal_objects" | "cognitive_materials" | "teaching_publish";
 
 export type WorkUnitKind =
   | "pass1_window"
@@ -49,7 +49,7 @@ export type WorkUnitKind =
   | "discourse_paragraph_group"
   | "formula_context_group"
   | "pass2_candidate_batch"
-  | "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"
+  | "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_outline_theme_page" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"
   | "structure_unit"
   | "structure_fragment"
   | "structure_reduce"
@@ -58,7 +58,7 @@ export type WorkUnitKind =
   | "structure_relation_select"
   | "structure_relation_delta"
   | "structure_stitch"
-  | "formal_object_set" | "cognitive_step" | "teaching_source_review";
+  | "course_task" | "formal_object_set" | "cognitive_step" | "teaching_source_review";
 
 export interface WorkUnitCostV1 {
   estimated_input_tokens: number;
@@ -148,6 +148,7 @@ export interface StageWorkUnitRouterRegistration {
 }
 
 export const STAGE_WORK_UNIT_ROUTERS: Record<WorkUnitStage, StageWorkUnitRouterRegistration> = {
+  course: { stage: "course", router_version: "course.v1", kind: "course_task", compatibility_mode: false },
   formal_objects: { stage: "formal_objects", router_version: "teaching_map.v1", kind: "formal_object_set", compatibility_mode: false },
   cognitive_materials: { stage: "cognitive_materials", router_version: "teaching_map.v1", kind: "cognitive_step", compatibility_mode: false },
   teaching_publish: { stage: "teaching_publish", router_version: "teaching_map.v1", kind: "teaching_source_review", compatibility_mode: false },

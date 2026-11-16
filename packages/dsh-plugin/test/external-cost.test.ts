@@ -34,6 +34,7 @@ for (const mode of ["denied", "cancelled", "failed", "receipt-offline"] as const
       const inv = await control.prepareAndConfirm(h.parent, new AbortController().signal,
         { target_input: source, root_dir: root, pass2: "disabled" }) as any;
       const result = await control.run(h.parent, abort.signal, inv.invocation_ref) as any;
+      assert.equal(result.yielded, undefined, 'a failure or budget boundary at the handoff limit must not auto-resume');
       assert.equal(costs.admissions().length, 1);
       if (mode === "denied") {
         assert.equal(h.model.requests.length, 0);

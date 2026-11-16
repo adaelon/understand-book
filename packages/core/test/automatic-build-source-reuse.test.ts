@@ -34,7 +34,8 @@ describe("call-scoped automatic build source validation", () => {
       const changed = automaticBuildStep(request);
       // The prepared Pass1 foundation is invalidated before the plan gate can
       // compare its source fingerprint. No old dispatch may be replayed here.
-      expect(changed.action).toMatchObject({ kind: "NEEDS_USER", reason: "foundation_required" });
+      expect(changed.action).toMatchObject({ kind: "NEEDS_USER", reason: "routing_blocked",
+        projection: { code: "policy_generation_conflict", phase: "migration", recovery_actions: ["migrate_policy"] } });
       writeFileSync(activeTarget.source_path, original);
       const resumed = automaticBuildStep(request);
       expect(resumed.action).toEqual(first.action);

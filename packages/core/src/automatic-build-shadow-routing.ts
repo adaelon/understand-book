@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { canonicalBuildJson } from "./build-intent";
 import {
   blockedAutomaticBuildRoute,
@@ -68,11 +67,6 @@ export interface AutomaticBuildShadowRoutingAuditV1 {
   eligible_work_units: number;
   proof_valid_work_units: number;
   deterministic_skips: number;
-  audit_digest: string;
-}
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
 function sameTarget(left: BuildTargetRefV2, right: BuildTargetRefV2): boolean {
@@ -291,8 +285,5 @@ export function auditAutomaticBuildShadowRouting(input: {
     proof_valid_work_units: stageAudits.reduce((sum, stage) => sum + stage.proof_valid_work_units, 0),
     deterministic_skips: stageAudits.reduce((sum, stage) => sum + stage.deterministic_skips, 0),
   };
-  return readyAutomaticBuildRoute({
-    ...identity,
-    audit_digest: sha256(canonicalBuildJson(identity)),
-  });
+  return readyAutomaticBuildRoute(identity);
 }

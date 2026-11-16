@@ -57,9 +57,15 @@ h2 { margin: 0; font-size: 1.05rem; font-weight: 600; }
 .learning-sheet :deep(.goal-heading) { grid-template-columns: 32px minmax(0, 1fr); gap: 10px; }
 .learning-sheet :deep(.goal-icon) { display: grid; grid-column: 1; grid-row: 1; width: 32px; height: 32px; }
 .learning-sheet :deep(.goal-label) { grid-column: 2; grid-row: 1; font-size: .76rem; }
-.learning-sheet :deep(.goal-text) { grid-column: 1 / -1; grid-row: 2; margin: 0; font-size: 1rem; line-height: 1.7; white-space: normal; }
+.learning-sheet :deep(.goal-text) { grid-column: 1 / -1; grid-row: 2; display: block; margin: 0; font-size: 1rem; line-height: 1.7; white-space: normal; }
 .learning-sheet :deep(.goal-heading .goal-actions) { grid-column: 1 / -1; grid-row: 3; margin-left: -6px; }
 .learning-sheet :deep(.goal-manage), .learning-sheet :deep(.desktop-adjust) { display: inline; }
 .learning-sheet :deep(.mobile-adjust) { display: none; }
 .learning-sheet :deep(.teaching-hint.routine) { position: static; width: auto; height: auto; margin: 0; clip-path: none; white-space: normal; }
+@media (min-width: 1024px) {
+  .learning-sheet-backdrop { align-items: center; justify-content: center; }
+  .learning-sheet { width: min(440px, 90vw); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 12px 48px #24211e24; }
+  .sheet-handle { display: none; }
+  header { padding-top: 12px; }
+}
 </style>

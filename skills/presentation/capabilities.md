@@ -7,5 +7,6 @@ Presentation capability directory:
 - live actions: declare action_contract alongside state, register the shared control handler, and rehearse it with preview interact actions. presentation.interact observes and operates the open delivered version and returns its actual saved scene.
 - continuous_scene: deterministic playback and fractional positioning; includes the state contract.
 - konva: bundled stable graphic objects, coordinated geometry and direct dragging. It does not require a timeline; use the state contract for custom interaction.
-- three: bundled Three.js for real 3D models, orbit and linked diagrams; use the state contract for saved camera/parameters and select continuous_scene when time is part of the explanation. spatial-linked-views@1 provides a reusable starting point.
+- For comparisons, `compare-rules@1` offers an equal-value boundary, a shared movement budget, or aligned marks. Choose the observation that would answer the reader's question. A derivation can use prose and formulas throughout.
+- three: bundled Three.js for modeled depth and orbit. Use `inspect-space@1` to reveal an assembly or a moving section, and `spatial-linked-views@1` to link a spatial mechanism to its moving diagram. Preserve camera and parameters through the state contract. Select continuous_scene when time is part of the explanation.
 - manim: render_animation produces a fixed local movie, with media decoding and paused restoration; includes continuous_scene and state. A movie cannot recompute arbitrary parameter changes; use live browser graphics for those.

@@ -47,18 +47,56 @@ record!(MusicWork {
     #[ts(as = "Option<MusicTonality>", optional = nullable)]
     tonality: Option<MusicTonality>,
 });
-record!(MusicScore { source: MusicScoreRef, title: String, musicxml_path: String });
+record!(MusicScore {
+    source: MusicScoreRef, title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(as = "Option<String>", optional = nullable)]
+    musicxml_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(as = "Option<String>", optional = nullable)]
+    pdf_path: Option<String>,
+});
 record!(MusicRecording { source: MusicRecordingRef, title: String, performers: String, media_path: String, content_type: String, duration_ms: f64, kind: MusicRecordingKind });
 record!(MusicRights { asset_kind: MusicAssetKind, title: String, url: String, license: String, attribution: String, distribution: MusicDistribution });
 record!(MusicPart { part_id: String, name: String, instrument: String, group: String, voices: Vec<String> });
 record!(MusicScorePage { page_id: String, path: String, width: f64, height: f64 });
-// midi_pitch is the sounding pitch after MusicXML transposition. Written notation stays in the SVG.
+record!(MusicWrittenPitch { step: String, alter: f64, octave: i32 });
+record!(MusicTimeModification {
+    actual_notes: u32, normal_notes: u32, normal_type: Option<String>, normal_dots: u32,
+});
+record!(MusicTremolo { kind: String, marks: u32 });
+record!(MusicRhythmNotation {
+    time_modification: Option<MusicTimeModification>, tremolos: Vec<MusicTremolo>,
+});
+record!(MusicNoteNotation {
+    written_pitch: Option<MusicWrittenPitch>, note_type: Option<String>, dots: u32,
+    visible: bool, playback_dynamics: Option<f64>, chord: bool, grace: bool,
+    // None means this notation has not yet been inspected for tuplets/tremolos.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(as = "Option<MusicRhythmNotation>", optional = nullable)]
+    rhythm: Option<MusicRhythmNotation>,
+});
+// midi_pitch is sounding pitch after transposition; notation preserves the original spelling.
 // source_id survives rendering changes; page_id/svg_element_id belong to this layout only.
 record!(MusicScoreObject {
     source_id: String, part_id: String, measure: String, beat: f64, duration_beats: f64,
     voice: String, midi_pitch: Option<u8>, rest: bool, tie: MusicTie,
+    // Unpitched percussion has a notated attack without a MIDI pitch.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    #[ts(as = "Option<bool>", optional)]
+    unpitched: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(as = "Option<MusicNoteNotation>", optional = nullable)]
+    notation: Option<MusicNoteNotation>,
     page_id: String, svg_element_id: String,
 });
+impl MusicScoreObject {
+    /// Hidden notation can still be playable. Only an explicitly hidden and
+    /// muted object is excluded from musical examples and default note reads.
+    pub fn is_hidden_muted(&self) -> bool {
+        self.notation.as_ref().is_some_and(|n| !n.visible && n.playback_dynamics == Some(0.0))
+    }
+}
 record!(MusicMeterComponent { beats: String, beat_type: u32 });
 record!(MusicMetronome { beat_unit: String, dots: u32, per_minute: String });
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, TS, JsonSchema)]
@@ -93,7 +131,13 @@ record!(MusicNoteAlignment {
 });
 record!(MusicCoverage { start_ms: f64, end_ms: f64, granularity: MusicGranularity, method: MusicAlignmentMethod, status: MusicCoverageStatus, provenance_id: String, detail: String });
 record!(MusicProvenance { provenance_id: String, kind: MusicProvenanceKind, description: String, source_url: Option<String>, processor: Option<String> });
-record!(MusicEvidence { provenance_id: String, score_object_ids: Vec<String>, audio: Option<MusicAudioLocation> });
+record!(MusicEvidence {
+    provenance_id: String, score_object_ids: Vec<String>, audio: Option<MusicAudioLocation>,
+    // A PDF page is usable source evidence without pretending it has indexed notes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[ts(as = "Option<Vec<String>>", optional)]
+    score_page_ids: Vec<String>,
+});
 record!(MusicVoiceFocus { part_id: String, voice: String });
 // Empty/omitted voice_ids applies the role to the whole part; selected voices retain its instrument identity.
 record!(MusicEventRole {
@@ -182,14 +226,14 @@ impl MusicSourceManifest {
         for old in &previous.score_objects {
             require(notes.get(old.source_id.as_str()).is_some_and(|n| n.part_id == old.part_id && n.measure == old.measure
                 && n.beat == old.beat && n.duration_beats == old.duration_beats && n.voice == old.voice
-                && n.midi_pitch == old.midi_pitch && n.rest == old.rest && n.tie == old.tie), "immutable score location")?;
+                && n.midi_pitch == old.midi_pitch && n.rest == old.rest && n.tie == old.tie && n.unpitched == old.unpitched), "immutable score location")?;
         }
         Ok(())
     }
 
     pub fn capabilities(&self) -> Vec<String> {
         let mut result = vec!["music".to_string()];
-        if !self.pages.is_empty() && !self.score_objects.is_empty() { result.push("music_score".into()); }
+        if !self.pages.is_empty() { result.push("music_score".into()); }
         if !self.events.is_empty() { result.push("music_events".into()); }
         if !self.note_alignments.is_empty() && self.coverage.iter().any(|c| c.status == MusicCoverageStatus::Accepted && c.granularity == MusicGranularity::Note) {
             result.push("music_note_alignment".into());
@@ -201,7 +245,10 @@ impl MusicSourceManifest {
         require(self.version == "music_source_manifest.v1" && text(&self.book_id) && text(&self.title), "manifest identity")?;
         require(text(&self.work.work_id) && text(&self.work.title) && text(&self.work.composer)
             && self.work.movement.as_ref().is_none_or(|v| text(v)), "work")?;
-        require(text(&self.score.source.score_id) && text(&self.score.source.revision) && text(&self.score.title) && path(&self.score.musicxml_path), "score source")?;
+        require(text(&self.score.source.score_id) && text(&self.score.source.revision) && text(&self.score.title)
+            && (self.score.musicxml_path.is_some() || self.score.pdf_path.is_some())
+            && self.score.musicxml_path.as_ref().is_none_or(|value| path(value))
+            && self.score.pdf_path.as_ref().is_none_or(|value| path(value)), "score source")?;
         let r = &self.recording;
         require(text(&r.source.recording_id) && text(&r.source.revision) && text(&r.title) && text(&r.performers)
             && path(&r.media_path) && text(&r.content_type) && positive(r.duration_ms), "recording source")?;
@@ -261,8 +308,20 @@ impl MusicSourceManifest {
         for n in &self.score_objects {
             require(parts.get(n.part_id.as_str()).is_some_and(|p| p.voices.contains(&n.voice)) && pages.contains(n.page_id.as_str())
                 && text(&n.measure) && n.beat.is_finite() && n.beat >= 0.0 && n.duration_beats.is_finite() && n.duration_beats >= 0.0
-                && (if n.rest { n.midi_pitch.is_none() && n.tie == MusicTie::None } else { n.midi_pitch.is_some_and(|p| p <= 127) })
+                && (if n.rest { n.midi_pitch.is_none() && n.tie == MusicTie::None && !n.unpitched }
+                    else if n.unpitched { n.midi_pitch.is_none() }
+                    else { n.midi_pitch.is_some_and(|p| p <= 127) })
                 && text(&n.svg_element_id) && svg_ids.insert((&n.page_id, &n.svg_element_id)), "score object")?;
+            if let Some(notation) = &n.notation {
+                require(notation.written_pitch.as_ref().is_none_or(|p| matches!(p.step.as_str(), "A" | "B" | "C" | "D" | "E" | "F" | "G") && p.alter.is_finite())
+                    && notation.note_type.as_ref().is_none_or(|t| text(t))
+                    && notation.playback_dynamics.is_none_or(|d| d.is_finite() && d >= 0.0)
+                    && notation.rhythm.as_ref().is_none_or(|rhythm| {
+                        rhythm.time_modification.as_ref().is_none_or(|m| m.actual_notes > 0 && m.normal_notes > 0
+                            && m.normal_type.as_ref().is_none_or(|t| text(t)))
+                            && rhythm.tremolos.iter().all(|t| text(&t.kind))
+                    }), "note notation")?;
+            }
         }
         for (i, o) in self.occurrences.iter().enumerate() {
             require(interval(o.start_ms, o.end_ms, duration) && text(&o.measure) && !o.score_object_ids.is_empty()
@@ -320,9 +379,11 @@ impl MusicSourceManifest {
                     && role.theme_id.as_ref().is_none_or(|id| text(id)), "event role")?;
             }
             for evidence in &e.evidence {
-                require(provenance.contains_key(evidence.provenance_id.as_str()) && evidence.score_object_ids.iter().all(|id| notes.contains_key(id.as_str())), "event evidence")?;
+                require(provenance.contains_key(evidence.provenance_id.as_str()) && evidence.score_object_ids.iter().all(|id| notes.contains_key(id.as_str()))
+                    && unique(evidence.score_page_ids.iter().map(String::as_str))
+                    && evidence.score_page_ids.iter().all(|id| pages.contains(id.as_str())), "event evidence")?;
                 if let Some(audio) = &evidence.audio { audio.validate(self)?; }
-                require(!evidence.score_object_ids.is_empty() || evidence.audio.is_some() || matches!(provenance[evidence.provenance_id.as_str()].kind, MusicProvenanceKind::Reference | MusicProvenanceKind::Interpretation), "event evidence location")?;
+                require(!evidence.score_object_ids.is_empty() || !evidence.score_page_ids.is_empty() || evidence.audio.is_some() || matches!(provenance[evidence.provenance_id.as_str()].kind, MusicProvenanceKind::Reference | MusicProvenanceKind::Interpretation), "event evidence location")?;
             }
             for relation in &e.relations { require(relation.target_event_id != e.event_id && events.contains(relation.target_event_id.as_str()) && text(&relation.description), "event relation")?; }
         }

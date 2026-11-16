@@ -165,15 +165,15 @@ function closureFromRegistry(
 
 export function standardDeepStageClosure(
   contentProfileInput: BuildContentProfile,
-  options: { pass2?: Pass2PlanChoice; build_tutor?: boolean } = {},
+  options: { pass2?: Pass2PlanChoice; build_tutor?: boolean; build_course?: boolean } = {},
   registry: BuildCapabilityRegistry = BUILD_CAPABILITY_REGISTRY,
 ): AutomaticBuildStage[] {
   const contentProfile = validateBuildContentProfile(contentProfileInput);
   const pass2 = options.pass2 ?? "disabled";
   if (pass2 !== "enabled" && pass2 !== "disabled") throw new Error(`unsupported Pass2 plan choice: ${String(pass2)}`);
   const closure = closureFromRegistry(contentProfile, registry);
-  return closure.filter(stage=>(pass2 === 'enabled' || stage !== 'pass2')
-    && (options.build_tutor !== false || !['formal_objects','cognitive_materials','teaching_publish'].includes(stage)));
+  return [...closure.filter(stage=>(pass2 === 'enabled' || stage !== 'pass2')
+    && (options.build_tutor !== false || !['formal_objects','cognitive_materials','teaching_publish'].includes(stage))), ...(options.build_course ? ['course' as const] : [])];
 }
 
 export function validateBuildCapabilityRegistry(input: unknown): BuildCapabilityRegistry {

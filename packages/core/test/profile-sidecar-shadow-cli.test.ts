@@ -57,7 +57,7 @@ function sha256(value: string): string {
   return createHash("sha256").update(value, "utf8").digest("hex");
 }
 
-function observationFor(unit: ProfileSidecarDiscourseShadowWorkUnitV1): ProfileSidecarDiscourseObservationV1 {
+function observationFor(unit: ProfileSidecarDiscourseShadowWorkUnitV1): Omit<ProfileSidecarDiscourseObservationV1, "core_sha256"> {
   if (unit.route.role !== "fragment" || unit.descriptor.input_basis.kind !== "source_slices") {
     throw new Error("expected one profile sidecar fragment unit");
   }
@@ -66,7 +66,6 @@ function observationFor(unit: ProfileSidecarDiscourseShadowWorkUnitV1): ProfileS
     version: "profile_sidecar_discourse_observation.v1",
     parent_lid: unit.route.parent_lid,
     source_slice_ordinal: slice.ordinal,
-    core_sha256: slice.core_sha256,
     mode_candidates: [{ value: "informative", confidence: 0.9 }],
     local_function_candidates: [{ value: "explanation", confidence: 0.8 }],
     rhetorical_move_candidates: [{ value: "concept_elaboration", confidence: 0.8 }],

@@ -50,34 +50,24 @@ fn video_learning_purpose_admission_freezes_scope_and_continues_original_materia
             input["video_window_id"] = json!("learning-purpose");
         }
         let first = prepare_agent_chat(&mut state, &input.to_string(), "first").unwrap_or_else(|r| panic!("{}",r.body));
-        assert_eq!(first.tutor.as_ref().unwrap()["status"], "active");
+        assert_eq!(first.tutor.as_ref().unwrap()["status"], "observing");
         let session_id = first.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
-        let learning = state.user.learning_store().unwrap().state().unwrap();
-        let stage = &learning.sessions[&session_id];
-        assert_eq!(stage.material_scope[0].source_id, "vi6", "the old book must be replaced by an explicit media purpose");
-        assert_eq!(!stage.material_scope[0].scope_refs.is_empty(), selected);
-        assert_eq!(stage.learning_purpose, Some(memory::learning::LearningPurpose::Understand));
+        assert_eq!(first.tutor.as_ref().unwrap()["learning_purpose"],"understand");
+        assert_eq!(first.tutor.as_ref().unwrap()["binding"]["source_id"],state.workspace.book.base.book_id);
         assert_eq!(first.scope.reader_input.as_ref().unwrap().video_question.is_some(), selected);
         let saved = state.user.agent_history.sessions.iter().flat_map(|s| &s.turns).find(|t| t.turn_id == first.turn_ref.turn_id).unwrap();
         assert!(saved.domain.interaction.as_ref().unwrap().source_bindings.is_empty(), "a video learning scope must not fabricate observed text evidence");
         assert!(saved.domain.interaction.as_ref().unwrap().accepted_request.contains(if selected {"视频片段"} else {"当前视频"}));
         let store = state.user.learning_store().unwrap();
-        let dependency = store.coach_turn_dependency(&first.turn_ref.session_id, &first.turn_ref.turn_id).unwrap().unwrap();
-        let bootstrap = store.coach_job(&dependency.job_ref.unwrap()).unwrap().unwrap();
-        let mut coach_question = json!(first.scope.reader_input.as_ref().unwrap().video_question);
-        if let Some(image) = coach_question.get_mut("image").and_then(Value::as_object_mut) { image.remove("png_base64"); }
-        assert_eq!(bootstrap.input.context["video_question"], coach_question);
+        assert!(store.coach_turn_dependency(&first.turn_ref.session_id, &first.turn_ref.turn_id).unwrap().is_none_or(|dependency| dependency.job_ref.is_none()));
         drop(store);
         super::tutor_loop_tests::finish(&mut state, &first.turn_ref, &super::tutor_loop_tests::outcome(None));
-        let after = state.user.learning_store().unwrap().coach_job_for_source(&session_id,
-            memory::tutor_coach::CoachJobOrigin::AfterTurn, &first.turn_ref.turn_id).unwrap().unwrap();
-        assert_eq!(after.input.context["video_question"], coach_question);
+        assert!(state.user.learning_store().unwrap().coach_job_for_source(&session_id,memory::tutor_coach::CoachJobOrigin::AfterTurn,&first.turn_ref.turn_id).unwrap().is_none(),"a purpose button alone supplies no authored learner expression");
         let next_input = media_continue_input(&state, &first.turn_ref);
         let next = prepare_agent_chat(&mut state, &next_input.to_string(), "next").unwrap_or_else(|r| panic!("{}",r.body));
         assert_eq!(next.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id);
         assert_eq!(json!(next.scope.reader_input.as_ref().unwrap().video_question), json!(first.scope.reader_input.as_ref().unwrap().video_question));
-        let dependency = state.user.learning_store().unwrap().coach_turn_dependency(&next.turn_ref.session_id, &next.turn_ref.turn_id).unwrap().unwrap();
-        assert_eq!(dependency.job_ref, Some(after.input.job_ref), "the next teaching turn must consume guidance from the actual previous delivery");
+        assert!(state.user.learning_store().unwrap().coach_turn_dependency(&next.turn_ref.session_id, &next.turn_ref.turn_id).unwrap().is_none_or(|dependency| dependency.job_ref.is_none()));
         super::tutor_loop_tests::finish(&mut state, &next.turn_ref, &super::tutor_loop_tests::outcome(None));
         let again_input = media_continue_input(&state, &next.turn_ref);
         let again = prepare_agent_chat(&mut state, &again_input.to_string(), "again").unwrap_or_else(|r| panic!("{}",r.body));
@@ -87,7 +77,7 @@ fn video_learning_purpose_admission_freezes_scope_and_continues_original_materia
             super::tutor_loop_tests::finish(&mut state, &again.turn_ref, &super::tutor_loop_tests::outcome(None));
             let whole_input = media_purpose_input(&state, "video-whole-after-clip");
             let whole = prepare_agent_chat(&mut state, &whole_input.to_string(), "whole").unwrap_or_else(|r| panic!("{}",r.body));
-            assert_ne!(whole.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id,
+            assert_eq!(whole.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], session_id,
                 "changing a clip goal to the whole video must start the requested scope");
         }
     }
@@ -175,6 +165,94 @@ fn video_draft_local_failure_restore_handoff_and_history() {
     assert!(video_draft::command(&mut state.workspace,&state.user,&json!({"window_id":"a","action":"get"})).unwrap()["draft"].is_null());
     assert!(!video_draft::load(&state.workspace.session_path).contains_key("a"));
     assert_eq!(state.workspace.video_drafts["b"].context.frame.actual_pts_ms,507000.0);
+}
+
+#[test]
+fn video_board_questions_deliver_and_reopen_without_consuming_player_drafts() {
+    use super::mu5_tests::Fixture;
+    let f = Fixture::new();
+    let input_dir = f.root.path().join("video-board-input");
+    fixture(&input_dir);
+    let reference = f.access.library.lock().unwrap().publish(&input_dir).unwrap().reference;
+    f.access.library.lock().unwrap().grant("A", &reference).unwrap();
+    let calls = Arc::new(Mutex::new(Vec::<String>::new()));
+    #[derive(Clone)]
+    struct Answer(Arc<Mutex<Vec<String>>>);
+    impl ModelAdapter for Answer {
+        fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { unreachable!() }
+        fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+            self.0.lock().unwrap().push(json!(request.ordered_messages()).to_string());
+            Ok(AssistantTurn { provider_continuation: None, text: Some("缓存保留已经取得的数据，重复请求可以直接复用。".into()),
+                tool_calls: vec![], usage_total_tokens: Some(1) })
+        }
+    }
+    let recorded = calls.clone();
+    f.access.runs.configure_fake(move || Box::new(Answer(recorded.clone())));
+    let w = f.create(&f.a, &reference, "board");
+    let w = f.action(&f.a, &w, "board", "chat/new", json!({}));
+    let w = f.action(&f.a, &w, "board", "boards/create", json!({"title":"为什么需要缓存呢"}));
+    let document = w["result"].clone();
+    let p = f.access.library.lock().unwrap().load("A", &reference).unwrap();
+    let mut player = reader_workspace::ReaderWorkspace::local(p.directory().into(), p.book.clone(),
+        Reader::new(&p.book, DEFAULT_RADIUS), vec![], None);
+    player.publication = Some(p);
+    let player_draft = draft(&player, "unrelated-player-draft", 492000.0);
+    let mut w = f.action(&f.a, &w, "board", "reader/video_draft",
+        json!({"window_id":"player","action":"save","draft":player_draft}));
+    let url = format!("/api/workspaces/{}/agent/runs", w["workspace_id"].as_str().unwrap());
+    let mut request = Fixture::stamp(&w, "board");
+    request["session_id"] = w["selected_chat"].clone();
+    request["expected_chat_head"] = Value::Null;
+    request["client_request_id"] = json!("video-player-without-draft");
+    request["message"] = json!("为什么需要缓存呢");
+    let (status, rejected) = f.call(&f.a, "POST", &url, request.clone());
+    assert_eq!(status, 400, "ordinary video questions still require their input-time frame: {rejected}");
+    assert_eq!(rejected["error_code"], "VIDEO_DRAFT_INVALID");
+    assert!(calls.lock().unwrap().is_empty());
+
+    request["client_request_id"] = json!("video-board-root");
+    request["board_follow_up"] = json!({"board_id":document["board_id"],"board_revision":document["revision"]});
+    let mut missing = request.clone();
+    missing["client_request_id"] = json!("video-board-missing");
+    missing["board_follow_up"]["board_id"] = json!("missing-board");
+    assert_ne!(f.call(&f.a, "POST", &url, missing).0, 202, "a board must resolve before bypassing player context");
+
+    let (status, accepted) = f.call(&f.a, "POST", &url, request.clone());
+    assert_eq!(status, 202, "a board question has its own context and no player draft: {accepted}");
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    w = f.get(&f.a, &w);
+    let history = f.action(&f.a, &w, "board", "chat/history", json!({}));
+    let turn = &history["result"]["current"]["turns"][0];
+    assert_eq!(turn["status"], "completed", "{turn}");
+    assert!(turn["video_question"].is_null());
+    assert_eq!(turn["board_follow_up"], request["board_follow_up"]);
+    let saved = f.action(&f.a, &w, "board", "boards/read", json!({"board_id":document["board_id"]}));
+    let saved = &saved["result"]["document"];
+    assert_eq!(saved["items"].as_array().unwrap().len(), 1);
+    assert_eq!(saved["items"][0]["target"]["turn_id"], accepted["turn_id"]);
+    let retained = f.action(&f.a, &w, "board", "reader/video_draft", json!({"window_id":"player","action":"get"}));
+    assert_eq!(retained["result"]["draft"], player_draft, "board discussion must not consume the player's unfinished question");
+
+    let mut follow_up = Fixture::stamp(&w, "board");
+    follow_up["session_id"] = w["selected_chat"].clone();
+    follow_up["expected_chat_head"] = accepted["turn_id"].clone();
+    follow_up["client_request_id"] = json!("video-board-follow-up");
+    follow_up["message"] = json!("那缓存有什么代价？");
+    follow_up["board_follow_up"] = json!({"board_id":saved["board_id"],"board_revision":saved["revision"],
+        "item_id":saved["items"][0]["item_id"]});
+    let (status, next) = f.call(&f.a, "POST", &url, follow_up);
+    assert_eq!(status, 202, "{next}");
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    let reopened = f.create(&f.a, &reference, "reopened");
+    let discussion = f.action(&f.a, &reopened, "reopened", "boards/conversation", json!({"board_id":document["board_id"]}));
+    let turns = discussion["result"]["sessions"][0]["turns"].as_array().unwrap();
+    assert_eq!(turns.len(), 2, "{discussion}");
+    assert!(turns.iter().all(|turn| turn["status"] == "completed" && turn["video_question"].is_null()));
+    let reopened = f.action(&f.a, &reopened, "reopened", "boards/read", json!({"board_id":document["board_id"]}));
+    assert_eq!(reopened["result"]["document"]["items"].as_array().unwrap().len(), 2);
+    let calls = calls.lock().unwrap();
+    assert_eq!(calls.len(), 2);
+    assert!(calls.iter().all(|request| !request.contains("unrelated-player-draft")));
 }
 
 #[test]

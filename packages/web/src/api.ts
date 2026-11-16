@@ -1,7 +1,7 @@
 import { network } from './network-context';
 import type { PublishedBookRef } from './network-context';
 import { getLocale, errorMessage } from './i18n';
-import { networkFetch, networkRequest, publishedUrl } from './network-client';
+import { networkFetch, networkRequest, publishedUrl, workspaceAction } from './network-client';
 import { createReadingAction, recoverReadingAction, type PendingReadingAction } from './local-reading-action';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
@@ -27,11 +27,13 @@ export type { BoardDocument, BoardView, BoardSummary, BoardImportSource, BoardFo
 export type BoardPrebuildCategory = 'all' | 'pass1' | 'discourse' | 'book_structure' | 'teaching';
 export interface BoardCatalogItem { kind: BoardImportSource['kind']; category?: Exclude<BoardPrebuildCategory, 'all'>; title: string; summary: string; source: BoardImportSource }
 export interface BoardSourceRequest { board_id: string; item_id: string; source_ref_id: string }
-export interface BoardSourceReadRequest extends BoardSourceRequest {
+export interface SourceWindowRequest {
   anchor_lid?: string;
   direction?: 'around' | 'before' | 'after';
   include_outline?: boolean;
 }
+export interface BoardSourceReadRequest extends BoardSourceRequest, SourceWindowRequest {}
+export type SourceWindowLoader = (options: SourceWindowRequest) => Promise<BoardSourceReadResponse>;
 export interface BoardSourceReadResponse {
   source_ref_id: string;
   published_book_ref?: PublishedBookRef;
@@ -819,7 +821,6 @@ export interface IntentBuildAblationReportV1 {
     }>;
   }>;
   privacy: { raw_goal: false; artifact_body: false; lid_or_quote: false; user_profile: false };
-  digest: string;
 }
 export type BuildRoute = "reader" | "workbench";
 export type BuildReadinessStatus = "trusted_book" | "missing" | "incomplete" | "needs_review" | "stale_input";
@@ -1255,23 +1256,28 @@ export interface AgentHistoryResponse {
   sessions: AgentChatSessionSummary[];
   current: AgentChatSession;
 }
+export type QuestionInput = { kind: 'single_choice' | 'multiple_choice'; options: { id: string; text: string }[] } | { kind: 'worked_solution' };
+export interface QuestionAttempt { action_ref: string; number: number; answer: string; reasoning?: string | null }
+export interface QuestionStep { step_ref: string; text: string; selected: string[]; reply: string | null; help_ref: string | null }
 export interface TutorActivity {
   continuation?: import('./generated/TutorContinuationView').TutorContinuationView | null;
   delivery_ref: string; move: { move_id: string; prompt: string; actions: string[];
+    answer_input?: QuestionInput;
     presentation?: import('./generated/PresentationRef').PresentationRef | null;
-    response_expectation?: { public_prompt: string; block_refs: string[] } | null;
+    response_expectation?: import('./generated/ResponseExpectation').ResponseExpectation | null;
     block_refs?: string[];
     /** Public practice view: hint texts stay private until requested. */
     practice?: { entry: string; mode: string; distance?: string | null; hint_count: number; revisit_note?: import('./generated/NoteRef').NoteRef | null;
       /** Board assembly: card texts only; which are premises stays private. */
       cards?: { id: string; text: string }[] } | null;
   }; status: string; attempted: boolean; help_seen: unknown[];
+  steps?: QuestionStep[]; attempts?: QuestionAttempt[];
   /** Latest released help; unreleased hints and solutions remain private. */
   help?: TutorHelp | null;
   /** After-delivery soundness verdict for a practice problem; null while unchecked. */
   practice_check?: 'sound' | 'questionable' | null;
   response_invitation_status?: 'open' | 'addressed' | 'deferred' | null;
-  assessment?: { action_ref?: string; status: string; attempt?: number; assistance_count?: number; items?: { id: string; reason: string }[] } | null;
+  assessment?: { action_ref?: string; status: string; attempt?: number; assistance_count?: number; items?: { id: string; reason: string; retry?: boolean; verdict?: string; response_quote?: string }[] } | null;
 }
 /** Released activity help. Practice hints point back to an exact note or source passage. */
 export interface TutorHelp {
@@ -1316,6 +1322,8 @@ export interface LearningEvidenceView {
 }
 export interface UnderstandingTimeline { entries: LearningEvidenceView[]; next: number | null; order: 'oldest_first' }
 export interface AgentChatMeta {
+  course_context?: { run_id: string; revision: number; surface: 'course' | 'source' | 'experiment'; exploration?: import('./generated/CourseResourceState').CourseResourceState };
+  knowledge_focus?: {reference:import('./generated/KnowledgeReference').KnowledgeReference;node_id:string};
   understanding_ref?: import('./note-thinking').UnderstandingReference;
   note_refs?: import('./generated/NoteRef').NoteRef[];
   /** entry_action=revisit_note: the exact saved idea to practice from. */
@@ -1341,6 +1349,7 @@ export interface AgentChatMeta {
   teaching_response_origin?: TeachingResponseOrigin;
   goal_id?: string;
   goal_action?: "cancel" | "replace";
+  presentation_requested?: boolean;
   presentation_follow_up?: import("./generated/PresentationFollowUp").PresentationFollowUp;
   display_user?: string;
   question_anchor_lid?: string | null;
@@ -1450,7 +1459,8 @@ export const api = {
   workspaceNoteRelationSave: ({ expected_revision, ...body }: { relation_id?: string; expected_revision?: number; from_note_id: string; to_note_id: string; label: string; reason: string }, scope?: string | null) => notebookRequest<WorkspaceNoteRelation>('relation_save', { ...body, relation_revision: expected_revision }, scope),
   workspaceNoteRelationDelete: ({ expected_revision, ...body }: { relation_id: string; expected_revision: number }, scope?: string | null) => notebookRequest<{ deleted: boolean }>('relation_delete', { ...body, relation_revision: expected_revision }, scope),
   workspaceNoteImport: (body: { source: WorkspaceNoteImportSource; title?: string; content?: string }) => http<WorkspaceNote>('POST', '/notes/import', body),
-  workspaceNoteSourceResolve: (body: WorkspaceNoteSourceRequest) => http<SourcePopupView>('POST', '/notes/source.resolve', body),
+  workspaceNoteSourceResolve: (body: WorkspaceNoteSourceRequest, scope?: string) => notebookRequest<SourcePopupView>('source.resolve', body, scope),
+  workspaceNoteSourceRead: (body: WorkspaceNoteSourceRequest & SourceWindowRequest, scope?: string) => notebookRequest<BoardSourceReadResponse>('source.read', body, scope),
   workspaceNoteSourceOpen: (body: WorkspaceNoteSourceRequest) => http<SourceOpenView>('POST', '/notes/source.open', body),
   prepareNote: (value: unknown) => http<import('./generated/NoteContent').NoteContent>('POST', '/memory/prepare_note', value),
   videoPlayback: () => http<import("./video-api").VideoPlayback | null>("GET", "/book/video_playback"),
@@ -1603,6 +1613,11 @@ export const api = {
     http<PdfSelectionResolveResponse>("POST", "/reader/pdf_selection.resolve", body),
   pdfSelectionTranslate: (body: SelectionTranslationRequest) =>
     http<SelectionTranslationResponse>("POST", "/reader/selection.translate", body),
+  readingGuidance: (body: import('./reading-guidance').ReadingGuidanceRequest) =>
+    http<import('./reading-guidance').ReadingGuidance | null>("POST", "/reader/guidance", body),
+  voiceStatus: () => http<{available:boolean;max_seconds:number}>('GET','/reader/voice-status'),
+  voiceTranscribe: (body: {audio:string; mime_type:string; locale:string}, signal?:AbortSignal) =>
+    http<{text:string;duration_ms:number}>('POST','/reader/voice-transcribe',body,signal),
   pdfRangesProject: (ranges: Array<{ lid: string; range: TextRange }>) =>
     http<PdfRangesProjectResponse>("POST", "/reader/pdf_ranges.project", { ranges }),
   layoutApply: (body: {
@@ -1674,7 +1689,15 @@ export const api = {
     http<AgentHistoryResponse>("POST", "/agent/history/delete", { session_id }),
   agentSourceResolve: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>
     http<SourcePopupView>("POST", "/agent/source.resolve", { turn_id, source_ref_id, note_mem_id }),
+  agentSourceRead: (turn_id: string, source_ref_id: string, options: SourceWindowRequest, note_mem_id?: string) =>
+    http<BoardSourceReadResponse>("POST", "/agent/source.read", { source: { turn_id, source_ref_id, note_mem_id }, ...options }),
+  closedBook: (request: { action: string; chat_session_id: string; operation_id?: string; revision?: number; target?: string; course_run_id?: string; answer_turn_id?: string; draft?: string }) => http<import('./generated/ClosedBookPractice').ClosedBookPractice | null>('POST', '/tutor/closed-book', request),
+  learningTasks: () => http<{tasks: import('./learning-tasks').LearningTaskView[]}>('GET', '/learning-task'),
+  selectLearningTask: (request: import('./learning-tasks').LearningTaskSelection) => http('POST', '/learning-task', request),
   tutorState: () => http<import('./generated/TutorState').TutorState>('GET', '/tutor/state'),
+  knowledgeTree: (request: import('./knowledge-tree').KnowledgeTreeRequest = {}, signal?: AbortSignal) => http<import('./knowledge-tree').KnowledgeTreeView>('POST', '/knowledge/tree', request, signal),
+  knowledgeResume: (request: import('./note-thinking').UnderstandingReference) => http<Omit<import('./note-thinking').UnderstandingAction, 'mode'>>('POST', '/knowledge/resume', request),
+  knowledgeRetry: (job_ref: string) => http<{status:string}>('POST', '/knowledge/retry', {job_ref}),
   tutorUnderstanding: (after = 0, rebuild = false, signal?: AbortSignal) => http<UnderstandingView>('POST', '/tutor/understanding', { after, rebuild }, signal),
   tutorEvidence: (evidence_ref: string) => http<LearningEvidenceView>('POST', '/tutor/evidence', { evidence_ref }),
   tutorTimeline: (evidence_ref: string, after = 0) => http<UnderstandingTimeline>('POST', '/tutor/timeline', { evidence_ref, after }),
@@ -1685,7 +1708,9 @@ export const api = {
   tutorActivities: (session_id: string, turn_id: string, reference?: import("./generated/PresentationRef").PresentationRef) => http<{ activities: TutorActivity[] }>("POST", "/tutor/activities", { session_id, turn_id, reference }),
   tutorContinuationDisplayed: (input: import('./generated/ContinuationDisplayed').ContinuationDisplayed) => http<{ event_id: string }>('POST', '/tutor/continuation-displayed', input),
   tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
-  tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; response_origin?: TeachingResponseOrigin; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: TutorHelp | null }>("POST", "/tutor/action", request),
+  tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; reasoning?: string; response_origin?: TeachingResponseOrigin; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: TutorHelp | null }>("POST", "/tutor/action", request),
+  tutorAskStep: (request: { operation_id: string; delivery_ref: string; text: string; selected: string[]; locale: string }) => http<{ help_ref: string; text: string }>("POST", "/tutor/ask-step", request),
+  tutorGrade: (action_ref: string, locale: string) => http<{ assessment: string }>("POST", "/tutor/grade", { action_ref, locale }),
   tutorPageHelp: (request: { delivery_ref: string; kind: 'hint' | 'explanation'; text: string; presentation_follow_up: import('./generated/PresentationFollowUp').PresentationFollowUp }) => http<{ event_id: string }>('POST', '/tutor/page-help', request),
   tutorHelpDisplayed: (help_ref: string) => http("POST", "/tutor/help-displayed", { help_ref }),
   tutorReadiness: () => http<{ status: 'preparing' | 'ready'; source_id: string; source_revision: string; limitations: string[]; reason: string;
@@ -1731,6 +1756,10 @@ export const api = {
     http<{ accepted: boolean }>("POST", "/memory/presentation.observe", { mem_id, text, source_ref_ids }),
   presentationRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, saved_state?: import("./generated/PresentationFollowUp").PresentationFollowUp) =>
     http<import("./generated/PresentationView").PresentationView>("POST", "/agent/presentation.read", { session_id, turn_id, reference, saved_state }),
+  presentationRestore: async (receipt: import("./generated/PresentationFollowUp").PresentationFollowUp): Promise<import("./generated/PresentationView").PresentationView> => {
+    if (network.value.enabled) await workspaceAction('presentation/restore', { saved_state: receipt });
+    return api.presentationRead(receipt.session_id, receipt.turn_id, receipt.reference, receipt);
+  },
   presentationFeedbackRead: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef) =>
     http<import("./generated/PresentationFeedback").PresentationFeedback>("POST", "/agent/presentation.feedback.read", { session_id, turn_id, reference }),
   presentationFeedbackSet: (session_id: string, turn_id: string, reference: import("./generated/PresentationRef").PresentationRef, selection: import("./generated/PresentationFeedbackSelection").PresentationFeedbackSelection) =>

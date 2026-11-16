@@ -184,9 +184,8 @@ fn dependencies(input: &Path, stage: &Path) -> Result<(), ToolError> {
     if input.join(crate::music_media::MANIFEST).exists() {
         let manifest = crate::music_media::load(input)?;
         if ![base_schema::MusicAssetKind::Recording, base_schema::MusicAssetKind::Score].iter()
-            .all(|kind| manifest.rights.iter().any(|right| right.asset_kind == *kind && right.distribution == base_schema::MusicDistribution::Allowed))
-            || manifest.rights.iter().any(|right| right.distribution != base_schema::MusicDistribution::Allowed) {
-            return Err(error("MUSIC_DISTRIBUTION_UNAVAILABLE", "validation", "当前音乐素材仅允许本地使用，不能进入共享发布"));
+            .all(|kind| manifest.rights.iter().any(|right| right.asset_kind == *kind)) {
+            return Err(error("MUSIC_RIGHTS_RECORD_MISSING", "validation", "音乐素材缺少录音或谱本的来源与许可记录"));
         }
         crate::music_media::validate_files(input, &manifest)?;
         copy_file(&input.join(crate::music_media::MANIFEST), stage, crate::music_media::MANIFEST)?;
@@ -543,8 +542,18 @@ impl PublishedLibrary {
                 let before = crate::music_media::load(old)?;
                 let after = crate::music_media::load(stage.path())?;
                 after.validate_successor(&before).map_err(|_| invalid())?;
-                if !equal_files(&old.join(&before.recording.media_path), &stage.path().join(&after.recording.media_path))?
-                    || !equal_files(&old.join(&before.score.musicxml_path), &stage.path().join(&after.score.musicxml_path))? {
+                let mut same_score = true;
+                for (previous_path, next_path) in [
+                    (&before.score.musicxml_path, &after.score.musicxml_path),
+                    (&before.score.pdf_path, &after.score.pdf_path),
+                ] {
+                    same_score &= match (previous_path, next_path) {
+                        (Some(previous_path), Some(next_path)) => equal_files(&old.join(previous_path), &stage.path().join(next_path))?,
+                        (None, None) => true,
+                        _ => false,
+                    };
+                }
+                if !equal_files(&old.join(&before.recording.media_path), &stage.path().join(&after.recording.media_path))? || !same_score {
                     return Err(error("BOOK_CONTENT_CHANGED", "conflict", "更换录音或谱本需建立新的音乐资料"));
                 }
             }

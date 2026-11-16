@@ -1,5 +1,6 @@
 //! 模块 E 自建最小运行时。`book.query` 使用 referent-first typed mini-loop；
 //! `book.synthesize` 与其他工具保留各自明确的证据所有权。
+#![recursion_limit = "256"]
 pub mod book_output_schema;
 pub mod library;
 mod book_text_batch;
@@ -35,6 +36,8 @@ pub mod workspace_goal;
 pub mod workspace_records;
 pub mod workspace_notes;
 pub mod tutor;
+mod socratic;
+pub use socratic::SocraticQuestionPurpose;
 pub mod practice;
 pub mod learning_map;
 mod teaching_revision;
@@ -52,6 +55,8 @@ pub mod model_runtime;
 pub mod model_spend;
 #[cfg(test)]
 mod output_retry_tests;
+#[cfg(test)]
+mod provider_retry_tests;
 pub mod web;
 pub mod observation;
 pub mod orchestrator;
@@ -63,10 +68,12 @@ pub mod presentation_methods;
 pub mod video;
 pub mod video_audio;
 pub mod music;
+pub mod music_example;
 pub mod presentation_preview;
 pub mod profile_api;
 pub mod profile_context;
 pub mod provider_stream;
+mod provider_retry;
 #[cfg(test)]
 mod provider_timeout_tests;
 pub mod request_diagnostics;
@@ -178,12 +185,45 @@ impl ProviderMode {
     }
 }
 
+/// Supported intensity levels for native DeepSeek Messages agent requests.
+/// Background completions keep their own `CompletionRequest::reasoning_effort`.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum AgentReasoningEffort {
+    Low,
+    #[default]
+    High,
+    Max,
+}
+
+impl AgentReasoningEffort {
+    fn parse(value: &str) -> Result<Self, AdapterError> {
+        match value.trim() {
+            "low" => Ok(Self::Low),
+            "high" => Ok(Self::High),
+            "max" => Ok(Self::Max),
+            _ => Err(AdapterError {
+                spend_stop: None,
+                message: "UNDERSTAND_BOOK_AGENT_REASONING_EFFORT 必须为 low、high 或 max".into(),
+            }),
+        }
+    }
+
+    pub(crate) fn as_str(self) -> &'static str {
+        match self {
+            Self::Low => "low",
+            Self::High => "high",
+            Self::Max => "max",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
     pub mode: ProviderMode,
     pub api_key: String,
     pub base_url: String,
     pub model: String,
+    pub agent_reasoning_effort: AgentReasoningEffort,
 }
 
 impl ProviderConfig {
@@ -220,6 +260,7 @@ impl ProviderConfig {
             });
         }
         Ok(ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode,
             api_key,
             base_url,
@@ -237,12 +278,16 @@ impl ProviderConfig {
                 message: format!("缺少环境变量 {k}(填 .env 或 export)"),
             })
         };
-        ProviderConfig::from_values(
+        let mut config = ProviderConfig::from_values(
             &get("UNDERSTAND_BOOK_PROVIDER").unwrap_or_else(|| "native".into()),
             required("OPENCODE_API_KEY", &mut get)?,
             required("OPENCODE_BASE_URL", &mut get)?,
             required("FLUID_LLM_MODEL", &mut get)?,
-        )
+        )?;
+        if let Some(effort) = get("UNDERSTAND_BOOK_AGENT_REASONING_EFFORT") {
+            config.agent_reasoning_effort = AgentReasoningEffort::parse(&effort)?;
+        }
+        Ok(config)
     }
 
     pub fn from_env() -> Result<ProviderConfig, AdapterError> {
@@ -253,7 +298,7 @@ impl ProviderConfig {
 
 pub struct ProviderRegistry;
 
-/// Network limits for one HTTP request, including its streamed response body.
+/// Limits for one model request, including transient retries, waits and its body.
 /// They do not limit the duration of a multi-step agent run.
 #[derive(Debug, Clone, Copy)]
 pub struct ProviderRequestTimeouts {
@@ -2731,6 +2776,7 @@ pub struct NativeAdapter {
     api_key: String,
     base_url: String,
     model: String,
+    agent_reasoning_effort: AgentReasoningEffort,
     runtime_profile: ModelRuntimeProfile,
     messages_capabilities: std::sync::OnceLock<Option<deepseek_messages::MessagesCapabilities>>,
     request_timeouts: ProviderRequestTimeouts,
@@ -2774,6 +2820,7 @@ impl NativeAdapter {
             api_key: cfg.api_key,
             base_url: cfg.base_url,
             model: cfg.model,
+            agent_reasoning_effort: cfg.agent_reasoning_effort,
             runtime_profile: resolved_profile,
             messages_capabilities: Default::default(),
             request_timeouts,
@@ -2858,17 +2905,18 @@ impl NativeAdapter {
             return Err(model_spend::SpendStop::MissingScope.into());
         }
         let logical_call_id = uuid::Uuid::now_v7().to_string();
+        let deadline = std::time::Instant::now() + self.request_timeouts.request;
+        let cancellation = self.cancellation.borrow().clone().unwrap_or_default();
         let mut transport_retried = false;
+        let mut transient_retries = 0;
         let mut output_retried = false;
         let mut attempt = 0;
         let mut prior_usage: Option<provider_stream::ModelUsage> = None;
         loop {
-            if let Some(cancellation) = self.cancellation.borrow().as_ref() {
-                cancellation.check().map_err(|error| AdapterError {
-                    spend_stop: None,
-                    message: error.message,
-                })?;
-            }
+            cancellation.check().map_err(|error| AdapterError {
+                spend_stop: None, message: error.message,
+            })?;
+            provider_retry::remaining(deadline)?;
             attempt += 1;
             let identity = model_spend::SendIdentity {
                 call_id: uuid::Uuid::now_v7().to_string(), logical_call_id: logical_call_id.clone(),
@@ -2881,7 +2929,15 @@ impl NativeAdapter {
                 if let Some(port) = &port { port.after_send(&identity, &outcome).map_err(stop)?; }
                 Ok(())
             };
-            match self.send_provider_request_once(&url, &body, messages) {
+            // Recompute after admission so database work cannot extend the
+            // model budget. A failed admission never reaches the transport.
+            let timeout = deadline.saturating_duration_since(std::time::Instant::now());
+            if timeout.is_zero() || cancellation.is_cancelled() {
+                report(model_spend::SendOutcome { evidence: model_spend::SendEvidence::NotSent, usage: None, succeeded: false })?;
+                cancellation.check().map_err(|error| AdapterError { spend_stop: None, message: error.message })?;
+                return Err(AdapterError { spend_stop: None, message: "模型调用超时（包含重试等待）".into() });
+            }
+            match self.send_provider_request_once(&url, &body, messages, timeout) {
                 Ok(resp) => {
                     let mut usage = None;
                     let mut response_observer = |delta: provider_stream::ModelDelta| {
@@ -2925,12 +2981,12 @@ impl NativeAdapter {
                         }
                         return Err(output_length_error(&value));
                     }
-                    if cumulative_usage.has_any_value() || output_retried {
+                    if cumulative_usage.has_any_value() || output_retried || attempt > 1 {
                         value["usage"] = cumulative_usage.as_provider_usage();
                     }
                     return Ok(value);
                 }
-                Err(e) if !transport_retried && is_retriable_chat_completion_error(&e) => {
+                Err(e) if !transport_retried && transient_retries < provider_retry::MAX_RETRIES && is_retriable_chat_completion_error(&e) => {
                     let evidence = send_error_evidence(&e);
                     if evidence == model_spend::SendEvidence::OutcomeUnknown {
                         prior_usage = Some(provider_stream::ModelUsage::default());
@@ -2938,18 +2994,34 @@ impl NativeAdapter {
                     }
                     report(model_spend::SendOutcome { evidence, usage: None, succeeded: false })?;
                     transport_retried = true;
-                    std::thread::sleep(chat_completion_retry_delay());
+                    transient_retries += 1;
+                    provider_retry::wait(chat_completion_retry_delay(), deadline, &cancellation)?;
                 }
                 Err(e) => {
                     // Error responses can carry billable usage; preserve it before formatting.
                     if let ureq::Error::Status(status, response) = e {
+                        let retry_after = provider_retry::retry_after(&response);
                         let text = response.into_string().unwrap_or_else(|e|e.to_string());
-                        let usage = serde_json::from_str(&text).ok().and_then(|v| if messages { deepseek_messages_stream::model_usage(&v) } else { provider_stream::model_usage(&v) });
+                        let parsed = serde_json::from_str(&text).ok();
+                        let usage = parsed.as_ref().and_then(|v| if messages { deepseek_messages_stream::model_usage(v) } else { provider_stream::model_usage(v) });
                         let current_usage = usage.clone().unwrap_or_default();
                         let cumulative = prior_usage.as_ref().map_or_else(|| current_usage.clone(), |prior| prior.plus(&current_usage));
-                        observer.observe(provider_stream::ModelDelta::Usage(cumulative));
+                        observer.observe(provider_stream::ModelDelta::Usage(cumulative.clone()));
                         report(model_spend::SendOutcome { evidence: model_spend::SendEvidence::Response, usage, succeeded: false })?;
-                        return Err(AdapterError { spend_stop: None, message: format!("HTTP 请求失败: status code {status}; {}", truncate_provider_error_body(&text)) });
+                        let retry_note = if transient_retries == 0 { String::new() } else { format!("（已重试 {transient_retries} 次）") };
+                        let message = format!("HTTP 请求失败{retry_note}: status code {status}; {}", truncate_provider_error_body(&text));
+                        if transient_retries < provider_retry::MAX_RETRIES && provider_retry::retryable_status(status, parsed.as_ref()) {
+                            let delay = provider_retry::delay(transient_retries, retry_after);
+                            // Keep unknown charges unknown across a later success.
+                            prior_usage = Some(cumulative);
+                            transient_retries += 1;
+                            provider_retry::wait(delay, deadline, &cancellation).map_err(|error| AdapterError {
+                                spend_stop: error.spend_stop,
+                                message: format!("{}; {message}", error.message),
+                            })?;
+                            continue;
+                        }
+                        return Err(AdapterError { spend_stop: None, message });
                     }
                     let evidence = send_error_evidence(&e);
                     if evidence == model_spend::SendEvidence::OutcomeUnknown {
@@ -2975,13 +3047,14 @@ impl NativeAdapter {
         url: &str,
         body: &serde_json::Value,
         messages: bool,
+        timeout: std::time::Duration,
     ) -> Result<ureq::Response, ureq::Error> {
         // ureq enforces this deadline on the socket while reading the response
         // body too. Its total timeout overrides timeout_read, so do not expose
         // an idle timeout that this transport cannot enforce alongside it.
         let builder = ureq::AgentBuilder::new()
-            .timeout(self.request_timeouts.request)
-            .timeout_connect(self.request_timeouts.connect.min(self.request_timeouts.request));
+            .timeout(timeout)
+            .timeout_connect(self.request_timeouts.connect.min(timeout));
         let agent = if messages { builder.redirects(0) } else { builder }.build();
         let request = agent.post(url)
             .set("Authorization", &format!("Bearer {}", self.api_key))
@@ -3539,12 +3612,12 @@ impl ModelAdapter for NativeAdapter {
         self.discovered_messages_capabilities().map(|capabilities| capabilities.tool_update)
     }
     fn projection_identity(&self) -> Option<String> {
-        Some(serde_json::json!([if self.discovered_messages_capabilities().is_some() {"deepseek-messages"} else {"native-chat"}, self.base_url, self.model]).to_string())
+        Some(serde_json::json!([if self.discovered_messages_capabilities().is_some() {"deepseek-messages"} else {"native-chat"}, self.base_url, self.model, self.agent_reasoning_effort.as_str()]).to_string())
     }
     fn context_request_projection(&self, request: &AgentRequestPlan) -> Option<serde_json::Value> {
         let capabilities = self.bound_messages_capabilities();
         let body = match capabilities {
-            Some(capabilities) => deepseek_messages::context_projection(&self.model, request, capabilities).ok()?,
+            Some(capabilities) => deepseek_messages::context_projection(self.agent_reasoning_effort, &self.model, request, capabilities).ok()?,
             None => native_chat_request_projection(&self.model, request).0,
         };
         // Context measurement must see an oversized wire request so it can
@@ -3624,7 +3697,7 @@ impl ModelAdapter for NativeAdapter {
     ) -> Result<AssistantTurn, AdapterError> {
         let capabilities = self.bound_messages_capabilities();
         let (body, provider_to_internal) = match capabilities {
-            Some(capabilities) => deepseek_messages::request_projection(&self.model, request, capabilities)?,
+            Some(capabilities) => deepseek_messages::request_projection(self.agent_reasoning_effort, &self.model, request, capabilities)?,
             None => native_chat_request_projection(&self.model, request),
         };
         let v = self.post_provider_request(body, observer, "chat", capabilities.is_some())?;
@@ -5473,6 +5546,7 @@ mod tests {
         })
         .unwrap();
         assert_eq!(native.mode, ProviderMode::Native);
+        assert_eq!(native.agent_reasoning_effort, AgentReasoningEffort::High);
 
         let react = ProviderConfig::from_getter(|k| match k {
             "UNDERSTAND_BOOK_PROVIDER" => Some("react".into()),
@@ -5483,6 +5557,29 @@ mod tests {
         })
         .unwrap();
         assert_eq!(react.mode, ProviderMode::ReAct);
+    }
+
+    #[test]
+    fn agent_reasoning_effort_config_accepts_supported_levels_and_rejects_typos() {
+        for (value, expected) in [
+            ("low", Some(AgentReasoningEffort::Low)),
+            ("high", Some(AgentReasoningEffort::High)),
+            (" max ", Some(AgentReasoningEffort::Max)),
+            ("xhigh", None),
+            ("", None),
+        ] {
+            let config = ProviderConfig::from_getter(|key| match key {
+                "OPENCODE_API_KEY" => Some("key".into()),
+                "OPENCODE_BASE_URL" => Some("https://api.deepseek.com".into()),
+                "FLUID_LLM_MODEL" => Some("deepseek-v4-flash".into()),
+                "UNDERSTAND_BOOK_AGENT_REASONING_EFFORT" => Some(value.into()),
+                _ => None,
+            });
+            match expected {
+                Some(expected) => assert_eq!(config.unwrap().agent_reasoning_effort, expected),
+                None => assert!(config.unwrap_err().message.contains("UNDERSTAND_BOOK_AGENT_REASONING_EFFORT")),
+            }
+        }
     }
 
     #[test]
@@ -5511,6 +5608,7 @@ mod tests {
         profile.output_reserve_tokens = 1_000;
         profile.safety_margin_tokens = 1_000;
         let config = |mode| ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode, api_key: "unused".into(), base_url: "http://127.0.0.1:1".into(),
             model: profile.matched_model.clone(),
         };
@@ -5997,6 +6095,7 @@ mod tests {
                 request
             });
             let config = ProviderConfig {
+                agent_reasoning_effort: Default::default(),
                 mode,
                 api_key: "test-key".into(),
                 base_url: format!("http://{addr}"),
@@ -6124,6 +6223,7 @@ mod tests {
                         body
                     });
                     let adapter = ProviderRegistry::adapter_from_config(ProviderConfig {
+                        agent_reasoning_effort: Default::default(),
                         mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-v4-flash".into(),
                     });
                     let request = CompletionRequest {
@@ -6200,6 +6300,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
             base_url: format!("http://{addr}"),
@@ -6255,7 +6356,7 @@ mod tests {
                 }
                 requests
             });
-            let config = ProviderConfig { mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-flash".into() };
+            let config = ProviderConfig { agent_reasoning_effort: Default::default(), mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-flash".into() };
             let adapter: Box<dyn ModelAdapter> = match mode {
                 ProviderMode::Native => Box::new(NativeAdapter::from_config(config)),
                 ProviderMode::ReAct => Box::new(ReActAdapter::from_config(config)),
@@ -6306,6 +6407,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
             base_url: format!("http://{addr}"),
@@ -6341,6 +6443,7 @@ mod tests {
 
         let adapter = ProviderRegistry::adapter_from_config_with_timeout(
             ProviderConfig {
+                agent_reasoning_effort: Default::default(),
                 mode: ProviderMode::Native,
                 api_key: "test-key".into(),
                 base_url: format!("http://{addr}"),
@@ -6393,6 +6496,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
             base_url: format!("http://{addr}"),
@@ -6416,7 +6520,7 @@ mod tests {
     }
 
     #[test]
-    fn native_adapter_does_not_retry_http_status_error() {
+    fn native_adapter_does_not_retry_permanent_http_status_error() {
         let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
         let addr = listener.local_addr().unwrap();
@@ -6429,7 +6533,7 @@ mod tests {
             let _ = read_http_request(&mut stream);
             let content = r#"{"error":{"message":"bad tools"}}"#;
             let response = format!(
-                "HTTP/1.1 500 Internal Server Error\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                "HTTP/1.1 400 Bad Request\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
                 content.len(),
                 content
             );
@@ -6437,6 +6541,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
             base_url: format!("http://{addr}"),
@@ -6481,6 +6586,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
             base_url: format!("http://{addr}"),

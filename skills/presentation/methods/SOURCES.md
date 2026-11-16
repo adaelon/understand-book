@@ -13,11 +13,15 @@
 | [y1_kurzgesagt](https://github.com/alchaincyf/huashu-art-motion/blob/2571ee0a9a0467c4d99e935ea9e0fadda19210b0/references/动画语法/y1_kurzgesagt.md) | 整体和局部连续对应、带定位的尺度变化 | part-whole、scale-zoom |
 | [t2_keynote_ui](https://github.com/alchaincyf/huashu-art-motion/blob/2571ee0a9a0467c4d99e935ea9e0fadda19210b0/references/动画语法/t2_keynote_ui.md) | 同一对象展开、焦点明确、落定后停住 | 部分展开与总览的信息层次 |
 
+## 交互教学图与视频参照
+
+2026-11-03 的五个场景借鉴了“让读者动手改变一个条件，并能从图中指认变化”的做法，也借鉴了拆开、旋转、切片这类空间操作。视频中的蓝图、像素、套印、产品拆解与点云用于确定不同画法。五份登记源码均按本项目的教学数据、离线依赖与状态协议编写。[teachable-figures 项目说明与可操作例子](https://github.com/ywEdAi/teachable-figures) · [视频时间索引与本批实施记录](../../../docs/performance/presentation-scenes-20261103/README.md)
+
 ## 授权
 
 三维联动模板提取自本仓库用户已认可的 [齿轮完整作品](../../../examples/gear-transmission/README.md)。其讲解组织参考 [Ciechanowski 的 Gears](https://ciechanow.ski/gears/) 与 [Mechanical Watch](https://ciechanow.ski/mechanical-watch/)，不复制网站源码或素材。两个主题的模板与数学模型为本项目实现；Three.js 0.180.0 来自官方发行包，采用 MIT，[许可副本](vendor/THREE-LICENSE.txt) 随离线资源保留。宿主资产来源及重建方法见 [Three 资源说明](../../../assets/presentation/three-0.180.0/README.md)。
 
-上游代码与文档采用 MIT；许可正文保存在 [LICENSE.huashu-art-motion.txt](LICENSE.huashu-art-motion.txt)。本批示例代码为本项目重新实现，页面无上游图片、角色、字体或影片资源。上游对字体、笔顺数据及角色形象有单独说明，详见其 [README 许可段](https://github.com/alchaincyf/huashu-art-motion/blob/2571ee0a9a0467c4d99e935ea9e0fadda19210b0/README.md#许可证)。
+huashu-art-motion 的代码与文档采用 MIT，许可正文保存在 [LICENSE.huashu-art-motion.txt](LICENSE.huashu-art-motion.txt)。本库保留该项目对字体、笔顺数据及角色形象的来源说明。[README 许可段](https://github.com/alchaincyf/huashu-art-motion/blob/2571ee0a9a0467c4d99e935ea9e0fadda19210b0/README.md#许可证)
 
 ## 适配边界
 

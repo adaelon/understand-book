@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { flushPromises, mount } from '@vue/test-utils';
-import { api, type AssetManifest, type BoardSourceReadResponse, type SourcePopupView } from './api';
+import { api, type AssetManifest, type BoardSourceReadResponse, type SourcePopupView, type SourceWindowLoader } from './api';
 import BoardSourceReader from './components/BoardSourceReader.vue';
 
 const request = { board_id: 'board-one', item_id: 'answer-one', source_ref_id: 'source-one' };
@@ -24,7 +24,8 @@ function deferred<T>() {
   return { promise, resolve };
 }
 async function open() {
-  view = mount(BoardSourceReader, { props: { request, source }, attachTo: document.body });
+  const readWindow: SourceWindowLoader = options => api.boardSourceRead({ ...request, ...options });
+  view = mount(BoardSourceReader, { props: { readWindow, source }, attachTo: document.body });
   await flushPromises();
   return view;
 }
@@ -83,6 +84,17 @@ describe('continuous source reading', () => {
     expect(reader.find('[data-source-lid="2.4"] blockquote').text()).toBe('核对原文。');
   });
 
+  it('renders book anchor markers without visible markup while preserving the following citation highlight', async () => {
+    vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ segments: [
+      segment('2.2', '<a id="ch20-exercises"></a>'),
+      { ...segment('2.3', '习题引用的文字。'), highlights: [{ start: 0, end: 7 }] },
+    ] }));
+    const reader = await open();
+    expect(reader.find('[data-source-lid="2.2"]').text()).toBe('');
+    expect(reader.find('[data-source-lid="2.2"] a').attributes('id')).toBe('ch20-exercises');
+    expect(reader.find('[data-source-lid="2.3"] mark').text()).toBe('习题引用的文字');
+  });
+
   it('joins a sentence split across fetched pages without losing the original citation or cursor', async () => {
     const first = { ...segment('2.3', '保存变量 '), highlights: [{ start: 0, end: 4 }] };
     vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ segments: [first], next_lid: first.lid }));
@@ -104,7 +116,7 @@ describe('continuous source reading', () => {
   it('loads the citation binding read-only, renders original markdown and locates the cited paragraph', async () => {
     const reader = await open();
     expect(api.boardSourceRead).toHaveBeenCalledOnce();
-    expect(api.boardSourceRead).toHaveBeenCalledWith({ ...request, direction: 'around', include_outline: true });
+    expect(api.boardSourceRead).toHaveBeenCalledWith({ ...request, anchor_lid: undefined, direction: 'around', include_outline: true });
     expect(reader.find('[data-source-lid="2.3"] strong').text()).toBe('六格');
     expect(reader.find('[data-source-lid="2.3"] mark').text()).toContain('攻击距离');
     expect(reader.emitted('position')?.at(-1)).toEqual(['2.3']);
@@ -143,7 +155,7 @@ describe('continuous source reading', () => {
     vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ outline: undefined }));
     await reader.find('.source-reader-return').trigger('click');
     await flushPromises();
-    expect(api.boardSourceRead).toHaveBeenLastCalledWith({ ...request, direction: 'around', include_outline: false });
+    expect(api.boardSourceRead).toHaveBeenLastCalledWith({ ...request, anchor_lid: undefined, direction: 'around', include_outline: false });
     expect(reader.emitted('position')?.at(-1)).toEqual(['2.3']);
   });
 
@@ -168,7 +180,7 @@ describe('continuous source reading', () => {
     const reader = await open();
     const laterRequest = { ...request, source_ref_id: 'source-two' };
     vi.mocked(api.boardSourceRead).mockResolvedValueOnce(windowResult({ source_ref_id: 'source-two', source_lid: '9.1', focus_lid: '9.1', segments: [segment('9.1', '新的来源内容')], previous_lid: null, next_lid: null }));
-    await reader.setProps({ request: laterRequest, source: { ...source, source_ref_id: 'source-two' } });
+    await reader.setProps({ readWindow: (options: Parameters<SourceWindowLoader>[0]) => api.boardSourceRead({ ...laterRequest, ...options }), source: { ...source, source_ref_id: 'source-two' } });
     await flushPromises();
     earlier.resolve(windowResult());
     await flushPromises();

@@ -55,8 +55,9 @@ test('B1 operator creates, confirms, reuses and publishes; completed DSH task re
   await page.getByRole('button',{name:'浏览共享预构建工作区',exact:true}).click();
   await page.locator('.shared-card').filter({hasText:'B1双资料课程'}).filter({hasText:`第 ${built.version} 版`}).getByRole('button',{name:'查看目标与路线',exact:true}).click();
   const shared=page.getByRole('article',{name:'共享工作区详情',exact:true});await shared.getByRole('textbox',{name:'确认你的学习目标',exact:true}).fill('通过两份资料完成事务复习');await shared.getByRole('button',{name:'确认目标并开始学习',exact:true}).click();
-  await expect(page.locator('.workspace-goal-bar')).toContainText('通过两份资料完成事务复习');
-  await page.getByRole('button',{name:'工作区与资料',exact:true}).click();
+  await expect(page.locator('.topbar')).toBeVisible();
+  await page.getByRole('button',{name:'学习资料',exact:true}).click();
+  await expect(page.locator('.learning-goal-heading')).toContainText('通过两份资料完成事务复习');
   const members=page.getByRole('region',{name:'当前工作区',exact:true}).locator('.learning-member');await expect(members).toHaveCount(2);
   const library=await api('/api/library');const generated=library.books.find((book:any)=>book.published_book_ref.publication_id===built.materials[1].publication_id);
   const generatedTitle=generated.title||generated.published_book_ref.book_id.replace(/[-_]+/g,' ');

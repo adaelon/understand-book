@@ -2247,6 +2247,7 @@ mod tests {
         assert!(plan.active_context.fits);
         assert!(prepared.bind_generation_prefix(&plan, &raw));
         let native = crate::NativeAdapter::from_config_with_runtime_profile(crate::ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode: crate::ProviderMode::Native, api_key: "unused".into(),
             base_url: "http://127.0.0.1:1".into(), model: profile.matched_model.clone(),
         }, Some(profile.clone()));

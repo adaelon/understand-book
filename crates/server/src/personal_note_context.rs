@@ -66,7 +66,7 @@ pub(crate) fn freeze(
     } else {
         None
     };
-    if refs.is_empty() && prior.is_none() {
+    if refs.is_empty() && prior.is_none() && input.get("understanding_ref").is_none_or(Value::is_null) {
         return Ok(None);
     }
     if refs.len() > 100 {
@@ -83,7 +83,7 @@ pub(crate) fn freeze(
             pages.push(page);
         }
     }
-    let understanding=input.get("understanding_ref").filter(|v|!v.is_null()).map(|reference|crate::note_thinking::evidence(user,reference,false)).transpose()?;
+    let understanding=input.get("understanding_ref").filter(|v|!v.is_null()).map(|reference|crate::knowledge_tree::evidence(user,reference)).transpose()?;
     Ok(Some(
         json!({"references":exact,"explicit":pages,"prior_discussion":prior,"understanding":understanding,"reply_to_turn":reply,"accepted_at":crate::multi_user_host::now().to_string()}),
     ))

@@ -231,7 +231,8 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
               revision:reconcile!.revision,status:waive ? "not_started" : "completed",quantity_ms:quantity,
               reason:String(data.get("reason")),evidence:String(data.get("evidence")),
             });
-            close();return result;
+            if (result) close();
+            return result;
           }
           const result = await ops.submit(
             "人工核算费用",
@@ -246,7 +247,7 @@ function ChargeDetail({ call, close }: { call: string; close: () => void }) {
               evidence: String(data.get("evidence")),
             },
           );
-          close();
+          if (result) close();
           return result;
         }}
       >

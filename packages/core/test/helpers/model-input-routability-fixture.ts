@@ -143,9 +143,6 @@ export function writeSyntheticPass1ProductionGeneration(
               version: PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION,
               parent_lid: task.route.parent_lid,
               source_slice_ordinal: task.route.source_slice_ordinal,
-              core_sha256: task.descriptor.input_basis.kind === "source_slices"
-                ? task.descriptor.input_basis.slices[0].core_sha256
-                : "",
               nodes,
               edges: [],
             }
@@ -197,9 +194,6 @@ export function writePass1ProductionTaskArtifact(input: {
           version: PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION,
           parent_lid: task.route.parent_lid,
           source_slice_ordinal: task.route.source_slice_ordinal,
-          core_sha256: task.descriptor.input_basis.kind === "source_slices"
-            ? task.descriptor.input_basis.slices[0].core_sha256
-            : "",
           nodes,
           edges: [],
         }
@@ -246,6 +240,6 @@ export function closeSyntheticPass1(fixture: SyntheticRoutabilityFixture): void 
   writeFileSync(path.join(fixture.target.workspace_dir, "source.txt"), fixture.source, "utf8");
   writeJson(path.join(fixture.target.workspace_dir, "source_manifest.json"), {
     book_id: fixture.target.book_id,
-    canonical_source: { kind: "markdown", truth_file: "source.txt" },
+    canonical_source: { kind: "markdown", path: fixture.source_file, truth_file: "source.txt" },
   });
 }

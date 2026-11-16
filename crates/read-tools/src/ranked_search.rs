@@ -15,6 +15,9 @@ const OVERLAP_UTF16: usize = 160;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct RankedSearchResult {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub reading: Option<super::reading_support::ReadingSupport>,
     pub version: String,
     pub query: String,
     /// Number of lexically matching windows in the selected scope, not a claim
@@ -140,6 +143,7 @@ impl Book {
         let mut terms: Vec<_> = term_frequencies(query).into_keys().collect();
         terms.sort();
         let mut result = RankedSearchResult {
+            reading: None,
             version: "search_ranked.v1".into(),
             query: query.into(),
             total_candidates: 0,

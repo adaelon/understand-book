@@ -1,0 +1,56 @@
+{
+  "version": "music-answer-quality.v1",
+  "book_id": "music-beethoven9-tennstedt-m1-release1",
+  "publication_id": "01a1a0d2-4e74-7f81-8636-4c91fad083d5",
+  "cases": [
+    {
+      "id": "M01", "split": "development", "title": "全乐章核心素材与动机", "baseline_mode": "knowledge",
+      "question": "帮我分析贝九第一乐章：构建这个乐章主题有哪些核心素材？帮我分析动机",
+      "assessment": "辨明核心音高或节奏材料，解释怎样构成主题及至少一条后续发展关系；回答整个乐章的问题。允许不同分析分组，不固定动机数量；音符清单、情绪形容和无实例的同源断言均不足以完成分析。",
+      "reference_facts": ["主部主题首次强奏在第17小节，不能写成第81小节；强奏前第16小节末有弱起音。", "开头第一小提琴与中提琴的可见谱面是休止；不能根据隐藏C音对象断言开头实际是A-C-E音响。"],
+      "origin": "用户提供的原始问题；原始Gemini回答与产品截图是历史观察，不是参考答案。"
+    },
+    {
+      "id": "M02", "split": "development", "title": "从开场碎片到主部主题", "baseline_mode": "same_material",
+      "question": "贝九第一乐章开头的零碎音型，是怎样变成第17小节开始的主部主题的？请把音程和节奏上的联系说清楚，让我能对照前后两段理解。",
+      "assessment": "以开场和主题的具体材料说明保留和改变，区分音程骨架、节奏形态与配器增强。不能仅以音符都来自和弦或气势变强证明动机关系。",
+      "reference_facts": ["第17小节第一小提琴以长A5及末尾短F5进入下行主题；开头E-A-E的下跳与主部的分解和弦下行应按具体谱位比较。"]
+    },
+    {
+      "id": "M03", "split": "development", "title": "跨段落比较", "baseline_mode": "same_material",
+      "question": "比较贝九第一乐章第17—21小节和第301—305小节：后面这次出现为什么既像前面，又给人不同的感觉？请指出实际保留和改变的材料。",
+      "assessment": "读取或说明两处实际材料，比较音高、节奏、和声或声部中的具体异同；不能只读前一处就推断后一处。感觉属于有依据的解释，不冒称已听过指定演奏。",
+      "reference_facts": []
+    },
+    {
+      "id": "M04", "split": "development", "title": "主题关联的证据强度", "baseline_mode": "knowledge",
+      "question": "贝九第一乐章的第二主题，可以理解成第一主题变温柔了吗？它们有哪些具体联系，又有哪些不能忽略的差别？",
+      "assessment": "区分情绪对比与可证明的动机关系。展示材料后再作联系判断，不因为同一作曲家、相似音阶或宽泛节奏特征就断言同源。",
+      "reference_facts": []
+    },
+    {
+      "id": "M05", "split": "development", "title": "面向不识谱读者的解释", "baseline_mode": "knowledge",
+      "question": "我不识谱，听贝九第一乐章时总觉得是一大团声音。请选两种值得留意的核心材料，教我怎么认出它们，以及怎样发现它们后来变了。",
+      "assessment": "给出读者可执行的辨认线索和比较顺序，以简明解释连接原形和变化。术语可使用但须解释；不靠堆音名、小数拍位或情绪词完成任务。若提供时间须对应所用录音。",
+      "reference_facts": []
+    },
+    {
+      "id": "M06", "split": "development", "title": "纠正错误前提与资料冲突", "baseline_mode": "same_material",
+      "question": "贝九第一乐章第1小节，第一小提琴和中提琴是不是一直保持C音，所以开头其实是A小调和弦？请核对再解释。",
+      "assessment": "核对声部和谱面，处理隐藏谱对象与可见谱面的冲突，不能顺从错误前提构建和声解释。若当前工具材料不足以消解冲突，应说明具体缺口。",
+      "reference_facts": ["独立总谱扫描第1小节中，第一小提琴和中提琴均为休止。", "本项目原MusicXML在P48和P50第1小节额外有print-object=no的C5/C4；当前发布的score_objects保留音高但未保留隐藏属性。不能将这两个隐藏对象直接解释为作品的持续发声音。"]
+    },
+    {
+      "id": "M07", "split": "holdout", "title": "节奏归纳的边界", "baseline_mode": "same_material",
+      "question": "贝九第一乐章第17—21小节里，那些很短的音是不是每次都出现在小节末、都把力量推到下一小节？请检查这个概括是否准确。",
+      "assessment": "按拍位检查具体例子，区分拍末与小节末，保留成立的节奏关系并修正过度概括。",
+      "reference_facts": []
+    },
+    {
+      "id": "M08", "split": "holdout", "title": "录音比较的信息边界", "baseline_mode": "same_material",
+      "question": "这份滕施泰特1992年的贝九第一乐章，和富特文格勒1951年的演奏相比，开头十六小节具体哪里更慢、哪些乐器更突出？",
+      "assessment": "区分谱面可知与两份录音比较所需证据。材料未提供另一演奏时，不编造具体时间或声部平衡；说明还需要哪份材料及如何比较。",
+      "reference_facts": ["本题产品材料只有Tennstedt 1992录音；没有向候选提供Furtwängler 1951音频。"]
+    }
+  ]
+}

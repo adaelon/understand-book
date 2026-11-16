@@ -1862,6 +1862,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tempfile",
+ "time",
  "ts-rs",
  "uuid",
  "windows-sys 0.61.2",
@@ -2531,9 +2532,11 @@ version = "0.0.0"
 dependencies = [
  "base-schema",
  "book-tool-contracts",
+ "quick-xml",
  "schemars 0.8.22",
  "serde",
  "serde_json",
+ "tempfile",
  "ts-rs",
  "unicode-casefold",
  "unicode-normalization",
@@ -2711,6 +2714,7 @@ dependencies = [
  "base-schema",
  "book-tool-contracts",
  "dotenvy",
+ "httpdate",
  "memory",
  "read-tools",
  "reader",
@@ -4094,6 +4098,20 @@ dependencies = [
  "tiny_http",
  "ureq",
  "url",
+]
+
+[[package]]
+name = "understand-book-local-debug"
+version = "0.3.8"
+dependencies = [
+ "dotenvy",
+ "runtime",
+ "serde",
+ "serde_json",
+ "server",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
 ]
 
 [[package]]

@@ -17,6 +17,123 @@ pub(super) fn publication(f: &Fixture, operation:&str, expected:u32) -> Value {
 fn publish(f:&Fixture,input:Value)->Value { f.ok(&f.b,"POST","/api/admin/workspace-releases",input) }
 fn detail(f:&Fixture,token:&str,version:u32)->Value { f.ok(token,"GET",&format!("/api/workspace-releases/exam-course/versions/{version}"),Value::Null) }
 
+fn book_filter_publication(f:&Fixture, id:&str, expected:u32, sources:&[&crate::published_library::PublishedBookRef])->Value {
+    let mut input = publication(f, &format!("{id}-v{}",expected+1), expected);
+    input["release_id"] = json!(id);
+    let mut course:Value = serde_json::from_str(include_str!("../../../../docs/examples/inquiry-course/ai-infra-resource-bounds.v1.course.json")).unwrap();
+    let original = course["lessons"][0].clone();
+    let lessons:Vec<_> = sources.iter().enumerate().map(|(index,reference)| {
+        let book = f.access.library.lock().unwrap().load("A",reference).unwrap();
+        let mut lesson = original.clone();
+        lesson["summary"]["id"] = json!(format!("lesson-{index}"));
+        lesson["summary"]["source"] = json!({"publication":reference,"source_revision":book.book.source_fingerprint(),
+            "start_lid":"1.1","end_lid":"1.3","label":"书籍课程筛选测试来源","structure_refs":["fixture"]});
+        lesson["assessment"]["source_lids"] = json!(["1.2"]);
+        lesson
+    }).collect();
+    course["routes"][0]["lesson_ids"] = json!(lessons.iter().map(|lesson|&lesson["summary"]["id"]).collect::<Vec<_>>());
+    course["lessons"] = json!(lessons);
+    input["manifest"]["inquiry_course"] = course;
+    input
+}
+
+#[test]
+fn s1_book_filter_applies_before_pagination_and_counts_matching_courses() {
+    let f = fixture();
+    publish(&f,book_filter_publication(&f,"a-other",0,&[&f.y]));
+    publish(&f,book_filter_publication(&f,"b-single",0,&[&f.x]));
+    publish(&f,book_filter_publication(&f,"c-cross",0,&[&f.x,&f.y]));
+    let mut materials_only = publication(&f,"d-materials-only",0);
+    materials_only["release_id"] = json!("d-materials-only");
+    publish(&f,materials_only);
+    f.control.connection.execute("UPDATE workspace_releases SET created_at=100",[]).unwrap();
+    let costs_before:i64 = f.control.connection.query_row("SELECT count(*) FROM model_call_charges",[],|row|row.get(0)).unwrap();
+    let first = f.ok(&f.a,"GET","/api/workspace-releases?limit=1&offset=0",Value::Null);
+    assert_eq!(first["items"][0]["release_id"],"a-other");
+    assert_eq!(f.ok(&f.a,"GET","/api/workspace-releases?limit=1&offset=1",Value::Null)["items"][0]["release_id"],"b-single");
+    let path = format!("/api/workspace-releases?book_id={}&limit=1",f.x.book_id);
+    let first = f.ok(&f.a,"GET",&path,Value::Null);
+    assert_eq!(first["total"],2);
+    assert_eq!(first["limit"],1);
+    assert_eq!(first["offset"],0);
+    assert_eq!(first["items"][0]["release_id"],"b-single");
+    let second = f.ok(&f.a,"GET",&format!("{path}&offset=1"),Value::Null);
+    assert_eq!(second["total"],2);
+    assert_eq!(second["offset"],1);
+    assert_eq!(second["items"][0]["release_id"],"c-cross");
+    let lessons = second["items"][0]["manifest"]["inquiry_course"]["lessons"].as_array().unwrap();
+    assert_eq!(lessons.len(),2,"matching a book preserves the cross-book course directory");
+    assert_eq!(lessons[0]["source"]["publication"],json!(f.x));
+    assert_eq!(lessons[1]["source"]["publication"],json!(f.y));
+    let empty = f.ok(&f.a,"GET","/api/workspace-releases?book_id=missing-book&limit=7&offset=0",Value::Null);
+    assert_eq!(empty,json!({"items":[],"total":0,"limit":7,"offset":0}));
+    let exhausted = f.ok(&f.a,"GET",&format!("{path}&offset=2"),Value::Null);
+    assert_eq!(exhausted["total"],2);
+    assert_eq!(exhausted["items"],json!([]));
+    assert_eq!(f.control.connection.query_row("SELECT count(*) FROM workspace_release_instances",[],|row|row.get::<_,i64>(0)).unwrap(),0);
+    assert_eq!(f.control.connection.query_row("SELECT count(*) FROM model_call_charges",[],|row|row.get::<_,i64>(0)).unwrap(),costs_before);
+}
+
+#[test]
+fn s1_book_filter_preserves_visibility_versions_archives_and_tier_access() {
+    let f = fixture();
+    publish(&f,book_filter_publication(&f,"visible-course",0,&[&f.x]));
+    let mut newer = book_filter_publication(&f,"visible-course",1,&[&f.x]);
+    newer["visible_to_users"] = json!(["B"]);
+    publish(&f,newer);
+    let mut hidden = book_filter_publication(&f,"hidden-course",0,&[&f.x]);
+    hidden["visible_to_users"] = json!(["B"]);
+    publish(&f,hidden);
+    let mut licensed = book_filter_publication(&f,"licensed-course",0,&[&f.x]);
+    licensed["visible_to_users"] = json!([]);
+    licensed["allowed_tiers"] = json!(["basic"]);
+    publish(&f,licensed);
+    let path = format!("/api/workspace-releases?book_id={}",f.x.book_id);
+    let visible = f.ok(&f.a,"GET",&path,Value::Null);
+    assert_eq!(visible["total"],1);
+    assert_eq!(visible["items"][0]["release_id"],"visible-course");
+    assert_eq!(visible["items"][0]["version"],1);
+    assert!(!visible.to_string().contains("hidden-course"));
+    assert!(!visible.to_string().contains("licensed-course"));
+    let operator = f.ok(&f.b,"GET",&path,Value::Null);
+    assert_eq!(operator["total"],3,"explicit readers see both versions and the separately visible release");
+    f.ok(&f.b,"POST","/api/admin/workspace-releases/visible-course/archive",json!({"operation_id":"archive-book-filter","archived":true}));
+    let archived = f.ok(&f.a,"GET",&path,Value::Null);
+    assert_eq!(archived["total"],1);
+    assert_eq!(archived["items"][0]["archived"],true);
+    super::cloud_course_e2e_tests::configure_product(&f);
+    super::cloud_course_e2e_tests::purchase(&f,"A");
+    let licensed = f.ok(&f.a,"GET",&path,Value::Null);
+    assert_eq!(licensed["total"],2);
+    assert!(licensed["items"].as_array().unwrap().iter().any(|item|item["release_id"]=="licensed-course"));
+    assert!(!licensed.to_string().contains("hidden-course"));
+}
+
+#[test]
+fn s1_book_filter_public_views_project_only_course_overview_and_admin_keeps_lessons() {
+    let f = fixture();
+    let input = book_filter_publication(&f,"overview-course",0,&[&f.x,&f.y]);
+    let course:memory::course::InquiryCourse = serde_json::from_value(input["manifest"]["inquiry_course"].clone()).unwrap();
+    let overview = json!(course.overview());
+    publish(&f,input);
+    let detail_path = "/api/workspace-releases/overview-course/versions/1";
+    let list = f.ok(&f.a,"GET",&format!("/api/workspace-releases?book_id={}",f.x.book_id),Value::Null);
+    let detail = f.ok(&f.a,"GET",detail_path,Value::Null);
+    let export = f.ok(&f.a,"GET",&format!("{detail_path}/export"),Value::Null);
+    for view in [&list["items"][0],&detail,&export] {
+        assert_eq!(view["manifest"]["inquiry_course"],overview);
+        for lesson in view["manifest"]["inquiry_course"]["lessons"].as_array().unwrap() {
+            for key in ["summary","introduction","prediction","experiment","explanation","task","hint","assessment","solution"] {
+                assert!(lesson.get(key).is_none(),"public course overview exposes {key}");
+            }
+        }
+    }
+    let admin = f.ok(&f.b,"GET","/api/admin/workspace-releases/overview-course/versions/1",Value::Null);
+    let admin_list = f.ok(&f.b,"GET","/api/admin/workspace-releases",Value::Null);
+    assert_eq!(admin["manifest"]["inquiry_course"],json!(course));
+    assert_eq!(admin_list["items"][0]["manifest"]["inquiry_course"],json!(course));
+}
+
 #[test]
 fn s1_publishes_two_exact_ready_materials_without_private_state_or_new_costs() {
     let f = fixture();

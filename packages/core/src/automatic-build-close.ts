@@ -41,7 +41,7 @@ const CLOSE_STAGES: AutomaticBuildPublicationStage[] = [
   "profile_sidecar",
   "pass2",
   "book_structure",
-  "formal_objects", "cognitive_materials", "teaching_publish",
+  "formal_objects", "cognitive_materials", "teaching_publish", "course",
 ];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -57,6 +57,7 @@ function boundedString(value: unknown, maxBytes = 512): value is string {
 }
 
 const PUBLICATION_PATH_ALLOWLIST: Record<AutomaticBuildPublicationStage, ReadonlySet<string>> = {
+  course: new Set(["inquiry_course.json", "course_build_report.json"]),
   formal_objects: new Set(["formal_objects.json"]),
   cognitive_materials: new Set(["cognitive_materials.json"]),
   teaching_publish: new Set(["teaching_readiness.json"]),
@@ -106,7 +107,6 @@ export interface AutomaticBuildStageCloseResultV2 {
     policy_contracts: AutomaticBuildClosePolicyContractV1[];
     coverage_digest: string;
     freshness_digest: string;
-    public_artifact_set_digest: string;
   };
   next: "replan";
 }
@@ -139,6 +139,13 @@ export interface AutomaticBuildStageBatchExecutionV1 {
 export function parseAutomaticBuildStageCloseResult(
   value: unknown,
 ): AutomaticBuildStageCloseResultV2 {
+  // Existing V2 receipts may contain this retired, redundant report field.
+  // Normalize the read view so create-only reconciliation preserves their files.
+  if (isRecord(value) && value.version === "automatic_build_stage_close_result.v2"
+    && isRecord(value.postcondition) && "public_artifact_set_digest" in value.postcondition) {
+    const { public_artifact_set_digest: _retired, ...postcondition } = value.postcondition;
+    value = { ...value, postcondition };
+  }
   if (!isRecord(value)
     || !exactKeys(value, [
       "version",
@@ -177,7 +184,6 @@ export function parseAutomaticBuildStageCloseResult(
       "policy_contracts",
       "coverage_digest",
       "freshness_digest",
-      "public_artifact_set_digest",
     ])
     || value.postcondition.stage_closed !== true
     || !Array.isArray(value.postcondition.policy_contracts)
@@ -208,7 +214,6 @@ export function parseAutomaticBuildStageCloseResult(
     || [
       value.postcondition.coverage_digest,
       value.postcondition.freshness_digest,
-      value.postcondition.public_artifact_set_digest,
     ].some((digest) => typeof digest !== "string" || !SHA256.test(digest))) {
     throw new Error("automatic build stage close result is invalid");
   }
@@ -519,7 +524,6 @@ export function closeAutomaticBuildStage(input: {
       policy_contracts: postEvidence.policy_contracts,
       coverage_digest: postEvidence.coverage_digest,
       freshness_digest: freshness.freshness_digest,
-      public_artifact_set_digest: sha256(receipt.artifacts),
     },
     next: "replan",
   };

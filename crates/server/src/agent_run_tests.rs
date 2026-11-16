@@ -98,7 +98,7 @@ impl Provider {
 
 fn observation_coach_response(request: &Value) -> Option<Value> {
     let messages = request["messages"].as_array()?;
-    if !messages.first()?["content"].as_str()?.starts_with("你是 Understand Book 的教学教练。") {
+    if !messages.first()?["content"].as_str()?.starts_with("你整理 Understand Book 普通对话中已经发生的理解变化。") {
         return None;
     }
     let input: Value = serde_json::from_str(messages.iter()
@@ -111,9 +111,7 @@ fn observation_coach_response(request: &Value) -> Option<Value> {
         .map(|fact| json!({"fact_ref":fact["fact_ref"], "decision":"no_new_information",
             "reason":"This Resident lifecycle fixture does not infer learner understanding."}))
         .collect();
-    let guidance = json!({"next_step":{"focus":"Keep the accepted Resident task",
-        "participation":{"choice":"conclude", "reason":"Observation only."}},
-        "observations":observations, "reason":"The delivered response is already recorded."});
+    let guidance = json!({"observations":observations, "reason":"The delivered response is already recorded."});
     Some(json!({"choices":[{"message":{"role":"assistant", "content":guidance.to_string()},
         "finish_reason":"stop"}], "usage":{"total_tokens":1}}))
 }
@@ -441,7 +439,7 @@ fn local_user_survives_service_changes_book_switch_and_restart() {
     let selected = original_session.1["history"]["active_session_id"].clone();
     let enabled = http(&running.url, "POST", "/tutor/mutate", json!({
         "operation_id":"mu1a-enable", "expected_revision":0,
-        "action":{"kind":"set_enabled", "enabled":true}
+        "action":{"kind":"start", "user_intent":"Preserve my learning goal", "explicit_constraints":[], "material_scope":[], "default_teaching_intent":null}
     }));
     assert_eq!(enabled.0, 200, "{enabled:?}");
 
@@ -476,7 +474,7 @@ fn local_user_survives_service_changes_book_switch_and_restart() {
         text: Some("MU1a persistent note".into()), ..Default::default()
     }).len(), 1);
     let control = state.user.learning_store().unwrap().state().unwrap().control;
-    assert!(control.enabled);
+    assert!(!control.enabled);
     assert_eq!(control.revision, 1);
     drop(state);
     reopened.shutdown();
@@ -1233,8 +1231,10 @@ fn resident_fallback_keeps_question_and_paired_tool_history_before_retry() {
     let projected = request.request.to_string();
     assert!(projected.contains("请制作一个交互页面"));
     assert!(projected.contains("重试"));
-    assert_eq!(&request.request["messages"].as_array().unwrap()[..sampled_messages.len()],
-        sampled_messages.as_slice(), "the Resident sampled prefix survives the next user turn unchanged");
+    let saved_dialogue:Vec<_>=sampled_messages.iter().filter(|message|message["role"]!="system").collect();
+    let continued_dialogue:Vec<_>=request.request["messages"].as_array().unwrap().iter().filter(|message|message["role"]!="system").collect();
+    assert_eq!(&continued_dialogue[..saved_dialogue.len()],saved_dialogue.as_slice(),
+        "the user/tool dialogue survives; turn-frozen system context is refreshed");
     let mut pending = std::collections::BTreeSet::new();
     for message in request.request["messages"].as_array().unwrap() {
         if message["role"] == "assistant" {
@@ -1276,8 +1276,9 @@ fn resident_restored_projection_does_not_restore_prior_tool_activation() {
 
     let second = chat(&running, "解释另一个术语");
     let request = provider.next();
-    assert_eq!(&request.request["messages"].as_array().unwrap()[..sampled_messages.len()],
-        sampled_messages.as_slice());
+    let saved_dialogue:Vec<_>=sampled_messages.iter().filter(|message|message["role"]!="system").collect();
+    let continued_dialogue:Vec<_>=request.request["messages"].as_array().unwrap().iter().filter(|message|message["role"]!="system").collect();
+    assert_eq!(&continued_dialogue[..saved_dialogue.len()],sampled_messages.iter().filter(|message|message["role"]!="system").collect::<Vec<_>>().as_slice());
     assert!(request.request["tools"].as_array().unwrap().iter()
         .all(|tool| tool["function"]["name"] != "notes_search"),
         "restored history must not restore a prior run's discovery activation");

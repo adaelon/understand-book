@@ -5,7 +5,7 @@ import { resolve } from 'node:path';
 // Real Rust HTTP fixture: cargo test -p server q4_browser_host -- --ignored --nocapture
 // Admin Vite entry: pnpm --filter @understand-book/admin dev --host 127.0.0.1 --port 4184
 const backend = 'http://127.0.0.1:4186', control = 'http://127.0.0.1:4187';
-const output = resolve('../../docs/performance/quota-q3-q4-20261018');
+const output = resolve('../../docs/performance/allowance-budget-20261108/playwright');
 
 test.afterEach(async ({ page }, info) => {
   if (info.status !== info.expectedStatus) {
@@ -49,7 +49,7 @@ test('Q4 percentage balance, real manual top-up, gift, correction, history and a
   };
   const submit = async (target: Page, title: string) => {
     const dialog = target.getByRole('dialog', { name: title, exact: true });
-    await dialog.getByRole('button', { name: '确认提交' }).click();
+    await dialog.locator('button[type=submit]').click();
     await expect(dialog).not.toBeVisible();
     await expect(target.getByText('操作已完成', { exact: false })).toBeVisible();
   };
@@ -57,57 +57,60 @@ test('Q4 percentage balance, real manual top-up, gift, correction, history and a
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.goto('/q4-acceptance');
   await openAllowance();
-  await expect(available).toHaveText('70.6979%');
+  await expect(available).toHaveText('96.8%');
   await expect(page.locator('.usage-list').last()).toContainText('低于 0.1%');
   await page.getByRole('button', { name: '下一页', exact: true }).click();
   await expect(page.getByRole('navigation', { name: '使用记录分页' })).toContainText('21–22 / 22');
   await expect(page.locator('.usage-list').last()).toContainText('2.3%');
 
   await admin.goto('http://127.0.0.1:4184/admin/users/A');
-  await admin.getByText('补充方案（所有账号）', { exact: true }).click();
-  await admin.getByRole('button', { name: '新增补充方案', exact: true }).click();
-  await field('新增补充方案', 'title').fill('考试冲刺补充');
-  await field('新增补充方案', 'amount').fill('1.23');
-  await field('新增补充方案', 'delta').fill('50');
-  await field('新增补充方案', 'basis_version').fill('test-basis');
-  await field('新增补充方案', 'instructions').fill('联系运营，确认实际收款后到账');
-  await submit(admin, '新增补充方案');
-  await refresh('70.6979%');
+  await admin.getByRole('button', { name: '额度与套餐', exact: true }).click();
+  await admin.getByText('管理额度加购商品 · 所有账号共用', { exact: true }).click();
+  await admin.getByRole('button', { name: '新增加购商品', exact: true }).click();
+  await field('新增加购商品', 'title').fill('考试冲刺补充');
+  await field('新增加购商品', 'amount').fill('1.23');
+  await field('新增加购商品', 'budget').fill('0.5');
+  await field('新增加购商品', 'instructions').fill('联系运营，确认实际收款后到账');
+  await submit(admin, '新增加购商品');
+  await refresh('96.8%');
   await page.getByRole('button', { name: '补充额度', exact: true }).click();
   const offer = page.getByRole('region', { name: '补充额度', exact: true });
-  await expect(offer).toContainText('考试冲刺补充 · 增加 50%');
+  await expect(offer).toContainText('增加的用量相当于本期总额度的 68.5%');
   await expect(offer).toContainText('支付 ¥1.23');
-  await expect(available).toHaveText('70.6979%');
+  await expect(available).toHaveText('96.8%');
 
-  await admin.getByRole('button', { name: '登记收款', exact: true }).first().click();
-  await field('登记收款', 'amount').fill('1.23');
-  await field('登记收款', 'delta').fill('50');
-  await field('登记收款', 'external_ref').fill('q4-browser-payment');
-  await field('登记收款', 'note').fill('浏览器验收人工收款');
-  await submit(admin, '登记收款');
-  await refresh('120.6979%');
-  await admin.getByRole('button', { name: '赠送 / 调整', exact: true }).first().click();
-  await field('赠送 / 调整', 'delta').fill('10');
-  await field('赠送 / 调整', 'reason').fill('浏览器验收赠送');
-  await submit(admin, '赠送 / 调整');
-  await refresh('130.6979%');
+  await admin.getByRole('button', { name: '收款并补充本期', exact: true }).first().click();
+  await field('收款并补充本期', 'amount').fill('1.23');
+  await field('收款并补充本期', 'budget').fill('0.5');
+  await field('收款并补充本期', 'external_ref').fill('q4-browser-payment');
+  await field('收款并补充本期', 'note').fill('浏览器验收人工收款');
+  await submit(admin, '收款并补充本期');
+  await refresh('98.1%');
+  await admin.getByRole('button', { name: '赠送 / 扣回预算', exact: true }).first().click();
+  await field('赠送 / 扣回预算', 'budget').fill('0.1');
+  await field('赠送 / 扣回预算', 'reason').fill('浏览器验收赠送');
+  await submit(admin, '赠送 / 扣回预算');
+  await refresh('98.3%');
+  await admin.getByRole('button', { name: '费用与账单', exact: true }).click();
+  await admin.getByText('收款、额度调整与操作记录', { exact: true }).click();
   await admin.getByRole('button', { name: '追加更正', exact: true }).click();
   await field('追加收款更正', 'amount').fill('-0.23');
-  await field('追加收款更正', 'delta').fill('-10');
+  await field('追加收款更正', 'delta').fill('-0.1');
   await field('追加收款更正', 'reason').fill('更正实际收款和授额');
   await submit(admin, '追加收款更正');
-  await refresh('120.6979%');
+  await refresh('98.1%');
   const history = admin.locator('section').filter({ has: admin.getByRole('heading', { name: '收款与额度明细', exact: true }) });
   await expect(history).toContainText('1.23 / 1.00');
-  await expect(history).toContainText('50% · 基准 test-basis');
+  await expect(history).toContainText('0.50 元 AI 预算');
   await page.getByRole('button', { name: '下一页', exact: true }).click();
   await expect(page.locator('.usage-list').last()).toContainText('2.3%');
   await page.getByRole('button', { name: '刷新额度与明细' }).click();
-  await expect(available).toHaveText('120.6979%');
+  await expect(available).toHaveText('98.1%');
   mkdirSync(output, { recursive: true });
   await page.locator('dialog').evaluate(el => { el.scrollTop = 0; });
   await page.screenshot({ path: resolve(output, 'allowance-desktop.png'), fullPage: true });
-  await admin.getByRole('heading', { name: 'AI 使用额度', exact: true }).scrollIntoViewIfNeeded();
+  await admin.getByRole('button', { name: '额度与套餐', exact: true }).click();
+  await admin.getByRole('heading', { name: '本期 AI 使用预算', exact: true }).scrollIntoViewIfNeeded();
   await admin.screenshot({ path: resolve(output, 'operations-desktop.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.locator('dialog').evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
@@ -118,7 +121,7 @@ test('Q4 percentage balance, real manual top-up, gift, correction, history and a
   await openAllowance();
   await expect(page.getByRole('dialog')).toContainText('当前没有有效额度期');
   await expect(page.getByRole('dialog')).toContainText('暂无使用记录');
-  await expect(page.getByRole('dialog')).not.toContainText('120.6979%');
+  await expect(page.getByRole('dialog')).not.toContainText('98.1%');
   expect(failures).toEqual([]);
   await adminContext.close();
 });

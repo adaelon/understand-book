@@ -38,6 +38,8 @@ import {
 } from "./stage-work-unit";
 import { estimateTokens } from "./window";
 import type { StructureOutline } from "./book-structure-planning";
+import type { ModelInputSliceV1, ModelInputSliceCoverageV1 } from "./model-input-slice";
+import { routeBookStructureFragmentSlices } from "./book-structure-fragment-slices";
 
 export type BookStructureSpineRole = "setup" | "foundation" | "method" | "application" | "case" | "synthesis";
 export type BookStructureKeyStopType =
@@ -326,6 +328,8 @@ export type BookStructureFragmentShardKindV1 =
 
 export interface BookStructureFragmentInputV1 {
   discovery?: { outline: StructureOutline; section_lid: string; section_title: string };
+  excerpt_slice?: ModelInputSliceV1;
+  reading_scope?: string;
   title?: string;
   version: "book_structure_fragment_input.v1";
   work_unit_id: string;
@@ -412,11 +416,12 @@ export interface BookStructureLeafCoverageManifestV1 {
   covered_leaf_count: number;
   gap_count: number;
   core_overlap_count: number;
+  source_slices?: ModelInputSliceCoverageV1[];
   core_ranges: Array<BookStructureLeafRangeV1 & {
     work_unit_id: string;
     leaf_lids: string[];
+    slice_work_unit_ids?: string[];
   }>;
-  coverage_digest: string;
 }
 
 export interface BookStructureStitchCoverageManifestV1 {
@@ -429,7 +434,6 @@ export interface BookStructureStitchCoverageManifestV1 {
     work_unit_id: string;
     unit_lids: string[];
   }>;
-  coverage_digest: string;
 }
 
 export type BookStructureUnitRouteV2 =
@@ -828,7 +832,7 @@ export function proofBoundBookStructureDescriptor(input: {
   rendered_input: string;
   proof: ModelExecutionBudgetEvidenceV3;
   policy_fingerprint: ExtractionPolicyFingerprintV1;
-  input_basis: Exclude<WorkUnitDescriptorV4["input_basis"], { kind: "source_slices" }>;
+  input_basis: WorkUnitDescriptorV4["input_basis"];
   evidence_lids: string[];
   dependencies?: WorkUnitDescriptorV4["dependencies"];
   aggregation?: WorkUnitDescriptorV4["aggregation"];
@@ -851,7 +855,8 @@ export function proofBoundBookStructureDescriptor(input: {
     stage: "book_structure",
     work_unit_id: input.work_unit_id,
     kind: input.kind,
-    input_basis: { ...input.input_basis, parent_lids: deliveredLids },
+    input_basis: input.input_basis.kind === "source_slices"
+      ? input.input_basis : { ...input.input_basis, parent_lids: deliveredLids },
     input_hash: input.proof.rendered_input_sha256,
     execution_budget_proof: input.proof,
     policy_fingerprint: input.policy_fingerprint,
@@ -1131,7 +1136,7 @@ function createBookStructureFragmentWorkUnit(input: {
     rendered_input: renderedInput,
     proof: evaluated.proof,
     policy_fingerprint: input.contract.policy_fingerprint,
-    input_basis: {
+    input_basis: coreRange && input.packet.excerpt_slice ? { kind: "source_slices", slices: [input.packet.excerpt_slice] } : {
       kind: "semantic_projection",
       projection_kind: "book_structure",
       source_fingerprint: input.source_fingerprint,
@@ -1184,10 +1189,21 @@ function budgetRecoveryForFragment(input: {
 function coverageManifest(
   source: BookStructureUnitSource,
   workUnits: BookStructureRoutedWorkUnitV2[],
+  sourceSlices: ModelInputSliceCoverageV1[],
 ): BookStructureLeafCoverageManifestV1 {
+  const seenSlicedLeaves = new Set<string>();
   const coreRanges = workUnits.flatMap((unit) => {
     if (unit.route.role !== "fragment" || !unit.route.core_leaf_range) return [];
     const range = unit.route.core_leaf_range;
+    const basis = unit.descriptor.input_basis;
+    if (basis.kind === "source_slices") {
+      const lid = basis.slices[0].parent_lid;
+      if (seenSlicedLeaves.has(lid)) return [];
+      seenSlicedLeaves.add(lid);
+      return [{ ...range, work_unit_id: unit.descriptor.work_unit_id, leaf_lids: [lid],
+        slice_work_unit_ids: workUnits.filter(w => w.descriptor.input_basis.kind === "source_slices"
+          && w.descriptor.input_basis.slices[0].parent_lid === lid).map(w => w.descriptor.work_unit_id) }];
+    }
     return [{
       ...range,
       work_unit_id: unit.descriptor.work_unit_id,
@@ -1212,13 +1228,15 @@ function coverageManifest(
     covered_leaf_count: covered,
     gap_count: gaps,
     core_overlap_count: overlaps,
+    ...(sourceSlices.length ? { source_slices: sourceSlices } : {}),
     core_ranges: coreRanges,
   };
-  return { ...unsigned, coverage_digest: sha256Json(unsigned) };
+  return unsigned;
 }
 
 export function routeBookStructureUnitWorkUnitsV2(input: {
   discovery?: { outline: StructureOutline; section_by_leaf: Record<string, { lid: string; title: string }> };
+  canonical_source?: string;
   target: BuildTargetRefV2;
   source: BookStructureUnitSource;
   lid_nodes: LidNode[];
@@ -1305,11 +1323,19 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
       status: "ready",
       mode: "whole",
       work_units: [workUnit],
-      coverage: { ...unsigned, coverage_digest: sha256Json(unsigned) },
+      coverage: unsigned,
     };
   }
 
   const workUnits: BookStructureRoutedWorkUnitV2[] = [];
+  const sourceSlices: ModelInputSliceCoverageV1[] = [];
+  const nodesByLid = new Map(input.lid_nodes.map(node => [node.lid, node]));
+  const slicePacket = (packet: BookStructureFragmentInputV1) => input.discovery && input.canonical_source !== undefined
+    ? routeBookStructureFragmentSlices({ packet, source: input.canonical_source, nodes: nodesByLid,
+      source_fingerprint: input.source_fingerprint, contract: input.contracts.fragment, budget,
+      create: sliced => createBookStructureFragmentWorkUnit({ target: input.target, source,
+        source_fingerprint: input.source_fingerprint, packet: sliced, contract: input.contracts.fragment,
+        transport_profile: transportProfile, budget, evidence_lids: sliced.excerpts.map(e => e.lid) }) }) : undefined;
   let fragmentOrdinal = 0;
   let start = 0;
   while (start < source.leaf_lids.length) {
@@ -1390,7 +1416,12 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
       evidence_lids: [leafLid],
     });
     if (core.status === "blocked") {
-      return {
+      const sliced = slicePacket(corePacket);
+      if (sliced) {
+        workUnits.push(...sliced.work_units);
+        sourceSlices.push(...sliced.coverage);
+        fragmentOrdinal += sliced.work_units.length;
+      } else return {
         status: "blocked",
         recovery: budgetRecoveryForFragment({
           source,
@@ -1399,9 +1430,10 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
           evaluation: core.evaluation,
         }),
       };
+    } else {
+      workUnits.push(core.work_unit);
+      fragmentOrdinal += 1;
     }
-    workUnits.push(core.work_unit);
-    fragmentOrdinal += 1;
 
     const leafItems = auxiliary.items.filter((item) => item.primary_leaf_ordinal === start);
     for (const kind of [
@@ -1467,6 +1499,26 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
             evidence_lids: item.evidence_lids,
           });
           if (failed.status !== "blocked") throw new Error("atomic BookStructure shard fit changed");
+          // When even one record cannot carry its complete evidence, page a
+          // fitting group of records together instead of rereading the same
+          // long leaf separately for every node or relation.
+          let splitEnd = items.length;
+          let sliced: ReturnType<typeof slicePacket>;
+          while (splitEnd > itemStart) {
+            const splitPacket = splitEnd === itemStart + 1 ? packet : bookStructureFragmentInput({ discovery, source,
+              work_unit_id: workUnitId, fragment_ordinal: fragmentOrdinal, shard_kind: kind,
+              source_range: { start_ordinal: start, end_ordinal_exclusive: start + 1 },
+              auxiliary_items: items.slice(itemStart, splitEnd) });
+            sliced = slicePacket(splitPacket);
+            if (sliced || splitEnd === itemStart + 1) break;
+            splitEnd = itemStart + Math.floor((splitEnd - itemStart) / 2);
+          }
+          if (sliced) {
+            workUnits.push(...sliced.work_units);
+            fragmentOrdinal += sliced.work_units.length;
+            itemStart = splitEnd;
+            continue;
+          }
           return {
             status: "blocked",
             recovery: budgetRecoveryForFragment({
@@ -1485,7 +1537,7 @@ export function routeBookStructureUnitWorkUnitsV2(input: {
     start += 1;
   }
 
-  const coverage = coverageManifest(source, workUnits);
+  const coverage = coverageManifest(source, workUnits, sourceSlices);
   if (coverage.gap_count !== 0
     || coverage.core_overlap_count !== 0
     || coverage.covered_leaf_count !== coverage.expected_leaf_count) {
@@ -1879,7 +1931,7 @@ function bookStructureStitchCoverage(
     overlap_count: overlaps,
     ranges,
   };
-  return { ...unsigned, coverage_digest: sha256Json(unsigned) };
+  return unsigned;
 }
 
 export function routeBookStructureStitchWorkUnitsV2(input: {

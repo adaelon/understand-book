@@ -36,7 +36,7 @@ export function excerptShareSource(text: string, sources: string[], format: 'pla
 export function deliveredAnswerText(turn: { turnId: string | null; pending: boolean; error?: string; runStatus?: string; outcome: OuterOutcome | null }): string {
   if (!turn.turnId || turn.pending || turn.error || turn.runStatus === uiText('已停止') || !turn.outcome || turn.outcome.incomplete) return '';
   const parts = turn.outcome.answer_view?.parts;
-  return (parts?.length ? parts.map(part => part.kind === 'markdown' ? part.text : part.kind === 'presentation' ? '\n\n' : '').join('') : turn.outcome.answer ?? '').trim();
+  return (parts?.length ? parts.map(part => part.kind === 'markdown' || part.kind === 'socratic_question' ? part.text : part.kind === 'music_example' ? part.example.label : part.kind === 'presentation' ? '\n\n' : '').join('') : turn.outcome.answer ?? '').trim();
 }
 
 export function answerShareSource(fullText: string, text: string, sessionId: string, turnId: string, sources: string[]): ShareSource {

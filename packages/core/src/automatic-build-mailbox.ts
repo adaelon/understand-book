@@ -454,7 +454,10 @@ export function stageAutomaticBuildCandidate(
     }
     normalizeCandidatePayload(existing);
   }
-  const staged = candidateInfo(destination, options.max_bytes);
+  const staged: AutomaticBuildCandidateRecordV1 = {
+    ...source.record,
+    candidate_path: path.resolve(destination),
+  };
   writeJsonAtomic(path.join(path.dirname(destination), "validation.json"), {
     version: "automatic_build_candidate_validation.v1",
     valid_json: true,
@@ -514,16 +517,12 @@ export function stageAutomaticBuildCandidateValue(
     }
     normalizeCandidatePayload(existing);
   }
-  let staged: AutomaticBuildCandidateRecordV1;
-  try {
-    staged = candidateInfo(destination, maxBytes);
-  } catch (error) {
-    throwCandidateSinkUnavailable(error);
-  }
-  if (staged.candidate_sha256 !== candidate.candidate_sha256
-    || staged.size_bytes !== candidate.size_bytes) {
-    throw new Error("canonical candidate mailbox bytes changed during staging");
-  }
+  const staged: AutomaticBuildCandidateRecordV1 = {
+    version: "automatic_build_candidate_record.v1",
+    candidate_path: path.resolve(destination),
+    candidate_sha256: candidate.candidate_sha256,
+    size_bytes: candidate.size_bytes,
+  };
   try {
     writeJsonAtomic(path.join(path.dirname(destination), "validation.json"), {
       version: "automatic_build_candidate_validation.v1",

@@ -2,6 +2,7 @@ import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "
 import { readBuildRetrievalState } from "../../packages/core/src/automatic-build-retrieval";
 import { configuredBuildRetrievalRuntime } from "../../packages/core/src/build-retrieval-config";
 import { summarizeRetrievalUsage } from "../../packages/core/src/automatic-build-budget";
+import { acceptCourseCandidate, closeCourseBuild, freezeCourseTask, readCourseTask, courseTaskPath } from "../../packages/core/src/course-build";
 import { isTeachingStage } from "../../packages/core/src/teaching-policy";
 import { acceptTeachingCandidate, closeTeachingStage, freezeTeachingTask, readTeachingTask, teachingTaskPath, teachingReviewFailures, reopenTeachingBuild, resumeTeachingCognitiveBudget } from "../../packages/core/src/teaching-build";
 import { readTeachingBuildInput } from "../../packages/core/src/build-orchestrator";
@@ -224,7 +225,7 @@ const MAX_AUTOMATIC_BUILD_EXECUTOR_AGENT_TEMPLATE_BYTES = 65_536;
 const MAX_AUTOMATIC_BUILD_EXECUTOR_BOUNDARY_ASSET_BYTES = 65_536;
 const MAX_DISPATCH_EXECUTOR_HANDOFF_BYTES = 262_144;
 const AUTOMATIC_BUILD_STAGES: AutomaticBuildStage[] = [
-  "formal_objects", "cognitive_materials", "teaching_publish",
+  "formal_objects", "cognitive_materials", "teaching_publish", "course",
   "pass1",
   "paper_metadata",
   "paper_lexicon",
@@ -272,6 +273,7 @@ interface StageCommands {
 }
 
 const STAGE_COMMANDS: Record<AutomaticBuildStage, StageCommands> = {
+  course: { input: "course", write: "course", close: "course" },
   formal_objects: { input: "teaching", write: "teaching", close: "teaching" },
   cognitive_materials: { input: "teaching", write: "teaching", close: "teaching" },
   teaching_publish: { input: "teaching", write: "teaching", close: "teaching" },
@@ -688,7 +690,7 @@ function stageArtifactPath(
   taskId: string,
 ): string {
   const buildRoot = path.join(target.workspace_dir, ".build");
-  if (isTeachingStage(stage)) throw new Error("teaching stages require generation-scoped artifacts");
+  if (stage === "course" || isTeachingStage(stage)) throw new Error("teaching stages require generation-scoped artifacts");
   switch (stage) {
     case "pass1": return path.join(buildRoot, "pass1", `${taskId}.json`);
     case "paper_metadata": return path.join(buildRoot, "paper-metadata", `${taskId}.json`);
@@ -744,6 +746,10 @@ export function runAutomaticBuildStageWriter(
     generated_at: string;
   },
 ): AutomaticBuildWriterResult {
+  if (stage === "course") {
+    if (!generation) throw new Error("course writer requires a frozen task");
+    return { artifact_path: acceptCourseCandidate(target, readCourseTask(target, generation.policy_generation_id, taskId), JSON.parse(readFileSync(candidatePath,"utf8")), generation) };
+  }
   if (isTeachingStage(stage)) {
     if (!generation) throw new Error("teaching writer requires a frozen generation task");
     const task = readTeachingTask(target, generation.policy_generation_id, taskId, true);
@@ -871,6 +877,10 @@ export function renderAutomaticBuildTaskInput(
   options: { policy_generation_id?: string } = {},
 ): { stdout: string; stderr: string } {
   const productionGenerationId = options.policy_generation_id;
+  if (stage === "course") {
+    if (!productionGenerationId) throw new Error("course input requires a frozen task");
+    return { stdout: readCourseTask(target,productionGenerationId,taskId).rendered_input, stderr: "" };
+  }
   if (isTeachingStage(stage)) {
     if (!productionGenerationId) throw new Error("teaching input requires a frozen generation task");
     return { stdout: readTeachingTask(target, productionGenerationId, taskId).rendered_input, stderr: "" };
@@ -1319,7 +1329,7 @@ export function automaticBuildPlan(
   const availableAgentSlots = options.available_agent_slots ?? requestedWorkers;
   const budget = options.budget ?? DEFAULT_AUTOMATIC_BUILD_BUDGET;
   const snapshotRoute = preparedRoute ?? routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
-    public_stage_closure: options.build_plan?.public_stage_closure,
+    public_stage_closure: options.build_plan?.public_stage_closure, course_goal: options.build_plan?.course_goal,
     reuse: options.build_plan?.reuse, retrieval: options.build_plan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
@@ -1371,6 +1381,8 @@ export function prepareExplicitLegacyBuildPlan(
     book_id?: string;
     pass2?: Pass2PlanChoice;
     build_tutor?: boolean;
+    build_course?: boolean;
+    course_goal?: string;
     execution_profile?: Readonly<BuildExecutionProfileV1>;
   } = {},
 ) {
@@ -1399,7 +1411,7 @@ export function prepareExplicitLegacyBuildPlan(
     ...(options.pass2 ? { pass2: options.pass2 } : {}),
   });
   if (!selection?.plan) throw new Error("explicit legacy full build did not compile a BuildPlan");
-  if (options.build_tutor === false) {
+  if (options.build_tutor !== true) {
     const teaching = new Set(['formal_objects','cognitive_materials','teaching_publish']);
     const excluded = selection.plan.public_stage_closure.filter(stage=>teaching.has(stage));
     const {plan_digest:_,...plan}=selection.plan;
@@ -1411,8 +1423,12 @@ export function prepareExplicitLegacyBuildPlan(
       estimate:{...plan.estimate,unknown_stages:plan.estimate.unknown_stages.filter(stage=>!teaching.has(stage))},
     });
   }
+  if (options.build_course) {
+    const {plan_digest:_, ...plan} = selection.plan;
+    selection.plan = attachBuildPlanDigest({...plan,...(options.course_goal?.trim()?{course_goal:options.course_goal.trim()}:{}),public_stage_closure:[...plan.public_stage_closure,"course"],create:[...plan.create,"public.course"],estimate:{...plan.estimate,unknown_stages:[...plan.estimate.unknown_stages,"course"]}});
+  }
   const invocationId = createHash("sha256")
-    .update(canonicalAutomaticBuildJson({ target: target.target_ref, now, pass2: options.pass2 ?? "disabled", build_tutor:options.build_tutor ?? true }), "utf8")
+    .update(canonicalAutomaticBuildJson({ target: target.target_ref, now, pass2: options.pass2 ?? "disabled", build_tutor:options.build_tutor ?? false, build_course:options.build_course ?? false, course_goal:options.course_goal?.trim() ?? '' }), "utf8")
     .digest("hex")
     .slice(0, 16);
   const directory = path.join(target.workspace_dir, ".build", "automatic-build", "v2", "legacy-plans");
@@ -1476,6 +1492,7 @@ function freezeAutomaticBuildGenerationTask(
     freezePass1ShadowTask(target, generationTask.task);
     return;
   }
+  if (generationTask.kind === "course") { freezeCourseTask(target, generationTask.task); return; }
   if (generationTask.kind === "teaching") {
     freezeTeachingTask(target, generationTask.task);
     return;
@@ -1518,7 +1535,7 @@ function expandAction(
     && canonicalAutomaticBuildJson(decisionSnapshot.target.target_ref) === canonicalAutomaticBuildJson(target.target_ref)
     ? { status: "ready" as const, value: decisionSnapshot }
     : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: executionProfile,
-      public_stage_closure: buildPlan?.public_stage_closure, reuse: buildPlan?.reuse, retrieval: buildPlan?.retrieval?.selection });
+      public_stage_closure: buildPlan?.public_stage_closure, course_goal: buildPlan?.course_goal, reuse: buildPlan?.reuse, retrieval: buildPlan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
       snapshot: { target, stages: [] },
@@ -1536,7 +1553,7 @@ function expandAction(
   for (const stage of preparationStages) {
     if (!stage.policy_set) throw new Error("preparation stage is missing policy set");
     const prepared = prepareAutomaticBuildSnapshot(target, stage.policy_set.stage, { quality_profile: qualityProfile, execution_profile: executionProfile,
-      public_stage_closure: buildPlan.public_stage_closure, reuse: buildPlan.reuse });
+      public_stage_closure: buildPlan.public_stage_closure, course_goal: buildPlan.course_goal, reuse: buildPlan.reuse });
     if (prepared.status === "blocked") return { snapshot, action: automaticBuildRecoveryAction(prepared.recovery) };
     snapshot = prepared.value;
   }
@@ -2253,7 +2270,7 @@ function expandAction(
         message: `独立来源审阅未通过：${failures.join("；")}`,
       } };
     }
-    if (action.stage !== "paper_reading_guide" && !isTeachingStage(action.stage)) {
+    if (action.stage !== "paper_reading_guide" && action.stage !== "course" && !isTeachingStage(action.stage)) {
       const stageState = snapshot.stages.find((stage) => stage.stage === action.stage);
       if (!stageState) throw new Error(`quality gate stage is missing from snapshot: ${action.stage}`);
       const qualityReport = collectAutomaticBuildStageQuality(target, stageState, qualityProfile, executionProfile);
@@ -2314,13 +2331,13 @@ export async function automaticBuildNextWithPreparation(targetInput: string, roo
   if (!plan?.retrieval) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const snapshot = routeAutomaticBuildSnapshot(target, { quality_profile: options.quality_profile,
-    execution_profile: options.execution_profile, public_stage_closure: plan.public_stage_closure, reuse: plan.reuse, retrieval: plan.retrieval.selection });
+    execution_profile: options.execution_profile, public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, reuse: plan.reuse, retrieval: plan.retrieval.selection });
   if (snapshot.status !== "ready") return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const reachable = snapshot.value.stages.find(s => !s.closed && (s.retrieval_preparation || s.preparation_required));
   if (!reachable || (reachable.stage !== "book_structure" && reachable.stage !== "formal_objects")) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const prepared = await prepareAutomaticBuildSnapshot(target, reachable.stage, {
     quality_profile: options.quality_profile, execution_profile: options.execution_profile,
-    public_stage_closure: plan.public_stage_closure,
+    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal,
     authorization: { plan, runtime: options.retrieval_runtime ?? configuredBuildRetrievalRuntime(plan), signal: options.signal },
   });
   if (prepared.status !== "ready") return { version: "automatic_build_next.v1", snapshot: { target, stages: [] },
@@ -2408,8 +2425,9 @@ export function runAutomaticBuildCloseStage(
     return verifyAutomaticBuildStageClose(target);
   }
 
+  if (stage === "course") return { next: "replan", publication: closeCourseBuild(readTeachingBuildInput(target), options.build_plan?.course_goal) };
   if (isTeachingStage(stage)) {
-    const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, public_stage_closure: options.build_plan?.public_stage_closure, reuse: options.build_plan?.reuse,
+    const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, public_stage_closure: options.build_plan?.public_stage_closure, course_goal: options.build_plan?.course_goal, reuse: options.build_plan?.reuse,
       retrieval: options.build_plan?.retrieval?.selection });
     const state = snapshot.stages.find(s => s.stage === stage);
     if (!state) throw new Error("teaching stage is not reachable");
@@ -2492,7 +2510,6 @@ function syntheticModelInputRequest(
           context_before: "",
           core,
           context_after: "",
-          core_sha256: createHash("sha256").update(core, "utf8").digest("hex"),
         },
       };
     case "pass1_lid_stitch":
@@ -2757,7 +2774,6 @@ function buildAutomaticBuildReleaseContractCheck(profileId: AutomaticBuildTarget
           })),
           coverage_digest: "6".repeat(64),
           freshness_digest: "7".repeat(64),
-          public_artifact_set_digest: "8".repeat(64),
         },
         next: "replan",
       });
@@ -3304,7 +3320,7 @@ if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "vid
 } else if (argv[0] === "legacy-plan") {
   const targetInput = argv[1];
   if (!targetInput) {
-    console.error("usage: tsx skills/build/automatic-build.ts legacy-plan <target> [--root <dir>] [--now <ISO timestamp>] [--pass2 enabled|disabled] [budget flags]");
+    console.error("usage: tsx skills/build/automatic-build.ts legacy-plan <target> [--root <dir>] [--book-id <id>] [--now <ISO timestamp>] [--pass2 enabled|disabled] [--course] [--course-goal <goal>] [budget flags]");
     process.exit(2);
   }
   printAutomaticBuildJson(prepareExplicitLegacyBuildPlan(
@@ -3314,6 +3330,8 @@ if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "vid
       ...(valueArg(argv, "--now") ? { now: valueArg(argv, "--now") } : {}),
       ...(valueArg(argv, "--book-id") ? { book_id: valueArg(argv, "--book-id") } : {}),
       pass2: pass2ChoiceFromArgs(argv),
+      build_course: argv.includes("--course"),
+      course_goal: valueArg(argv,"--course-goal"),
       budget: {
         ...(valueArg(argv, "--max-estimated-total-tokens")
           ? { max_total_tokens: Number(valueArg(argv, "--max-estimated-total-tokens")) }
@@ -3627,6 +3645,7 @@ if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "vid
         ? pass1ShadowTaskPath(target, leaseState.policy_generation_id, taskId!)
         : stageValue === "profile_sidecar"
           ? profileSidecarDiscourseShadowTaskPath(target, leaseState.policy_generation_id, taskId!)
+          : stageValue === "course" ? courseTaskPath(target, leaseState.policy_generation_id, taskId!)
           : isTeachingStage(stageValue)
             ? teachingTaskPath(target, leaseState.policy_generation_id, taskId!)
           : stageValue === "book_structure"
@@ -3639,7 +3658,7 @@ if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "vid
     }
   }
   let verifiedClose = false;
-  if (isTeachingStage(stageValue)) {
+  if (stageValue === "course" || isTeachingStage(stageValue)) {
     if (operation === "close") {
       printAutomaticBuildJson(runAutomaticBuildCloseStage(targetInput, rootDir, stageValue, { book_id: target.book_id }));
       verifiedClose = true;

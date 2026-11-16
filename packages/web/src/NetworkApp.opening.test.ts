@@ -4,17 +4,21 @@ import { defineComponent } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installIdentity, network, workspaceStorageKey, type NetworkWorkspace, type PublishedBookRef } from './network-context';
 import MaterialCover from './components/MaterialCover.vue';
+import SharedWorkspaceCatalog from './components/SharedWorkspaceCatalog.vue';
+import type { LearningTaskView } from './learning-tasks';
 
-const observation = vi.hoisted(() => ({ mountedBooks: [] as string[] }));
+const observation = vi.hoisted(() => ({ mountedBooks: [] as string[], mapOpens:0,
+  openCourse: vi.fn(), resumeLearningTask: vi.fn() }));
 vi.mock('./App.vue', () => ({ default: defineComponent({
-  name: 'App', props: ['readerVisible'], emits: ['show-library'],
-  methods: { beforeNoteLeave: async () => true },
+  name: 'App', props: ['readerVisible'], emits: ['show-library','understanding-visibility'],
+  methods: { beforeNoteLeave: async () => true, closeBoard(){}, closeUnderstanding(){this.$emit('understanding-visibility',false);}, openUnderstanding(){observation.mapOpens++;this.$emit('understanding-visibility',true);},
+    openCourse(target: unknown, signal?: AbortSignal) { return observation.openCourse(target, signal); }, resumeLearningTask(task: unknown, signal?: AbortSignal) { return observation.resumeLearningTask(task, signal); } },
   setup() {
     const bookId = network.value.workspace?.published_book_ref.book_id ?? '';
     observation.mountedBooks.push(bookId);
     return { bookId };
   },
-  template: '<div class="reader">{{ bookId }}<button @click="$emit(\'show-library\')">书架</button></div>',
+  template: '<div class="reader"><slot name="navigation"/>{{ bookId }}<button @click="$emit(\'show-library\')">书架</button></div>',
 }) }));
 import NetworkApp from './NetworkApp.vue';
 
@@ -29,13 +33,17 @@ type Request = { method: string; url: string; body: Record<string, unknown>; sig
 type HeldRequest = { path: string; receive: (respond: () => Response, signal?: AbortSignal | null) => Promise<Response>; release: () => void };
 let workspace: NetworkWorkspace;
 let requests: Request[];
+let unexpected: string[];
 let holds: HeldRequest[];
 let waiting: HeldRequest[];
+let appWaiting: { promise: Promise<void>; release: () => void }[];
+let tasks: LearningTaskView[];
 let wrapper: ReturnType<typeof mount> | undefined;
 
 beforeEach(() => {
-  sessionStorage.clear(); localStorage.clear(); history.replaceState({}, '', '/');
-  requests = []; holds = []; waiting = []; observation.mountedBooks = [];
+  sessionStorage.clear(); localStorage.clear(); history.replaceState({}, '', '/?view=materials');
+  requests = []; unexpected = []; holds = []; waiting = []; appWaiting = []; tasks = []; observation.mountedBooks = []; observation.mapOpens=0;
+  observation.openCourse.mockReset().mockResolvedValue(undefined); observation.resumeLearningTask.mockReset().mockResolvedValue(undefined);
   installIdentity(identity);
   sessionStorage.setItem(workspaceStorageKey(), JSON.stringify({ workspace_id: 'this-window', view: 'library' }));
   workspace = { workspace_id: 'this-window', generation: 3, revision: 8, selected_chat: 'original-chat',
@@ -46,9 +54,18 @@ beforeEach(() => {
     requests.push({ method: init.method ?? 'GET', url, body, signal: init.signal });
     const respond = () => {
       if (url === '/api/auth/me') return Response.json(identity);
+      if (url === '/api/account/presence') return Response.json({ ok: true });
       if (url === '/api/library') return Response.json({ books });
       if (url === '/api/videos') return Response.json({ videos: [] });
       if (url === '/api/learning-workspaces') return Response.json({ workspaces: [] });
+      if (url === '/api/me/learning-tasks') return Response.json({ tasks });
+      if (url.startsWith('/api/workspace-releases?')) return Response.json({ items: [], total: 0, limit: 12, offset: 0 });
+      if (url === '/api/learning-workspaces/course-space/shared-release/course') return Response.json({ course: null, progress: [], release_version: 0 });
+      if (url === '/api/learning-workspaces/course-space/shared-release') return Response.json({ instance: null });
+      if (url === '/api/learning-workspaces/course-space/exam-sprint') return Response.json({ sprint: null });
+      if (url === '/api/learning-workspaces/course-space/preparations') return Response.json({ items: [] });
+      if (url === '/api/account/storage') return Response.json({ items: [], can_upload: false, available_bytes: 0, used_bytes: 0,
+        reserved_bytes: 0, total_bytes: 0, limit_bytes: null, max_file_bytes: null, over_limit: false, expires_at: null, retained_until: null });
       if (url === '/api/me/reading-resumption' || url === '/api/workspaces/this-window/resumption') {
         return Response.json({ workspace_id: workspace.workspace_id, published_book_ref: workspace.published_book_ref,
           selected_chat: workspace.selected_chat, position_label: '段落 · 能量守恒', position_excerpt: '沿着原来的位置继续阅读。', last_question: '为什么守恒？' });
@@ -60,6 +77,7 @@ beforeEach(() => {
           learning_workspace_id: body.learning_workspace_id as string | null };
         return Response.json(workspace);
       }
+      unexpected.push(`${init.method} ${url}`);
       throw new Error(`Unexpected ${init.method} ${url}`);
     };
     const index = holds.findIndex(hold => hold.path === url);
@@ -70,10 +88,12 @@ beforeEach(() => {
 afterEach(async () => {
   wrapper?.unmount(); wrapper = undefined;
   for (const hold of waiting) hold.release();
+  for (const hold of appWaiting) hold.release();
   await flushPromises();
   vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks();
   sessionStorage.clear(); localStorage.clear();
   network.value = { ...network.value, enabled: false, identity: null, workspace: null };
+  expect(unexpected).toEqual([]);
 });
 
 function holdNext(path: string, respectAbort = true) {
@@ -114,6 +134,26 @@ function expectCoversPaused(paused: boolean) {
   const covers = wrapper!.findAllComponents(MaterialCover);
   expect(covers.length).toBeGreaterThan(0);
   expect(covers.every(cover => cover.props('paused') === paused)).toBe(true);
+}
+function holdApp() {
+  let release!: () => void;
+  const promise = new Promise<void>(resolve => { release = resolve; });
+  const pending = { promise, release }; appWaiting.push(pending); return pending;
+}
+async function prepareLearningOpen(kind: 'course' | 'task') {
+  history.replaceState({}, '', '/?view=courses');
+  tasks = kind === 'task' ? [{ learning_workspace_id: 'course-space', published_book_ref: targetBook, course_run_id: 'saved-run',
+    chat_session_id: 'saved-chat', selected_at: 1, kind: 'course', title: '原课程任务', status: 'active',
+    lesson_id: 'saved-lesson', stage: 'explanation', closed_book_id: null, question: '解释当前问题', message: null }] : [];
+  await start();
+  return async () => {
+    if (kind === 'task') await wrapper!.get('.learning-home-task .task-primary').trigger('click');
+    else wrapper!.getComponent(SharedWorkspaceCatalog).vm.$emit('started', {
+      learning_workspace_id: 'course-space', goal: { text: '课程目标', constraints: [], revision: 1, created_at: 1 },
+      goal_history: [], members: [{ published_book_ref: targetBook, readable: true, added_at: 1 }], archived: false, created_at: 1, updated_at: 1,
+    }, undefined, true, { publication: targetBook, lessonId: 'saved-lesson', runId: 'saved-run', chatSessionId: 'saved-chat' });
+    await flushPromises();
+  };
 }
 
 it('opens a board address in its exact publication and learning workspace before mounting the Reader', async () => {
@@ -216,6 +256,23 @@ it('keeps a failed open actionable and lets the user dismiss its banner', async 
   expect(targetCard().attributes('disabled')).toBeUndefined();
 });
 
+it('explains occupied reader capacity and retries the same book without losing the target', async () => {
+  await start();
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((input, init) => String(input).endsWith('/book/open')
+    ? Promise.resolve(Response.json({ error_code: 'WORKSPACE_CAPACITY', category: 'unavailable', message: 'The operation could not be completed' }, { status: 503 })) : original(input, init));
+  await targetCard().trigger('click');
+  await flushPromises();
+  expect(wrapper!.get('.book-opening').text()).toContain('当前阅读窗口已达到上限，请稍后重试。学习记录已保留。');
+  expect(wrapper!.get('.book-opening').text()).not.toContain('The operation could not be completed');
+  expect(bannerButton('重试打开').exists()).toBe(true);
+  vi.mocked(fetch).mockImplementation(original);
+  await bannerButton('重试打开').trigger('click');
+  await flushPromises();
+  expect(wrapper!.find('.book-opening').exists()).toBe(false);
+  expect(wrapper!.get('.reader').text()).toContain(targetBook.book_id);
+});
+
 it('uses the opening feedback and cancellation flow for continuing a saved reading position', async () => {
   await start();
   const pending = holdNext('/api/workspaces/this-window/attach', false);
@@ -233,4 +290,70 @@ it('uses the opening feedback and cancellation flow for continuing a saved readi
   expect(wrapper!.find('.reader').exists()).toBe(false);
   expect(network.value.workspace).toBeNull();
   expect(observation.mountedBooks).toEqual([]);
+});
+
+it('opens the understanding map from primary navigation without opening another book',async()=>{
+  await start();await targetCard().trigger('click');await flushPromises();
+  const before=requests.filter(r=>r.url.endsWith('/book/open')).length;
+  const entry=wrapper!.get('.reader .network-primary-nav [aria-label="我的理解"]');expect(entry.text()).toContain('我的理解');
+  await entry.trigger('click');await flushPromises();
+  expect(observation.mapOpens).toBe(1);expect(entry.attributes('aria-current')).toBe('page');
+  expect(requests.filter(r=>r.url.endsWith('/book/open'))).toHaveLength(before);
+});
+
+it.each(['course', 'task'] as const)('cancels a pending App %s open immediately and ignores its completion during a newer material open', async kind => {
+  const launch = await prepareLearningOpen(kind), pending = holdApp();
+  const method = kind === 'course' ? observation.openCourse : observation.resumeLearningTask;
+  method.mockReturnValueOnce(pending.promise);
+  await launch();
+  expect(method).toHaveBeenCalledTimes(1);
+  const initialSignal = method.mock.calls[0][1] as AbortSignal;
+  expect(initialSignal.aborted).toBe(false);
+  expect(wrapper!.get('.book-opening').attributes('role')).toBe('status');
+  expect(wrapper!.get('.network-primary-nav [aria-label="学习资料"]').attributes('disabled')).toBeDefined();
+  await bannerButton('取消').trigger('click'); await flushPromises();
+
+  expect(initialSignal.aborted).toBe(true);
+  expect(wrapper!.find('.book-opening').exists()).toBe(false);
+  expect(wrapper!.get('.network-primary-nav [aria-label="学习资料"]').attributes('disabled')).toBeUndefined();
+  await wrapper!.get('.network-primary-nav [aria-label="学习资料"]').trigger('click'); await flushPromises();
+  const next = holdNext('/api/workspaces/this-window/book/open');
+  await wrapper!.findAll('.network-book-card').find(card => card.text().includes(originalBook.book_id))!.trigger('click');
+  await flushPromises();
+  expect(wrapper!.get('.book-opening').text()).toContain(originalBook.book_id);
+  pending.release(); await flushPromises();
+  expect(wrapper!.get('.book-opening').attributes('role')).toBe('status');
+  expect(wrapper!.get('.book-opening').text()).toContain(originalBook.book_id);
+  next.release(); await flushPromises();
+  expect(wrapper!.find('.book-opening').exists()).toBe(false);
+  expect(network.value.workspace?.published_book_ref).toEqual(originalBook);
+});
+
+it.each(['course', 'task'] as const)('times out a pending App %s open and retries without waiting for its old completion', async kind => {
+  const launch = await prepareLearningOpen(kind), pending = holdApp(), retried = holdApp();
+  const method = kind === 'course' ? observation.openCourse : observation.resumeLearningTask;
+  method.mockReturnValueOnce(pending.promise).mockReturnValueOnce(retried.promise);
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  await launch();
+  expect(method).toHaveBeenCalledTimes(1);
+  const initialSignal = method.mock.calls[0][1] as AbortSignal;
+  await vi.advanceTimersByTimeAsync(15_000); await flushPromises();
+
+  expect(wrapper!.get('.book-opening').attributes('role')).toBe('alert');
+  expect(wrapper!.get('.book-opening').text()).toContain('打开资料超时');
+  expect(wrapper!.get('.network-primary-nav [aria-label="学习资料"]').attributes('disabled')).toBeUndefined();
+  await bannerButton('重试打开').trigger('click'); await flushPromises();
+  expect(method).toHaveBeenCalledTimes(2);
+  expect(method.mock.calls[1][0]).toEqual(method.mock.calls[0][0]);
+  const retrySignal = method.mock.calls[1][1] as AbortSignal;
+  expect(initialSignal.aborted).toBe(true);
+  expect(retrySignal).not.toBe(initialSignal);
+  expect(retrySignal.aborted).toBe(false);
+  expect(wrapper!.get('.book-opening').attributes('role')).toBe('status');
+  pending.release(); await flushPromises();
+  expect(wrapper!.get('.book-opening').attributes('role')).toBe('status');
+  expect(wrapper!.get('.network-primary-nav [aria-label="学习资料"]').attributes('disabled')).toBeDefined();
+  retried.release(); await flushPromises();
+  expect(wrapper!.find('.book-opening').exists()).toBe(false);
+  expect(wrapper!.get('.network-primary-nav [aria-label="学习资料"]').attributes('disabled')).toBeUndefined();
 });

@@ -83,6 +83,7 @@ pub(crate) fn candidate(
         input["goal_action"].as_str(),
         None,
         turn_id,
+        presentation_requested(input)?,
         now,
     )?;
     chat.turns.last_mut().unwrap().domain.personal_notes = notes;

@@ -34,6 +34,7 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
         let provider = tiny_http::Server::http("127.0.0.1:0").unwrap();
         crate::tests::adm5_tests::seed_model(&mut f, &format!("http://{}", provider.server_addr()), "formal-admission-fixture", 1_000_000);
         f.access.runs.configure(ProviderConfig {
+            agent_reasoning_effort: Default::default(),
             mode: runtime::ProviderMode::Native,
             api_key: "PRIVATE_MODEL_KEY".into(),
             base_url: format!("http://{}", provider.server_addr()),

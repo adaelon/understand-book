@@ -466,13 +466,13 @@ current explicit instruction (ephemeral)
   > applicable global active fact
 
 subjective profile authority:
-  user correction > user statement > agent inference
+  user statement (including correction) > agent inference
 
 objective reading state:
   deterministic event reducer only
 ```
 
-同 scope/authority 取最近明确表达;无法判定的冲突并列进入审核,模型不得猜。单本覆盖不反向改写全局。
+同 scope/authority 取最近明确表达；纠正不获得永久高于后续普通陈述的权限。普通审核以原话时间 `observed_at_ms` 判断先后，不能以后台完成时间替代；旧数据可从原会话事件或显式画像证据记录补取时间。同一事实用 `supersedes` 串起修订，保留旧事实而只投影当前状态。单本覆盖不反向改写全局。
 
 ### 4.4 生命周期
 
@@ -1085,7 +1085,7 @@ pre-M AgentHistory outcome
 | MEM-E05 | `memory::profile::tests::resolver_prefers_book_scope_specific_applicability_and_authority`;`memory::projection::tests::partitions_active_facts_and_excludes_pending_expired_and_extensions` | Book scope resolver 与最终 snapshot 双层排除其他书 ID/值 |
 | MEM-E06 | `runtime::memory_policy::tests::paper_specific_preference_does_not_leak_into_technical_snapshot` | paper applicability 不进入 technical_learning snapshot |
 | MEM-E07 | `memory::global_consolidation::tests::two_books_three_evidence_create_pending_then_confirmed_snapshot` | inferred Global 在 confirm 前不进入 injected IDs |
-| MEM-E08 | `memory::profile::tests::correction_supersedes_old_fact_and_resolver_selects_replacement`;`memory::projection::tests::correction_authority_outranks_a_newer_user_statement` | correction chain 与新 snapshot 只选 replacement |
+| MEM-E08 | `memory::profile::tests::correction_supersedes_old_fact_and_resolver_selects_replacement`;`memory/tests/profile_revision.rs::ordinary_statement_revises_a_correction_and_persists_one_current_fact` | correction chain 可被后续普通陈述继续修订，新 snapshot 只选当前事实 |
 | MEM-E09 | `memory::operation::tests::forget_deletes_correction_chain_evidence_and_disk_values`;`memory::markdown::tests::forget_removes_values_from_both_materialized_views`;`memory::backfill::tests::forget_scrubs_backfill_candidates_that_share_excluded_evidence`;`server::tests::profile_governance_http_enforces_revision_replay_and_all_mutation_actions` | document/evidence、Markdown、backfill candidate 与 resident cache/API 均移除原值 |
 | MEM-E10 | `runtime::orchestrator::tests::profile_mark_used_accepts_only_injected_ids_and_is_atomic_on_error` | claimed_used 子集约束与不存在 ID 原子拒绝 |
 | MEM-E11 | `server::host::tests::fake_boundary_timeout_projects_stale_pending_context_and_visible_error` | stale/error/pending context 可见且 reader goto 继续成功 |

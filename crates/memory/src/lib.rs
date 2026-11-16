@@ -25,9 +25,14 @@ mod profile;
 mod projection;
 mod reading_state;
 mod review;
+mod review_revision;
 pub mod learning;
+pub mod closed_book;
+pub mod course;
+pub mod course_resumption;
 pub mod teaching;
 pub mod agent_work;
+pub mod teacher_corrections;
 pub mod teaching_design;
 pub mod tutor_coach;
 pub mod assessment;
@@ -59,6 +64,7 @@ pub use private_storage::{
     ReaderPrivateStorageDiagnostic, ReaderPrivateStorageGate, READER_PRIVATE_STORAGE_UNAVAILABLE,
 };
 pub use profile::{
+    profile_timestamp_ms,
     Applicability, BackgroundClaim, CapabilityClaim, Confidence, ConstraintClaim,
     CreateProfileFact, EvidenceExclusion, EvidenceRef, ExclusionReason, FactSource, FactStatus,
     ForgetProfileFactOutcome, GoalClaim, PreferenceClaim, ProfileFact, ProfileFactCapture,

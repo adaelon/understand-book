@@ -226,7 +226,8 @@ test('WB3 real preview, native linked explanation, persistent playback and new-c
   await expect(pane).toContainText(presentation.title);
   expect(await page.evaluate(async id => { const path = '/src/api.ts'; return (await (await import(path)).api.agentHistory()).sessions.some(session => session.id === id); }, seed.session_id)).toBe(false);
   await board.getByRole('button', { name: '关闭画板，回到阅读', exact: true }).click();
-  await page.getByRole('button', { name: '新对话', exact: true }).filter({ visible: true }).first().click();
+  await page.locator('.topbar .tools-toggle').click();
+  await page.locator('.topbar').getByRole('button', { name: '新对话', exact: true }).click();
   await expect.poll(() => page.evaluate(async () => {
     const path = '/src/network-context.ts'; return (await import(path)).network.value.workspace?.selected_chat;
   })).toBeTruthy();

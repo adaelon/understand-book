@@ -449,11 +449,13 @@ function updateCurrentLid() {
 
 function checkScrollState() {
   pendingCheck = false;
-  if (paginated.value) return;
+  if (props.readerActive === false || paginated.value) return;
   if (reflowPending) return;
   updateCurrentLid();
   checkBufferNeed();
 }
+
+watch(()=>props.readerActive,active=>{if(active!==false)void scheduleScrollStateCheck();});
 
 async function scheduleScrollStateCheck() {
   if (pendingCheck) return;

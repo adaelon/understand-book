@@ -33,6 +33,24 @@ fn count(f: &Fixture, table: &str) -> i64 {
 }
 
 #[test]
+fn budget_admin_gift_opens_and_grants_atomically_and_replays_once() {
+    let f = fixture();
+    let now = crate::multi_user_host::now();
+    let body = json!({"operation_id":"budget-gift","starts_at":now-1,"expires_at":now+3600,"initial_grant_micro_cny":3_333_333,"reason":"体验赠送"});
+    let opened = post(&f, "allowance-periods", body.clone());
+    assert_eq!(opened["allowance_period"]["balance"]["available_micro_cny"], 3_333_333);
+    assert_eq!(opened["allowance_period"]["balance"]["percentages"]["available"]["value"], "100");
+    assert_eq!(post(&f, "allowance-periods", body), opened);
+    assert_eq!(count(&f, "allowance_periods"), 1);
+    assert_eq!(count(&f, "allowance_adjustments"), 1);
+    assert_eq!(count(&f, "manual_receipts"), 0);
+    let conflict = json!({"operation_id":"budget-overlap","starts_at":now,"expires_at":now+100,"initial_grant_micro_cny":10_000_000,"reason":"重叠"});
+    assert_eq!(f.call(&f.b, "POST", "/api/admin/users/A/allowance-periods", conflict).1["error_code"], "ALLOWANCE_PERIOD_OVERLAP");
+    assert_eq!(count(&f, "allowance_adjustments"), 1);
+    assert_eq!(balance(&f)["available_micro_cny"], 3_333_333);
+}
+
+#[test]
 fn adm3_receipt_grant_replay_corrections_and_reopen() {
     let f = fixture();
     let p = period(&f);

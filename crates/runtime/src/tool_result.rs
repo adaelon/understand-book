@@ -1140,14 +1140,17 @@ pub(crate) fn project_tool_result(
     if tool == "board.author" && matches!(raw["status"].as_str(), Some("board_read" | "board_page")) {
         return crate::board_author::project_read(arguments, &raw, limit);
     }
-    if matches!(tool, "music.read" | "music.interact") && json_len(&raw) > limit {
+    if tool == "music.read" {
+        if let Some(result) = crate::music::project_read(arguments, &raw, limit) { return result; }
+    }
+    if matches!(tool, "music.read" | "music.interact" | "music.example") && json_len(&raw) > limit {
         // Music locators and player receipts are atomic. A shortened ID or a
         // clipped event would authorize a citation/action the model never read.
         let guidance = if tool == "music.read" {
-            "The prepared music result does not fit this request. Read a smaller original-time range, fewer parts, or a lower limit; no source from this result was observed."
-        } else { "The actual browser receipt did not fit the model budget. Observe again before taking another action; do not infer completion." };
+            "The prepared music result does not fit this request. Select a single voice and a smaller measure range. Score pages preserve whole measures: lowering limit below one measure will not help. For an intentional fragment select exact source_ids. No source from this result was observed."
+        } else if tool == "music.example" { "The examples and facts exceed the result budget. Register fewer items or shorter corresponding passages and reuse the returned markers." } else { "The actual browser receipt did not fit the model budget. Observe again before taking another action; do not infer completion." };
         let mut next: Value = serde_json::from_str(arguments).unwrap_or_else(|_| json!({}));
-        if tool == "music.read" { next["limit"] = json!((next["limit"].as_u64().unwrap_or(20) / 2).max(1)); }
+        if tool == "music.read" && next["view"] != "score" { next["limit"] = json!((next["limit"].as_u64().unwrap_or(20) / 2).max(1)); }
         return ToolResultDraft { status: ToolResultStatus::Partial,
             model_body: bounded_value(json!({"error_code":"MUSIC_RESULT_BUDGET","category":"budget","message":guidance}),limit,&[]),
             truncated:true, continuation:Some(ToolContinuation::RefineCall { tool:tool.into(),arguments:next,guidance:guidance.into() }), evidence_arguments:arguments.into() };

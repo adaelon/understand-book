@@ -2,6 +2,7 @@ import { mergeBoardDeliveries } from './board-workspace';
 import { t as uiText } from './i18n';
 import { ApiError, type AgentHistoryResponse } from './api';
 import { initialRun, type RunDescriptor, type RunSnapshot } from './agent-run-state';
+import { discardSubmissionBody, readSubmissionBody, saveSubmissionBody } from './submission-body-store';
 import { network, sceneKey, installWorkspace, forgetNetwork, savedWorkspace, saveWorkspace, type NetworkWorkspace, type LearningWorkspace, type PublishedBookRef } from './network-context';
 
 export const learningWorkspaces = {
@@ -13,7 +14,7 @@ export const learningWorkspaces = {
 };
 
 export const sharedWorkspaces = {
-  list: (offset = 0, signal?: AbortSignal) => networkFetch<import('./shared-workspaces').SharedReleasePage>('GET', `/workspace-releases?limit=12&offset=${offset}`, undefined, signal),
+  list: (offset = 0, signal?: AbortSignal, bookId?: string) => networkFetch<import('./shared-workspaces').SharedReleasePage>('GET', `/workspace-releases?limit=12&offset=${offset}${bookId ? `&book_id=${encodeURIComponent(bookId)}` : ''}`, undefined, signal),
   read: (id: string, version: number, signal?: AbortSignal) => networkFetch<import('./shared-workspaces').SharedRelease>('GET', `/workspace-releases/${encodeURIComponent(id)}/versions/${version}`, undefined, signal),
   use: (id: string, version: number, operationId: string, text: string) => networkFetch<import('./shared-workspaces').SharedUseResult>('POST', `/workspace-releases/${encodeURIComponent(id)}/versions/${version}/use`, { operation_id: operationId, goal: { text, constraints: [] } }),
   instance: (id: string) => networkFetch<{ instance: import('./shared-workspaces').SharedInstance | null }>('GET', `/learning-workspaces/${encodeURIComponent(id)}/shared-release`),
@@ -53,13 +54,22 @@ export async function networkFetch<T>(method: string, path: string, body?: unkno
     headers: { 'Content-Type': 'application/json', ...(identity ? { 'X-CSRF-Token': identity.csrf_token } : {}) },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
-  const value = await res.json();
+  const text = await res.text();
   if (path !== '/auth/logout' && key !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
+  let value;
+  try { value = JSON.parse(text); }
+  catch {
+    // A proxy can reject an upload before the application sees it. Keep its
+    // HTTP status so a definite rejection releases the pending request key.
+    if (res.ok) throw new ApiError(502, 'INVALID_RESPONSE', 'unavailable', uiText('服务返回了无法读取的响应，请稍后重试。'));
+  }
   if (!res.ok) {
     if (res.status === 401 && identity && key === sceneKey()) forgetNetwork();
-    const message = value.error_code === 'WORKSPACE_STALE' ? uiText('阅读连接已失效，请重试恢复连接') : value.message ?? uiText('请求未完成');
-    throw new ApiError(res.status, value.error_code ?? `HTTP_${res.status}`, value.category ?? (res.status === 409 ? 'conflict' : 'unavailable'), message,
-      typeof value.request_id === 'string' ? { request_id: value.request_id, expires_at: value.expires_at, resend_after: value.resend_after } : undefined);
+    const message = res.status === 413 ? uiText('图片或附件过大，请缩小后重新发送。')
+      : value?.error_code === 'WORKSPACE_STALE' ? uiText('阅读连接已失效，请重试恢复连接')
+      : value?.message ?? (res.status >= 500 ? uiText('服务暂时不可用，请稍后重试。') : uiText('请求未完成'));
+    throw new ApiError(res.status, value?.error_code ?? `HTTP_${res.status}`, value?.category ?? (res.status === 409 ? 'conflict' : 'unavailable'), message,
+      typeof value?.request_id === 'string' ? { request_id: value.request_id, expires_at: value.expires_at, resend_after: value.resend_after } : undefined);
   }
   return value;
 }
@@ -82,7 +92,7 @@ let bindingRecovery: { key: string; task: Promise<void>; signal?: AbortSignal } 
 
 // The caller may stop waiting while an earlier write still owns the queue. Keep
 // that underlying task in `writes`, so cancellation never overlaps CAS writes.
-function abortable<T>(task: Promise<T>, signal?: AbortSignal): Promise<T> {
+export function abortable<T>(task: Promise<T>, signal?: AbortSignal): Promise<T> {
   if (!signal) return task;
   return new Promise<T>((resolve, reject) => {
     const aborted = () => reject(signal.reason ?? new DOMException('Aborted', 'AbortError'));
@@ -291,15 +301,15 @@ export function publishedUrl(leaf: string) {
 }
 
 // Reads retain scene authority but do not join the CAS write queue or install an older snapshot.
-export async function workspaceRead<T = unknown>(action: string, body: Record<string, unknown> = {}): Promise<T> {
+export async function workspaceRead<T = unknown>(action: string, body: Record<string, unknown> = {}, signal?: AbortSignal): Promise<T> {
   const n = network.value, w = n.workspace;
   if (!w) throw new ApiError(409, 'WORKSPACE_REQUIRED', 'conflict', uiText('请先选择材料'));
   return networkFetch<T>('POST', `/workspaces/${w.workspace_id}/${action}`, {
     ...body, attachment_id: n.attachment, generation: w.generation, expected_revision: w.revision,
-  });
+  }, signal);
 }
 const readActions = new Set(['boards/list', 'boards/read', 'boards/conversation', 'boards/catalog', 'boards/search', 'boards/related', 'boards/source.resolve', 'boards/source.read', 'boards/presentation.read', 'boards/presentation.observe', 'memory/presentation.read', 'memory/presentation.observe', 'reader/state', 'profile/manifest', 'profile/memory', 'memory/recall', 'memory/prepare_note',
-  'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve', 'reader/selection.translate']);
+  'reader/paper_minimap.state', 'reader/pdf_selection.resolve', 'reader/pdf_ranges.project', 'agent/source.resolve', 'agent/source.read', 'notes/source.read', 'reader/selection.translate', 'reader/guidance', 'tutor/ask-step', 'tutor/grade', 'knowledge/tree', 'knowledge/resume']);
 
 interface Admission extends RunDescriptor {
   dispatch_state: string; persistence_state: string; snapshot?: RunSnapshot;
@@ -312,22 +322,32 @@ export function admissionSnapshot(value: Admission): RunSnapshot {
   if (value.dispatch_state === 'queued' || value.dispatch_state === 'preparing' || value.dispatch_state === 'claimed') return { ...snapshot, execution_state: value.dispatch_state === 'claimed' ? 'running' : 'queued' };
   return { ...snapshot, persistence_state: 'saved', execution_state: value.turn?.status === 'completed' ? 'completed' : value.turn?.status === 'cancelled' ? 'cancelled' : 'failed', final_view: value.turn ?? null, error: value.turn?.error as RunSnapshot['error'] ?? null };
 }
-export interface PendingSubmission { key: string; body: Record<string, unknown>; workspace: string }
+export interface PendingSubmission { key: string; body: Record<string, unknown>; workspace: string; bodyStored?: boolean }
+// A durable request can still be awaiting its original POST in this page.
+const sendingSubmissions = new Set<string>();
 function pendingPrefix() { return `understand-book:pending:${network.value.identity?.user_id}:`; }
 function pendingChanged() { window.dispatchEvent(new Event('submission-pending-changed')); }
+function clearPendingSubmission(storageKey: string) {
+  const saved = sessionStorage.getItem(storageKey);
+  if (saved && (JSON.parse(saved) as PendingSubmission).bodyStored) discardSubmissionBody(storageKey);
+  sessionStorage.removeItem(storageKey);
+}
 export function pendingSubmissions(): PendingSubmission[] {
   return Object.keys(sessionStorage).filter(key => key.startsWith(pendingPrefix())).map(key => JSON.parse(sessionStorage.getItem(key)!));
 }
+export function unconfirmedSubmissions(): PendingSubmission[] {
+  return pendingSubmissions().filter(item => !sendingSubmissions.has(pendingPrefix() + item.key));
+}
 export async function recoverSubmissions(): Promise<RunDescriptor[]> {
   const recovered: RunDescriptor[] = [];
-  for (const item of pendingSubmissions()) {
+  for (const item of unconfirmedSubmissions()) {
     try {
       const value = await networkFetch<Admission>('GET', `/agent/runs?client_request_id=${encodeURIComponent(item.key)}`);
       if (value.dispatch_state === 'preparing') continue;
-      sessionStorage.removeItem(pendingPrefix() + item.key);
+      clearPendingSubmission(pendingPrefix() + item.key);
       recovered.push(value);
     } catch (error) {
-      if (error instanceof ApiError && error.errorCode === 'REQUEST_KEY_CLOSED') sessionStorage.removeItem(pendingPrefix() + item.key);
+      if (error instanceof ApiError && error.errorCode === 'REQUEST_KEY_CLOSED') clearPendingSubmission(pendingPrefix() + item.key);
       else if (!(error instanceof ApiError && error.status === 404)) throw error;
     }
   }
@@ -336,17 +356,18 @@ export async function recoverSubmissions(): Promise<RunDescriptor[]> {
 }
 export async function retrySubmission(key: string) {
   await recoverSubmissions();
-  const item = pendingSubmissions().find(p => p.key === key);
+  const item = unconfirmedSubmissions().find(p => p.key === key);
   if (!item) { window.dispatchEvent(new Event('agent-admission-changed')); return; }
-  try { await networkFetch('POST', `/workspaces/${item.workspace}/agent/runs`, item.body); }
-  catch (error) {
-    if (error instanceof ApiError && error.status < 500 && !['ADMISSION_PREPARING', 'CLIENT_CONTEXT_STALE'].includes(error.errorCode)) {
-      sessionStorage.removeItem(pendingPrefix() + item.key); pendingChanged();
+  if (item.bodyStored) {
+    const scene = sceneKey();
+    const body = await readSubmissionBody(pendingPrefix() + item.key);
+    if (scene !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
+    if (!body) {
+      clearPendingSubmission(pendingPrefix() + item.key); pendingChanged();
+      throw new ApiError(400, 'SUBMISSION_BODY_MISSING', 'validation', uiText('原问题的附件已不在浏览器中，请重新添加附件后发送。'));
     }
-    throw error;
-  }
-  sessionStorage.removeItem(pendingPrefix() + item.key); pendingChanged();
-  window.dispatchEvent(new Event('agent-admission-changed'));
+    await postSubmission({ key: item.key, workspace: item.workspace, body });
+  } else await postSubmission(item);
 }
 async function createRun(body: Record<string, unknown>) {
   const initial = network.value.workspace;
@@ -373,23 +394,47 @@ async function createRun(body: Record<string, unknown>) {
   const key = typeof body.client_request_id === 'string' ? body.client_request_id : crypto.randomUUID();
   const input = { ...body, client_request_id: key, session_id: w.selected_chat, attachment_id: network.value.attachment,
     generation: latest.generation, expected_revision: latest.revision, published_book_ref: latest.published_book_ref };
-  sessionStorage.setItem(pendingPrefix() + key, JSON.stringify({ key, body: input, workspace: w.workspace_id }));
-  pendingChanged();
-  const storageKey = pendingPrefix() + key;
+  return postSubmission({ key, body: input, workspace: w.workspace_id });
+}
+async function postSubmission(item: PendingSubmission) {
+  const storageKey = pendingPrefix() + item.key;
+  const scene = sceneKey();
+  const serialized = JSON.stringify(item);
+  const large = serialized.length > 64 * 1024;
+  sendingSubmissions.add(storageKey);
   try {
-    const value = await networkFetch<Admission>('POST', `/workspaces/${w.workspace_id}/agent/runs`, input);
-    sessionStorage.removeItem(storageKey); pendingChanged(); window.dispatchEvent(new Event('agent-admission-changed')); 
-    return value;
-  } catch (error) {
-    if (error instanceof ApiError && error.status < 500 && !['ADMISSION_PREPARING', 'CLIENT_CONTEXT_STALE'].includes(error.errorCode)) sessionStorage.removeItem(storageKey);
-    if (!(error instanceof ApiError) || error.status >= 500 || error.errorCode === 'ADMISSION_PREPARING') {
-      try {
-        const accepted = await networkFetch<Admission>('GET', `/agent/runs?client_request_id=${encodeURIComponent(key)}`);
-        if (accepted.dispatch_state !== 'preparing') { sessionStorage.removeItem(storageKey); pendingChanged(); window.dispatchEvent(new Event('agent-admission-changed'));  return accepted; }
-      } catch { /* Keep the original key; recovery only queries it. */ }
+    try {
+      if (large) await saveSubmissionBody(storageKey, (JSON.parse(serialized) as PendingSubmission).body);
+      if (scene !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
+      sessionStorage.setItem(storageKey, large ? JSON.stringify({
+        key: item.key, workspace: item.workspace, bodyStored: true,
+        body: { message: item.body.message, display_user: item.body.display_user, session_id: item.body.session_id },
+      } satisfies PendingSubmission) : serialized);
+    } catch (error) {
+      if (large) discardSubmissionBody(storageKey);
+      if (error instanceof ApiError) throw error;
+      throw new ApiError(400, 'SUBMISSION_STORAGE_FAILED', 'validation', uiText('问题尚未发送，浏览器暂时无法保存重试信息。请保留内容后重试。'));
     }
     pendingChanged();
-    throw error;
+    let value: Admission;
+    try {
+      value = await networkFetch<Admission>('POST', `/workspaces/${item.workspace}/agent/runs`, item.body);
+    } catch (error) {
+      if (error instanceof ApiError && error.status < 500 && error.errorCode !== 'ADMISSION_PREPARING') {
+        if (error.errorCode !== 'CLIENT_CONTEXT_STALE') clearPendingSubmission(storageKey);
+        throw error;
+      }
+      // A lost reply may already have created the run. Query the original key before offering a retry.
+      try { value = await networkFetch<Admission>('GET', `/agent/runs?client_request_id=${encodeURIComponent(item.key)}`); }
+      catch { throw error; }
+      if (value.dispatch_state === 'preparing') throw error;
+    }
+    clearPendingSubmission(storageKey);
+    window.dispatchEvent(new Event('agent-admission-changed'));
+    return value;
+  } finally {
+    sendingSubmissions.delete(storageKey);
+    pendingChanged();
   }
 }
 async function history(): Promise<AgentHistoryResponse> {
@@ -403,6 +448,7 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
   if (path === '/agent/runs') value = await createRun(input);
   else if (/^\/agent\/runs\//.test(path)) value = admissionSnapshot(await networkFetch<Admission>(method, path, body));
   else if (path === '/agent/history') value = await history();
+  else if (path === '/learning-task' && method === 'GET') value = await networkFetch('GET', `/workspaces/${network.value.workspace!.workspace_id}/learning-task`);
   else if (path.startsWith('/agent/history/recap?')) value = await networkFetch(method, path);
   else if (path === '/agent/new' || path === '/agent/history/select') {
     await workspaceAction(path === '/agent/new' ? 'chat/new' : 'chat/select', input);
@@ -441,14 +487,17 @@ export async function networkRequest<T>(method: 'GET' | 'POST', path: string, bo
     value = result.result;
   }
   else if (path.startsWith('/agent/presentation.read') || path.startsWith('/agent/presentation.observe')) {
-    if (input.saved_state) await workspaceAction('presentation/restore', { saved_state: input.saved_state });
-    const result = await workspaceAction<{ result: unknown }>(path.endsWith("observe") ? "presentation/observe" : "presentation/read", input);
+    const result = await workspaceRead<{ result: unknown }>(path.endsWith("observe") ? "presentation/observe" : "presentation/read", input);
     value = result.result;
+  } else if (path === '/reader/voice-status' || path === '/reader/voice-transcribe') {
+    value = (await workspaceRead<{ result: unknown }>(path.slice(1), input, signal)).result;
   } else {
     const action = path === '/agent/presentation.state.save' ? 'presentation/save' : path.split('?')[0].slice(1);
     const request = readActions.has(action) ? workspaceRead : workspaceAction;
     const data = await request<NetworkWorkspace & { result?: unknown }>(action, input);
-    value = path === '/reader/state' ? data.reader : data.result ?? data;
+    // A missing practice or guidance decision is a valid null result. Do not
+    // turn it into a workspace object, which has a different response shape.
+    value = path === '/reader/state' ? data.reader : 'result' in data ? data.result : data;
   }
   return value as T;
 }

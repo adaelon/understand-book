@@ -7,6 +7,9 @@ use runtime::{
 use serde_json::{json, Value};
 use std::{sync::Arc, time::Duration};
 
+#[path = "provider_retry_billing_tests.rs"]
+mod provider_retry_billing;
+
 fn rates(url: &str) -> Value {
     json!({"rates":[{"version":"fixture","provider":url,"model":"fixture-model","starts_at":0,"expires_at":i64::MAX,
         "input_micro_cny_per_million":1000000,"cached_input_micro_cny_per_million":100000,"output_micro_cny_per_million":1000000,

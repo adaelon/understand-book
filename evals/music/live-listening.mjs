@@ -15,7 +15,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')
 const args = process.argv.slice(2);
 const option = (name, fallback) => args.includes(name) ? args[args.indexOf(name) + 1] : fallback;
 if (args.includes('--help')) {
-  console.log('Usage: node evals/music/live-listening.mjs --book PUBLISHED_MUSIC_DIR [--out FRESH_DIR] [--server BINARY] [--token-limit 1800000] [--turn-timeout-ms 480000]');
+  console.log('Usage: node evals/music/live-listening.mjs --book PUBLISHED_MUSIC_DIR [--scenario schubert|beethoven9] [--out FRESH_DIR] [--server BINARY] [--token-limit 1800000] [--turn-timeout-ms 480000]');
   process.exit(0);
 }
 const book = path.resolve(option('--book', '.understand-book/music-schubert'));
@@ -34,7 +34,13 @@ assert(['OPENCODE_BASE_URL', 'OPENCODE_API_KEY', 'FLUID_LLM_MODEL'].every(key =>
 process.env.SEMANTIC_EVAL_SERVER = binary;
 fs.mkdirSync(output, { recursive: true });
 const memory = path.join(output, 'memory');
-const messages = [
+const beethoven = option('--scenario', 'schubert') === 'beethoven9';
+const messages = beethoven ? [
+  '我没学过乐理。请用第四乐章19分15秒附近的双赋格，先带我辨认第二小提琴的拥抱主题。每次只给一个能听的特征，先提示再放很短一段原声，不要默认我已经听懂。',
+  '我还是跟不住第二小提琴。先不要考我，请先放对应拥抱主题的谱面合成示范，说明它与原录音的关系，再回到同一处原声，用这个对照帮助我找。',
+  '临时追问：乐谱位置高、实际音更高、在录音里更响，是一回事吗？就用这两条主题说明，哪些能由谱面确定，哪些需要听原录音判断，先不用往后。',
+  '我现在能描述谱面上的区别：拥抱主题较长、向下走，欢乐主题长短交替、向上走。但我还不能同时跟住两条。请再给一个具体的关注方法，再播放这段原声，保留我还没有稳定听出来这一点。',
+] : [
   '我完全没学过乐理。钢琴两只手是不是就等于两件乐器？请从这首曲子开头很短的一段带我分清旋律和伴奏；先解释一个能听的区别，放一小段让我试着找，不要默认我已经听过或已经听懂。',
   '我还是听不出哪条是旋律，只觉得都在响。先别考我，也别讲新术语；请先放一小段谱面合成的上方线条示范，说明它和原录音的关系，再回到原声的同一小段，用这个短对照帮我找。',
   '临时追问：你说旋律在上面，是指乐谱位置高、实际音更高，还是它更响？这三个是一回事吗？就用刚才那一小段说明，先不用继续往后。',
@@ -59,6 +65,7 @@ const messageText = message => typeof message?.content === 'string' ? message.co
 const systemText = request => (request?.messages ?? []).filter(message => ['system', 'developer'].includes(message.role)).map(messageText).join('\n');
 function purpose(record) {
   const text = systemText(record.request);
+  if (text.startsWith('You are the resident learning agent.')) return 'business_loop';
   if (text.startsWith('你是 Understand Book 的教学教练。')) return 'tutor_coach';
   if (text.startsWith('Teaching delivery acceptance review.') || /teaching_delivery_review|tutor_delivery_review/.test(text)) return 'tutor_delivery_review';
   if (text.startsWith('available_answer.v2')) return 'available_answer';
@@ -120,16 +127,20 @@ try {
   const readiness = await server.api('tutor/readiness');
   assert.equal(readiness.status, 'ready', 'Publish complete teaching assets before the live run.');
   let state = await server.api('tutor/state');
-  for (const action of [{ kind: 'set_enabled', enabled: true }, { kind: 'start',
+  const startActions = [{ kind: 'set_enabled', enabled: true }];
+  if (!beethoven) startActions.push({ kind: 'start',
     user_intent: messages[0], explicit_constraints: ['零基础，每次只解释一个能听到的关系'],
     material_scope: [{ source_id: material.book_id, scope_refs: [], role: 'primary' }],
-    default_teaching_intent: null, learning_purpose: 'understand' }]) {
+    default_teaching_intent: null, learning_purpose: 'understand' });
+  // Let the actual Beethoven question supply the first music scope and intent.
+  for (const action of startActions) {
     state = await server.api('tutor/mutate', { operation_id: randomUUID(), expected_revision: state.control.revision, action }, 'POST');
   }
   report.initial_teaching_state = state;
   browser = await chromium.launch({ headless: true });
   page = await browser.newPage({ viewport: { width: 1500, height: 1000 } });
-  page.setDefaultTimeout(30000);
+  page.setDefaultTimeout(beethoven ? 60000 : 30000);
+  await page.addLocatorHandler(page.locator('.product-tour-overlay'), () => page.locator('.product-tour-skip').click());
   page.on('pageerror', error => { report.browser_errors.push(error.message); checkpoint(); });
   page.on('response', async response => {
     if (response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/agent/music/respond') {
@@ -139,6 +150,14 @@ try {
   await page.goto(server.url, { waitUntil: 'domcontentloaded' });
   await page.locator('.music-reader').waitFor({ state: 'visible' });
   await page.waitForFunction(() => document.querySelector('.music-reader > audio')?.readyState > 0);
+  if (beethoven) {
+    await page.getByRole('button', { name: '作品导览', exact: true }).click();
+    await page.locator('.music-exercises button').filter({ hasText: '辨认拥抱主题' }).click();
+    await page.waitForFunction(() => {
+      const audio = document.querySelector('.music-reader > audio');
+      return audio?.paused && audio.currentTime > 1159;
+    });
+  }
   await page.screenshot({ path: path.join(output, '00-music-reader.png'), fullPage: true });
   for (const [index, text] of messages.entries()) {
     stage = `turn_${index + 1}_submit`;
@@ -231,7 +250,7 @@ try {
     && Number.isFinite(row.response.receipt.demonstration_state.current_ms)),
     { meaning: 'Original recording paused while a separately identified score-synthesis player ran; neither state proves human hearing.' });
   report.semantic_review = { status: 'pending', evidence: messages.map((_, index) => `answer-${index + 1}.md`),
-    questions: ['Does the first delivery correct two hands versus two instruments using one audible relationship?', 'Does still-cannot-hear get a shorter concrete contrast without forced testing?', 'Does the interruption distinguish score position, pitch and loudness with source support?', 'Does continue-listening preserve uncertainty rather than marking mastery?'],
+    questions: [beethoven ? 'Does the first delivery use the selected Beethoven double-fugue passage and one concrete score-grounded listening feature?' : 'Does the first delivery correct two hands versus two instruments using one audible relationship?', 'Does still-cannot-hear get a shorter concrete contrast without forced testing?', 'Does the interruption distinguish score position, pitch and loudness with source support?', 'Does continue-listening preserve uncertainty rather than marking mastery?'],
     limitation: 'Structural checks alone do not establish good teaching or human learning.' };
   report.status = report.checks.every(item => item.passed) ? 'passed_structural_checks_awaiting_semantic_review' : 'failed_checks';
 } catch (error) {

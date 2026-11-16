@@ -1,5 +1,6 @@
 //! Bounded response-fit replay: model text is frozen; tools and storage are real.
 use super::*;
+use crate::tests::tutor_loop_tests::prepare_activity_chat as prepare_agent_chat;
 use memory::learning_evidence::LearningEvidence;
 use memory::teaching::{TeachingEvent, TeachingFact};
 
@@ -155,7 +156,7 @@ impl ModelAdapter for Replay {
         let call = |id: &str, name: &str, arguments: Value| ToolCall {
             id: id.into(),
             name: name.into(),
-            arguments: arguments.to_string(),
+            arguments: super::tutor_loop_tests::fixture_model_input(arguments).to_string(),
         };
         let has_evidence = self.output["evidence"].is_object();
         let (text, tool_calls) = match stage {

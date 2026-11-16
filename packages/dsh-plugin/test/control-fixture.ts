@@ -14,6 +14,14 @@ export function candidateFor(contract: any, semantic: string): unknown {
   if (contract.stage === "profile_sidecar") return { discourse_items: JSON.parse(semantic.match(/visible_lids: (\[[^\n]+\])/u)![1]).map((lid: string) => ({ lid, mode: "informative", relations: [] })) };
   if (contract.stage === "pass2") return { edges: [] };
   const input = JSON.parse(semantic.slice(semantic.indexOf("{"), semantic.lastIndexOf("}") + 1));
+  if(contract.stage==='course'){
+    const lids=input.source.passages.map((p:any)=>p.lid);
+    if(input.task_kind==='scope')return {title:'Atomic changes',question:'What belongs to one transaction?',route:'chapters',unit_lids:input.structure.spine.map((u:any)=>u.lid)};
+    if(input.task_kind==='plan')return {language:'en',unit_title:'Transaction boundary',lessons:[{id:'atomic',question:'What does one atomic change mean?',objective:'Explain the boundary described in the definition.',prerequisites:'Understand an operation and a change.',estimated_minutes:20,duration_basis:'Read and reason for 10 minutes, then apply and review for 10.',source_lids:lids,blueprint:'Use the definition to group operations; the final task asks what the group is treated as.'}]};
+    if(input.task_kind==='lesson')return {introduction:'Read the definition and identify what is grouped.',prediction:{question:'What does a transaction group?',options:[]},experiment:{kind:'inquiry',activity:'reading',instruction:'Identify the grouping and its result.',material:input.source.passages.map((p:any)=>p.text).join('\n\n'),response_prompt:'Quote the relevant words and explain the relationship.'},explanation:'The operations are grouped into one atomic change.',task:{question:'How does the definition describe the result of grouping operations?',options:[]},hint:'Look at the phrase following operations.',assessment:{rule:{kind:'open',items:[{id:'atomic',criterion:'Explains that the group forms one atomic change.',source_lids:lids}]},source_lids:lids,source_sufficient:true,feedback:'after_submit'},solution:'The resulting group is treated as one atomic change.',reflection_prompt:'Connect the operations with the resulting change.',reading:{before_experiment:'Find the transaction definition.',after_experiment:'Compare your explanation with the phrase one atomic change.'}};
+    if(input.task_kind==='solve')return {solutions:input.questions.map((q:any)=>({question:q.question,reasoning:'The definition groups operations into one atomic change.',answer:'Operations are grouped into one atomic change.'})),issues:[]};
+    if(input.task_kind==='review')return {accepted:true,checked_lids:lids,reasoning:'The activity and both independent solutions use the supplied definition.',issues:[]};
+  }
   if (contract.stage === "book_structure") {
     if (input.phase === "outline") return { chapters: input.input.chapters.map((c: any) => ({ unit_lid: c.unit_lid,
       question: c.overview, progression: c.overview })), themes: [] };

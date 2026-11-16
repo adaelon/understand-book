@@ -54,7 +54,7 @@ export function acceptStructureOutline(value: unknown, input: StructureOutlineIn
 
 /** Provisional themes can span many source units; their member/evidence lists grow through bounded actions. */
 export interface StructureOutlineThemeWork { themes: StructureOutline["themes"]; complete: boolean }
-const outlineThemeActionSchema = z.discriminatedUnion("kind", [
+export const outlineThemeActionSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("append"), themes: z.array(outlineThemeSchema).min(1) }).strict(),
   z.object({ kind: z.literal("extend"), theme_index: z.number().int().nonnegative(),
     unit_lids: z.array(z.string()).min(1), evidence_lids: z.array(z.string()).min(1) }).strict(),

@@ -125,6 +125,7 @@ function profileMemory() {
 type FixtureSurface = "markdown" | "pdf";
 
 async function installFixture(page: Page, surface: FixtureSurface = "pdf") {
+  await page.addInitScript(() => localStorage.setItem('understand-book.product-tour.v1.local.reader', 'done'));
   const texts: Record<string, string> = {
     '1.1': 'First placement target for an Agent note.'.padEnd(42, '\n'),
     '1.2': 'Second placement target for moving the note.'.padEnd(46, '\n'),
@@ -197,6 +198,9 @@ async function installFixture(page: Page, surface: FixtureSurface = "pdf") {
     const body = request.postData() ? request.postDataJSON() as Record<string, any> : null;
     if (path === "/api/book/pdf/original") {
       return route.fulfill({ status: 200, contentType: "application/pdf", body: pdfFixture() });
+    }
+    if (["/api/book/video_playback", "/api/book/video_context", "/api/book/music_context", "/api/build_workbench/music/context"].includes(path)) {
+      return json(route, null);
     }
     if (path === "/api/desktop/status") {
       return json(route, {
@@ -646,6 +650,14 @@ for (const viewport of viewports) {
 
 test('RE4 closing a loading source rejects its late content', async ({ page }) => {
   const fixture = await installFixture(page, 'markdown'); addReaderAnnotations(fixture);
+  fixture.texts['1.3'] = 'Context beyond the main reader viewport.';
+  let offset = 0;
+  const tree = Object.entries(fixture.texts).map(([lid, text]) => {
+    const span = { start: offset, end: offset + text.length };
+    offset = span.end;
+    return { lid, children: [], span, kind: 'paragraph' };
+  });
+  await page.route('**/api/book/manifest', route => json(route, { tree, stats_by_lid: {} }));
   await page.goto('/');
   await page.locator('[data-annotation-lid="1.1"]').click();
   let release!: () => void; let requests = 0;
@@ -654,9 +666,15 @@ test('RE4 closing a loading source rejects its late content', async ({ page }) =
   await page.getByRole('dialog', { name: '正文批注', exact: true }).getByRole('button', { name: '查看来源', exact: true }).click();
   await expect.poll(() => requests).toBeGreaterThan(0);
   await page.getByRole('button', { name: '关闭来源预览', exact: true }).click();
+  const response = page.waitForResponse(r => r.url().includes('/api/book/text?'));
   release();
-  await page.waitForResponse(r => r.url().includes('/api/book/text?'));
-  await expect(page.locator('.source-preview-modal')).toHaveCount(0);
+  await response;
+  const source = page.getByRole('dialog', { name: '引用来源', exact: true });
+  await expect(source).toHaveCount(0);
+  await page.locator('[data-annotation-lid="1.1"]').click();
+  await page.getByRole('dialog', { name: '正文批注', exact: true }).getByRole('button', { name: '查看来源', exact: true }).click();
+  await expect(source.locator('mark').first()).toBeInViewport();
+  await expect(source.getByLabel('原文阅读区')).toContainText(fixture.texts['1.3']);
 });
 
 

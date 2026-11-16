@@ -29,7 +29,7 @@ fn session_management_delete_cancels_running_review_for_both_storage_modes() {
         assert_eq!(review.review_jobs[0].status, ReviewJobStatus::Cancelled);
         assert_eq!(review.review_jobs[0].attempts, 1);
         assert!(!review.reviewed_through.contains_key(&id));
-        assert!(state.user.store.commit_review_result(&job.job_id, &["turn".into()], &[], &[], "5").is_err());
+        assert!(state.user.store.commit_review_result(&job.job_id, &["turn".into()], &[], &[], &[], "5").is_err());
     }
 }
 
@@ -117,6 +117,7 @@ fn session_management_pending_delete_preserves_session_and_selection() {
         None,
         None,
         None,
+        false,
         "t1",
     )
     .unwrap();

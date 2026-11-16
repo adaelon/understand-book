@@ -1,0 +1,22 @@
+{
+  "title": "一台相机的内外",
+  "initial_state": {
+    "explode": 0,
+    "yaw": -0.88,
+    "pitch": 0.28
+  },
+  "state_contract": {
+    "explode": "沿光轴拆解的比例；0 到 1",
+    "yaw": "绕装配体的方位角，弧度",
+    "pitch": "观察仰角，弧度，-1.15 到 1.15"
+  },
+  "readable_content": "紧凑相机的镜组、光圈、外壳、感光板与后盖沿同一光轴对应。拆解用来显露部件；镜头聚光，光圈控制开口，感光面记录图像。",
+  "assumptions": [
+    "教学装配示意，内部位置与行程不对应具体机型，不计算光线成像。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [
+    "three"
+  ],
+  "asset_refs": []
+}

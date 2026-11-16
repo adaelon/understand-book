@@ -32,6 +32,47 @@ fn setup() -> (tempfile::TempDir, SessionStore, AgentHistory) {
 }
 
 #[test]
+fn learning_task_selection_survives_chat_navigation_and_restart() {
+    let (_dir, mut store, mut history) = setup();
+    let first = new_agent_session("book", "2026-10-01T12:34:56Z", 0);
+    let original_chat = first.id.clone();
+    store.create(&mut history, first).unwrap();
+    let task = crate::learning_task::LearningTaskSelection {
+        learning_workspace_id: Some("private-workspace".into()),
+        published_book_ref: base_schema::PublishedBookRef { book_id: "book".into(), publication_id: "v1".into() },
+        source_revision: "source-v1".into(),
+        course_run_id: Some("course-original".into()),
+        chat_session_id: Some(original_chat.clone()),
+        closed_book_id: Some("practice-original".into()),
+        selected_at: 10,
+        conversation_turn_id: None,
+        continue_conversation: false,
+    };
+    store.select_learning_task(&history, task.clone()).unwrap();
+    let other = new_agent_session("book", "2026-10-01T13:00:00Z", 1);
+    let other_chat = other.id.clone();
+    store.create(&mut history, other).unwrap();
+    store.select(&mut history, "book", &other_chat).unwrap();
+    let (mut store, history) = SessionStore::open(store.paths).unwrap();
+    assert_eq!(history.active_by_book["book"], other_chat);
+    assert_eq!(store.learning_tasks[0].chat_session_id.as_deref(), Some(original_chat.as_str()));
+    assert_eq!(store.learning_tasks[0].closed_book_id.as_deref(), Some("practice-original"));
+    assert_eq!(store.learning_tasks[0].selected_at, 10);
+    let mut another_scope = task.clone();
+    another_scope.learning_workspace_id = Some("another-private-workspace".into());
+    store.select_learning_task(&history, another_scope).unwrap();
+    assert_eq!(store.learning_tasks[0].learning_workspace_id.as_deref(), Some("another-private-workspace"));
+    let mut continued = task;
+    continued.selected_at = 11;
+    store.select_learning_task(&history, continued).unwrap();
+    assert_eq!(store.learning_tasks.len(), 2);
+    assert_eq!(store.learning_tasks[0].learning_workspace_id.as_deref(), Some("private-workspace"));
+    let (reopened, _) = SessionStore::open(store.paths).unwrap();
+    assert_eq!(reopened.learning_tasks.len(), 2);
+    assert_eq!(reopened.learning_tasks[0].selected_at, 11);
+}
+
+#[test]
 fn session_store_colon_identity_selection_restart_and_delete() {
     let (_dir, mut store, mut history) = setup();
     let first = new_agent_session("book", "2026-10-01T12:34:56+08:00", 0);

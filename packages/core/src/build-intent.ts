@@ -18,6 +18,7 @@ const BUILD_STAGE_IDS = [
   "pass2",
   "book_structure",
   "paper_reading_guide",
+  "course",
   "formal_objects",
   "cognitive_materials",
   "teaching_publish",
@@ -315,6 +316,7 @@ const BuildPlanShapeZ = z.object({
   intent_id: PathSafeBuildIdZ.optional(),
   intent_digest: Sha256Z.optional(),
   public_stage_closure: z.array(NonBlankStringZ),
+  course_goal: NonBlankStringZ.optional(),
   private_artifacts: z.array(PrivateIntentArtifactZ),
   reuse: z.array(ReusedBuildArtifactZ),
   create: z.array(NonBlankStringZ),
@@ -382,6 +384,7 @@ export type BuildPlanDigestSource = Pick<
   | "content_profile"
   | "recipe_id"
   | "intent_digest"
+  | "course_goal"
   | "public_stage_closure"
   | "private_artifacts"
   | "reuse"
@@ -398,6 +401,7 @@ export function buildPlanIdentity(plan: BuildPlanDigestSource): BuildPlanDigestS
     recipe_id: plan.recipe_id,
     ...(plan.intent_digest ? { intent_digest: plan.intent_digest } : {}),
     public_stage_closure: plan.public_stage_closure,
+    ...(plan.course_goal ? {course_goal:plan.course_goal} : {}),
     private_artifacts: plan.private_artifacts,
     reuse: plan.reuse,
     create: plan.create,

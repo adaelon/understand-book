@@ -6,14 +6,14 @@ import { accountAllowance } from '../network-client';
 import AccountCostSummary from './AccountCostSummary.vue';
 import CloudPlans from './CloudPlans.vue';
 import { network, sceneKey } from '../network-context';
-import { allowancePercent, allowanceTime, offerPercentage, paymentAmount, usageOccupation, usagePurpose, usageState, type AccountAllowanceSummary, type AccountUsagePage } from '../account-allowance';
+import { allowancePercent, allowanceTime, budgetPercentage, remainingPercentages, paymentAmount, usageOccupation, usagePurpose, usageState, type AccountAllowanceSummary, type AccountUsagePage } from '../account-allowance';
 
 const emit = defineEmits<{ (e: 'close'): void }>();
 const dialog = ref<HTMLDialogElement | null>(null);
 const summary = ref<AccountAllowanceSummary | null>(null), usage = ref<AccountUsagePage | null>(null);
 const allowance = computed(() => summary.value?.current_allowance);
 const unlimited = computed(() => allowance.value?.balance.unlimited === true);
-const percentages = computed(() => allowance.value?.balance.percentages);
+const percentages = computed(() => allowance.value ? remainingPercentages(allowance.value.balance) : null);
 const guestAmount = (micro: number) => `¥${(Math.max(0, micro) / 1_000_000).toFixed(2)}`;
 const busy = ref(false), error = ref(''), loaded = ref(false), supplement = ref(false);
 const showCosts = ref(false);
@@ -57,13 +57,13 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
         <section class="allowance-overview" :aria-label="uiText('当前额度')">
           <p v-if="network.identity?.is_guest">{{ uiText('游客体验额度') }} · {{ uiText('可用') }} {{ guestAmount(allowance.balance.available_micro_cny) }} / {{ uiText('已赠送') }} {{ guestAmount(allowance.balance.granted_micro_cny) }}</p>
           <dl class="allowance-balances">
-            <div class="available"><dt>{{ uiText('可用额度') }}</dt><dd>{{ allowancePercent(percentages?.available) }}</dd></div>
+            <div class="available"><dt>{{ uiText('本期剩余额度') }}</dt><dd>{{ allowancePercent(percentages?.available) }}</dd></div>
             <div><dt>{{ uiText('本期已用') }}</dt><dd>{{ allowancePercent(percentages?.debited) }}</dd></div>
           </dl>
           <p class="allowance-expiry">{{ allowanceTime(allowance.expires_at) }} {{ uiText('到期 · 香港时间') }}</p>
         </section>
-        <p v-if="!percentages" role="status">{{ uiText('本期尚未配置百分比基准，请联系运营者完成配置；原使用记录仍保留。') }}</p>
-        <dl v-else class="allowance-calculation">
+        <p class="explanation">{{ uiText('100% 表示本期全部额度，包含已补充和获赠的额度。') }}</p>
+        <dl v-if="percentages" class="allowance-calculation">
           <div><dt>{{ uiText('正在使用的预留') }}</dt><dd>{{ allowancePercent(percentages.active_reserved) }}</dd></div>
           <div><dt>{{ uiText('待核算占用') }}</dt><dd>{{ allowancePercent(percentages.pending) }}</dd></div>
         </dl>
@@ -78,22 +78,23 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
         <h3>{{ uiText('补充 AI 使用额度') }}</h3>
         <ul v-if="summary?.replenishment.offers.length" class="usage-list">
           <li v-for="offer in summary.replenishment.offers" :key="offer.offer_id">
-            <strong>{{ offer.title }} {{ uiText('· 增加') }} {{ offerPercentage(offer.delta_milli_percent) }}</strong>
+            <strong>{{ offer.title }}</strong>
+            <p v-if="allowance && allowance.balance.granted_micro_cny > 0">{{ uiText('增加的用量相当于本期总额度的') }} {{ allowancePercent(budgetPercentage(offer.budget_micro_cny, allowance.balance.granted_micro_cny)) }}</p>
             <p>{{ uiText('支付 ¥') }}{{ paymentAmount(offer.amount_fen) }} · {{ allowanceTime(allowance!.expires_at) }} {{ uiText('到期（香港时间）') }}</p>
             <p>{{ offer.instructions }}</p>
           </li>
         </ul>
         <p v-else>{{ uiText('当前暂无可直接选择的补充方案。') }}</p>
-        <p>{{ uiText('请联系运营者，确认实际支付金额、增加的额度百分比和有效期。人工确认收款后，额度会加入账号；可点击“刷新额度与明细”查看。') }}</p>
+        <p>{{ uiText('请联系运营者确认加购方案和到账金额。人工确认收款后，额度加入本期；可点击“刷新额度与明细”查看。') }}</p>
         <p v-if="summary?.replenishment.contact || operatorContact">{{ uiText('联系方式：') }}{{ summary?.replenishment.contact || operatorContact }}</p>
         <p v-else>{{ uiText('请联系为你开通账号的运营者。') }}</p>
-        <p>{{ uiText('补充额度只增加可用比例，100% 的基准与旧明细保持不变，余额可以超过 100%。') }}</p>
+        <p>{{ uiText('加购增加可用量和本期总额度，剩余比例会重新计算；到期时间和上传空间不变。延长使用时间请续费套餐。') }}</p>
       </section>
       <details class="allowance-details"><summary>{{ uiText('额度怎么算') }}</summary>
-        <p class="explanation">{{ uiText('同一额度期以固定标准额度为 100%，补充额度不会改变历史用量的比例。这是 AI 服务的使用额度。') }}</p>
-        <dl v-if="allowance" class="allowance-calculation"><div><dt>{{ uiText('本期授予（含调整）') }}</dt><dd>{{ allowancePercent(percentages?.granted) }}</dd></div></dl>
+        <p class="explanation">{{ uiText('剩余比例 = 当前可用额度 ÷ 本期总额度。已使用、进行中和待核算的占用都已从可用额度中扣除。') }}</p>
+        <p class="explanation">{{ uiText('例如用掉一半后剩余 50%；再补充与原总量相同的额度，剩余变为 75%。实际已用量保持不变。') }}</p>
         <p v-if="allowance">{{ uiText('有效期：') }}{{ allowanceTime(allowance.starts_at) }} {{ uiText('至') }} {{ allowanceTime(allowance.expires_at) }}{{ uiText('（香港时间）') }}</p>
-        <p class="explanation">{{ uiText('小额非零消耗显示“低于 0.1%”，仍完整计入本期合计。不同额度期分别使用原期基准，不合并成一个百分比。') }}</p>
+        <p class="explanation">{{ uiText('小额非零消耗显示“低于 0.1%”，仍完整计入本期合计。新一期重新发放额度，旧期未用额度不结转。') }}</p>
       </details>
       <details class="allowance-details"><summary>{{ uiText('额度不足或到期后怎么办') }}</summary>
         <p class="explanation">{{ uiText('额度不足或到期时，仍可在现有授权范围内阅读原文、历史和已有成果。补充额度后，返回对话点击“继续任务”或发送问题；不会自动继续。') }}</p>
@@ -102,6 +103,7 @@ onBeforeUnmount(() => { request++; dialog.value?.close(); });
       <button v-if="!unlimited" type="button" :aria-expanded="showCosts" @click="showCosts = !showCosts">{{ showCosts ? uiText('收起任务与工作区汇总') : uiText('按任务与工作区查看') }}</button>
       <AccountCostSummary v-if="showCosts && !unlimited" />
       <h3>{{ uiText('使用记录') }} <small>{{ uiText('全部额度期 ·') }} {{ usage?.total ?? 0 }} {{ uiText('条') }}</small></h3>
+      <p v-if="!unlimited" class="explanation">{{ uiText('以下历史比例按各期原始额度标准记录，补充额度不会改写这些比例；与上方按本期总额计算的剩余比例口径不同。') }}</p>
       <details v-if="!unlimited && usage?.period_groups.length" class="allowance-details"><summary>{{ uiText('按原额度期查看合计') }}</summary>
         <section v-for="group in usage.period_groups" :key="group.period_id" class="period-group">
           <p>{{ uiText('额度期') }} {{ group.period_id }} {{ uiText('· 基准') }} {{ group.allowance_basis?.version ?? uiText('待配置') }}</p>

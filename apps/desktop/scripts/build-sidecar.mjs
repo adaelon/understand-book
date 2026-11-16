@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -32,6 +32,8 @@ const result = spawnSync(
     "--loader=.toml:text",
     "--loader=.cmd:text",
     "--loader=.py:text",
+    "--external=@napi-rs/canvas",
+    "--external=tesseract.js",
     `--outfile=${output}`,
   ],
   { cwd: repoRoot, stdio: "inherit" },
@@ -44,3 +46,19 @@ const musicResources = spawnSync(process.execPath,
   { cwd:repoRoot, stdio:'inherit', windowsHide:true });
 if (musicResources.error) throw musicResources.error;
 if (musicResources.status !== 0) process.exit(musicResources.status ?? 1);
+const pdfResources = spawnSync(process.execPath,
+  [path.join(desktopRoot, 'scripts/prepare-pdf-resources.mjs'), path.join(outputDir, 'node_modules')],
+  { cwd: repoRoot, stdio: 'inherit', windowsHide: true });
+if (pdfResources.error) throw pdfResources.error;
+if (pdfResources.status !== 0) process.exit(pdfResources.status ?? 1);
+// OCR uses native Canvas + Node workers; run that stage on the bundled Node runtime.
+const stageDir = path.join(outputDir, 'resources/build');
+mkdirSync(stageDir, { recursive: true });
+copyFileSync(process.execPath, path.join(stageDir, 'node.exe'));
+copyFileSync(path.join(path.dirname(process.execPath), 'LICENSE'), path.join(stageDir, 'NODE-LICENSE.txt'));
+const stage = spawnSync(bunExecutable(), ['build', path.join(repoRoot, 'skills/build/workbench-stage-runner.ts'),
+  '--target=node', '--format=esm', '--external=@napi-rs/canvas', '--external=tesseract.js', '--external=pdfjs-dist',
+  `--outfile=${path.join(stageDir, 'workbench-stage.mjs')}`],
+  { cwd: repoRoot, stdio: 'inherit', windowsHide: true });
+if (stage.error) throw stage.error;
+if (stage.status !== 0) process.exit(stage.status ?? 1);

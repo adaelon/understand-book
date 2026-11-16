@@ -105,6 +105,7 @@ export async function buildCuratedMusicWorkspace(options: MusicBuildOptions): Pr
   const started = Date.now();
   progress('music_import', 0);
   try {
+    if (!curation.score.musicxml_path) throw new Error('This score-rendering entry requires MusicXML; use the PDF score import for a PDF source');
     const audioInput = path.resolve(inputDir, curation.recording.media_path), xmlInput = path.resolve(inputDir, curation.score.musicxml_path);
     const extension = path.extname(audioInput).toLowerCase();
     const mediaPath = `music/audio/recording${extension}`, musicxmlPath = 'music/score/original.musicxml';
@@ -196,7 +197,7 @@ export async function buildCuratedMusicWorkspace(options: MusicBuildOptions): Pr
         duration_ms = demo.duration_ms;
         demonstrationCompletions[request.demonstration_id] = { input: demoInput, duration_ms };
       }
-      provenance.push({ provenance_id, kind: 'score_synthesis', description: `谱面合成示范：按选定谱音以 ${request.tempo_bpm} BPM 生成基础音色，装饰音采用 80 毫秒的呈现时值；不是原录音的分轨。`, source_url: null, processor: 'understand-book score oscillator v1' });
+      provenance.push({ provenance_id, kind: 'score_synthesis', description: `谱面合成示范：按选定谱音以 ${request.tempo_bpm} BPM 生成基础音色，装饰音按谱面先后以每组 80 毫秒呈现；不是原录音的分轨。`, source_url: null, processor: MUSIC_DEMONSTRATION_PARAMETERS.processor });
       demonstrations.push({ demonstration_id: request.demonstration_id, title: `谱面合成示范 · ${request.title}`, kind: 'score_synthesis', media_path, content_type: 'audio/wav', duration_ms, part_ids: [...new Set(selected.map(note => note.part_id))], score_object_ids: request.score_object_ids, provenance_id });
     }
     let manifest = validateMusicSourceManifest({ version: 'music_source_manifest.v1', book_id: curation.book_id, title: curation.title, work: curation.work,
@@ -208,14 +209,22 @@ export async function buildCuratedMusicWorkspace(options: MusicBuildOptions): Pr
       provenance, events: curation.events ?? [], structure: curation.structure ?? [], demonstrations });
     manifest.events = bindMusicEventOccurrences(manifest);
     const calibrationPath = path.join(bookDir, '.build/music/calibrations.json');
-    if (existsSync(calibrationPath)) for (const item of JSON.parse(readFileSync(calibrationPath, 'utf8')) as Array<{ revision: MusicAlignmentRevision }>) manifest = reviseMusicAlignment(manifest, item.revision).manifest;
+    if (existsSync(calibrationPath)) {
+      const history = JSON.parse(readFileSync(calibrationPath, 'utf8')) as Array<{ revision: MusicAlignmentRevision }>;
+      // The portable curation already contains the accepted mapping. Replaying an older
+      // window against later boundary corrections can cut a now-expanded occurrence.
+      const alreadyCalibrated = previous && isDeepStrictEqual(manifest.occurrences, previous.occurrences)
+        && isDeepStrictEqual(manifest.note_alignments, previous.note_alignments) && isDeepStrictEqual(manifest.coverage, previous.coverage)
+        && history.every(item => item.revision.provenance.every(provenance => manifest.provenance.some(current => isDeepStrictEqual(current, provenance))));
+      if (!alreadyCalibrated) for (const item of history) manifest = reviseMusicAlignment(manifest, item.revision).manifest;
+    }
     if (previous) validateMusicMaterialSuccessor(manifest, previous);
     progress('music_events', 1);
     progress('music_publication', 0);
     const guide = curatorGuide(curation);
     if (previous && readFileSync(path.join(bookDir, 'source.txt'), 'utf8') !== guide) throw new Error('The curator guide is a stable text source; use a new material revision to change it');
     const base = { book_id: curation.book_id, lid_nodes: segment(markdownToBlocks(guide)), graph_nodes: [], graph_edges: [] };
-    const portableCuration = { ...curation, guide, parts: manifest.parts, score: { ...manifest.score, musicxml_path: path.posix.relative('music', manifest.score.musicxml_path) },
+    const portableCuration = { ...curation, guide, parts: manifest.parts, score: { ...manifest.score, musicxml_path: path.posix.relative('music', musicxmlPath) },
       recording: { ...manifest.recording, media_path: path.posix.relative('music', manifest.recording.media_path) }, occurrences: manifest.occurrences,
       note_alignments: manifest.note_alignments, coverage: manifest.coverage, events: manifest.events, structure: manifest.structure,
       provenance: manifest.provenance.filter(item => !demonstrations.some(demo => demo.provenance_id === item.provenance_id)) };

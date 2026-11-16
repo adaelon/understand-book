@@ -31,6 +31,8 @@ const props = withDefaults(defineProps<{
   readerSurface?: ReaderSurface;
   pdfSurfaceAvailable?: boolean;
   globalActionsOpen?: boolean;
+  integratedHeader?: boolean;
+  readerLabel?: string;
 }>(), {
   preference: "auto",
   compareIntent: false,
@@ -74,6 +76,8 @@ onMounted(() => document.addEventListener('pointerdown', dismissMoreMenu));
 onBeforeUnmount(() => document.removeEventListener('pointerdown', dismissMoreMenu));
 const lastHandledFocusKey = ref<string | null>(null);
 const focusReturn = ref<{ preference: DisplayPreference; foreground: "reader" | "assistant"; outlineOpen: boolean } | null>(null);
+const ownHeaderControls = computed(() => !props.integratedHeader || !!focusReturn.value);
+let outlineOpener: HTMLElement | null = null;
 
 watch(() => props.preference, (next) => {
   if (focusReturn.value) focusReturn.value.preference = next;
@@ -123,7 +127,7 @@ watch(projection, (next) => {
 function showReader() {
   closeMoreMenu();
   foreground.value = "reader";
-  outlineOpen.value = false;
+  void closeOutline();
 }
 
 function showAssistant(tab: WorkspaceAuxTab = "agent") {
@@ -136,6 +140,7 @@ function showAssistant(tab: WorkspaceAuxTab = "agent") {
 async function toggleOutline() {
   outlineOpen.value = !outlineOpen.value;
   if (outlineOpen.value) {
+    outlineOpener = document.activeElement as HTMLElement | null;
     await nextTick();
     root.value?.querySelector<HTMLElement>('.left-rail input, .left-rail button')?.focus({ preventScroll: true });
   }
@@ -145,7 +150,8 @@ async function closeOutline() {
   if (!outlineOpen.value) return;
   outlineOpen.value = false;
   await nextTick();
-  root.value?.querySelector<HTMLButtonElement>('[aria-controls="reader-outline"]')?.focus({ preventScroll: true });
+  if (outlineOpener?.isConnected && outlineOpener.getClientRects().length) outlineOpener.focus({ preventScroll: true });
+  else root.value?.querySelector<HTMLButtonElement>('[aria-controls="reader-outline"]')?.focus({ preventScroll: true });
 }
 
 function toggleCompare() {
@@ -177,7 +183,7 @@ function toggleFocus() {
   emit("focus-change", !!focusReturn.value);
 }
 
-defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
+defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus, outlineOpen });
 </script>
 
 <template>
@@ -193,14 +199,18 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
     :data-mobile-workspace="props.enabled ? 'true' : 'false'"
     @keydown.esc="closeOutline"
   >
-    <header v-if="projection.navigation !== 'desktop'" class="workspace-mobile-top">
-      <button v-if="!videoMode" type="button" aria-controls="reader-outline" :aria-expanded="outlineOpen" @click="toggleOutline">{{ uiText('目录') }}</button>
-      <span v-else class="workspace-video-label">{{ musicMode ? uiText('音乐伴听') : uiText('视频学习') }}</span>
+    <header v-if="projection.navigation !== 'desktop' && (ownHeaderControls || props.returnAvailable || projection.deferredFocus || projection.unavailableFocus)" class="workspace-mobile-top">
+      <template v-if="ownHeaderControls">
+        <button v-if="!videoMode" type="button" aria-controls="reader-outline" :aria-expanded="outlineOpen" @click="toggleOutline">{{ uiText('目录') }}</button>
+        <span v-else class="workspace-video-label">{{ musicMode ? uiText('音乐伴听') : uiText('视频学习') }}</span>
+      </template>
       <span v-if="projection.deferredFocus" role="status">{{ uiText('当前编辑结束后显示请求区域') }}</span>
       <span v-else-if="projection.unavailableFocus" role="status">{{ uiText('请求区域尚未挂载') }}</span>
       <button v-if="props.returnAvailable" type="button" class="workspace-return" @click="emit('return')">{{ props.returnLabel }}</button>
-      <button type="button" class="workspace-focus" :aria-pressed="!!focusReturn" @click="toggleFocus">{{ focusReturn ? uiText('退出专注') : musicMode ? uiText('专注聆听') : videoMode ? uiText('专注观看') : uiText('专注阅读') }}</button>
-      <button type="button" :aria-pressed="preference === 'compare'" @click="toggleCompare">{{ uiText('对照') }}</button>
+      <template v-if="ownHeaderControls">
+        <button type="button" class="workspace-focus" :aria-pressed="!!focusReturn" @click="toggleFocus">{{ focusReturn ? uiText('退出专注') : musicMode ? uiText('专注聆听') : videoMode ? uiText('专注观看') : uiText('专注阅读') }}</button>
+        <button type="button" :aria-pressed="preference === 'compare'" @click="toggleCompare">{{ uiText('对照') }}</button>
+      </template>
     </header>
 
     <button
@@ -229,6 +239,7 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
       <span class="workspace-surface-hint">{{ props.readerSurface === 'pdf' ? uiText('原版排版 · 字体设置用于重排正文') : uiText('重排正文 · 可在阅读设置中调整字体') }}</span>
     </div>
 
+    <slot name="reader-navigation" />
     <div class="workspace-grid" :class="{ 'left-collapsed': props.leftCollapsed }">
       <slot />
     </div>
@@ -242,7 +253,7 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
     ></button>
 
     <nav v-if="projection.navigation !== 'desktop'" class="workspace-mobile-nav" :aria-label="uiText('阅读工作区')">
-      <button type="button" :class="{ active: projection.foreground === 'reader' }" @click="showReader">{{ musicMode ? uiText('听音乐') : videoMode ? uiText('视频') : uiText('阅读') }}</button>
+      <button type="button" :class="{ active: projection.foreground === 'reader' }" @click="showReader">{{ readerLabel || (musicMode ? uiText('听音乐') : videoMode ? uiText('视频') : uiText('阅读')) }}</button>
       <button type="button" :class="{ active: projection.foreground === 'assistant' }" @click="showAssistant('agent')">{{ musicMode ? uiText('伴听') : videoMode ? uiText('伴读') : uiText('问答') }}</button>
       <button type="button" @click="showAssistant('notes')">{{ uiText('笔记') }}</button>
       <details ref="moreMenu" class="workspace-more" @keydown.esc.stop.prevent="closeMoreMenu(true)">
@@ -255,9 +266,10 @@ defineExpose({ showReader, showAssistant, toggleOutline, toggleFocus });
         </div>
       </details>
       <button
+        v-if="ownHeaderControls"
+        data-workspace-menu
         type="button"
         :class="{ active: props.globalActionsOpen }"
-        aria-haspopup="menu"
         :aria-expanded="props.globalActionsOpen"
         @click="emit('global-actions-request')"
       >{{ uiText('菜单') }}</button>

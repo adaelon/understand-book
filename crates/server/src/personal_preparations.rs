@@ -114,7 +114,7 @@ pub(crate) fn request(access: &Arc<Authorization>, owner: &str, workspace: &str,
         };
         fs::create_dir_all(root.join("builds")).map_err(storage)?;
         let mut mutation = builds::Mutation::Create(builds::Create {task_id:id.into(),name:label.clone(),max_micro_cny:1,reserved_per_execution_micro_cny:1,visible_to_users:vec![owner.into()],materials:vec![builds::MaterialInput {
-            material_id:"source".into(),label,material_kind:Some(kind.into()),build_tutor:false,published_book_ref:reference,target_input:target,root_dir:Some(root.join("builds").join(id).to_string_lossy().to_string()),pass2:Some("disabled".into()),max_parallel:Some(1),required_capabilities:if kind=="video" {vec!["text".into(),"video".into()]} else {vec!["text".into()]},
+            material_id:"source".into(),label,material_kind:Some(kind.into()),build_tutor:false,build_course:false,course_goal:None,published_book_ref:reference,target_input:target,root_dir:Some(root.join("builds").join(id).to_string_lossy().to_string()),pass2:Some("disabled".into()),max_parallel:Some(1),required_capabilities:if kind=="video" {vec!["text".into(),"video".into()]} else {vec!["text".into()]},
         }]});
         // Reused sources do not need a build directory.
         if let builds::Mutation::Create(create) = &mut mutation { if create.materials[0].published_book_ref.is_some() { create.materials[0].root_dir=None; create.materials[0].pass2=None; create.materials[0].max_parallel=None; } }

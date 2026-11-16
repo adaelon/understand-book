@@ -59,7 +59,7 @@ test('S2 confirms personal goals, reuses shared materials, selects updates and p
     await expect(detail).toContainText('建议学习路线');
     await detail.getByRole('textbox', { name: '确认你的学习目标', exact: true }).fill(goal);
     await detail.getByRole('button', { name: '确认目标并开始学习', exact: true }).click();
-    await expect(target.locator('.workspace-goal-bar')).toContainText(goal);
+    await expect.poll(async () => (await scene(target))?.learning_workspace_goal?.text).toBe(goal);
     return scene(target);
   };
   await page.setViewportSize({ width: 1440, height: 1000 });
@@ -71,7 +71,7 @@ test('S2 confirms personal goals, reuses shared materials, selects updates and p
   expect(firstScene.published_book_ref).toEqual(fixture.first); expect(otherScene.published_book_ref).toEqual(fixture.first);
   const id = firstScene.learning_workspace_id, otherId = otherScene.learning_workspace_id;
   const instancePath = (value: string) => `/api/learning-workspaces/${encodeURIComponent(value)}/shared-release`;
-  const manage = async (target: Page) => { await target.getByRole('button', { name: '工作区与资料', exact: true }).click(); await expect(target.getByRole('region', { name: '当前工作区', exact: true })).toBeVisible(); };
+  const manage = async (target: Page) => { await target.getByRole('button', { name: '学习资料', exact: true }).click(); await expect(target.getByRole('region', { name: '当前工作区', exact: true })).toBeVisible(); };
   await manage(page);
   const personal = page.getByRole('region', { name: '当前工作区', exact: true });
   const instance = page.getByRole('region', { name: '共享工作区个人实例', exact: true });
@@ -129,7 +129,7 @@ test('S2 confirms personal goals, reuses shared materials, selects updates and p
   for (const button of await personal.locator('.learning-member').getByRole('button', { name: /^(开始阅读|继续阅读)$/ }).all()) await expect(button).toBeDisabled();
   await personal.getByRole('button', { name: '恢复工作区', exact: true }).click();
   await page.locator('.learning-space-card').filter({ hasText: '两周掌握微积分并完成期末复习' }).getByRole('button', { name: '打开工作区', exact: true }).click();
-  await expect(page.locator('.workspace-goal-bar')).toContainText('两周掌握微积分并完成期末复习');
+  await expect.poll(async () => (await scene(page))?.learning_workspace_goal?.text).toBe('两周掌握微积分并完成期末复习');
   expect((await scene(page)).published_book_ref).toEqual(fixture.new_first); expect((await scene(page)).selected_chat).toBe(firstScene.selected_chat);
   await controlGet('/restore');
   const finalCosts = await read('/api/admin/cost-summary', fixture.admin_cookie);

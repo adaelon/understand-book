@@ -16,7 +16,12 @@ pub(crate) fn popup(binding: &SourceBinding, loaded: Result<(&Book, &Path), Tool
             || score.source_ids.iter().any(|id| !manifest.score_objects.iter().any(|object| &object.source_id == id))) {
             return Err(runtime::music::unavailable());
         }
-        let pages = manifest.pages.iter().filter(|page| saved.target.score.as_ref().is_some_and(|score|
+        let event_pages: std::collections::BTreeSet<_> = manifest.events.iter().filter(|event| saved.target.event_ids.contains(&event.event_id))
+            .flat_map(|event| &event.evidence).flat_map(|evidence| evidence.score_page_ids.iter().map(String::as_str)).collect();
+        let read_pages: std::collections::BTreeSet<_> = saved.material["read"]["pages"].as_array().into_iter().flatten()
+            .filter_map(|page| page["page_id"].as_str()).collect();
+        let pages = manifest.pages.iter().filter(|page| event_pages.contains(page.page_id.as_str()) || read_pages.contains(page.page_id.as_str())
+            || saved.target.score.as_ref().is_some_and(|score|
             score.source_ids.iter().any(|id| manifest.score_objects.iter().any(|object| &object.source_id == id && object.page_id == page.page_id))))
             .map(|page| json!({"page_id":page.page_id,"url":media_url.trim_end_matches("audio").to_owned()+"score/"+&page.page_id})).collect();
         Ok(pages)

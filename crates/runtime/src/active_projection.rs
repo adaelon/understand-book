@@ -18,8 +18,8 @@ pub struct ActiveModelProjection {
 }
 
 impl ActiveModelProjection {
-    /// Preserve the previous turn's exact input while taking only this turn's
-    /// newly projected suffix. The caller supplies the ledger's message count,
+    /// Preserve conversation/tool input while replacing the previous turn's
+    /// host working state with this turn's freshly projected state. The caller supplies the ledger's message count,
     /// so repeated question/answer text cannot select the wrong boundary.
     pub fn apply(
         &self,
@@ -44,7 +44,7 @@ impl ActiveModelProjection {
             return false;
         };
         let mut input = Vec::with_capacity(self.input.len() + suffix_len);
-        input.extend_from_slice(&self.input);
+        input.extend(self.input.iter().filter(|message| !is_turn_context(message)).cloned());
         input.extend_from_slice(&plan.input[boundary..]);
         plan.input = input;
         true
@@ -96,6 +96,16 @@ impl ActiveModelProjection {
     }
 }
 
+fn is_turn_context(message: &Message) -> bool {
+    let Some(text) = message.content.as_deref() else { return false; };
+    // These are private projections, absent from the business transcript. All
+    // current manifests and frozen state are republished at the next turn.
+    (text.starts_with("context_fragment.v1\n") && !text.contains("\nscope=session_stable\n"))
+        || ["runtime_state_snapshot.v1\n", "sampling_guidance.v1\n",
+            "runtime_decision_messages.v1\n", "presentation_guidance_state.v1\n"]
+            .iter().any(|prefix| text.starts_with(prefix))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -137,6 +147,22 @@ mod tests {
             Message::system("current runtime decisions"),
         ]);
         assert!(serde_json::to_string(&next.input).unwrap().contains("original body"));
+    }
+
+    #[test]
+    fn next_turn_replaces_host_state_without_rewriting_conversation_or_sources() {
+        let raw = vec![Message::system("fixed"),Message::user("first")];
+        let mut first = AgentRequestPlan::for_agent_turn(profile(), &raw, &[]);
+        first.input.push(Message::system("runtime_state_snapshot.v1\nold-state"));
+        first.input.push(Message::system("sampling_guidance.v1\nold-workflows"));
+        first.input.push(Message::user("context_fragment.v1\nkey=reader.source_cache\nscope=turn_frozen\nold-source"));
+        let saved = ActiveModelProjection::capture_request(&first, raw.len(), Some("route"), None, &Default::default()).unwrap();
+        let mut next_raw = raw.clone(); next_raw.push(Message::user("follow up"));
+        let mut next = AgentRequestPlan::for_agent_turn(profile(), &next_raw, &[]);
+        next.input.push(Message::system("runtime_state_snapshot.v1\nnew-state"));
+        assert!(saved.apply(&mut next,&next_raw,1,None));
+        assert_eq!(next.input,vec![Message::user("first"),Message::user("follow up"),Message::system("runtime_state_snapshot.v1\nnew-state")]);
+        assert_eq!(saved.input, first.input, "saved transcript/projection is not mutated");
     }
 
     #[test]

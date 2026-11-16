@@ -3,8 +3,9 @@ import type { AgentAnswerPart, OuterOutcome } from './api';
 import type { AgentAnswerSource } from './generated/AgentAnswerSource';
 import { renderMarkdown } from './md';
 import { sourceChipLabel } from './source-chip.js';
+import { pitchName } from './music-example-player';
 
-export type AnswerDisplayPart = { kind: "html"; html: string; markdown: string[]; blocks?: string[] } | Extract<AgentAnswerPart, { kind: "presentation" }>;
+export type AnswerDisplayPart = { kind: "html"; html: string; markdown: string[]; blocks?: string[]; socratic?: boolean } | Extract<AgentAnswerPart, { kind: "presentation" }>;
 
 /** Bind raw teaching citations only to sources already published with this answer. */
 export function sourceMarkedParts(text: string, sources: AgentAnswerSource[]): AgentAnswerPart[] {
@@ -87,11 +88,43 @@ function inlineSourceButton(part: Extract<AgentAnswerPart, { kind: "sources" }>,
   return button;
 }
 
+function inlineMusicExample(example: import('./generated/MusicExample').MusicExample, index: number, draft: boolean): HTMLElement {
+  const group = document.createElement('span');
+  group.className = 'music-example-inline';
+  const play = document.createElement('button');
+  play.type = 'button'; play.className = 'music-example-play'; play.textContent = '▶';
+  play.dataset.musicExampleIndex = String(index); play.disabled = draft;
+  play.setAttribute('aria-label', uiText('试听') + ' ' + example.label);
+  play.setAttribute('data-reader-selection-ignore', '');
+  group.append(play);
+  for (const token of example.label.split(/( → | \+ )/)) {
+    const pitch = example.notes.find(note => {
+      return token === pitchName(note.midi_pitch);
+    });
+    if (!pitch) {
+      if (token === example.label) {
+        const phrase = document.createElement('button');
+        phrase.type = 'button'; phrase.className = 'music-example-note'; phrase.textContent = token;
+        phrase.dataset.musicExampleIndex = String(index); phrase.disabled = draft;
+        group.append(phrase);
+      } else { group.append(document.createTextNode(token)); }
+      continue;
+    }
+    const button = document.createElement('button');
+    button.type = 'button'; button.className = 'music-example-note'; button.textContent = token;
+    button.dataset.musicExampleIndex = String(index); button.dataset.musicPitch = String(pitch.midi_pitch); button.disabled = draft;
+    button.setAttribute('aria-label', uiText('试听') + ' ' + token);
+    group.append(button);
+  }
+  return group;
+}
+
 export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullable<OuterOutcome["answer_view"]>["sources"], draft = false, canOpen = true, render: (source: string) => string = renderMarkdown): AnswerDisplayPart[] {
   const display: AnswerDisplayPart[] = [];
   let markdown = "";
   let markdownParts: string[] = [];
-  const inlineSources = new Map<number, Extract<AgentAnswerPart, { kind: "sources" }>>();
+  const inlineSources = new Map<number, Extract<AgentAnswerPart, { kind: "sources" | "music_example" }>>();
+  let hasMusic = false;
   const flush = () => {
     if (!markdown) return;
     if (inlineSources.size === 0) {
@@ -117,22 +150,32 @@ export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullabl
         const source = inlineSources.get(index);
         if (!source) continue;
         replacement.append(document.createTextNode(content.slice(cursor, match.index)));
-        replacement.append(inlineSourceButton(source, index, sources, draft, canOpen));
+        replacement.append(source.kind === "music_example" ? inlineMusicExample(source.example, index, draft) : inlineSourceButton(source, index, sources, draft, canOpen));
         cursor = match.index + match[0].length;
       }
       replacement.append(document.createTextNode(content.slice(cursor)));
       node.replaceWith(replacement);
     }
-    display.push({ kind: "html", html: template.innerHTML, markdown: markdownParts });
+    display.push({ kind: "html", html: template.innerHTML, markdown: hasMusic ? [markdownParts.join('')] : markdownParts });
     markdown = "";
     markdownParts = [];
     inlineSources.clear();
+    hasMusic = false;
   };
   parts.forEach((part, index) => {
     if (part.kind === "markdown") { markdown += part.text; markdownParts.push(part.text); }
+    else if (part.kind === "socratic_question") {
+      flush();
+      display.push({ kind: "html", html: render(part.text), markdown: [part.text], socratic: true });
+    }
     else if (part.kind === "sources") {
       markdown += `\uE000UB_SOURCE_${index}\uE001`;
       inlineSources.set(index, part);
+    } else if (part.kind === "music_example") {
+      markdown += `\uE000UB_SOURCE_${index}\uE001`;
+      markdownParts.push(part.example.label);
+      inlineSources.set(index, part);
+      hasMusic = true;
     } else {
       flush();
       display.push(part);

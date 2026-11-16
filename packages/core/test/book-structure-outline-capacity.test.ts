@@ -16,6 +16,30 @@ import { collectStructureCandidates } from "../src/book-structure-candidates";
 import { freezeBookStructureGenerationTask, writeBookStructureGenerationCandidate } from "../src/book-structure-generation";
 
 describe("whole-book outline capacity", () => {
+  it("routes an oversized whole-book outline into executable chapter batches", () => {
+    const root = mkdtempSync(path.join(tmpdir(), "outline-input-batches-"));
+    onTestFinished(() => rmSync(root, { recursive: true, force: true }));
+    const source = path.join(root, "book.md");
+    const text = Array.from({ length: 48 }, (_, index) =>
+      `# 第${index + 1}章\n\n${"解释执行条件以及结果之间的关系。".repeat(35)}\n\n${"保留来源和恢复步骤。".repeat(60)}\n`).join("\n");
+    writeFileSync(source, text);
+    const target = resolveAutomaticBuildTarget(source, root);
+    const nodes = segment(markdownToBlocks(text));
+    const sources = buildBookStructureUnitSources({ source: text, lidNodes: nodes });
+    const outline = structureSourceOutline(structureDiscoverySources(sources, nodes, text), nodes, text);
+    const result = routeStructureOrganization({ target, execution_profile: CODEX_BUILD_EXECUTION_PROFILE_V1,
+      contracts: structureOrganizationContracts(createBookStructureExecutionContractsV2({
+        profile: resolveContentProfile("technical_learning"), quality_profile: "full", prompts: BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
+      }).stitch_fragment), outline, context: { catalog: collectStructureCandidates([]), titles: {}, excerpts: [] }, stop_after_outline: true });
+    expect(result.blocked).toBeUndefined();
+    expect(result.pending).toHaveLength(12);
+    const delivered = result.tasks.flatMap(task => {
+      if (!("phase" in task.input) || task.input.phase !== "outline_chapters") throw new Error("expected chapter batch");
+      expect(task.descriptor.execution_budget_proof.estimated_rendered_tokens).toBeLessThanOrEqual(20000);
+      return task.input.context.chapters;
+    });
+    expect(delivered).toEqual(outline.chapters);
+  });
   it("assembles all 184 source units from independently bounded, resumable outline submissions", async () => {
     const root = mkdtempSync(path.join(tmpdir(), "outline-output-budget-"));
     onTestFinished(() => rmSync(root, { recursive: true, force: true }));
@@ -103,7 +127,7 @@ describe("whole-book outline capacity", () => {
     const oversized = { ...packet, body: { text: "真实内容超出单次容量。".repeat(4000) } } as StructureOrganizationInput;
     expect(estimateTokens(renderStructureOrganizationInput(oversized))).toBeGreaterThan(20000);
   });
-  it("reports actual outline budget failure before creating semantic tasks", () => {
+  it("routes a dense section directory with each chapter's own sections and evidence", () => {
     const root = mkdtempSync(path.join(tmpdir(), "outline-budget-"));
     onTestFinished(() => rmSync(root, { recursive: true, force: true }));
     const source = path.join(root, "large.md");
@@ -117,11 +141,9 @@ describe("whole-book outline capacity", () => {
     writeFileSync(path.join(target.workspace_dir, "formula_semantics.json"), JSON.stringify({ header, items: [] }));
     const snapshot = buildAutomaticBuildSnapshot(target, { stage: "book_structure", quality_profile: "full" });
     const stage = snapshot.stages.find(s => s.stage === "book_structure")!;
-    expect(stage.pending_tasks).toEqual([]);
-    expect(stage.structure_budget_blocked?.reasons).toContain("stage_limit");
-    expect(nextAutomaticBuildAction(snapshot)).toMatchObject({ kind: "needs_user", reason: "structure_execution_budget_exceeded",
-      stage: "book_structure", violations: expect.arrayContaining([{ code: "execution_body_limit",
-        actual: stage.structure_budget_blocked!.estimated_rendered_tokens, limit: stage.structure_budget_blocked!.effective_body_limit_tokens }]) });
+    expect(stage.pending_tasks.length).toBeGreaterThan(1);
+    expect(stage.structure_budget_blocked).toBeUndefined();
+    expect(nextAutomaticBuildAction(snapshot)).toMatchObject({ kind: "extract", stage: "book_structure" });
   });
   it("fits a 35-chapter outline without losing sections or source excerpts", () => {
     const source = Array.from({ length: 35 }, (_, i) => `# 第${i + 1}章 构建流程与状态管理\n\n${"构建输入保留章节结构和原文依据。".repeat(12)}\n\n` +

@@ -18,14 +18,13 @@ test.beforeEach(async ({ page }) => {
   await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
 });
 
-test('touch selection offers notes beside the selected answer and taps save the excerpt', async ({ page }) => {
+test('touch selection offers notes above the selected answer and taps save the excerpt', async ({ page }) => {
   await selectAnswer(page);
   const menu = page.locator('.answer-popover');
   await expect(menu).toBeVisible();
-  const selected = (await page.locator('.answer-markdown p').first().boundingBox())!;
+  const selectedTop = await page.evaluate(() => window.getSelection()!.getRangeAt(0).getBoundingClientRect().top);
   const box = (await menu.boundingBox())!;
-  expect(box.y - (selected.y + selected.height)).toBeGreaterThanOrEqual(4);
-  expect(box.y - (selected.y + selected.height)).toBeLessThanOrEqual(20);
+  expect(selectedTop - (box.y + box.height)).toBeCloseTo(10, 0);
   expect(box.x).toBeGreaterThanOrEqual(0);
   expect(box.x + box.width).toBeLessThanOrEqual(390);
   await page.screenshot({ path: test.info().outputPath('selection.png') });

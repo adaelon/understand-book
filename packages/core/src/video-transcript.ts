@@ -167,6 +167,7 @@ export function assembleVideoTranscript(workspace: string, build: VideoBuild, so
   const blocks = groups.map(group=> { const start=text.length; const value=group.map(w=>w.text).join("").trim();
     text += value+"\n\n"; return { kind: "leaf" as const, text: value, span: { start, end: text.length } }; });
   const base: ReadOnlyBase = { book_id: build.book_id, lid_nodes: segment(blocks), graph_nodes: [], graph_edges: [] };
+  const leaves = base.lid_nodes.filter(node => node.children.length === 0);
   const manifest = validateVideoSourceManifest({ version: "video_source_manifest.v1",
     material: { book_id: build.book_id, video: source.video, transcript: { transcript_id: build.transcript_id, transcript_revision: "1", video: source.video } },
     source, canonical_text_path: "source.txt", transcript_map_path: "transcript_map.json", previous_book_id: null,
@@ -177,7 +178,7 @@ export function assembleVideoTranscript(workspace: string, build: VideoBuild, so
     machine_transcription: { engine: profile.engine,model:profile.model,language:"en" }, segments: groups.map((group,i) => ({
       segment_id: `segment-${i+1}`, text: blocks[i].text,
       location: { video: source.video, start_ms: startOf(group), end_ms: endOf(group) },
-      text_range: { lid: base.lid_nodes[i].lid, range: { start:0,end:blocks[i].text.length } }, words: [] })) };
+      text_range: { lid: leaves[i].lid, range: { start:0,end:blocks[i].text.length } }, words: [] })) };
   // Sentence timing is the public precision; raw word estimates and probabilities remain available for review.
   validateTranscriptMap(map,manifest,base,text);
   const json = (v: unknown) => JSON.stringify(v,null,2)+"\n";

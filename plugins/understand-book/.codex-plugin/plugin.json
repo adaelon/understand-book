@@ -1,6 +1,6 @@
 {
   "name": "understand-book",
-  "version": "0.1.0+codex.20261026053153",
+  "version": "0.1.0+codex.20261115145203",
   "description": "Operator-only local build tools. Requires explicitly provisioned maintenance executables; cloud Windows Setup does not install this plugin.",
   "author": {
     "name": "Understand Book contributors"

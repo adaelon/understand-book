@@ -24,9 +24,9 @@ export function summarizeEvents(rows) {
   };
 }
 
-export async function runCodex({ directory, prompt, schema, mcp, timeoutMs = 180_000 }) {
+export async function runCodex({ directory, prompt, schema, mcp, timeoutMs = 180_000,
+  model = MODEL, effort = EFFORT, executable = process.env.TO14_CODEX, allowShell = false, onEvent }) {
   await mkdir(directory, { recursive: true });
-  const executable = process.env.TO14_CODEX;
   if (!executable) throw new Error('TO14_CODEX must select the fixed Codex executable');
   const version = spawnSync(executable, ['--version'], { encoding: 'utf8', windowsHide: true });
   if (version.status !== 0) throw new Error('Cannot identify Codex');
@@ -38,9 +38,9 @@ export async function runCodex({ directory, prompt, schema, mcp, timeoutMs = 180
     }
   }
   const settings = ['approval_policy="never"', 'project_doc_max_bytes=0', 'web_search="disabled"',
-    'features.shell_tool=false', 'features.plugins=false', 'features.apps=false',
+    `features.shell_tool=${allowShell}`, 'features.plugins=false', 'features.apps=false',
     'features.multi_agent=false', 'features.memories=false', 'features.skill_search=false',
-    `skills.config=[${disabled.join(',')}]`, `model_reasoning_effort="${EFFORT}"`,
+    `skills.config=[${disabled.join(',')}]`, `model_reasoning_effort="${effort}"`,
     'tool_output_token_limit=18000'];
   const env = { ...process.env };
   if (mcp) {
@@ -49,15 +49,16 @@ export async function runCodex({ directory, prompt, schema, mcp, timeoutMs = 180
     env.TO14_FIXTURE_TOKEN = mcp.headers.Authorization.slice('Bearer '.length);
   }
   const args = ['exec', '--ignore-user-config', '--ephemeral', '--skip-git-repo-check', '--sandbox', 'read-only',
-    '--model', MODEL, '--json', ...settings.flatMap(s => ['-c', s])];
+    '--model', model, '--json', ...settings.flatMap(s => ['-c', s])];
   if (schema) {
     await writeFile(resolve(directory, 'output-schema.json'), JSON.stringify(schema, null, 2));
     args.push('--output-schema', resolve(directory, 'output-schema.json'));
   }
   args.push('-');
   await writeFile(resolve(directory, 'prompt.txt'), prompt);
-  await writeFile(resolve(directory, 'client.json'), JSON.stringify({ client: version.stdout.trim(), model: MODEL,
-    reasoning_effort: EFFORT, temperature: null, timeout_ms: timeoutMs, transport: mcp ? 'streamable-http' : 'structured-assistant-turn',
+  await writeFile(resolve(directory, 'client.json'), JSON.stringify({ client: version.stdout.trim(), model,
+    reasoning_effort: effort, temperature: null, timeout_ms: timeoutMs, transport: mcp ? 'streamable-http' : 'structured-assistant-turn',
+    local_file_access: allowShell ? 'read-only-shell' : 'disabled',
     monetary_budget: 'No paid API configured by this runner; host cost unavailable' }, null, 2));
   const rows = [];
   let pending = '', stderr = '', timedOut = false;
@@ -67,7 +68,7 @@ export async function runCodex({ directory, prompt, schema, mcp, timeoutMs = 180
     if (!text.trim()) return;
     try {
       const value = JSON.parse(text);
-      if (value.item?.type !== 'reasoning') rows.push(value);
+      if (value.item?.type !== 'reasoning') { rows.push(value); onEvent?.(value); }
     } catch { rows.push({ type: 'invalid_cli_event', text }); }
   }
   child.stdout.setEncoding('utf8'); child.stderr.setEncoding('utf8');

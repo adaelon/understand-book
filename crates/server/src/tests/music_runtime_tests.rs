@@ -184,6 +184,59 @@ fn music_question_pixels_survive_admission_and_history_without_an_indexed_score_
 }
 
 #[test]
+fn knowledge_tree_keeps_score_only_music_understanding_at_the_material_root() {
+    let f = super::mu5_tests::Fixture::new();
+    let input = f.root.path().join("music-understanding-root");
+    super::music_publication_tests::fixture(&input);
+    let publication = f.access.library.lock().unwrap().publish(&input).unwrap().reference;
+    f.access.library.lock().unwrap().grant("A", &publication).unwrap();
+    let workspace = f.create(&f.a, &publication, "music-understanding");
+    let workspace = f.action(&f.a, &workspace, "music-understanding", "chat/new", json!({}));
+    let mut port = f.run(&workspace, "music-understanding");
+    let turn = AgentTurnRef { session_id: port.scope.chat_session_id.clone(),
+        turn_id: port.scope.turn_id.clone(), user_turn_ordinal: 1 };
+    let revision = port.scope.reading_book().source_fingerprint().to_owned();
+    let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+    let mut evidence_ids = Vec::new();
+    for (kind, request) in [("score", json!({"view":"score","source_ids":["s1"]})),
+        ("event", json!({"view":"events","event_id":"event"}))] {
+        let material = port.read_music(None, serde_json::from_value(request).unwrap()).unwrap();
+        let source = material.sources[0].clone();
+        assert_eq!(source.target.event_ids.is_empty(), kind == "score");
+        let binding = SourceBinding {
+            music: Some(source.clone()), media: None, source_ref_id: format!("music-{kind}"),
+            book_id: publication.book_id.clone(), publication_id: Some(publication.publication_id.clone()),
+            source_revision: Some(revision.clone()), evidence_range: None, evidence_text_digest: String::new(),
+            label_snapshot: source.label.clone(), preview_snapshot: source.preview.clone(),
+        };
+        let mut user = handle.lock().unwrap();
+        crate::session_runtime::append(&mut user, &turn, "source",
+            crate::session_event::EventBody::SourcesBound { bindings: vec![binding.clone()] }).unwrap();
+        let private = port.scope.private_user(&user);
+        let hypothesis = crate::cross_book::learning(&private, &turn, &publication, &json!({
+            "operation":"observe","operation_id":format!("understanding-{kind}"),
+            "source_ref_ids":[binding.source_ref_id],"learner_quote":"Explain this",
+            "learning_focus":format!("understanding {kind}"),"expected_performance":"Explain the original source",
+            "capability":"explanation","interpretation":"The learner requested an explanation.",
+            "teaching_implication":"Compare the original notation and recording."}), &[binding], "now").unwrap();
+        evidence_ids.push(hypothesis["evidence_ref"].clone());
+    }
+    let workspace = f.get(&f.a, &workspace);
+    let root = f.action(&f.a, &workspace, "music-understanding", "knowledge/tree", json!({"node_id":"root"}));
+    let fruits = root["result"]["fruits"].as_array().unwrap();
+    assert_eq!(fruits.len(), 2);
+    for id in &evidence_ids {
+        assert!(fruits.iter().any(|item| item["evidence_ref"] == *id));
+    }
+    let event = f.action(&f.a, &root, "music-understanding", "knowledge/tree", json!({"reference":{
+        "source_id":publication.book_id,"source_revision":revision,"publication_id":publication.publication_id,
+        "artifact":"music_event","entry_id":"event"}}));
+    let fruits = event["result"]["fruits"].as_array().unwrap();
+    assert_eq!(fruits.len(), 1, "score-only understanding must not be assigned to a nearby event");
+    assert_eq!(fruits[0]["evidence_ref"], evidence_ids[1]);
+}
+
+#[test]
 fn music_network_receipt_releases_workspace_locks_and_sources_keep_original_publication() {
     let f = super::mu5_tests::Fixture::new();
     let input=f.root.path().join("music-player");

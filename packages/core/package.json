@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
+    "test:source-identity": "bun test ./test/automatic-build-source-collision.node.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

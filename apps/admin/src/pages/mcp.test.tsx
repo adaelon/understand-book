@@ -229,8 +229,8 @@ it("routes mixed receipts to their own correction forms and preserves model corr
   await click("追加更正", 1);
   expect(document.querySelector('[name="units"]')).toBeNull();
   await fill("amount", "-1"); await fill("delta", "-0.5"); await fill("reason", "模型金额"); await submit();
-  expect(writes()[1][0]).toBe(`${base}/percentage-receipt-corrections`);
-  expect(JSON.parse(writes()[1][1].body)).toMatchObject({ receipt_id: "receipt-model", period_id: "model-period", revision: 2, delta_fen: -100, basis_version: "v1", delta_milli_percent: -500 });
+  expect(writes()[1][0]).toBe(`${base}/receipt-corrections`);
+  expect(JSON.parse(writes()[1][1].body)).toMatchObject({ receipt_id: "receipt-model", period_id: "model-period", revision: 2, delta_fen: -100, delta_micro_cny: -500000 });
 });
 
 it("labels both purposes in appended cash corrections", async () => {
@@ -241,9 +241,9 @@ it("labels both purposes in appended cash corrections", async () => {
   expect(text()).toContain("-5.00"); expect(text()).toContain("-1.00");
 });
 
-it("keeps model cash in fen and grants with the original fixed percentage basis", async () => {
-  await mount(<AllowancePanel userId="A" current={period} />); await click("登记收款");
-  await fill("amount", "12.50"); await fill("delta", "7.125"); await fill("note", "已收款"); await submit();
-  expect(writes()[0][0]).toBe(`${base}/percentage-receipts`);
-  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: "model-period", revision: 2, amount_fen: 1250, basis_version: "v1", delta_milli_percent: 7125 });
+it("keeps cash and AI cost budgets independent", async () => {
+  await mount(<AllowancePanel userId="A" current={period} />); await click("收款并补充本期");
+  await fill("amount", "12.50"); await fill("budget", "7.125"); await fill("note", "已收款"); await submit();
+  expect(writes()[0][0]).toBe(`${base}/receipts`);
+  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: "model-period", revision: 2, amount_fen: 1250, delta_micro_cny: 7125000 });
 });

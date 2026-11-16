@@ -881,6 +881,7 @@ mod tests {
                 bodies
             });
             let inner = ProviderRegistry::adapter_from_config(ProviderConfig {
+                agent_reasoning_effort: Default::default(),
                 mode, api_key: "CANARY_PRIVATE_KEY".into(), base_url: url, model: "observation-fixture".into(),
             });
             let limited = crate::service_limits::LimitedAdapter {

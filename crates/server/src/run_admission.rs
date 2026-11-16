@@ -294,6 +294,11 @@ impl RunAdmissions {
             .ok_or_else(|| fault("TRANSLATION_PROVIDER_UNCONFIGURED", "provider"))?;
         Ok(make())
     }
+    pub(crate) fn operational_health(&self, spend: &crate::model_spend_store::ModelSpendStore, now: i64) -> Value {
+        let binding = self.provider.lock().unwrap().as_ref()
+            .map(|p| (p.binding.endpoint.clone(), p.binding.model.clone()));
+        spend.operational_health(binding.as_ref().map(|(p,m)|(p.as_str(),m.as_str())), now)
+    }
     pub(crate) fn review_adapter(&self) -> Result<Box<dyn ModelAdapter + Send>, ToolError> {
         let make = self.provider.lock().unwrap().as_ref()
             .map(|provider| provider.make_review.clone())
@@ -384,6 +389,10 @@ impl RunAdmissions {
             "UPDATE run_admissions SET unsaved=1 WHERE owner_user_id=? AND turn_id=?",
             params![row.owner, row.turn],
         );
+        if let Err(error) = crate::operations::write_turn(&state.control.connection, &row.owner,
+            &row.turn, "unsaved", "save", Some("TURN_UNSAVED"), multi_user_host::now()) {
+            eprintln!("operations outcome write failed: {}", error.error_code);
+        }
     }
     fn repeat(
         &self,
@@ -573,6 +582,7 @@ impl RunAdmissions {
                 request["goal_action"].as_str(),
                 row.publication.clone(),
                 Some(&row.turn),
+                presentation_requested(&request)?,
                 now,
             )?;
             session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(&user, interaction.as_ref(), &turn_ref, now)?;
@@ -679,7 +689,7 @@ impl RunAdmissions {
                 let has_input = frozen_input(&user, &row)?.is_some();
                 if find_turn(&user, &row).is_some() {
                     if self
-                        .end_pending(&mut user, &row, "ADMISSION_FAILED", false)
+                        .end_pending(&mut user, &row, &e.error_code, false)
                         .is_err()
                     {
                         self.mark_unsaved(&row);
@@ -687,6 +697,10 @@ impl RunAdmissions {
                     }
                 }
                 self.update(&row, "admission_failed", !has_input)?;
+                if let Err(error) = crate::operations::write_turn(&self.state.lock().unwrap().control.connection,
+                    &row.owner, &row.turn, "failed", "admission", Some(&e.error_code), multi_user_host::now()) {
+                    eprintln!("operations preparation write failed: {}", error.error_code);
+                }
                 Err(e)
             }
         }
@@ -831,6 +845,7 @@ impl RunAdmissions {
             &messages,
             &multi_user_host::now().to_string(),
         )?;
+        self.record_completed(user, &reference)?;
         if let Some(stream) = self
             .state
             .lock()
@@ -895,6 +910,7 @@ fn reply_error(reply: Reply) -> ToolError {
 pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
     crate::interaction_input::InteractionInput::parse(input)?;
     runtime::response_language::ResponseLanguage::from_request(input)?;
+    presentation_requested(input)?;
     let message = input["message"]
         .as_str()
         .ok_or_else(invalid)?;
@@ -921,7 +937,7 @@ pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolErr
     }
     // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
     // value, so retrying a previously accepted key does not become a conflict.
-    for key in ["scope", "personal_chat_ref", "note_refs", "note_reply_to", "understanding_ref", "board_follow_up", "response_language", "music_question", "entry_action", "learning_purpose", "note_ref", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
+    for key in ["scope", "personal_chat_ref", "note_refs", "note_reply_to", "understanding_ref", "board_follow_up", "response_language", "presentation_requested", "music_question", "entry_action", "learning_purpose", "note_ref", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
         if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
             v[key] = value.clone();
         }
@@ -1402,8 +1418,14 @@ impl RunAdmissions {
     fn record_completed(&self, user: &user_runtime::UserRuntime, reference: &AgentTurnRef) -> Result<(),ToolError> {
         let session = user.agent_history.sessions.iter().find(|s|s.id==reference.session_id).ok_or_else(missing)?;
         let turn = session.turns.iter().find(|t|t.turn_id==reference.turn_id).ok_or_else(missing)?;
+        let state = self.state.lock().unwrap();
+        let owner = user.user_id().ok_or_else(missing)?;
+        let now = crate::multi_user_host::now();
         if crate::admin_usage::delivered(session,turn) {
-            crate::admin_usage::record(&self.state.lock().unwrap().control.connection, user.user_id().ok_or_else(missing)?, "completed", &reference.turn_id, crate::multi_user_host::now())?;
+            crate::admin_usage::record(&state.control.connection, owner, "completed", &reference.turn_id, now)?;
+        }
+        if let Err(error) = crate::operations::save_outcome(&state.control.connection, owner, session, turn, now) {
+            eprintln!("operations outcome write failed: {}", error.error_code);
         }
         Ok(())
     }

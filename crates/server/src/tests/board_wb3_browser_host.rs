@@ -433,22 +433,6 @@ impl ModelAdapter for Probe {
         if let Some(review) = super::tutor_loop_tests::fixture_delivery_review(&request) {
             return Ok(review);
         }
-        if request
-            .system
-            .starts_with("你是 Understand Book 的教学教练。")
-        {
-            let input: Value = serde_json::from_str(&request.user).unwrap();
-            if input["trigger"] == "after_turn"
-                && input["teaching_context"]["status"] == "observing"
-            {
-                let observations:Vec<_>=input["observation_facts"].as_array().into_iter().flatten().filter(|f|f["already_interpreted"]!=true)
-                    .map(|f|json!({"fact_ref":f["fact_ref"],"decision":"no_new_information","reason":"Only the explicitly recorded learner expression is interpreted."})).collect();
-                return Ok(
-                    json!({"next_step":{"focus":"Keep the completed board explanation","participation":{"choice":"conclude","reason":"The requested explanation is delivered."}},
-                    "observations":observations,"reason":"Do not infer mastery from delivered help."}),
-                );
-            }
-        }
         if let Some(guidance) = super::tutor_loop_tests::fixture_coach_guidance(&request) {
             return Ok(guidance);
         }

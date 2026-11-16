@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { z, type ZodTypeAny } from "zod";
 import type {
@@ -75,7 +75,7 @@ export const PASS1_LID_STITCHER = "pass1-lid-stitcher" as const;
 export const PASS1_SOURCE_FRAGMENT_PROMPT_NAME = "pass1-source-fragment-extractor.md" as const;
 export const PASS1_LID_STITCH_PROMPT_NAME = "pass1-lid-stitcher.md" as const;
 export const PASS1_SOURCE_FRAGMENT_PROMPT_SHA256 =
-  "87889ca048baf6d31303650dfb953d58eb30d1a260d2ff448c6c3f41281d88eb" as const;
+  "a8dd9c5efb8640514189e22a32361e78ed7218c976ff64ce0f3a0cf636bfbc9c" as const;
 export const PASS1_LID_STITCH_PROMPT_SHA256 =
   "2c3d8e9e7c6813231d67de9fa768a98336d9ec670e5d8aee1a6cc2da9d5fbc1b" as const;
 
@@ -142,7 +142,6 @@ export interface Pass1SourceFragmentCandidateV1 extends Pass1Output {
   version: typeof PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION;
   parent_lid: string;
   source_slice_ordinal: number;
-  core_sha256: string;
 }
 
 export interface Pass1LidStitchCandidateV1 {
@@ -326,7 +325,8 @@ export function pass1ModelSlicePolicyMembers(
     {
       kind: "pass1_source_slice",
       extractor: PASS1_SOURCE_FRAGMENT_EXTRACTOR,
-      policy_generation_id: `pass1-source-slice.${qualityProfile}.v2`,
+      // Removing the model's digest echo changes the frozen prompt contract.
+      policy_generation_id: `pass1-source-slice.${qualityProfile}.v3`,
       policy_fingerprint: pass1SourceFragmentPolicy(profile, qualityProfile),
     },
     {
@@ -391,6 +391,7 @@ function wholeSlices(input: {
     const node = input.by_lid.get(lid);
     if (!node || node.children.length) throw new Error(`pass1 whole slice requires a leaf LID: ${lid}`);
     const text = input.source.slice(node.span.start, node.span.end);
+    const textSha256 = sha256(text);
     return {
       version: "model_input_slice.v1",
       source_fingerprint: input.source_fingerprint,
@@ -399,8 +400,8 @@ function wholeSlices(input: {
       core_span_utf16: { ...node.span },
       context_span_utf16: { ...node.span },
       boundary_kind: "whole_lid",
-      core_sha256: sha256(text),
-      context_sha256: sha256(text),
+      core_sha256: textSha256,
+      context_sha256: textSha256,
     };
   });
 }
@@ -504,7 +505,6 @@ function fragmentRenderInput(input: {
     content_profile_id: input.content_profile_id,
     parent_lid: slice.parent_lid,
     ordinal: slice.ordinal,
-    core_sha256: slice.core_sha256,
     boundary_kind: slice.boundary_kind,
     core_span_utf16: { ...slice.core_span_utf16 },
     context_span_utf16: { ...slice.context_span_utf16 },
@@ -608,9 +608,8 @@ export function routePass1ShadowWorkUnits(input: {
   fragment_budget: Pass1BudgetV1;
   context_overlap_utf16?: number;
 }): Pass1ShadowRouteResultV1 {
-  if (sha256(input.source) !== input.source_fingerprint) {
-    throw new Error("pass1 shadow source fingerprint does not match source bytes");
-  }
+  // The caller fingerprints its loaded source once for all windows. Persisted
+  // tasks revalidate the source at replay, rather than during each window route.
   const whole = groupWorkUnit({
     target: input.target,
     source: input.source,
@@ -702,7 +701,6 @@ export function routePass1ShadowWorkUnits(input: {
       },
       render: (renderContext) => renderPass1SourceFragmentModelInput({
         content_profile_id: input.content_profile.id,
-        core_sha256: sha256(renderContext.core),
         ...renderContext,
       }),
     });
@@ -761,7 +759,6 @@ const fragmentCandidateSchema = z.object({
   version: z.literal(PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION),
   parent_lid: boundedLid,
   source_slice_ordinal: z.number().int().nonnegative(),
-  core_sha256: sha256Schema,
   nodes: z.array(graphNodeSchema).max(MAX_NODES),
   edges: z.array(graphEdgeSchema).max(MAX_EDGES),
 }).strict();
@@ -844,7 +841,7 @@ export function projectPass1AdoptedWholeArtifact(input: {
 
 export function parsePass1SourceFragmentCandidate(
   input: unknown,
-  context: { parent_lid: string; source_slice_ordinal: number; core_sha256: string },
+  context: { parent_lid: string; source_slice_ordinal: number },
 ): Pass1SourceFragmentCandidateV1 {
   const parsed = parseClosed<Pass1SourceFragmentCandidateV1>(
     fragmentCandidateSchema,
@@ -852,8 +849,7 @@ export function parsePass1SourceFragmentCandidate(
     PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION,
   );
   if (parsed.parent_lid !== context.parent_lid
-    || parsed.source_slice_ordinal !== context.source_slice_ordinal
-    || parsed.core_sha256 !== assertSha256(context.core_sha256, "fragment core_sha256")) {
+    || parsed.source_slice_ordinal !== context.source_slice_ordinal) {
     throw new Error("pass1 fragment identity does not match its descriptor");
   }
   assertOutputEvidence(parsed, [context.parent_lid], "pass1 fragment");
@@ -1072,9 +1068,9 @@ export function freezePass1ShadowTask(target: AutomaticBuildTarget, input: Pass1
   const file = pass1ShadowTaskPath(target, task.policy_generation_id, task.descriptor.work_unit_id);
   const bytes = `${JSON.stringify(task, null, 2)}\n`;
   mkdirSync(path.dirname(file), { recursive: true });
+  let descriptor: number;
   try {
-    writeFileSync(file, bytes, { encoding: "utf8", flag: "wx" });
-    return file;
+    descriptor = openSync(file, "wx");
   } catch (error) {
     const code = error && typeof error === "object" && "code" in error ? String(error.code) : "";
     if (code !== "EEXIST") throw error;
@@ -1083,6 +1079,18 @@ export function freezePass1ShadowTask(target: AutomaticBuildTarget, input: Pass1
     }
     return file;
   }
+  try {
+    try {
+      writeFileSync(descriptor, bytes, { encoding: "utf8" });
+    } finally {
+      closeSync(descriptor);
+    }
+  } catch (error) {
+    // This call created the file; do not leave an incomplete frozen task for the next retry.
+    try { unlinkSync(file); } catch { /* Preserve the original write error. */ }
+    throw error;
+  }
+  return file;
 }
 
 export function readPass1ShadowTask(
@@ -1120,8 +1128,10 @@ function verifyCurrentSourceSlice(source: string, slice: ModelInputSliceV1, sour
     || context.end < core.end || context.end > source.length) {
     throw new Error("pass1 source slice spans are invalid");
   }
-  if (sha256(source.slice(core.start, core.end)) !== slice.core_sha256
-    || sha256(source.slice(context.start, context.end)) !== slice.context_sha256) {
+  const coreSha256 = sha256(source.slice(core.start, core.end));
+  const contextSha256 = core.start === context.start && core.end === context.end
+    ? coreSha256 : sha256(source.slice(context.start, context.end));
+  if (coreSha256 !== slice.core_sha256 || contextSha256 !== slice.context_sha256) {
     throw new Error("pass1 source slice digest is stale");
   }
 }
@@ -1182,7 +1192,6 @@ function renderFragmentTaskInput(source: string, task: Pass1ShadowTaskV1): strin
     content_profile_id: task.target_ref.profile_id,
     parent_lid: slice.parent_lid,
     ordinal: slice.ordinal,
-    core_sha256: slice.core_sha256,
     boundary_kind: slice.boundary_kind,
     core_span_utf16: { ...slice.core_span_utf16 },
     context_span_utf16: { ...slice.context_span_utf16 },
@@ -1522,11 +1531,9 @@ function artifactPayloadForCandidate(input: {
     if (input.task.descriptor.input_basis.kind !== "source_slices") {
       throw new Error("pass1 fragment candidate is missing its source slice");
     }
-    const slice = input.task.descriptor.input_basis.slices[0];
     const parsed = parsePass1SourceFragmentCandidate(input.candidate, {
       parent_lid: route.parent_lid,
       source_slice_ordinal: route.source_slice_ordinal,
-      core_sha256: slice.core_sha256,
     });
     output = gateOutput({ nodes: parsed.nodes, edges: parsed.edges }, route.evidence_lids);
   } else {

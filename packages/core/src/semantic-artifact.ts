@@ -114,6 +114,7 @@ const STAGE_POLICIES: Record<SemanticBuildStage, {
   schema_version: string;
 }> = {
   ...TEACHING_POLICIES,
+  course: { stage_policy_version: "course.v1", prompt_sha256: "5e591f7de404df1d087ebc25c213de581c32e9f8b7954144534a67c53a07cfb9", schema_version: "course.v1" },
   pass1: {
     stage_policy_version: "pass1_policy.v1",
     prompt_sha256: "7f95eb6352042a9d37866488d71418f2a730e78eeedfdbdebe646cc912cb1330",

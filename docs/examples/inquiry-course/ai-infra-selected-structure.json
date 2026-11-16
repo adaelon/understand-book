@@ -1,0 +1,109 @@
+{
+  "at": "3.6",
+  "available": true,
+  "spine_unit": {
+    "depends_on": [],
+    "key_stop_ids": [
+      "unit:3:fragment:0002#cooptimization",
+      "unit:3:fragment:0004#stages",
+      "unit:3:fragment:0009#capacity_compute_traffic_equations",
+      "unit:3:fragment:0009#stored_bytes_vs_transfer_bytes",
+      "unit:3:fragment:0011#complete_memory_capacity_budget",
+      "unit:3:fragment:0015#weight_bound_h100_numbers",
+      "unit:3:fragment:0015#overlap_max_time_bound",
+      "unit:3:fragment:0015#eight_batch_throughput_not_latency",
+      "unit:3:fragment:0018#state_augmented_step_model",
+      "unit:3:fragment:0019#missing_work_vs_system_overhead",
+      "unit:3:fragment:0026#dependencies_state_unify_design"
+    ],
+    "lid": "3",
+    "role": "foundation",
+    "summary": {
+      "evidence_lids": [
+        "3.4.2.10",
+        "3.4.4.7",
+        "3.4.4.8",
+        "3.5.3.15",
+        "3.5.4.22",
+        "3.6.2.21",
+        "3.6.3.7",
+        "3.6.3.11",
+        "3.6.3.34",
+        "3.6.3.45",
+        "3.6.4.11",
+        "3.6.5.2",
+        "3.7.3.8",
+        "3.7.4.11",
+        "3.7.5.5",
+        "3.10.2",
+        "3.10.3"
+      ],
+      "text": "第 1 章 初识 AI Infra 从模型、运行时和硬件的共同执行信息出发，沿 prefill、decode、权重读取与跨设备交接认识系统。建立容量、运算、接口读写和执行依赖的预算，以量化容量与 70B 读取算例说明批内复用、重叠下界、算术强度和容量限制；再加入私有状态与实测口径，分辨模型漏项和主机开销。专用处理器、SmartNIC 与 UB 的机制把需求推导延伸到资源分工，最后统一到状态生命周期与依赖驱动的跨层设计。"
+    }
+  },
+  "throughlines": [
+    {
+      "id": "theme:budgets",
+      "key_stop_ids": [
+        "unit:2:fragment:0002#rough_bounds",
+        "unit:3:fragment:0019#missing_work_vs_system_overhead",
+        "unit:6:fragment:0054#model_counter_kernel_time_roles",
+        "unit:14:fragment:0009#f10-5",
+        "unit:14:fragment:0034#f35-1"
+      ],
+      "lids": [
+        "2",
+        "3",
+        "6",
+        "14"
+      ],
+      "name": "从资源下界到实测校准",
+      "summary": {
+        "evidence_lids": [
+          "2.5.2",
+          "3.6.5.2",
+          "6.12.6.20",
+          "14.5.6.27",
+          "14.9.3.30",
+          "14.9.3.31",
+          "14.9.3.32"
+        ],
+        "text": "前言用工作量与资源供给筛方向；初识 AI Infra 将下界缺口拆成模型漏项和系统开销；加速器架构进一步区分模型资源时间、接口流量、kernel与总耗时；端边云协同把校准带回期限和部署比较，说明下界可排除方案，却不能承诺达标，校准也可能改变附近工作站与云端的快慢关系。"
+      }
+    }
+  ],
+  "key_stops": [
+    {
+      "id": "unit:3:fragment:0015#weight_bound_h100_numbers",
+      "lid": "3.6.3.7",
+      "reason": {
+        "evidence_lids": [
+          "3.6.3.13",
+          "3.6.3.3",
+          "3.6.3.5",
+          "3.6.3.7",
+          "3.6.3.8",
+          "3.6.3.9"
+        ],
+        "text": "单请求140 GFLOPs、70 GB权重，按H100峰值989400 GFLOP/s、3350 GB/s，计算≥0.1415 ms、读取≥20.90 ms，读取约148倍且已超10 ms目标。每权重只做一次乘加，算单元处理后等数据，更高算力不能加快接口读。\n主要权重矩阵简化模型\n给定峰值与工作量\n把低权重复用直接联系到带宽主导，而容量可装不意味着速度可达。"
+      },
+      "title": null,
+      "type": "example"
+    },
+    {
+      "id": "unit:3:fragment:0015#overlap_max_time_bound",
+      "lid": "3.6.3.11",
+      "reason": {
+        "evidence_lids": [
+          "3.6.3.10",
+          "3.6.3.11",
+          "3.6.3.12",
+          "3.6.3.17"
+        ],
+        "text": "数据分块允许当前块计算时读取下一块；充分重叠模型下T_step≥max(F/Π,R_W/β)。是否相加或取大者取决于能否重叠，稳定流水较慢项决定处理速度，本例为读取。\n读取与计算充分重叠的简化模型\n完成仍满足数据依赖\n保留资源时间合成的关键假设，避免把两项一律相加或把下界当实测。"
+      },
+      "title": null,
+      "type": "formula"
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>两位信使，哪一位先到？</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:clamp(8px,2vw,22px);background:#0d1f23;color:#e9f2e5;font:16px/1.5 system-ui,sans-serif}main{max-width:910px;margin:auto}h1{font-size:clamp(22px,4vw,34px);margin:0}p{margin:5px 0 12px}.field{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:16px;align-items:center}canvas{display:block;width:100%;height:auto;background:#263d43;border:4px solid #527078;image-rendering:pixelated}.keys{display:flex;flex-wrap:wrap;gap:5px;margin:8px 0}.keys button{min-height:44px;min-width:44px;padding:4px 8px;background:#24464b;color:#eef3d9;font:bold 15px system-ui;border:2px solid #608386;border-radius:0;cursor:pointer}.keys button[aria-pressed=true]{background:#f2d272;color:#17282a;border-color:#ffeaae}.keys button:disabled{opacity:.6}#readout{border-left:4px solid #f2d272;padding-left:9px;font-weight:700}.keyA{color:#ff9d82}.keyB{color:#80ded0}small{display:block;color:#c1d2cc}@media(max-width:630px){.field{display:block}canvas{max-height:45vh;width:auto;max-width:100%;margin:auto}.keys{margin:6px 0}}
+</style></head><body><main><h1>两位信使，哪一位先到？</h1><p>从同一原点出发。目的地不变，每次都按同一把尺走一个单位。</p><div class="field"><canvas id="map" width="252" height="220" role="img" aria-label="像素街区，甲去 (3,4)，乙去 (0,5)，两人按当前规则共同前进"></canvas><section><small><b class="keyA">甲 (3,4)</b>　／　<b class="keyB">乙 (0,5)</b></small>
+<nav class="keys" aria-label="换一种走法"><button id="l1">L1 横纵</button><button id="l2">L2 直线</button><button id="linf">L∞ 同步</button></nav><p id="rule"></p><div class="keys"><button id="step">前进一步</button><button id="play">演示</button><button id="reset">复位</button></div><p id="readout" aria-live="polite"></p></section></div></main>
+<script>(()=>{const host=window.presentation, points=[[3,4],[0,5]], names={l1:'L1',l2:'L2',linf:'L∞'};
+const length=(m,[x,y])=>m==='l1'?Math.abs(x)+Math.abs(y):m==='l2'?Math.hypot(x,y):Math.max(Math.abs(x),Math.abs(y));
+const valid=m=>Object.hasOwn(names,m);
+const $=id=>document.getElementById(id);
+function compare(m){const [a,b]=points.map(p=>length(m,p));return '甲 '+a+'　乙 '+b+'　'+(a===b?'一样长':a>b?'甲更长':'乙更长')}
+
+const ctx=$('map').getContext('2d'),cell=29,ox=36,oy=184;
+const px=(x,y)=>[Math.round(ox+x*cell),Math.round(oy-y*cell)];
+const rect=(x,y,w,h,c)=>{ctx.fillStyle=c;ctx.fillRect(Math.round(x),Math.round(y),w,h)};
+let metric='l1',steps=0,timer=0;
+function position([x,y],d){const n=length(metric,[x,y]);d=Math.min(d,n);
+ if(metric==='l2')return [x*d/n,y*d/n];
+ if(metric==='linf')return [Math.min(x,d),Math.min(y,d)];
+ return [Math.min(x,d),Math.max(0,d-x)]}
+function tree(x,y){rect(x-2,y,4,7,'#705443');rect(x-6,y-9,12,11,'#2b6c51');rect(x-3,y-12,8,10,'#83b26a');rect(x-3,y-10,3,3,'#a8cb81')}
+function house(x,y){rect(x,y,18,12,'#cdb784');rect(x+7,y+4,4,8,'#765448');rect(x+1,y-4,16,4,'#a75342');rect(x+4,y-7,10,3,'#bf6c4b');rect(x+2,y+3,3,3,'#87cad0')}
+function messenger(x,y,c){rect(x-4,y-9,7,4,'#e2c397');rect(x-4,y-11,8,3,c);rect(x+1,y-8,2,2,'#1e3336');rect(x-4,y-5,7,6,c);rect(x-5,y,3,3,'#182e31');rect(x+1,y,3,3,'#182e31')}
+function draw(){const a=points[0],b=points[1];rect(0,0,252,220,'#254249');
+ for(let x=5;x<250;x+=9)for(let y=7;y<220;y+=9)rect(x+(y%3),y,1,1,'#355154');
+ for(let i=0;i<=5;i++){const [x,y]=px(i,i);rect(x-4,oy-5*cell-4,8,5*cell+8,'#486065');rect(ox-4,y-4,5*cell+8,8,'#486065')}
+ for(const xy of [[71,75],[203,118],[205,155],[13,109]])tree(...xy);house(176,17);house(194,195);house(98,111);
+ [a,b].forEach((p,i)=>{const c=i?'#80ded0':'#ff9d82',n=length(metric,p);ctx.strokeStyle=c;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(...px(0,0));for(let d=0;d<n;d++)ctx.lineTo(...px(...position(p,d)));ctx.lineTo(...px(...p));ctx.stroke();
+ const [x,y]=px(...p);rect(x,y-15,2,15,'#e5ddd2');rect(x+2,y-15,10,6,c);ctx.fillStyle=c;ctx.font='bold 10px monospace';ctx.fillText(i?'B':'A',x+13,y-9);});
+ [a,b].forEach((p,i)=>{const [x,y]=px(...position(p,steps));messenger(x+(i?-3:3),y+(i?-1:2),i?'#80ded0':'#ff9d82')});
+ const [u,v]=points.map(p=>length(metric,p));$('rule').textContent={l1:'只许沿横街和纵街走。',l2:'可以沿两点间的直线走。',linf:'一步内，两条轴可同时各走一个单位。'}[metric];
+ $('readout').textContent='共同走了 '+steps+' 步：甲'+(steps>=u?'已到':'未到')+'，乙'+(steps>=v?'已到':'未到')+'。全程：甲 '+u+'，乙 '+v+'。';
+ for(const k of Object.keys(names))$(k).setAttribute('aria-pressed',String(k===metric));$('step').disabled=steps>=Math.max(u,v);$('play').textContent=timer?'暂停':matchMedia('(prefers-reduced-motion:reduce)').matches?'到达终点':'演示'}
+function stop(){clearInterval(timer);timer=0}
+const end=()=>Math.max(...points.map(p=>length(metric,p)));
+function restore(s={}){stop();metric=valid(s.metric)?s.metric:'l1';steps=Math.max(0,Math.min(end(),Math.trunc(Number(s.steps)||0)));draw()}
+for(const k of Object.keys(names))$(k).onclick=()=>restore({metric:k});$('reset').onclick=()=>restore({metric});$('step').onclick=()=>{stop();steps=Math.min(end(),steps+1);draw()};
+$('play').onclick=()=>{if(timer){stop();draw();return}if(steps===end())steps=0;if(matchMedia('(prefers-reduced-motion:reduce)').matches){steps=end();draw();return}timer=setInterval(()=>{steps++;if(steps>=end()){steps=end();stop()}draw();if(!timer)host?.commitState()},400);draw()};
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&timer){stop();draw();host?.commitState()}});window.addEventListener('pagehide',stop);
+restore(host?.initialState);host?.registerStateReader(()=>({values:{metric,steps},visible_step:'第 '+steps+' 步',observation:{summary:$('readout').textContent,state:{metric,steps}}}));host?.registerStateRestorer(saved=>restore(saved.values.page));
+})();</script></body></html>

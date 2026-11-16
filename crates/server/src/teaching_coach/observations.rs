@@ -48,22 +48,80 @@ pub(super) fn freeze_facts(store: &LearningStore, events: &[TeachingEvent]) -> R
     Ok(groups)
 }
 
-/// Reconstitute only exact ranges actually registered in this delivered turn.
-/// Immutable publication/version checks prevent later material becoming evidence.
+/// Restore this turn's reads, or the actual sources behind its prior delivered
+/// help. A conversational reply can use the question's sources without rereading.
 pub(super) fn freeze_original_reads(user: &user_runtime::UserRuntime, job: &CoachJob, book: &Book, refresh: bool) -> Result<CoachJob, ToolError> {
-    if job.input.origin == CoachJobOrigin::StageStart || matches!(job.status, CoachJobStatus::Ready | CoachJobStatus::Cancelled)
-        || !refresh && job.input.context.get("verified_read_ranges").is_some() { return Ok(job.clone()); }
+    if job.input.origin == CoachJobOrigin::StageStart || matches!(job.status, CoachJobStatus::Ready | CoachJobStatus::Cancelled) { return Ok(job.clone()); }
     if book.base.book_id != job.input.binding.source_id || book.source_fingerprint() != job.input.binding.source_revision {
         return Err(error("TUTOR_COACH_SOURCE_UNAVAILABLE", "理解观察的原资料版本已不可用。"));
     }
-    let messages = user.session_store.as_ref().and_then(|store| store.logs.get(&job.input.binding.chat_session_id))
-        .map(|log| log.turn_messages(&job.input.binding.turn_id)).transpose()?.unwrap_or_default();
-    let ranges = runtime::orchestrator::recover_turn_text_read_ranges(book, &messages);
+    let log = user.session_store.as_ref().and_then(|store| store.logs.get(&job.input.binding.chat_session_id));
+    let mut ranges: Vec<EvidenceRange> = if !refresh && job.input.context.get("verified_read_ranges").is_some() {
+        serde_json::from_value(job.input.context["verified_read_ranges"].clone()).map_err(|e| memory::teaching::invalid(e.to_string()))?
+    } else {
+        let messages = log.map(|log| log.turn_messages(&job.input.binding.turn_id)).transpose()?.unwrap_or_default();
+        runtime::orchestrator::recover_turn_text_read_ranges(book, &messages)
+    };
+    // Prepared lessons have no chat tool log. Actually read their frozen source
+    // here before granting the same source coverage used by chat observations.
+    if let Some(source) = job.input.context.pointer("/course_response/lesson/summary/source") {
+        let start = source["start_lid"].as_str().ok_or_else(|| memory::teaching::invalid("课程缺少原文范围"))?;
+        let end = source["end_lid"].as_str().ok_or_else(|| memory::teaching::invalid("课程缺少原文范围"))?;
+        book.text(start, Some(end))?;
+        ranges.push(serde_json::from_value(json!({"start_lid":start,"end_lid":end})).map_err(|e| memory::teaching::invalid(e.to_string()))?);
+    }
+    let mut bindings: Vec<SourceBinding> = serde_json::from_value(job.input.context.get("source_bindings").cloned().unwrap_or(json!([])))
+        .map_err(|e| memory::teaching::invalid(e.to_string()))?;
+    // Resident text citations historically omit source_revision. Verify their
+    // exact saved digest against this job's source before hydrating them. This
+    // also covers a follow-up answered entirely from the resident working set.
+    bindings.retain(|source| source.book_id == job.input.binding.source_id
+        && source.source_revision.as_deref().is_none_or(|v| v == job.input.binding.source_revision));
+    for source in &mut bindings {
+        if let Some(range) = &source.evidence_range {
+            if source.source_revision.is_none() && source.evidence_text_digest.is_empty() { continue; }
+            book.resolve_source(range, "zh", (!source.evidence_text_digest.is_empty()).then_some(source.evidence_text_digest.as_str()))?;
+            source.source_revision = Some(job.input.binding.source_revision.clone());
+            if !ranges.contains(range) { ranges.push(range.clone()); }
+        }
+    }
+    if ranges.is_empty() && bindings.is_empty() {
+        if let Some(session) = user.agent_history.sessions.iter().find(|s| s.id == job.input.binding.chat_session_id) {
+            let help_turns: Vec<_> = job.input.context["observation_facts"].as_array().into_iter().flatten()
+                .flat_map(|fact| fact["prior_help"].as_array().into_iter().flatten())
+                .filter(|help| help["binding"]["chat_session_id"] == job.input.binding.chat_session_id
+                    && help["binding"]["source_id"] == job.input.binding.source_id
+                    && help["binding"]["source_revision"] == job.input.binding.source_revision)
+                .filter_map(|help| help["binding"]["turn_id"].as_str()).collect();
+            if let Some(end) = session.turns.iter().rposition(|turn| help_turns.contains(&turn.turn_id.as_str())) {
+                // Stop at the nearest source-bearing exchange in this same
+                // conversation/version. Later replies can never supply evidence.
+                for turn in session.turns[..=end].iter().rev() {
+                    let Some(context) = binding_context(user, job.learning_workspace_id.as_deref(), &turn.turn_id)? else { continue; };
+                    if context["binding"]["source_id"] != job.input.binding.source_id
+                        || context["binding"]["source_revision"] != job.input.binding.source_revision { break; }
+                    let messages = log.map(|log| log.turn_messages(&turn.turn_id)).transpose()?.unwrap_or_default();
+                    ranges = runtime::orchestrator::recover_turn_text_read_ranges(book, &messages);
+                    for source in &turn.source_bindings {
+                        if source.book_id != job.input.binding.source_id { continue; }
+                        if source.source_revision.as_deref().is_some_and(|v| v != job.input.binding.source_revision) { continue; }
+                        if let Some(range) = &source.evidence_range {
+                            book.resolve_source(range, "zh", Some(&source.evidence_text_digest))?;
+                            if !ranges.contains(range) { ranges.push(range.clone()); }
+                        } else if source.source_revision.as_deref() == Some(job.input.binding.source_revision.as_str()) {
+                            if !bindings.contains(source) { bindings.push(source.clone()); }
+                        }
+                    }
+                    if !ranges.is_empty() || !bindings.is_empty() { break; }
+                }
+            }
+        }
+    }
     user.learning_store_for_workspace(job.learning_workspace_id.as_deref())?
-        .freeze_coach_read_ranges(&job.input.job_ref, job.attempt, &ranges)
+        .freeze_coach_sources(&job.input.job_ref, job.attempt, &ranges, json!(bindings))
 }
 
-pub(super) fn with_material(job: &CoachJob, book: &Book) -> Result<CoachJob, ToolError> {
+pub(super) fn with_material(job: &CoachJob, book: &Book, directory: &Path) -> Result<CoachJob, ToolError> {
     if book.base.book_id != job.input.binding.source_id || book.source_fingerprint() != job.input.binding.source_revision {
         return Err(error("TUTOR_COACH_SOURCE_UNAVAILABLE", "理解观察的原资料版本已不可用。"));
     }
@@ -80,12 +138,52 @@ pub(super) fn with_material(job: &CoachJob, book: &Book) -> Result<CoachJob, Too
         }
     }
     for range in reviewed_ranges(job)? {
+        if sources.iter().any(|source| source["range"] == json!(range)) { continue; }
         let source = book.resolve_source(&range, "zh", None)?;
         sources.push(json!({"range":range,"text":source.highlighted_quote}));
     }
     let mut hydrated = job.clone();
     hydrated.input.context["read_sources"] = json!(sources);
+    hydrated.input.context["verified_read_ranges"] = json!(reviewed_ranges(job)?);
+    hydrated.input.context["knowledge_candidates"] = json!(crate::knowledge_tree::candidates(book,directory,&hydrated.input.context)?);
+    if hydrated.input.context["course_response"].is_object() {
+        scope_course_understanding(&mut hydrated.input.context, book);
+    }
     Ok(hydrated)
+}
+
+/// Select from the input-time snapshot, never from the live store while a job is
+/// waiting. Knowledge neighbours include related work from other conversations.
+fn scope_course_understanding(context: &mut Value, book: &Book) {
+    let candidates = context["knowledge_candidates"].as_array().cloned().unwrap_or_default();
+    let references:Vec<_> = candidates.iter().flat_map(|node| {
+        std::iter::once(node["reference"].clone()).chain(node["relations"].as_array().into_iter().flatten().map(|r|r["reference"].clone()))
+    }).collect();
+    let span = |range:&Value| {
+        let start=range["start_lid"].as_str()?;
+        let end=range["end_lid"].as_str()?;
+        let a=book.base.lid_nodes.iter().find(|node|node.lid==start)?;
+        let b=book.base.lid_nodes.iter().find(|node|node.lid==end)?;
+        Some((a.span.start,b.span.end))
+    };
+    let source_ranges:Vec<_>=context["read_sources"].as_array().into_iter().flatten().filter_map(|s|span(&s["range"])).collect();
+    let prior=context["teaching_context"]["learner_context"]["current_understanding"].as_array().cloned().unwrap_or_default();
+    let relevant:Vec<_>=prior.into_iter().filter(|item| {
+        item["knowledge_links"].as_array().into_iter().flatten().any(|link|references.contains(&link["reference"]))
+            || item["target"]["source_bindings"].as_array().into_iter().flatten().filter_map(&span)
+                .any(|(start,end)|source_ranges.iter().any(|(a,b)|start<*b && end>*a))
+    }).collect();
+    let omitted=relevant.len().saturating_sub(12);
+    let selected:Vec<_>=relevant.into_iter().take(12).collect();
+    let mut focuses=context["known_focuses"].as_array().cloned().unwrap_or_default();
+    for item in &selected {
+        if item["target"]["focus_ref"].is_string() && !focuses.iter().any(|target|target["focus_ref"]==item["target"]["focus_ref"]) {
+            focuses.push(item["target"].clone());
+        }
+    }
+    context["known_focuses"]=json!(focuses);
+    context["teaching_context"]["learner_context"]["current_understanding"]=json!(selected);
+    context["teaching_context"]["learner_context"]["omitted_related_understanding"]=json!(omitted);
 }
 
 /// Original successful read receipts cover more than a short display excerpt.
@@ -105,6 +203,33 @@ fn reviewed_ranges(job: &CoachJob) -> Result<Vec<EvidenceRange>, ToolError> {
         }
     }
     Ok(ranges)
+}
+
+/// Check the exact material supplied to generation before its one correction
+/// opportunity ends. No evidence is written until commit rechecks and accepts it.
+pub(super) fn validate_material(job: &CoachJob, guidance: &CoachGuidanceDraft, book: &Book) -> Result<(), ToolError> {
+    let ranges: Vec<EvidenceRange> = job.input.context["read_sources"].as_array().into_iter().flatten()
+        .filter_map(|source| source.get("range")).cloned()
+        .map(serde_json::from_value).collect::<Result<_,_>>()
+        .map_err(|e| memory::teaching::invalid(e.to_string()))?;
+    let candidates = job.input.context["knowledge_candidates"].as_array().map(Vec::as_slice).unwrap_or(&[]);
+    for observation in &guidance.observations {
+        let Some(hypothesis) = &observation.hypothesis else { continue; };
+        let fact = job.input.context["observation_facts"].as_array().into_iter().flatten()
+            .find(|fact| fact["fact_ref"].as_str() == Some(observation.fact_ref.as_str()));
+        if fact.is_some_and(|fact| fact["already_interpreted"] == true) { continue; }
+        for source in hypothesis.target["source_bindings"].as_array().into_iter().flatten() {
+            let start = source["start_lid"].as_str().unwrap_or("");
+            let end = source["end_lid"].as_str().unwrap_or("");
+            if let Some((missing, _)) = crate::teaching::missing_target_read(book, start, end, &ranges)? {
+                return Err(memory::teaching::invalid(format!(
+                    "target.source_bindings 的 {start}..{end} 超出 read_sources 实际提供的正文，缺少 {}。按本轮已读且支持判断的最小范围修改；沿用 focus_ref 不要求复制旧 source_bindings。", missing.start_lid)));
+            }
+        }
+        let expression = fact.and_then(|fact| fact["user_expression"].as_str()).unwrap_or("");
+        crate::knowledge_tree::validate_links(&hypothesis.understanding.knowledge_links, candidates, expression)?;
+    }
+    Ok(())
 }
 
 pub(super) fn commit(user: &user_runtime::UserRuntime, job: &CoachJob, guidance: &mut Value,

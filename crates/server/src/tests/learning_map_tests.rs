@@ -1,5 +1,6 @@
 //! Private learning map construction (ADR-0178 §7, slice M1).
 use super::*;
+use crate::tests::tutor_loop_tests::prepare_activity_chat as prepare_agent_chat;
 use super::tutor_loop_tests::{finish, fixture_with_book, outcome, step_with_design};
 use std::sync::Mutex;
 

@@ -63,7 +63,7 @@ fn stalled_response(wire: &'static str) -> (String, mpsc::Sender<()>, std::threa
 }
 
 fn config(mode: ProviderMode, url: String) -> ProviderConfig {
-    ProviderConfig { mode, api_key: "fixture-key".into(), base_url: url, model: "fixture-model".into() }
+    ProviderConfig { agent_reasoning_effort: Default::default(), mode, api_key: "fixture-key".into(), base_url: url, model: "fixture-model".into() }
 }
 fn request() -> CompletionRequest {
     CompletionRequest {

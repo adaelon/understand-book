@@ -1,9 +1,8 @@
-import { createHash } from "node:crypto";
 import { expect, it } from "vitest";
 import { evaluateAutomaticBuildStageQualityV2, type AutomaticBuildStageQualityRoutingEvidenceV2 } from "../src/automatic-build-quality";
 import { createAutomaticBuildStagePolicySet, resolveAutomaticBuildStagePolicyMember } from "../src/automatic-build-policy-generation";
 import { automaticBuildExtractorForWorkUnitKind } from "../src/build-orchestrator";
-import { createBookStructureExecutionContractsV2 } from "../src/book-structure";
+import { createBookStructureExecutionContractsV2, type BookStructureLeafCoverageManifestV1 } from "../src/book-structure";
 import { bookStructureRelationContracts } from "../src/book-structure-relation-routing";
 import { resolveContentProfile } from "../src/content-profile";
 import { evaluateModelInputBudget } from "../src/model-input-budget";
@@ -22,7 +21,7 @@ const members = [
   { kind: "structure_relation_delta" as const, policy_generation_id: "delta.v1", policy_fingerprint: delta.policy_fingerprint },
 ].map(member => ({ ...member, extractor: automaticBuildExtractorForWorkUnitKind("book_structure", member.kind as WorkUnitDescriptorV3["kind"]) }));
 
-function fixture() {
+function fixture(slicedLeaf = false) {
   const policySet = createAutomaticBuildStagePolicySet({ target_ref: target, stage: "book_structure", members, frozen_at: "2026-10-01T00:00:00Z" });
   const units: WorkUnitDescriptorV3[] = [];
   const artifacts: Record<string, SemanticArtifactEnvelopeV3<unknown>> = {};
@@ -39,29 +38,91 @@ function fixture() {
   };
   const projection = (evidence: string[], start: number, end: number) => ({ kind: "semantic_projection" as const, projection_kind: "book_structure" as const, source_fingerprint: target.input_fingerprint, projection_sha256: "b".repeat(64), parent_lids: evidence, core_range: { start_ordinal: start, end_ordinal_exclusive: end } });
   add("fragment-0", "structure_fragment", ["1", "1.1"], projection(["1", "1.1"], 0, 2), { parent_lid: "1", role: "fragment" });
-  add("fragment-1", "structure_fragment", ["1", "1.2", "1.3"], projection(["1", "1.2", "1.3"], 2, 4), { parent_lid: "1", role: "fragment" });
+  const fragmentIds = ["fragment-0"];
+  const coreRanges: BookStructureLeafCoverageManifestV1["core_ranges"] = [
+    { start_ordinal: 0, end_ordinal_exclusive: 2, work_unit_id: "fragment-0", leaf_lids: ["1", "1.1"] },
+  ];
+  const sourceSlices = slicedLeaf ? [{
+    version: "model_input_slice_coverage.v1" as const, parent_lid: "1.2", parent_span_utf16: { start: 100, end: 260 },
+    slice_count: 2, expected_core_utf16: 160, covered_core_utf16: 160, gap_utf16: 0, core_overlap_utf16: 0, coverage_digest: "d".repeat(64),
+  }] : [];
+  if (slicedLeaf) {
+    const sliceIds = ["fragment-1-slice-0", "fragment-1-slice-1"];
+    sliceIds.forEach((id, ordinal) => {
+      const span = { start: 100 + 80 * ordinal, end: 180 + 80 * ordinal };
+      add(id, "structure_fragment", ["1", "1.2"], { kind: "source_slices", slices: [{
+        version: "model_input_slice.v1", source_fingerprint: target.input_fingerprint, parent_lid: "1.2", ordinal,
+        core_span_utf16: span, context_span_utf16: { ...span }, boundary_kind: "sentence", core_sha256: "c".repeat(64), context_sha256: "c".repeat(64),
+      }] }, { parent_lid: "1", role: "fragment" });
+    });
+    add("fragment-2", "structure_fragment", ["1", "1.3"], projection(["1", "1.3"], 3, 4), { parent_lid: "1", role: "fragment" });
+    fragmentIds.push(...sliceIds, "fragment-2");
+    coreRanges.push(
+      { start_ordinal: 2, end_ordinal_exclusive: 3, work_unit_id: sliceIds[0], leaf_lids: ["1.2"], slice_work_unit_ids: sliceIds },
+      { start_ordinal: 3, end_ordinal_exclusive: 4, work_unit_id: "fragment-2", leaf_lids: ["1.3"] },
+    );
+  } else {
+    add("fragment-1", "structure_fragment", ["1", "1.2", "1.3"], projection(["1", "1.2", "1.3"], 2, 4), { parent_lid: "1", role: "fragment" });
+    fragmentIds.push("fragment-1");
+    coreRanges.push({ start_ordinal: 2, end_ordinal_exclusive: 4, work_unit_id: "fragment-1", leaf_lids: ["1.2", "1.3"] });
+  }
   const deps = (ids: string[]) => ids.map(id => ({ artifact: id, sha256: artifacts[id].artifact_hash }));
-  const reduceDeps = deps(["fragment-0", "fragment-1"]);
+  const reduceDeps = deps(fragmentIds);
   // A reducer delivers selected child evidence, while its dependency closure
   // covers every original leaf. Later local and relation contributions share the chapter.
   add("final", "structure_reduce", ["1", "1.1"], { kind: "artifact_reduction", parent_lids: ["1", "1.1"], dependency_artifacts: reduceDeps.map(item => ({ work_unit_id: item.artifact, artifact_hash: item.sha256 })) }, { parent_lid: "1", role: "final" }, reduceDeps);
   add("local", "structure_stitch_fragment", ["stitch", "1"], projection(["stitch", "1"], 0, 1), { parent_lid: "stitch", role: "fragment" });
   const relationDeps = deps(["local"]);
   add("relation", "structure_relation_delta", ["1"], { kind: "artifact_reduction", parent_lids: ["1"], dependency_artifacts: relationDeps.map(item => ({ work_unit_id: item.artifact, artifact_hash: item.sha256 })) }, undefined, relationDeps);
-  const routing: AutomaticBuildStageQualityRoutingEvidenceV2 = Object.assign({ policy_set: policySet, coverage: [], public_contributors: [
+  const routing: AutomaticBuildStageQualityRoutingEvidenceV2 = Object.assign({ policy_set: policySet, coverage: sourceSlices, public_contributors: [
     { contributor_id: "chapter", work_unit_id: "final", parent_lids: ["1", "1.1", "1.2", "1.3"] },
     { contributor_id: "local", work_unit_id: "local", parent_lids: ["1"] },
     { contributor_id: "relation", work_unit_id: "relation", parent_lids: ["1"] },
-  ], reduction_parents: [{ parent_lid: "1", fragment_work_unit_ids: ["fragment-0", "fragment-1"], final_work_unit_ids: ["final"] }], book_structure_assembly: { local_work_unit_ids: ["local"], selection_work_unit_ids: [], relation_work_unit_ids: ["relation"] } }, { book_structure_coverage: [{ version: "book_structure_leaf_coverage.v1" as const, parent_unit_lid: "1", expected_leaf_count: 4, covered_leaf_count: 4, gap_count: 0, core_overlap_count: 0, coverage_digest: createHash("sha256").update("fixture leaf cover").digest("hex"), core_ranges: [
-    { start_ordinal: 0, end_ordinal_exclusive: 2, work_unit_id: "fragment-0", leaf_lids: ["1", "1.1"] },
-    { start_ordinal: 2, end_ordinal_exclusive: 4, work_unit_id: "fragment-1", leaf_lids: ["1.2", "1.3"] },
-  ] }] });
+  ], reduction_parents: [{ parent_lid: "1", fragment_work_unit_ids: fragmentIds, final_work_unit_ids: ["final"] }], book_structure_assembly: { local_work_unit_ids: ["local"], selection_work_unit_ids: [], relation_work_unit_ids: ["relation"] } }, { book_structure_coverage: [{ version: "book_structure_leaf_coverage.v1" as const, parent_unit_lid: "1", expected_leaf_count: 4, covered_leaf_count: 4, gap_count: 0, core_overlap_count: 0, core_ranges: coreRanges, ...(slicedLeaf ? { source_slices: structuredClone(sourceSlices) } : {}) }] });
   return { units, artifacts, routing };
 }
 const evaluate = (input: ReturnType<typeof fixture>) => evaluateAutomaticBuildStageQualityV2({ target_ref: target, stage: "book_structure", quality_profile: "full", work_units: input.units, artifacts: input.artifacts, routing: input.routing });
 
 it("accepts exact semantic leaf coverage, one chapter final, and transitive source evidence despite later chapter contributions", () => {
   expect(evaluate(fixture())).toMatchObject({ gate_status: "passed", integrity: { violations: [] }, reduction: { missing_or_duplicate_parent_lids: 0 } });
+});
+
+it("accepts complete source slices as one logical leaf alongside semantic leaf ranges", () => {
+  expect(evaluate(fixture(true))).toMatchObject({
+    gate_status: "passed", integrity: { violations: [] },
+    book_structure_leaf_coverage: { chapters: 1, expected: 4, covered: 4, gaps: 0, overlaps: 0 },
+    coverage: { parent_lids: 1, expected_core_utf16: 160, covered_core_utf16: 160, gap_utf16: 0, core_overlap_utf16: 0 },
+  });
+});
+
+it.each<{
+  name: string;
+  mutate: (input: ReturnType<typeof fixture>) => void;
+}>([
+  { name: "an omitted slice ID", mutate: input => { input.routing.book_structure_coverage![0].core_ranges[1].slice_work_unit_ids!.pop(); } },
+  { name: "a duplicate slice ID", mutate: input => { input.routing.book_structure_coverage![0].core_ranges[1].slice_work_unit_ids!.push("fragment-1-slice-0"); } },
+  { name: "a missing primary slice ID", mutate: input => { input.routing.book_structure_coverage![0].core_ranges[1].work_unit_id = "fragment-2"; } },
+  { name: "an unrelated descriptor in the slice IDs", mutate: input => { input.routing.book_structure_coverage![0].core_ranges[1].slice_work_unit_ids![1] = "fragment-2"; } },
+  { name: "a missing slice descriptor", mutate: input => { input.units = input.units.filter(unit => unit.work_unit_id !== "fragment-1-slice-1"); } },
+  { name: "a missing UTF-16 coverage record", mutate: input => { input.routing.coverage = []; } },
+  { name: "a mismatched leaf coverage record", mutate: input => { input.routing.book_structure_coverage![0].source_slices![0].parent_span_utf16.end -= 1; } },
+  { name: "a wrong fragment kind", mutate: input => { input.units.find(unit => unit.work_unit_id === "fragment-1-slice-1")!.kind = "structure_stitch_fragment"; } },
+  { name: "a wrong aggregation chapter", mutate: input => { input.units.find(unit => unit.work_unit_id === "fragment-1-slice-1")!.aggregation!.parent_lid = "2"; } },
+  { name: "a wrong aggregation role", mutate: input => { input.units.find(unit => unit.work_unit_id === "fragment-1-slice-1")!.aggregation!.role = "final"; } },
+  { name: "noncontiguous slice ordinals", mutate: input => {
+    const basis = input.units.find(unit => unit.work_unit_id === "fragment-1-slice-1")!.input_basis;
+    if (basis.kind === "source_slices") basis.slices[0].ordinal = 2;
+  } },
+  { name: "multiple logical leaves in a sliced range", mutate: input => {
+    const ranges = input.routing.book_structure_coverage![0].core_ranges;
+    ranges[1].end_ordinal_exclusive = 4;
+    ranges[1].leaf_lids.push("1.3");
+    ranges.pop();
+  } },
+])("rejects sliced leaf coverage with $name", ({ mutate }) => {
+  const input = fixture(true);
+  mutate(input);
+  expect(evaluate(input).integrity.violations).toContain("source_slice_coverage_invalid");
 });
 
 it("still rejects incomplete leaf coverage, missing or changed dependencies, duplicate finals, and source outside the dependency closure", () => {

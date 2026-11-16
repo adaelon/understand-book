@@ -148,6 +148,43 @@ describe("BSR2 outline and chapter selection", () => {
     expect(oversized.evaluation.status).toBe("blocked");
     expect(JSON.parse(oversized.rendered).input.excerpts[0].text).toBe(context.excerpts[0].text);
   });
+  it("fits a chapter read by reducing the book outline to navigation outside the current chapter", () => {
+    const { context } = fixture();
+    context.candidate_index_page_size = 64;
+    context.source_index_page_size = 64;
+    const ownChapter = context.outline.chapters[0];
+    const foreignChapters = Array.from({ length: 146 }, (_, i) => {
+      const unit_lid = String(100 + i);
+      const anchored = { text: "解释该章节怎样引入不同的适用条件。".repeat(5), evidence_lids: [unit_lid + ".1"] };
+      context.titles[unit_lid] = `章节 ${i + 1}`;
+      return { unit_lid, question: anchored, progression: anchored };
+    });
+    context.outline.chapters.push(...foreignChapters);
+    const work = { ...newStructureChapterWork("10"), reading: [0] };
+    context.excerpts[0].text = "保留原文中完整的判断过程。".repeat(400);
+    const body = structureChapterInput(work, context);
+    expect(estimateTokens(JSON.stringify(body))).toBeGreaterThan(20000);
+    const fitted = fitStructureOrganizationExecution({
+      contract: structureOrganizationContracts(createBookStructureExecutionContractsV2({
+        profile: resolveContentProfile("technical_learning"), quality_profile: "full", prompts: BOOK_STRUCTURE_EXECUTION_PROMPTS_V2,
+      }).stitch_fragment).structure_chapter,
+      transport_profile: CODEX_EXECUTOR_TRANSPORT_PROFILE_V2,
+      budget: { stage_body_limit_tokens: 20000, executor_context_floor_tokens: 32768, output_reserve_tokens: 3500,
+        max_candidate_tokens: Math.min(3500, createCandidateTransportContract(CODEX_EXECUTOR_TRANSPORT_PROFILE_V2).candidate_value_max_estimated_tokens), safety_margin_tokens: 512 },
+      packet: { version: "book_structure_organization_input.v1", phase: "chapter", work, context, body,
+        reference_scope: { unit_lids: body.outline.map(c => c.unit_lid), dependency_target_lids: [], evidence_by_unit: {} } },
+    });
+    expect(fitted.evaluation.status).toBe("within_limit");
+    const delivered = JSON.parse(fitted.rendered).input;
+    expect(delivered.outline[0]).toEqual({ ...ownChapter, title: context.titles["10"] });
+    expect(delivered.outline.slice(1)).toEqual(foreignChapters.map(c => ({ unit_lid: c.unit_lid, title: context.titles[c.unit_lid] })));
+    expect(delivered.excerpts).toEqual(body.excerpts);
+    expect(delivered.source_page).toEqual(body.source_page);
+    expect(fitted.packet.phase).toBe("chapter");
+    if (fitted.packet.phase !== "chapter") throw new Error("expected chapter packet");
+    const next = applyStructureChapterAction(work, { kind: "browse", offset: 0 }, fitted.packet.context);
+    expect(next.evidence_lids).toEqual(context.excerpts[0].lids);
+  });
   it("keeps a long 114-stop/44-macro choice through bounded parts without enlarging its transport contract", () => {
     const { context } = fixture(114);
     context.catalog.candidates.forEach(c => c.ref += "-" + "long-reference-".repeat(6));

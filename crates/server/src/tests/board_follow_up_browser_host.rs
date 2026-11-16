@@ -57,26 +57,6 @@ impl ModelAdapter for BoardProbe {
         if let Some(review) = super::tutor_loop_tests::fixture_delivery_review(&request) {
             return Ok(review);
         }
-        if request
-            .system
-            .starts_with("你是 Understand Book 的教学教练。")
-        {
-            let input: Value = serde_json::from_str(&request.user).unwrap();
-            if input["trigger"] == "after_turn"
-                && input["teaching_context"]["status"] == "observing"
-            {
-                let observations: Vec<_> = input["observation_facts"].as_array().into_iter().flatten()
-                    .filter(|fact| fact["already_interpreted"] != true)
-                    .map(|fact| json!({"fact_ref":fact["fact_ref"],"decision":"no_new_information",
-                        "reason":"The browser fixture preserves the seeded learner expression without inferring new mastery."}))
-                    .collect();
-                return Ok(
-                    json!({"next_step":{"focus":"Keep the completed explanation",
-                    "participation":{"choice":"conclude","reason":"The requested explanation is delivered."}},
-                    "observations":observations,"reason":"No additional understanding judgment is seeded by this model."}),
-                );
-            }
-        }
         if let Some(guidance) = super::tutor_loop_tests::fixture_coach_guidance(&request) {
             return Ok(guidance);
         }

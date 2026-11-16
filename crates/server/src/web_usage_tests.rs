@@ -122,7 +122,10 @@ fn unlimited_allowance_schema20_upgrade_preserves_existing_balances() {
     f.seed_existing_costs(17, 11);
     let writer = {
         let control = f.store.control.lock().unwrap();
-        control.connection.execute_batch("ALTER TABLE allowance_periods DROP COLUMN unlimited; PRAGMA user_version=20;").unwrap();
+        // The fixture starts on the current schema; these later tables did not
+        // exist in schema 20 and must not collide with its forward migrations.
+        control.connection.execute_batch("DROP TABLE operational_successes; DROP TABLE operational_outcomes;
+            ALTER TABLE allowance_periods DROP COLUMN unlimited; PRAGMA user_version=20;").unwrap();
         control.writer.clone()
     };
     drop(f.store);
@@ -408,7 +411,9 @@ fn web_usage_schema_19_upgrade_preserves_model_service_and_their_receipts() {
         control
             .connection
             .execute_batch(
-                "ALTER TABLE allowance_periods DROP COLUMN unlimited;
+                "DROP TABLE operational_successes;
+             DROP TABLE operational_outcomes;
+             ALTER TABLE allowance_periods DROP COLUMN unlimited;
              DROP VIEW billable_usage;
              DROP TABLE web_usage_reconciliations;
              DROP TABLE web_usage_receipts;

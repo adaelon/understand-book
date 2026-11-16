@@ -32,7 +32,7 @@ import { acceptsPresentationMessage, resolvePresentationEditingMessage } from ".
 import { renderMarkdown } from "../md";
 import { sourceChipLabel } from "../source-chip.js";
 
-const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement; teachingTarget?: HTMLElement; noteMemId?: string; noteReceipt?: PresentationFollowUp; boardId?: string; boardItemId?: string; boardReceipt?: PresentationFollowUp; continuationEnabled?: boolean; chatHead?: string | null; answerAvailable?: boolean }>();
+const props = defineProps<{ sessionId: string; turnId: string; reference: PresentationRef; busy?: boolean; teaching?: boolean; workspace?: boolean; sharedQuestion?: string; toolbarTarget?: HTMLElement; teachingTarget?: HTMLElement; socraticTarget?: (prompt: string) => HTMLElement | undefined; noteMemId?: string; noteReceipt?: PresentationFollowUp; boardId?: string; boardItemId?: string; boardReceipt?: PresentationFollowUp; continuationEnabled?: boolean; chatHead?: string | null; answerAvailable?: boolean }>();
 const emit = defineEmits<{
   (e: 'add-to-board', receipt: PresentationFollowUp): void;
   (e: 'board-state-saved', receipt: PresentationFollowUp): void;
@@ -123,6 +123,7 @@ const toolsId = useId();
 const toolbar = ref<HTMLElement>();
 const toolsPanel = ref<HTMLElement>();
 const toolsTop = ref(60);
+const toolsRight = ref(12);
 const toolsButton = ref<HTMLButtonElement>();
 function closeTools() {
   toolsOpen.value = false;
@@ -131,11 +132,14 @@ function closeTools() {
 function positionTools() {
   toolsTop.value = Math.max(12, Math.min((toolbar.value?.getBoundingClientRect().bottom ?? 44) + 8,
     window.innerHeight - (toolsPanel.value?.scrollHeight ?? 0) - 12));
+  const end = toolsButton.value?.getBoundingClientRect().right ?? window.innerWidth;
+  toolsRight.value = Math.max(12, Math.min(window.innerWidth - end, window.innerWidth - (toolsPanel.value?.offsetWidth ?? 0) - 12));
 }
 watch(toolsOpen, async open => {
   if (!open) return;
   await nextTick();
   positionTools();
+  toolsPanel.value?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true });
 });
 let toolsViewportWidth = window.innerWidth;
 function resizeTools() {
@@ -176,7 +180,7 @@ let frameChannel = crypto.randomUUID();
 let themeObserver: MutationObserver | undefined;
 let visibilityObserver: IntersectionObserver | undefined;
 let hostVisible = true;
-const readableText = computed(() => view.value?.readable_view.parts.map(part => part.kind === "markdown" ? part.text : "").join("") ?? "");
+const readableText = computed(() => view.value?.readable_view.parts.map(part => part.kind === "markdown" || part.kind === "socratic_question" ? part.text : "").join("") ?? "");
 
 const feedback = ref<PresentationFeedback>();
 const feedbackLoading = ref(false), feedbackSaving = ref(false), feedbackDetails = ref(false);
@@ -657,7 +661,7 @@ async function restore(receipt: PresentationFollowUp) {
     if (current !== generation) return;
     if (restoredState) await saveState(restoredState);
     const restored = board && restoredState && view.value ? { ...view.value, restored_state: restoredState, restored_state_revision: receipt.state_revision }
-      : props.noteMemId ? await currentApi.notePresentationRead(props.noteMemId, true) : await currentApi.presentationRead(props.sessionId, props.turnId, props.reference, receipt);
+      : props.noteMemId ? await currentApi.notePresentationRead(props.noteMemId, true) : await currentApi.presentationRestore(receipt);
     if (current !== generation) return;
     view.value = restored;
     await retry();
@@ -714,14 +718,14 @@ onMounted(() => window.addEventListener('resize', resizeTools));
     :data-content-generation="generation"
   >
     <Teleport :to="toolbarTarget || 'body'" :disabled="!toolbarTarget">
-      <header ref="toolbar" class="presentation-toolbar">
+      <header ref="toolbar" class="presentation-toolbar" :class="{ 'workspace-toolbar': workspace }">
         <strong class="presentation-title" :title="view?.title">{{ view?.title || (error ? uiText('内容未能加载') : uiText('正在读取内容…')) }}</strong>
         <button v-if="view && !noteMemId && !boardContext && !network.linked" class="presentation-note" type="button" :disabled="!ready || saving" @click="recordNote"><StickyNote :size="16" aria-hidden="true" /><span>{{ uiText('记一下') }}</span></button>
         <button v-if="view && boardContext" class="presentation-board-save" type="button" :disabled="!ready || saving" @click="saveBoardScene"><Save :size="16" aria-hidden="true" /><span>{{ uiText('保存画板状态') }}</span></button>
-        <button v-if="view" ref="toolsButton" class="presentation-tools-toggle" type="button" :aria-label="uiText('演示工具')" :aria-expanded="toolsOpen" :aria-controls="toolsId" @click="toolsOpen = !toolsOpen"><Ellipsis :size="21" aria-hidden="true" /></button>
+        <button v-if="view" ref="toolsButton" class="presentation-tools-toggle" type="button" :aria-label="uiText('演示工具')" :title="uiText('演示工具')" :aria-expanded="toolsOpen" :aria-controls="toolsId" @click="toolsOpen = !toolsOpen"><Ellipsis :size="21" aria-hidden="true" /><span v-if="workspace" class="workspace-tools-label">{{ uiText('演示工具') }}</span></button>
         <Teleport :to="applicationOverlayTarget()" :disabled="!toolsOpen">
-        <div v-if="toolsOpen" class="presentation-tools-backdrop" aria-hidden="true" @pointerdown="toolsOpen = false"></div>
-        <div v-if="view" :id="toolsId" ref="toolsPanel" class="presentation-tools" :class="{ 'is-open': toolsOpen }" :style="toolsOpen ? { top: `${toolsTop}px`, maxHeight: `calc(100dvh - ${toolsTop}px - 12px)` } : undefined">
+        <div v-if="toolsOpen" class="presentation-tools-backdrop" aria-hidden="true" @pointerdown="closeTools"></div>
+        <div v-if="view" :id="toolsId" ref="toolsPanel" class="presentation-tools" :class="{ 'is-open': toolsOpen }" :style="toolsOpen ? { top: `${toolsTop}px`, right: `${toolsRight}px`, maxHeight: `calc(100dvh - ${toolsTop}px - 12px)` } : undefined">
         <div class="presentation-tools-heading"><span>{{ uiText('演示工具') }}</span><button type="button" :aria-label="uiText('关闭演示工具')" @click="closeTools"><X :size="18" aria-hidden="true" /></button></div>
         <span v-if="view" class="presentation-zoom" role="group" :aria-label="uiText('演示缩放')">
           <span class="presentation-zoom-label">{{ uiText('画面缩放') }}</span>
@@ -796,6 +800,7 @@ onMounted(() => window.addEventListener('resize', resizeTools));
           <button v-for="region in view.teaching_binding.regions" :key="region.region_id" :disabled="!ready" @click="locateRegion(region.region_id)">{{ region.observation }}</button>
         </nav>
         <TutorActivities ref="teachingHost" v-if="view && ready && teaching && !boardContext" :session-id="sessionId" :turn-id="turnId" :reference="reference" :presentation-target="() => frame" :snapshot="teachingSnapshot" :before-response="awaitTeachingHelp" :ready="ready" :busy="busy || saving" :sources="view.sources"
+          :socratic-target="socraticTarget"
           @response-available="emit('response-available', $event)" @source="(id, anchor) => emit('source', id, anchor)" />
         <TutorContinuation v-if="view && ready && teaching && !noteMemId && !boardContext && chatHead !== undefined"
           :session-id="sessionId" :turn-id="turnId" :reference="reference" :snapshot="teachingSnapshot" :head="chatHead ?? null" :enabled="!!continuationEnabled" :busy="busy || saving"
@@ -880,6 +885,9 @@ button:disabled { opacity: .55; cursor: default; }
 @media (max-width: 600px) {
   .expanded { inset: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); max-height: calc(var(--app-content-height, 100dvh) - max(16px, env(safe-area-inset-top) + env(safe-area-inset-bottom))); }
 }
+.workspace-toolbar { flex-wrap: nowrap; }
+.workspace-toolbar .presentation-tools-toggle { display: inline-flex !important; }
+.workspace-toolbar .presentation-tools { display: none; }
 @media (max-width: 700px) {
   .presentation-toolbar { flex-wrap: nowrap; gap: 4px; padding: 6px 10px; }
   .presentation-title { flex: 1 1 0; font-size: 13px; }
@@ -888,21 +896,22 @@ button:disabled { opacity: .55; cursor: default; }
   .presentation-expand { width: 40px; }
   .presentation-expand > span { display: none; }
   .presentation-tools { display: none; }
-  .presentation-tools-backdrop { display: block !important; position: fixed; z-index: 1190; inset: 0; background: #2523200a; }
-  .presentation-tools.is-open { position: fixed; z-index: 1200; right: max(12px, env(safe-area-inset-right)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: min(340px, calc(var(--app-content-width, 100vw) - 24px)); max-height: calc(var(--app-content-height, 100dvh) - 24px); overflow: auto; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--canvas); color: var(--ink); font-size: 13px; box-shadow: 0 12px 40px #25232026, 0 2px 8px #2523200a; }
-  .presentation-tools-heading { display: flex !important; flex: 1 0 100%; align-items: center; justify-content: space-between; color: var(--ink); font-size: 14px; font-weight: 600; }
-  .presentation-tools-heading button { min-width: 36px; min-height: 36px; margin: -6px -6px -6px 0; }
-  .presentation-zoom { flex: 1 0 100%; padding: 4px; border-radius: 12px; }
-  .presentation-zoom-label { display: inline !important; flex: 1; padding-left: 8px; color: var(--steel); }
-  .presentation-zoom button { min-width: 40px; min-height: 40px; color: var(--ink); }
-  .presentation-zoom button:nth-last-child(2) { min-width: 58px; }
-  .presentation-tools > .presentation-tool-action { flex: 1 0 calc(50% - 4px); justify-content: flex-start; min-height: 44px; padding: 10px; color: var(--ink); }
-  .presentation-save-notice { flex-basis: 100%; max-width: none; padding-inline: 10px; }
-  .presentation-feedback { margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); gap: 4px; }
-  .feedback-label { margin-right: auto; }
-  .presentation-feedback > button { min-height: 40px; }
-  .feedback-status:empty { display: none; }
-  .feedback-status, .feedback-error { flex-basis: 100%; line-height: 1.6; }
-  .feedback-details { position: static; width: 100%; max-height: none; border: 0; box-shadow: none; border-radius: 0; padding: 8px 0 0; }
+  .workspace-tools-label { display: none; }
 }
+.presentation-tools-backdrop { display: block !important; position: fixed; z-index: 1190; inset: 0; background: #2523200a; }
+.presentation-tools.is-open { position: fixed; z-index: 1200; right: max(12px, env(safe-area-inset-right)); display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: min(340px, calc(var(--app-content-width, 100vw) - 24px)); max-height: calc(var(--app-content-height, 100dvh) - 24px); overflow: auto; padding: 14px; border: 1px solid var(--line); border-radius: 18px; background: var(--canvas); color: var(--ink); font-size: 13px; box-shadow: 0 12px 40px #25232026, 0 2px 8px #2523200a; }
+.presentation-tools.is-open .presentation-tools-heading { display: flex !important; flex: 1 0 100%; align-items: center; justify-content: space-between; color: var(--ink); font-size: 14px; font-weight: 600; }
+.presentation-tools.is-open .presentation-tools-heading button { min-width: 36px; min-height: 36px; margin: -6px -6px -6px 0; }
+.presentation-tools.is-open .presentation-zoom { flex: 1 0 100%; padding: 4px; border-radius: 12px; }
+.presentation-tools.is-open .presentation-zoom-label { display: inline !important; flex: 1; padding-left: 8px; color: var(--steel); }
+.presentation-tools.is-open .presentation-zoom button { min-width: 40px; min-height: 40px; color: var(--ink); }
+.presentation-tools.is-open .presentation-zoom button:nth-last-child(2) { min-width: 58px; }
+.presentation-tools.is-open > .presentation-tool-action { flex: 1 0 calc(50% - 4px); justify-content: flex-start; min-height: 44px; padding: 10px; color: var(--ink); }
+.presentation-tools.is-open .presentation-save-notice { flex-basis: 100%; max-width: none; padding-inline: 10px; }
+.presentation-tools.is-open .presentation-feedback { margin-top: 2px; padding-top: 12px; border-top: 1px solid var(--line); gap: 4px; }
+.presentation-tools.is-open .feedback-label { margin-right: auto; }
+.presentation-tools.is-open .presentation-feedback > button { min-height: 40px; }
+.presentation-tools.is-open .feedback-status:empty { display: none; }
+.presentation-tools.is-open .feedback-status, .presentation-tools.is-open .feedback-error { flex-basis: 100%; line-height: 1.6; }
+.presentation-tools.is-open .feedback-details { position: static; width: 100%; max-height: none; border: 0; box-shadow: none; border-radius: 0; padding: 8px 0 0; }
 </style>

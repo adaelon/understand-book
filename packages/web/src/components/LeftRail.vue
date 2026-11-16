@@ -2,6 +2,7 @@
 import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { Search } from '@lucide/vue';
 import type { OutlineItem } from "../App.vue";
 import { activeOutline } from '../reader-outline';
 import type {
@@ -13,6 +14,8 @@ import type {
 import PaperMinimap from "./PaperMinimap.vue";
 
 const props = defineProps<{
+  bookTitle?: string;
+  titlePageLid?: string | null;
   outlineItems: OutlineItem[];
   progressPct: number;
   anchorLid: string | null;
@@ -47,12 +50,14 @@ const emit = defineEmits<{
 
 const outlineList = ref<HTMLElement | null>(null);
 let outlineResizeObserver: ResizeObserver | null = null;
+const titlePageLabel = uiText('书名页');
 const normalizedQuery = computed(() => props.searchQuery.trim().toLowerCase());
 const filteredOutline = computed(() => {
   const q = normalizedQuery.value;
   if (!q) return props.outlineItems;
   return props.outlineItems.filter((item) => {
-    return item.title.toLowerCase().includes(q) || item.lid.toLowerCase().includes(q);
+    return item.title.toLowerCase().includes(q) || item.lid.toLowerCase().includes(q)
+      || (item.lid === props.titlePageLid && titlePageLabel.toLowerCase().includes(q));
   });
 });
 const activeOutlineLid = computed(() => activeOutline(props.outlineItems, props.anchorLid, props.anchorOffset)?.lid ?? null);
@@ -114,6 +119,10 @@ watch(activeOutlineLid, () => {
 
 <template>
   <aside id="reader-outline" class="left-rail" :aria-label="uiText('阅读目录')">
+    <header class="outline-masthead">
+      <span v-if="bookTitle" class="outline-kicker">{{ uiText('目录') }}</span>
+      <h2 class="outline-book-title" :title="bookTitle">{{ bookTitle || uiText('目录') }}</h2>
+    </header>
     <PaperMinimap
       v-if="props.paperEnabled"
       :base="props.paperMinimapBase ?? null"
@@ -133,11 +142,12 @@ watch(activeOutlineLid, () => {
       @undo="emit('paper-minimap-undo')"
     />
 
-    <div class="rail-section">
-      <label class="rail-label" for="outline-search">{{ uiText('搜索') }}</label>
+    <div class="rail-section outline-search-field">
+      <Search :size="15" aria-hidden="true" />
       <input
         id="outline-search"
         class="search-pill outline-search"
+        :aria-label="uiText('搜索目录')"
         :value="props.searchQuery"
         :placeholder="uiText('搜索目录')"
         @input="emit('update:searchQuery', ($event.target as HTMLInputElement).value)"
@@ -145,7 +155,6 @@ watch(activeOutlineLid, () => {
     </div>
 
     <div class="rail-section outline-section">
-      <div class="rail-heading">{{ uiText('目录') }}</div>
       <nav ref="outlineList" class="outline-list" :aria-label="uiText('书籍目录')">
         <button
           v-for="item in filteredOutline"
@@ -159,7 +168,7 @@ watch(activeOutlineLid, () => {
           @click="gotoOutline(item.lid)"
         >
           <span class="outline-kind">{{ outlineKindLabel(item.kind) }}</span>
-          <span class="outline-title">{{ item.title }}<small v-if="item.lid === props.pendingLid" role="status" class="outline-pending">{{ uiText('正在跳转…') }}</small></span>
+          <span class="outline-title">{{ item.lid === titlePageLid ? titlePageLabel : item.title }}<small v-if="item.lid === props.pendingLid" role="status" class="outline-pending">{{ uiText('正在跳转…') }}</small></span>
         </button>
       </nav>
       <p v-if="filteredOutline.length === 0" class="rail-muted">{{ uiText('没有匹配的目录项。') }}</p>
@@ -190,6 +199,16 @@ watch(activeOutlineLid, () => {
 </template>
 
 <style scoped>
+.outline-masthead { margin: 2px 4px 14px; max-block-size: min(22dvh, 9rem); overflow-y: auto; scrollbar-width: thin; }
+.outline-kicker { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; color: var(--steel); font: 600 11px/1.4 var(--sans); }
+.outline-kicker::before { content: ''; width: 16px; height: 2px; background: var(--brand-accent); }
+.outline-book-title { margin: 0; color: var(--charcoal); font: 600 18px/1.45 var(--reader-font, Georgia, serif); overflow-wrap: anywhere; text-wrap: balance; }
+.outline-search-field { position: relative; margin-bottom: 12px; }
+.outline-search-field svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--steel); pointer-events: none; }
+.outline-search { min-height: 34px; padding: 0 10px 0 32px; border-radius: 6px; font: 13px var(--sans); }
 .outline-pending { display: block; color: var(--accent); font-size: .75rem; font-weight: 400; }
+@media (max-width: 1023px) {
+  .outline-search { min-height: 44px; }
+}
 </style>
 

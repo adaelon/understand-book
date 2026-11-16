@@ -133,6 +133,34 @@ fn get_turn(connection: &Connection, scope: &str, chat: &str, turn: &str) -> Res
     json.map(|json|serde_json::from_str(&json).map_err(storage)).transpose()
 }
 
+// Course response facts and their scheduled analysis commit together.
+pub(crate) fn ensure_in(connection: &Connection, scope: &str, input: &CoachJobInput, now: &str) -> Result<CoachJob, ToolError> {
+        if input.job_ref.trim().is_empty() || input.source_ref.trim().is_empty() || input.binding.tutor_session_id.trim().is_empty() {
+            return Err(conflict("教练任务需要任务、阶段和来源记录身份。"));
+        }
+        if let Some(old) = get_job(connection, scope, &input.job_ref)? {
+            if old.input.origin != input.origin || old.input.source_ref != input.source_ref
+                || old.input.binding.tutor_session_id != input.binding.tutor_session_id {
+                return Err(conflict("同一教练任务身份不能指向另一个来源回合。"));
+            }
+            return Ok(old);
+        }
+        let existing: Option<String> = connection.query_row(
+            "SELECT job FROM teaching_coach_jobs WHERE learning_workspace_id=? AND session_id=? AND origin=? AND source_ref=?",
+            params![scope,input.binding.tutor_session_id,input.origin.as_str(),input.source_ref],
+            |row|row.get(0)).optional().map_err(storage)?;
+        if let Some(existing) = existing { return serde_json::from_str(&existing).map_err(storage); }
+        let job = CoachJob {
+            learning_workspace_id: (!scope.is_empty()).then(||scope.to_owned()),
+            input: input.clone(), status: CoachJobStatus::Pending, attempt: 0, attempts: Vec::new(),
+            guidance_ref: None, guidance: None, error: None, created_at: now.into(), updated_at: now.into(),
+        };
+        connection.execute("INSERT INTO teaching_coach_jobs(learning_workspace_id,job_ref,session_id,origin,source_ref,status,job) VALUES(?,?,?,?,?,?,?)",
+            params![scope,input.job_ref,input.binding.tutor_session_id,input.origin.as_str(),input.source_ref,
+                job.status.as_str(),serde_json::to_string(&job).map_err(storage)?]).map_err(storage)?;
+        Ok(job)
+}
+
 impl LearningStore {
     pub fn coach_job_for_turn(&self, turn: &str) -> Result<Option<Value>,ToolError> {
         self.connection.query_row("SELECT job_ref,status FROM teaching_coach_jobs WHERE learning_workspace_id=? AND source_ref=? AND origin IN ('after_turn','observation_backfill') ORDER BY seq DESC LIMIT 1",params![self.workspace_scope,turn],|row|Ok(serde_json::json!({"job_ref":row.get::<_,String>(0)?,"status":row.get::<_,String>(1)?,"workspace_id":self.learning_workspace_id()}))).optional().map_err(storage)
@@ -169,30 +197,8 @@ impl LearningStore {
 
     /// Repeated delivery notifications retain the original frozen input and identity.
     pub fn ensure_coach_job(&mut self, input: &CoachJobInput, now: &str) -> Result<CoachJob, ToolError> {
-        if input.job_ref.trim().is_empty() || input.source_ref.trim().is_empty() || input.binding.tutor_session_id.trim().is_empty() {
-            return Err(conflict("教练任务需要任务、阶段和来源记录身份。"));
-        }
         let tx = self.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
-        if let Some(old) = get_job(&tx, &self.workspace_scope, &input.job_ref)? {
-            if old.input.origin != input.origin || old.input.source_ref != input.source_ref
-                || old.input.binding.tutor_session_id != input.binding.tutor_session_id {
-                return Err(conflict("同一教练任务身份不能指向另一个来源回合。"));
-            }
-            return Ok(old);
-        }
-        let existing: Option<String> = tx.query_row(
-            "SELECT job FROM teaching_coach_jobs WHERE learning_workspace_id=? AND session_id=? AND origin=? AND source_ref=?",
-            params![self.workspace_scope,input.binding.tutor_session_id,input.origin.as_str(),input.source_ref],
-            |row|row.get(0)).optional().map_err(storage)?;
-        if let Some(existing) = existing { return serde_json::from_str(&existing).map_err(storage); }
-        let job = CoachJob {
-            learning_workspace_id: (!self.workspace_scope.is_empty()).then(||self.workspace_scope.clone()),
-            input: input.clone(), status: CoachJobStatus::Pending, attempt: 0, attempts: Vec::new(),
-            guidance_ref: None, guidance: None, error: None, created_at: now.into(), updated_at: now.into(),
-        };
-        tx.execute("INSERT INTO teaching_coach_jobs(learning_workspace_id,job_ref,session_id,origin,source_ref,status,job) VALUES(?,?,?,?,?,?,?)",
-            params![self.workspace_scope,input.job_ref,input.binding.tutor_session_id,input.origin.as_str(),input.source_ref,
-                job.status.as_str(),serde_json::to_string(&job).map_err(storage)?]).map_err(storage)?;
+        let job = ensure_in(&tx, &self.workspace_scope, input, now)?;
         tx.commit().map_err(storage)?;
         Ok(job)
     }
@@ -233,10 +239,27 @@ impl LearningStore {
         rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
     }
 
+    /// UI status reads avoid loading the retained model input for every job.
+    pub fn understanding_jobs(&self, source:&str, revision:&str)->Result<Vec<Value>,ToolError>{
+        let mut query=self.connection.prepare("SELECT job_ref,status FROM teaching_coach_jobs WHERE learning_workspace_id=? AND status IN ('pending','running','failed','interrupted') AND origin<>'stage_start' AND json_extract(job,'$.input.binding.source_id')=? AND json_extract(job,'$.input.binding.source_revision')=? ORDER BY seq DESC LIMIT 12").map_err(storage)?;
+        let rows=query.query_map(params![self.workspace_scope,source,revision],|row|Ok(serde_json::json!({"job_ref":row.get::<_,String>(0)?,"status":row.get::<_,String>(1)?}))).map_err(storage)?;
+        rows.map(|row|row.map_err(storage)).collect()
+    }
+
     pub fn list_coach_jobs_all_scopes(&self, status: Option<CoachJobStatus>, limit: usize) -> Result<Vec<CoachJob>, ToolError> {
         let mut query = self.connection.prepare("SELECT job FROM teaching_coach_jobs WHERE (? IS NULL OR status=?) ORDER BY seq ASC LIMIT ?").map_err(storage)?;
         let status = status.map(CoachJobStatus::as_str);
         let rows = query.query_map(params![status,status,limit], |row|row.get::<_,String>(0)).map_err(storage)?;
+        rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
+    }
+
+    /// A local reader can execute only jobs for its loaded material revision.
+    /// Filter before the page limit so other books cannot hide eligible work.
+    pub fn pending_coach_jobs_for_source(&self, source: &str, revision: &str, limit: usize) -> Result<Vec<CoachJob>, ToolError> {
+        let mut query = self.connection.prepare("SELECT job FROM teaching_coach_jobs WHERE status='pending'
+            AND json_extract(job,'$.input.binding.source_id')=?
+            AND json_extract(job,'$.input.binding.source_revision')=? ORDER BY seq ASC LIMIT ?").map_err(storage)?;
+        let rows = query.query_map(params![source,revision,limit], |row|row.get::<_,String>(0)).map_err(storage)?;
         rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
     }
 
@@ -313,13 +336,14 @@ impl LearningStore {
 
     /// Only original, host-verified source reads may supplement the frozen
     /// input. All learner facts, help conditions and paid attempts stay intact.
-    pub fn freeze_coach_read_ranges(&mut self, job_ref: &str, attempt: u32, ranges: &[read_tools::EvidenceRange]) -> Result<CoachJob, ToolError> {
+    pub fn freeze_coach_sources(&mut self, job_ref: &str, attempt: u32, ranges: &[read_tools::EvidenceRange], bindings: Value) -> Result<CoachJob, ToolError> {
         let tx = self.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
         let mut job = required_job(&tx, &self.workspace_scope, job_ref)?;
         if job.attempt != attempt || matches!(job.status, CoachJobStatus::Ready | CoachJobStatus::Cancelled) {
             return Err(conflict("原文读取补充不属于可处理的教练尝试。"));
         }
         job.input.context["verified_read_ranges"] = serde_json::to_value(ranges).map_err(storage)?;
+        job.input.context["source_bindings"] = bindings;
         save_job(&tx, &self.workspace_scope, &job)?;
         tx.commit().map_err(storage)?;
         Ok(job)

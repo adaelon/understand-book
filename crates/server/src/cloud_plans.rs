@@ -25,6 +25,8 @@ pub(crate) struct Product {
     #[serde(default)]
     pub test_only: bool,
     pub amount_fen: Option<ReceiptFen>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub budget_micro_cny: Option<MicroCny>,
     pub basis: Option<AllowanceBasis>,
     pub grant_milli_percent: Option<i64>,
     pub storage_bytes: Option<i64>,
@@ -83,6 +85,10 @@ fn trim_required(value: &mut String) -> Result<(), ToolError> {
 
 impl Product {
     fn normalize(&mut self) -> Result<(), ToolError> {
+        if let Some(amount) = self.budget_micro_cny {
+            self.basis = Some(AllowanceBasis::for_budget(amount)?);
+            self.grant_milli_percent = Some(100_000);
+        }
         for value in [
             &mut self.product_id,
             &mut self.title,
@@ -164,6 +170,7 @@ impl Product {
 
     fn public_value(&self) -> Value {
         let mut value = json!(self);
+        value["budget_micro_cny"] = json!(self.basis.as_ref().zip(self.grant_milli_percent).and_then(|(basis, grant)| basis.grant(grant).ok()));
         value["saleable"] = json!(self.saleable());
         value["unavailable_reasons"] = json!(self.unavailable_reasons());
         value
@@ -197,19 +204,6 @@ impl Product {
                 params![basis.version, basis.basis_micro_cny],
             )
             .map_err(storage)?;
-        }
-        // All offered sizes share one denominator. Changing the denominator is
-        // an explicit catalog edit, while already sold periods keep their basis.
-        if self.saleable() {
-            let basis = self.basis.as_ref().unwrap();
-            if products(db)?.iter().any(|p| {
-                p.product_id != self.product_id && p.saleable() && p.basis.as_ref() != Some(basis)
-            }) {
-                return Err(conflict(
-                    "CLOUD_PLAN_BASIS_CONFLICT",
-                    "可售套餐必须使用同一个标准额度基准",
-                ));
-            }
         }
         let mut saved = self.clone();
         saved.revision = self.revision.checked_add(1).ok_or_else(invalid)?;
@@ -309,6 +303,10 @@ impl Purchase {
             params![owner, now], |r| Ok((r.get(0)?, r.get(1)?)),
         ).optional().map_err(storage)?;
         let starts_at = preceding.as_ref().map_or(now, |(_, end)| *end);
+        let unlimited: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM allowance_periods WHERE user_id=? AND closed_at IS NULL AND unlimited=1 AND expires_at>?)", params![owner, now], |r| r.get(0)).map_err(storage)?;
+        if unlimited {
+            return Err(conflict("CLOUD_PLAN_UNLIMITED", "账号仍有内测不限额度，请先结束内测有效期，再开通收费套餐。"));
+        }
         let inherited_anchor = if product.duration == "month" {
             preceding.as_ref().map(|(id, _)| {
                 db.query_row("SELECT month_anchor_day FROM cloud_plan_entitlements WHERE period_id=? AND duration='month'", [id], |r| r.get::<_, u8>(0))
@@ -322,6 +320,8 @@ impl Purchase {
             starts_at,
             expires_at,
             basis: product.basis.clone(),
+            initial_grant_micro_cny: None,
+            reason: None,
         })
         .apply(db, actor, op, owner, now)?;
         let period_id = created["allowance_period"]["period_id"]
@@ -347,7 +347,7 @@ impl Purchase {
         ).map_err(storage)?;
         Ok(json!({
             "entitlement": entitlement(db, owner, period_id)?,
-            "allowance_period": granted["allowance_period"],
+            "allowance_period": allowance_admin::period(db, owner, period_id)?,
             "receipt_id": receipt_id,
         }))
     }
@@ -488,6 +488,10 @@ pub(crate) fn latest(db: &Connection, owner: &str) -> Result<Option<Entitlement>
 }
 
 pub(crate) fn summary(db: &Connection, owner: &str, now: i64) -> Result<Value, ToolError> {
+    let (scheduled_end, unlimited): (Option<i64>, bool) = db.query_row(
+        "SELECT MAX(expires_at),COALESCE(MAX(unlimited),0) FROM allowance_periods WHERE user_id=? AND closed_at IS NULL AND expires_at>?",
+        params![owner, now], |r| Ok((r.get(0)?, r.get(1)?)),
+    ).map_err(storage)?;
     let next: Option<String> = db.query_row(
         "SELECT p.period_id FROM allowance_periods p JOIN cloud_plan_entitlements e USING(period_id,user_id) WHERE p.user_id=? AND p.closed_at IS NULL AND p.starts_at>? ORDER BY p.starts_at LIMIT 1",
         params![owner, now], |r| r.get(0),
@@ -496,6 +500,8 @@ pub(crate) fn summary(db: &Connection, owner: &str, now: i64) -> Result<Value, T
         "current": current(db, owner, now)?,
         "next": next.map(|id| entitlement(db, owner, &id)).transpose()?.flatten(),
         "catalog": catalog(db, true)?,
+        "purchase_starts_at": scheduled_end.unwrap_or(now),
+        "purchase_blocked_by_unlimited": unlimited,
     }))
 }
 

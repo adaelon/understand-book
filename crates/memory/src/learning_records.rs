@@ -641,7 +641,7 @@ mod tests {
         let before = original_rows(&original, "");
         original
             .connection
-            .execute_batch("DROP TABLE linked_learning_records; DROP TABLE teaching_coach_jobs; DROP TABLE teaching_coach_turns; DROP TABLE understanding_focus; DROP TABLE understanding_note_evidence; DROP INDEX evidence_focus; DROP INDEX evidence_supersedes; DROP INDEX teaching_expression_turn; PRAGMA user_version=2;")
+            .execute_batch("DROP TABLE course_runs; DROP TABLE course_operations; DROP TABLE linked_learning_records; DROP TABLE teaching_coach_jobs; DROP TABLE teaching_coach_turns; DROP TABLE understanding_focus; DROP TABLE understanding_note_evidence; DROP INDEX evidence_focus; DROP INDEX evidence_supersedes; DROP INDEX teaching_expression_turn; PRAGMA user_version=2;")
             .unwrap();
         drop(original);
         let upgraded = LearningStore::open(&path, false).unwrap();
@@ -652,7 +652,7 @@ mod tests {
                 .connection
                 .pragma_query_value(None, "user_version", |r| r.get::<_, u32>(0))
                 .unwrap(),
-            6
+            7
         );
     }
 }

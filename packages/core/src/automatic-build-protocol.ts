@@ -49,7 +49,7 @@ export const AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1 = [
     prompt_name: "pass1-source-fragment-extractor.md",
     stage_policy_version: "pass1_source_fragment_policy.v1",
     router_version: "pass1_model_slice.v1",
-    prompt_sha256: "87889ca048baf6d31303650dfb953d58eb30d1a260d2ff448c6c3f41281d88eb",
+    prompt_sha256: "a8dd9c5efb8640514189e22a32361e78ed7218c976ff64ce0f3a0cf636bfbc9c",
     schema_version: "pass1_source_fragment_output.v1",
   },
   {
@@ -79,7 +79,7 @@ export const AUTOMATIC_BUILD_RELEASE_POLICY_MEMBERS_V1 = [
     prompt_name: "profile-sidecar-discourse-fragment-extractor.md",
     stage_policy_version: "profile_sidecar_discourse_fragment_policy.v1",
     router_version: "profile_sidecar_discourse_map_reduce.v1",
-    prompt_sha256: "6a55eab027ec04049bf01bcf3c6a9cd143a8f7023617230416449bac4f89f761",
+    prompt_sha256: "d170a2143d659b21cf4523e489547b5d20843da14f101418ac88162bed02605d",
     schema_version: "profile_sidecar_discourse_observation.v1",
   },
   {

@@ -144,6 +144,8 @@ impl InteractionInput {
         -> Result<Option<InteractionResolution>, ToolError> {
         if *self == Self::Typed { return Ok(None); }
         self.validate_reference(user, workspace)?;
+        let answer_practice = matches!(self, Self::Answer { action: EntryAction::ContinueAnswer, .. })
+            && input["learning_purpose"] == "practice";
         let mut has_reference_sources = false;
         let mut has_media_scope = false;
         let mut resolved = ResolvedInteraction {
@@ -153,21 +155,19 @@ impl InteractionInput {
             source_excerpt: None, source_bindings: vec![], target: None,
             expected_chat_head: input["expected_chat_head"].as_str().map(str::to_owned),
             presentation_follow_up: None,
-            learning_purpose: None,
+            learning_purpose: answer_practice.then_some(LearningPurpose::Practice),
             note_ref: None,
         };
-        if matches!(self, Self::LearnWithPurpose { purpose: LearningPurpose::Practice, .. } | Self::RevisitNote { .. }) {
-            let view = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)?.state()?;
-            if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
-                return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并等待当前材料准备完成"));
+        if answer_practice || matches!(self, Self::LearnWithPurpose { purpose: LearningPurpose::Practice, .. } | Self::RevisitNote { .. }) {
+            if tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
+                return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请等待当前材料准备完成"));
             }
         }
         if let Self::LearnWithPurpose { purpose, .. } = self {
             resolved.learning_purpose = Some(*purpose);
             if !matches!(*purpose, LearningPurpose::Discover | LearningPurpose::Practice) {
-                let view = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)?.state()?;
-                if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
-                    return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并等待当前材料准备完成"));
+                if tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
+                    return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请等待当前材料准备完成"));
                 }
             }
         }
@@ -197,7 +197,7 @@ impl InteractionInput {
                 let outcome = user.agent_history.sessions.iter().find(|s| s.id == saved.binding.chat_session_id).unwrap()
                     .turns.iter().find(|t| t.turn_id == saved.binding.turn_id).unwrap().outcome.as_ref().unwrap();
                 resolved.answer_text = Some(outcome.answer_view.as_ref()
-                    .map(|v| v.parts.iter().filter_map(|p| if let AgentAnswerPart::Markdown { text } = p { Some(text.as_str()) } else { None }).collect::<Vec<_>>().join("\n\n"))
+                    .map(|v| v.parts.iter().filter_map(AgentAnswerPart::text).collect::<Vec<_>>().join("\n\n"))
                     .unwrap_or_else(|| outcome.answer.clone().unwrap_or_default()));
                 resolved.target = Some(serde_json::from_value(saved.payload["move"]["target"].clone()).map_err(|_|invalid("原建议目标不可读"))?);
                 resolved.source_bindings = resolved.target.as_ref().unwrap().source_bindings.clone();
@@ -213,11 +213,18 @@ impl InteractionInput {
                     || input["source_revision"] != workspace.book.source_fingerprint() {
                     return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "原文来源已变化，请重新选择章节"));
                 }
-                let title = chapter_title(&workspace.book, chapter_lid)?;
+                // Purpose entry can name a real subsection; the older chapter
+                // action keeps its chapter-only contract.
+                let title = if resolved.learning_purpose.is_some() {
+                    container_title(&workspace.book, chapter_lid, true)?
+                } else { chapter_title(&workspace.book, chapter_lid)? };
+                let section = workspace.book.base.lid_nodes.iter().any(|node|
+                    node.lid == *chapter_lid && node.kind == base_schema::NodeKind::Section);
+                let scope = if section { format!("小节「{title}」") } else { format!("《{title}》这一章") };
                 resolved.action = InteractionAction::UiEntry { entry_action: if resolved.learning_purpose.is_some() {
                     EntryAction::LearnWithPurpose
                 } else { EntryAction::GuideChapter } };
-                resolved.accepted_request = resolved.learning_purpose.map(|purpose| purpose_request(purpose, &format!("《{title}》这一章")))
+                resolved.accepted_request = resolved.learning_purpose.map(|purpose| purpose_request(purpose, &scope))
                     .unwrap_or_else(||format!("带我读《{title}》这一章"));
                 resolved.source_bindings = vec![TeachingSourceBinding {
                     source_id: workspace.book.base.book_id.clone(),
@@ -285,10 +292,11 @@ impl InteractionInput {
                         || original_binding.is_some()
                         || turn.source_bindings.iter().any(|source| source.media.is_some() || source.music.is_some()));
                 resolved.action = InteractionAction::UiEntry { entry_action: *action };
-                resolved.accepted_request = if *action == EntryAction::ContinueAnswer { "继续理解这段" } else { "这一步没跟上" }.into();
+                resolved.accepted_request = if answer_practice { "根据这段回答给我一道应用题" }
+                    else if *action == EntryAction::ContinueAnswer { "继续理解这段" } else { "这一步没跟上" }.into();
                 resolved.answer_ref = Some(reference.clone());
                 resolved.answer_text = Some(reference.excerpt.clone().unwrap_or_else(|| outcome.answer_view.as_ref()
-                    .map(|v| v.parts.iter().filter_map(|p| if let AgentAnswerPart::Markdown { text } = p { Some(text.as_str()) } else { None }).collect::<Vec<_>>().join("\n\n"))
+                    .map(|v| v.parts.iter().filter_map(AgentAnswerPart::text).collect::<Vec<_>>().join("\n\n"))
                     .unwrap_or_else(|| outcome.answer.clone().unwrap_or_default())));
                 if let Some(original) = &turn.domain.interaction {
                     resolved.source_bindings = original.source_bindings.clone();
@@ -342,10 +350,10 @@ impl InteractionInput {
             _ => unreachable!(),
         }
         if let Some(reference)=input.get("understanding_ref").filter(|v|!v.is_null()) {
-            let evidence=crate::note_thinking::evidence(user,reference,false)?;
+            let evidence=crate::knowledge_tree::evidence(user,reference)?;
             if reference["workspace_id"].as_str()!=workspace.learning_workspace_id.as_deref()
                 || evidence["source_id"]!=workspace.book.base.book_id || evidence["source_revision"]!=workspace.book.source_fingerprint()
-                || evidence["superseded"]==true { return Err(invalid("理解依据或学习范围已变化，请刷新原笔记后继续")); }
+                || evidence["superseded"]==true { return Err(invalid("理解依据或学习范围已变化，请刷新理解记录后继续")); }
             let target: memory::teaching::TeachingTarget=serde_json::from_value(evidence["target"].clone()).map_err(|_|invalid("这条历史记录尚无可接续的知识关系"))?;
             resolved.source_bindings=target.source_bindings.clone();
             resolved.target=Some(target);
@@ -359,19 +367,13 @@ impl InteractionInput {
             messages:&workspace.messages, selected_chat:workspace.selected_chat.as_deref() };
         // A chapter is a navigation scope, not a claim that the user selected
         // every pending activity inside it for more help.
-        let helps = if matches!(self, Self::GuideChapter { .. } | Self::LearnWithPurpose { .. } | Self::RevisitNote { .. }) { vec![] }
+        // Explicit answer practice requests a new problem on the original scope.
+        let helps = if answer_practice || matches!(self, Self::GuideChapter { .. } | Self::LearnWithPurpose { .. } | Self::RevisitNote { .. }) { vec![] }
             else { teaching::pending_activity_help(&private, &resolved)? };
         if !helps.is_empty() && resolved.user_supplement.trim().is_empty() {
             return Ok(Some(InteractionResolution::ActivityHelp { delivery_refs: helps }));
         }
         if matches!(self, Self::Answer { action:EntryAction::ContinueAnswer, .. }) && !has_reference_sources {
-            let view = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id)?.state()?;
-            let current = view.control.current_tutor_session_id.as_ref().and_then(|id|view.sessions.get(id));
-            if !view.control.enabled || tutor_api::tutor_source_readiness(&workspace.book,&workspace.book_dir)["status"] != "ready"
-                || current.is_some_and(|s| s.status != memory::learning::TutorSessionStatus::Active
-                    || !s.material_scope.iter().any(|m|m.source_id == workspace.book.base.book_id)) {
-                return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请先开启连续教学，并在当前材料显式开始或恢复学习"));
-            }
             if resolved.source_bindings.is_empty() && !has_media_scope { return Err(invalid("原回答没有可接续的原文范围，请重新选择原文")); }
         }
         Ok(Some(InteractionResolution::RunInput { interaction:resolved }))
@@ -388,8 +390,9 @@ impl InteractionInput {
             .map_err(|_| invalid("建议选择格式无效"))?;
         let purpose: Option<LearningPurpose> = serde_json::from_value(parse("learning_purpose"))
             .map_err(|_| invalid("未知学习目的"))?;
-        if purpose.is_some() && action != Some(EntryAction::LearnWithPurpose) {
-            return Err(invalid("学习目的只用于目的选择操作"));
+        if purpose.is_some() && action != Some(EntryAction::LearnWithPurpose)
+            && !(action == Some(EntryAction::ContinueAnswer) && purpose == Some(LearningPurpose::Practice)) {
+            return Err(invalid("学习目的只用于目的选择，或围绕原回答进行应用练习"));
         }
         if present("resolved_interaction") || present("current_action") || present("guide_chapter_lid") {
             return Err(invalid("解析结果由服务端生成"));
@@ -477,9 +480,7 @@ impl InteractionInput {
                     && !crate::observability::lifecycle::delivery_failed(o)
                     && !turn.delivery_diagnostics.as_ref().and_then(|d| d.repair.as_ref()).is_some_and(|d| !d.issues.is_empty()))
                     .ok_or_else(|| invalid("只能接续已成功交付的回答"))?;
-                let texts: Vec<&str> = outcome.answer_view.as_ref().map(|v| v.parts.iter().filter_map(|p|
-                    if let AgentAnswerPart::Markdown { text } = p { Some(text.as_str()) } else { None }).collect())
-                    .unwrap_or_else(|| outcome.answer.as_deref().into_iter().collect());
+                let texts = crate::note_api::answer_text_blocks(outcome);
                 if texts.iter().all(|s| s.trim().is_empty()) || reference.excerpt.as_ref()
                     .is_some_and(|excerpt| !texts.iter().any(|s| s.contains(excerpt.as_str()))) {
                     return Err(invalid("摘录必须来自原回答的连续公开文字"));
@@ -517,39 +518,30 @@ fn media_purpose_scope(workspace: &reader_workspace::ReaderWorkspace, input: &Va
 
 fn purpose_request(purpose: LearningPurpose, scope: &str) -> String {
     match purpose {
-        LearningPurpose::Discover => format!("先了解{scope}的重点"),
+        LearningPurpose::Discover => format!("先了解{scope}的重点：用三到五条简短要点概览主要内容及关系，附原文出处，并指出一个适合继续深入的切入点。先给概览，不展开长篇讲解，也不出题。"),
         LearningPurpose::Understand => format!("带我读懂{scope}"),
         LearningPurpose::Exam => format!("围绕{scope}复习备考"),
         LearningPurpose::Explore => format!("围绕{scope}探索一个问题"),
-        LearningPurpose::Practice => format!("用{scope}里学过的内容练一练"),
+        LearningPurpose::Practice => format!("围绕{scope}练一练"),
     }
 }
 
 /// Canonical chapter topology supplies the container; its source heading supplies the name.
 pub(crate) fn chapter_title(book: &Book, lid: &str) -> Result<String, ToolError> {
-    let node = book.base.lid_nodes.iter().find(|n| n.lid == lid && n.kind == base_schema::NodeKind::Chapter)
-        .ok_or_else(|| invalid("章节导读需要当前材料的规范章节点"))?;
+    container_title(book, lid, false)
+}
+
+pub(crate) fn container_title(book: &Book, lid: &str, allow_section: bool) -> Result<String, ToolError> {
+    let node = book.base.lid_nodes.iter().find(|n| n.lid == lid && (n.kind == base_schema::NodeKind::Chapter
+        || (allow_section && n.kind == base_schema::NodeKind::Section)))
+        .ok_or_else(|| invalid(if allow_section { "学习范围需要当前材料的章节或小节节点" } else { "章节导读需要当前材料的规范章节点" }))?;
     if let Some(title) = book.manifest().tree.into_iter().find(|entry| entry.lid == node.lid).and_then(|entry| entry.title) {
         let title = title.trim();
         let title = if title.starts_with('#') { title.trim_start_matches('#').trim().trim_end_matches('#').trim() } else { title };
         if !title.is_empty() { return Ok(title.to_owned()); }
     }
     let label = book.source_label(&EvidenceRange { start_lid: node.lid.clone(), end_lid: node.lid.clone(), ranges: vec![] }, "zh-CN")?;
-    Ok(label.strip_prefix("章节 · ").unwrap_or(&label).to_owned())
-}
-
-/// Only a new explicit current-chapter request selects a chapter from the admitted viewport.
-pub(crate) fn requested_current_chapter(book: &Book, message: &str, anchor: &str) -> Result<Option<String>, ToolError> {
-    use runtime::tool_exposure::{classify_turn_intent, TurnIntentHint};
-    if !classify_turn_intent(message).contains(&TurnIntentHint::ExplicitGuidedRead)
-        || !["这一章", "这章", "当前章", "this chapter"].iter().any(|phrase| message.to_lowercase().contains(phrase)) {
-        return Ok(None);
-    }
-    let at = book.base.lid_nodes.iter().find(|n| n.lid == anchor)
-        .ok_or_else(|| invalid("当前阅读位置无法定位章节"))?;
-    let chapter = book.base.lid_nodes.iter().filter(|n| n.kind == base_schema::NodeKind::Chapter && at.path.starts_with(&n.path))
-        .max_by_key(|n| n.path.len()).ok_or_else(|| invalid("当前阅读位置没有规范章节点"))?;
-    Ok(Some(chapter.lid.clone()))
+    Ok(label.strip_prefix("章节 · ").or_else(|| label.strip_prefix("小节 · ")).unwrap_or(&label).to_owned())
 }
 
 #[cfg(test)]

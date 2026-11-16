@@ -27,6 +27,7 @@ test('closed tabs and sign-in preserve reading and recover a missing browser boo
   });
   await page.locator('.network-book-card').filter({ hasText: 'mu5 x' }).click();
   await expect(page.locator('.workspace-shell')).toBeVisible();
+  await page.locator('.topbar .tools-toggle').click();
   await page.locator('.topbar').getByRole('button', { name: '新对话', exact: true }).click();
   await expect.poll(async () => (await savedScene(page)).selected_chat).not.toBeNull();
   const before = await savedScene(page);
@@ -41,7 +42,7 @@ test('closed tabs and sign-in preserve reading and recover a missing browser boo
   expect(restored.selected_chat).toBe(before.selected_chat);
   expect(restored.reader.viewport.top_lid).toBe(before.reader.viewport.top_lid);
 
-  await reopened.getByRole('button', { name: '打开书', exact: true }).click();
+  await reopened.getByRole('button', { name: '学习资料', exact: true }).click();
   await expect(reopened.locator('.reading-resumption')).toBeVisible();
   await reopened.close();
   const shelf = await context.newPage();
@@ -92,14 +93,15 @@ async function host(context: BrowserContext, lostResponse = false) {
     holdPdf: () => { holdPdf = new Promise(resolve => { releasePdf = resolve; }); }, releasePdf: () => releasePdf() };
 }
 async function login(page: Page, owner = 'A') {
+  await page.addLocatorHandler(page.getByRole('button', { name: '跳过引导' }), button => button.click());
   await page.goto('https://localhost:4189/');
   await page.getByLabel('邮箱或账号', { exact: true }).fill(owner);
   await page.getByLabel('密码', { exact: true }).fill('fixture-only-password');
   await page.getByRole('button', { name: '登录', exact: true }).click();
-  await expect(page.getByRole('heading', { name: '选择阅读材料' })).toBeVisible();
+  await expect(page.locator('.network-library')).toBeVisible();
 }
 async function open(page: Page, book = 'mu5-x') {
-  await page.getByRole('button', { name: book, exact: true }).click();
+  await page.locator('.network-book-card').filter({ hasText: book.replaceAll('-', ' ') }).click();
   await expect(page.locator('.workspace-shell')).toBeVisible();
   await expect(page.locator('.new-chat')).toBeEnabled();
 }
@@ -110,7 +112,9 @@ async function logout(page: Page) {
     if (await expand.isVisible()) await expand.click();
     else await page.getByRole('button', { name: '菜单', exact: true }).click();
   }
-  await page.locator('.network-account summary').click();
+  const tools = page.locator('.topbar:visible .tools-toggle');
+  if (await tools.isVisible() && await tools.getAttribute('aria-expanded') === 'false') await tools.click();
+  await page.locator('.network-account:visible summary').click();
   await page.getByRole('button', { name: '退出登录', exact: true }).click();
   await done;
   await expect(page.getByRole('button', { name: '登录', exact: true })).toBeEnabled();
@@ -182,6 +186,7 @@ test('MU12 desktop toolbar collapses and outline progress stays inside short vie
   };
   await checkBounds();
   const before = await page.locator('.workspace-shell').boundingBox();
+  await page.locator('.topbar .tools-toggle').click();
   await page.getByRole('button', { name: '收起工具栏', exact: true }).click();
   await expect(page.locator('.topbar')).toBeHidden();
   const after = await page.locator('.workspace-shell').boundingBox();
@@ -208,6 +213,7 @@ test('RE typography persists per account and does not recreate either reading wo
   const first = await workspaceKey(page), second = await workspaceKey(other);
   const creates: string[] = [];
   page.on('request', request => { if (request.method() === 'POST') creates.push(new URL(request.url()).pathname); });
+  await page.locator('.topbar .tools-toggle').click();
   await page.getByRole('button', { name: '阅读设置', exact: true }).click();
   await page.getByLabel('字体', { exact: true }).selectOption('sans');
   await page.getByLabel('字号', { exact: true }).fill('22');
@@ -300,6 +306,65 @@ test('independent tabs, refresh and mobile layout changes retain scene ownership
   expect(seen.posts).toHaveLength(0); expect(seen.failures).toEqual([]);
   await other.goto('about:blank');
   await logout(page);
+});
+
+test('a presentation follow-up previews its snapshot without interrupting submission', async ({ page }, info) => {
+  await login(page); await open(page);
+  if (!await page.getByTitle('打开对话历史').isVisible()) await page.getByRole('button', { name: '问答操作', exact: true }).click();
+  await page.getByTitle('打开对话历史').click();
+  const seeded = page.locator('.history-card').filter({ hasText: 'MU8 演示' }).getByRole('button', { name: '打开对话', exact: true });
+  if (await seeded.isEnabled()) await seeded.click();
+  else await page.keyboard.press('Escape');
+  const restoreCalls: string[] = [];
+  page.on('request', request => {
+    if (request.url().endsWith('/presentation/restore')) restoreCalls.push(request.url());
+  });
+  let release!: () => void;
+  const hold = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/workspaces/*/agent/runs', async route => { await hold; await route.continue(); });
+  const pending = page.waitForRequest(request => request.url().endsWith('/agent/runs') && request.method() === 'POST');
+  const accepted = page.waitForResponse(response => response.url().endsWith('/agent/runs') && response.request().method() === 'POST');
+  const follow = page.locator('form.presentation-follow-up');
+  await follow.locator('textarea, input').fill('我应该注意听什么？');
+  await follow.getByRole('button', { name: '发送追问' }).click();
+  try {
+    const request = await pending;
+    expect(request.postDataJSON().presentation_follow_up.saved_state_ref).toBeTruthy();
+    await expect(page.locator('.scene-binding p')).toContainText('MU8');
+    expect(restoreCalls).toEqual([]);
+    await expect(page.getByText('个问题提交待核对', { exact: false })).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath('sending-followup.png') });
+  } finally { release(); }
+  expect((await accepted).status()).toBe(202);
+  await expect(page.locator('.turn .u-msg').filter({ hasText: '我应该注意听什么？' })).toBeVisible();
+  expect(restoreCalls).toEqual([]);
+  const restored = page.waitForResponse(response => response.url().endsWith('/presentation/restore'));
+  await page.getByRole('button', { name: '回到提问时', exact: true }).click();
+  expect((await restored).status()).toBe(200);
+});
+
+test('only an unresolved send offers recovery and retry uses the original question', async ({ page }) => {
+  await login(page); await open(page);
+  const attempts: unknown[] = [];
+  await page.route('**/workspaces/*/agent/runs', async route => {
+    attempts.push(route.request().postDataJSON());
+    if (attempts.length === 1) await route.abort('connectionreset');
+    else await route.continue();
+  });
+  const text = '这段旋律为什么听上去不一样？';
+  const input = page.locator('textarea[data-workspace-input="agent"]');
+  await input.fill(text);
+  await page.getByRole('button', { name: '发送', exact: true }).click();
+  const notice = page.locator('.network-notices').filter({ hasText: '个问题提交待核对' });
+  await expect(notice).toContainText(text);
+  await notice.getByRole('button', { name: '核对原问题' }).click();
+  expect(attempts).toHaveLength(1);
+  const accepted = page.waitForResponse(response => response.url().endsWith('/agent/runs') && response.request().method() === 'POST');
+  await notice.getByRole('button', { name: '重试原提交' }).click();
+  expect((await accepted).status()).toBe(202);
+  expect(attempts).toHaveLength(2);
+  expect(attempts[1]).toEqual(attempts[0]);
+  await expect(notice).toHaveCount(0);
 });
 
 test('attached presentation uses the parent chat and a new document channel', async ({ page, context }) => {

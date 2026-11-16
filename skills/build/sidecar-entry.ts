@@ -1,3 +1,4 @@
+import courseBuilderPrompt from "../../agents/course-builder.md";
 import { createHash } from "node:crypto";
 import bookStructurePrompt from "../../agents/book-structure-extractor.md";
 import formalObjectsPrompt from "../../agents/formal-objects-extractor.md";
@@ -12,6 +13,7 @@ import bookStructureStitchReducerPrompt from "../../agents/book-structure-stitch
 import bookStructureOutlinePrompt from "../../agents/book-structure-outline.md";
 import bookStructureOutlineChaptersPrompt from "../../agents/book-structure-outline-chapters.md";
 import bookStructureOutlineThemesPrompt from "../../agents/book-structure-outline-themes.md";
+import bookStructureOutlineThemePagePrompt from "../../agents/book-structure-outline-theme-page.md";
 import bookStructureChapterPrompt from "../../agents/book-structure-chapter.md";
 import bookStructureChapterSelectionPrompt from "../../agents/book-structure-chapter-selection.md";
 import bookStructureThemesPrompt from "../../agents/book-structure-themes.md";
@@ -19,7 +21,8 @@ import bookStructureRelationSelectorPrompt from "../../agents/book-structure-rel
 import bookStructureRelationExtractorPrompt from "../../agents/book-structure-relation-extractor.md";
 import dispatchExecutorPrompt from "../../agents/automatic-build-dispatch-executor.md";
 import videoWhisperScript from "../../packages/core/src/video-whisper.py";
-import canvasGeometry from "@napi-rs/canvas/geometry.js";
+// Bundle the pure JS geometry shim even though native Canvas remains external.
+import canvasGeometry from "../../node_modules/@napi-rs/canvas/geometry.js";
 import paperLexiconPrompt from "../../agents/paper-lexicon-extractor.md";
 import paperMetadataPrompt from "../../agents/paper-metadata-extractor.md";
 import pass1Prompt from "../../agents/pass1-local-extractor.md";
@@ -50,6 +53,7 @@ const PROMPTS: Record<string, string> = {
   "automatic-build-dispatch-executor.md": dispatchExecutorPrompt,
   "book-structure-extractor.md": bookStructurePrompt,
   "book-structure-v2-extractor.md": bookStructureV2Prompt,
+  "course-builder.md": courseBuilderPrompt,
   "formal-objects-extractor.md": formalObjectsPrompt,
   "cognitive-materials-extractor.md": cognitiveMaterialsPrompt,
   "teaching-source-reviewer.md": teachingReviewPrompt,
@@ -61,6 +65,7 @@ const PROMPTS: Record<string, string> = {
   "book-structure-outline.md": bookStructureOutlinePrompt,
   "book-structure-outline-chapters.md": bookStructureOutlineChaptersPrompt,
   "book-structure-outline-themes.md": bookStructureOutlineThemesPrompt,
+  "book-structure-outline-theme-page.md": bookStructureOutlineThemePagePrompt,
   "book-structure-chapter.md": bookStructureChapterPrompt,
   "book-structure-chapter-selection.md": bookStructureChapterSelectionPrompt,
   "book-structure-themes.md": bookStructureThemesPrompt,
@@ -111,6 +116,17 @@ function prepare(scriptName: string, args: string[]): void {
   process.argv = [process.execPath, scriptName, ...args];
 }
 
+async function runPackagedWorkbenchStage(args: string[]): Promise<void> {
+  const { spawnSync } = await import('node:child_process');
+  const { dirname, join } = await import('node:path');
+  const stageDir = join(dirname(process.execPath), 'resources/build');
+  const result = spawnSync(join(stageDir, 'node.exe'), [join(stageDir, 'workbench-stage.mjs'), ...args], {
+    env: { ...process.env, UNDERSTAND_BOOK_SIDECAR_SELF: process.execPath }, stdio: 'inherit', windowsHide: true,
+  });
+  if (result.error) throw result.error;
+  process.exitCode = result.status ?? 1;
+}
+
 async function runScript(script: string, args: string[]): Promise<void> {
   prepare(script, args);
   switch (script) {
@@ -133,7 +149,7 @@ async function runScript(script: string, args: string[]): Promise<void> {
     case "book-structure-write.ts": await import("./book-structure-write"); break;
     case "book-structure-batch.ts": await import("./book-structure-batch"); break;
     case "verify-paper-reading-guide.ts": await import("./verify-paper-reading-guide"); break;
-    case "workbench-stage-runner.ts": await import("./workbench-stage-runner"); break;
+    case "workbench-stage-runner.ts": await runPackagedWorkbenchStage(args); break;
     default:
       console.error(`unsupported sidecar script: ${script}`);
       process.exit(2);
@@ -211,6 +227,7 @@ if (command === "video-asset" && argv[1] === "whisper" && argv.length === 2) {
   "audit-legacy",
   "migration-mode",
   "quality",
+  "teaching-repair",
   "metrics",
   "record-attempt",
   "heartbeat",

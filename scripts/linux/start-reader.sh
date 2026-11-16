@@ -21,6 +21,7 @@ case "${UNDERSTAND_BOOK_MODE:-single-user}" in
       exit 1
     fi
     export UNDERSTAND_BOOK_WEB_DIST="${UNDERSTAND_BOOK_WEB_DIST:-$source_root/packages/web/dist-multi}"
+    source "$source_root/scripts/linux/check-board-preview.sh"
     exec "$source_root/target/release/server" --multi-user "$UNDERSTAND_BOOK_SERVICE_ROOT" \
       --origin "$UNDERSTAND_BOOK_ORIGIN" --addr "${UNDERSTAND_BOOK_ADDR:-127.0.0.1:8788}"
     ;;

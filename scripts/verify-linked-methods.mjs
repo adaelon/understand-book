@@ -10,7 +10,7 @@ const web=createRequire(path.join(root,'packages/web/package.json'));
 const {chromium}=web('@playwright/test');
 const {build}=createRequire(web.resolve('vite/package.json'))('esbuild');
 const catalog=JSON.parse(fs.readFileSync(path.join(root,'skills/presentation/methods/catalog.json'),'utf8'));
-const selected=new Set(process.argv.slice(2)),methods=catalog.methods.filter(m=>m.id!=='spatial-linked-views'&&(!selected.size||selected.has(m.id)));
+const selected=new Set(process.argv.slice(2)),methods=catalog.methods.filter(m=>fs.existsSync(path.join(root,m.root,'topic.js'))&&(!selected.size||selected.has(m.id)));
 const output=path.resolve(process.env.LINKED_OUTPUT??path.join(root,'tmp/linked-methods-verification'));fs.mkdirSync(output,{recursive:true});
 const assembly=await build({entryPoints:[path.join(root,'packages/web/src/presentation-document.ts')],bundle:true,format:'iife',globalName:'ProductionDocument',write:false,plugins:[{name:'raw',setup(b){b.onResolve({filter:/\?raw$/},a=>({path:path.resolve(a.resolveDir,a.path.slice(0,-4)),namespace:'raw'}));b.onLoad({filter:/.*/,namespace:'raw'},a=>({contents:fs.readFileSync(a.path,'utf8'),loader:'text'}));}}]});
 const browser=await chromium.launch({channel:process.env.METHOD_LIBRARY_BROWSER??'msedge',headless:true});

@@ -22,7 +22,7 @@ it('lets an account without a period select duration and a fully priced plan wit
   expect(wrapper.text()).toContain('当前没有生效的云端套餐');
   expect(wrapper.text()).toContain('该时长的套餐尚未开放购买');
   await button(wrapper, '1 天冲刺').trigger('click');
-  expect(wrapper.text()).toContain('¥12.50'); expect(wrapper.text()).toContain('150%');
+  expect(wrapper.text()).toContain('¥12.50'); expect(wrapper.text()).toContain('基础版用量的 1 倍');
   expect(wrapper.text()).toContain('连续 24 小时'); expect(wrapper.text()).toContain('不自动扣款');
   await button(wrapper, '查看开通方式').trigger('click');
   expect(wrapper.get('[aria-label="套餐开通方式"]').text()).toContain('联系运营核款');
@@ -46,7 +46,7 @@ it('shows sold entitlement dates and next period independently of catalog change
   const wrapper = start(); await flushPromises();
   expect(wrapper.text()).toContain('当前：原已购套餐'); expect(wrapper.text()).toContain('已安排下一期：下一期进阶');
   expect(wrapper.text()).toContain('香港时间'); expect(wrapper.text()).toContain('空间用量暂时无法读取');
-  expect(wrapper.text()).toContain('套餐额度 150%');
+  expect(wrapper.text()).toContain('生效时发放新一期完整额度');
 });
 
 it('clears previous account data and discards its pending response after identity changes', async () => {

@@ -1,6 +1,7 @@
 //! Published music assets share the material grant and byte-range delivery path.
 use base_schema::{MusicSourceManifest, PublishedBookRef};
 use read_tools::ToolError;
+use serde::Deserialize;
 use serde_json::{json, Value};
 use std::path::{Path, PathBuf};
 
@@ -19,7 +20,9 @@ pub(crate) fn load(directory: &Path) -> Result<MusicSourceManifest, ToolError> {
 }
 
 pub(crate) fn files(manifest: &MusicSourceManifest) -> Vec<&str> {
-    let mut paths = vec![manifest.recording.media_path.as_str(), manifest.score.musicxml_path.as_str()];
+    let mut paths = vec![manifest.recording.media_path.as_str()];
+    paths.extend(manifest.score.musicxml_path.as_deref());
+    paths.extend(manifest.score.pdf_path.as_deref());
     paths.extend(manifest.pages.iter().map(|p| p.path.as_str()));
     paths.extend(manifest.demonstrations.iter().map(|d| d.media_path.as_str()));
     paths.sort_unstable();
@@ -63,9 +66,26 @@ pub(crate) fn projection(directory: &Path) -> Result<Value, ToolError> {
 }
 
 pub(crate) fn path(directory: &Path, leaf: &str) -> Result<PathBuf, ToolError> {
-    let manifest = load(directory)?;
+    // Publication/opening validates the complete score. Range and score-page
+    // requests only need asset locations; rebuilding every note/event here
+    // repeatedly stalls playback of full symphonies.
+    #[derive(Deserialize)]
+    struct Media { media_path: String }
+    #[derive(Deserialize)]
+    struct Score { musicxml_path: Option<String>, pdf_path: Option<String> }
+    #[derive(Deserialize)]
+    struct Demo { demonstration_id: String, media_path: String }
+    #[derive(Deserialize)]
+    struct Assets {
+        recording: Media,
+        score: Score,
+        pages: Vec<base_schema::MusicScorePage>,
+        demonstrations: Vec<Demo>,
+    }
+    let bytes = std::fs::read(directory.join(MANIFEST)).map_err(|_| invalid("音乐资料无法读取"))?;
+    let manifest: Assets = serde_json::from_slice(&bytes).map_err(|_| invalid("音乐资料无法读取"))?;
     let relative = if leaf == "music/audio" { Some(manifest.recording.media_path.as_str()) }
-        else if leaf == "music/source" { Some(manifest.score.musicxml_path.as_str()) }
+        else if leaf == "music/source" { manifest.score.pdf_path.as_deref().or(manifest.score.musicxml_path.as_deref()) }
         else if let Some(id) = leaf.strip_prefix("music/score/") {
             manifest.pages.iter().find(|p| p.page_id == id).map(|p| p.path.as_str())
         } else if let Some(id) = leaf.strip_prefix("music/demo/") {

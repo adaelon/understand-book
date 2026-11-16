@@ -87,13 +87,24 @@ pub(super) fn accept(state: &PrivateBookContext<'_>, bind: &TeachingEvent, reque
     Ok(json!({"design_ref":saved.event_id,"design":design,"learner_context_update":learner_context(state,binding,&active_objects(&turn_assets(state,binding)?),&[],None,&[])?,"instruction":"This private design is accepted. Consume it in the next model turn before selecting or authoring support; it is not a delivery or evidence of learner understanding."}))
 }
 
-pub(super) fn validate_move(state: &PrivateBookContext<'_>, bind: &TeachingEvent, movement: &TeachingMove) -> Result<TeachingDesign, ToolError> {
+pub(super) fn validate_move(state: &PrivateBookContext<'_>, bind: &TeachingEvent, movement: &TeachingMove) -> Result<Option<TeachingDesign>, ToolError> {
     let binding=&bind.binding;
-    let id=movement.design_ref.as_deref().ok_or_else(||invalid("本次教学须先接纳并消费设计，再选择动作"))?;
-    let current=current_design(state,binding)?;
-    if current["design_ref"]!=id { return Err(invalid("教学动作必须采用当前设计修订")); }
-    let design=read_design(state,binding,id)?;
-    for reference in &design.basis_refs { grounding::basis(state,binding,reference)?; }
+    let design=if let Some(id)=movement.design_ref.as_deref() {
+        let current=current_design(state,binding)?;
+        if current["design_ref"]!=id { return Err(invalid("教学动作必须采用当前设计修订")); }
+        let design=read_design(state,binding,id)?;
+        for reference in &design.basis_refs { grounding::basis(state,binding,reference)?; }
+        Some(design)
+    } else {
+        if movement.assessment.is_some() || movement.practice.is_some() || movement.presentation.is_some()
+            || movement.actions.iter().any(|action|action=="submit" || action=="revise") {
+            return Err(invalid("练习、正式活动和教学演示需要接纳并采用教案；普通文字问答可直接提供来源目标"));
+        }
+        if movement.target.is_none() || !movement.block_refs.is_empty() {
+            return Err(invalid("不采用教案的问答需要明确的 target，并省略 block_refs"));
+        }
+        None
+    };
     let participation=movement.participation.as_ref().ok_or_else(||invalid("选择教学动作需要 participation，说明继续帮助、邀请尝试或收束的理由"))?;
     let new_task=movement.response_expectation.is_some() || movement.assessment.is_some()
         || movement.actions.iter().any(|action|action=="submit" || action=="revise");
@@ -122,11 +133,13 @@ pub(super) fn validate_move(state: &PrivateBookContext<'_>, bind: &TeachingEvent
         }
     };
     if reason.trim().is_empty() { return Err(invalid("参与选择需要依据当前理解和帮助情况说明理由")); }
-    if movement.block_refs.is_empty() { return Err(invalid("教学动作需要说明服务的关系")); }
-    design.validate_focus(&movement.block_refs)?;
+    if let Some(design)=&design {
+        if movement.block_refs.is_empty() { return Err(invalid("采用教案的教学动作需要说明服务的关系")); }
+        design.validate_focus(&movement.block_refs)?;
+    }
     for reference in &movement.interpretation_refs {
         let (interpretation,_)=state.user.learning_store_for_workspace(state.learning_workspace_id)?.understanding_basis(binding,reference)?;
-        if let Some(evidence_design)=&interpretation.design_ref {
+        if let (Some(evidence_design),Some(id))=(&interpretation.design_ref,movement.design_ref.as_deref()) {
             let mut ancestor=Some(id.to_owned());
             let mut found=false;
             while let Some(reference)=ancestor {
@@ -139,8 +152,11 @@ pub(super) fn validate_move(state: &PrivateBookContext<'_>, bind: &TeachingEvent
         }
     }
     if let Some(expectation)=&movement.response_expectation {
-        if expectation.public_prompt.trim().is_empty() || expectation.block_refs.is_empty() { return Err(invalid("普通表达邀请需要公开问句和关联关系")); }
-        design.validate_blocks(&expectation.block_refs)?;
+        if expectation.public_prompt.trim().is_empty() { return Err(invalid("普通表达邀请需要公开问句")); }
+        if let Some(design)=&design {
+            if expectation.block_refs.is_empty() { return Err(invalid("教案内的表达邀请需要关联关系")); }
+            design.validate_blocks(&expectation.block_refs)?;
+        }
         if expectation.block_refs.iter().any(|id| !movement.block_refs.contains(id)) {
             return Err(invalid("表达邀请的关系必须属于本次教学动作；不要在邀请中扩大推理范围"));
         }
@@ -168,7 +184,7 @@ pub(super) fn validate_move(state: &PrivateBookContext<'_>, bind: &TeachingEvent
 }
 
 pub(super) fn invitation_context(state: &PrivateBookContext<'_>, binding: &TeachingBinding) -> Result<Value, ToolError> {
-    Ok(state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation(&binding.tutor_session_id,&binding.source_id,&binding.source_revision)?
+    Ok(state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation_in_chat(binding)?
         .map(|delivery|json!({"delivery_ref":delivery.event_id,"design_ref":delivery.payload["move"]["design_ref"],
             "response_expectation":delivery.payload["move"]["response_expectation"],"target":delivery.payload["move"]["target"]})).unwrap_or(Value::Null))
 }
@@ -207,7 +223,7 @@ fn expression_contexts(state: &PrivateBookContext<'_>, binding: &TeachingBinding
             || fact.binding.source_id!=binding.source_id || fact.binding.source_revision!=binding.source_revision { continue; }
         let scene=scene_context(state,&fact)?;
         let interpretations=store.teaching_expression_interpretations(&fact.event_id)?.into_iter().map(|e|
-            json!({"evidence_ref":e.evidence_id,"design_ref":e.design_ref,"block_refs":e.block_refs,"nature":e.nature,
+            json!({"evidence_ref":e.evidence_id,"design_ref":e.design_ref,"block_refs":e.block_refs,"nature":e.nature,"status":e.status,
                 "interpretation":preview(&json!(e.interpretation),600),"teaching_implication":preview(&json!(e.teaching_implication),600),
                 "learner_quote":preview(&json!(e.learner_quote),600),"fact_refs":e.fact_refs,"assistance_refs":e.assistance_refs})).collect::<Vec<_>>();
         let turn=(fact.binding.chat_session_id.clone(),fact.binding.turn_id.clone(),
@@ -258,6 +274,7 @@ pub(super) fn support_context(state: &PrivateBookContext<'_>, delivery: &Teachin
             "actor":fact.payload["actor"],"action_ref":fact.payload["action_ref"],"before_receipt":fact.payload["before_receipt"]})))
         .collect::<Result<Vec<Value>,ToolError>>()?;
     Ok(json!({"delivery_ref":delivery.event_id,"design_ref":delivery.payload["move"]["design_ref"],
+        "original_ref":{"kind":"chat_turn","session_id":delivery.binding.chat_session_id,"turn_id":delivery.binding.turn_id},
         "block_refs":delivery.payload["move"]["block_refs"],"target":delivery.payload["move"]["target"],
         "participation":participation,"answer_preview":preview(&delivery.payload["answer"],1200),
         "response_expectation":delivery.payload["move"]["response_expectation"],"presentation":delivery.payload["move"]["presentation"],
@@ -329,8 +346,8 @@ pub(super) fn freeze_input_support(state: &PrivateBookContext<'_>, binding: &Tea
     let invitation = if let Some(reference)=request["teaching_ref"].as_str() { Some(referenced_delivery(state,reference)?) }
         else if let Some(action)=interaction.filter(|a|!a.user_supplement.trim().is_empty()) {
             pending_activity_help(state,action)?.first().map(|id|referenced_delivery(state,id)).transpose()?
-                .or(state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation(&binding.tutor_session_id,&binding.source_id,&binding.source_revision)?)
-        } else { state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation(&binding.tutor_session_id,&binding.source_id,&binding.source_revision)? };
+                .or(state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation_in_chat(binding)?)
+        } else { state.user.learning_store_for_workspace(state.learning_workspace_id)?.pending_response_invitation_in_chat(binding)? };
     let (mut help,mut support)=if let Some(invitation)=&invitation {
         let prior=state.user.learning_store_for_workspace(state.learning_workspace_id)?.teaching_activity_events(&invitation.event_id)?;
         let help:Vec<_>=prior.iter().filter(|fact|fact.kind==TeachingFact::HelpDisplayed).map(|fact|fact.event_id.clone()).collect();
@@ -359,6 +376,14 @@ pub(super) fn freeze_input_support(state: &PrivateBookContext<'_>, binding: &Tea
                 if fact.kind==TeachingFact::HelpDisplayed && !help.contains(&fact.event_id) { help.push(fact.event_id); }
             }
         }
+    }
+    // Admission supplied exact course facts; preserve help from the left pane
+    // alongside the same chat's assistance when interpreting a follow-up.
+    for raw in request["course_context"]["prior_help"].as_array().into_iter().flatten() {
+        let fact: TeachingEvent = serde_json::from_value(raw.clone()).map_err(|e| invalid(e.to_string()))?;
+        if fact.binding.source_id != binding.source_id || fact.binding.source_revision != binding.source_revision { continue; }
+        if fact.kind == TeachingFact::HelpDisplayed && !help.contains(&fact.event_id) { help.push(fact.event_id.clone()); }
+        if !support.contains(&fact.event_id) { support.push(fact.event_id); }
     }
     if support.is_empty() { return Ok(()); }
     for fact in facts.iter_mut().filter(|fact|fact.binding.turn_id==binding.turn_id && (fact.kind==TeachingFact::LearnerAction

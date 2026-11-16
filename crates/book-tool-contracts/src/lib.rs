@@ -287,8 +287,20 @@ pub struct SearchInput {
     #[schemars(description = "Optional known LID restricting candidates to this node and its descendants. Omit or null to search the current material.")]
     pub within_lid: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional kind of original passage to locate using the book's concept and discourse index.")]
+    pub focus: Option<ReadingFocus>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(description = "Maximum ranked candidate passages, 1..20; omit or null for 8. Scores rank candidates and are not confidence. A bounded result cannot establish semantic exhaustiveness.")]
     pub limit: Option<usize>,
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum ReadingFocus {
+    Definition,
+    Procedure,
+    Explanation,
+    Example,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
@@ -334,6 +346,9 @@ pub struct ConceptInput {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(description = "Optional known LID in this book to rank nearby candidates and previews. Omit or null for unanchored ranking; this does not restrict recall to a subtree.")]
     pub anchor_lid: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[schemars(description = "Optional kind of source passage to locate for this concept.")]
+    pub focus: Option<ReadingFocus>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[schemars(description = "Maximum concept/entity candidates, 1..50; omit or null for 12. Inspect matched_count and truncated for candidate coverage; this does not limit occurrences within a candidate.")]
     pub limit: Option<usize>,
@@ -1216,7 +1231,7 @@ mod tests {
                 .keys()
                 .map(String::as_str)
                 .collect::<Vec<_>>(),
-            vec!["anchor_lid", "limit", "query"]
+            vec!["anchor_lid", "focus", "limit", "query"]
         );
         assert_eq!(schema["properties"]["limit"]["default"], 12);
         assert_eq!(schema["properties"]["limit"]["minimum"], 1);
@@ -1226,6 +1241,7 @@ mod tests {
             BookToolInput::Concept(ConceptInput {
                 query: "command".into(),
                 anchor_lid: None,
+                focus: None,
                 limit: None,
             })
         );

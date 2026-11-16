@@ -38,7 +38,7 @@ pub(crate) fn review_for_run_metered(scope: &crate::run_scope::RunScope, request
     review_audio_metered(&scope.reading_book(), &scope.book_dir, &declared.reference, &scope.turn_id, request, cancel, &AudioConfig::from_env()?,spend.map(|spend|(spend,scope)))
 }
 
-fn execute(mut command: Command, staging: &Path, phase: &str, cancel: &CancellationToken, deadline: Instant, started: Option<&mut bool>) -> Result<(), ToolError> {
+pub(crate) fn execute(mut command: Command, staging: &Path, phase: &str, cancel: &CancellationToken, deadline: Instant, started: Option<&mut bool>) -> Result<(), ToolError> {
     cancel.check()?;
     let log_path = staging.join(format!("{phase}.log"));
     command.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::from(fs::File::create(&log_path).map_err(|e| failed(e.to_string()))?));

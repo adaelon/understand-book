@@ -32,16 +32,8 @@ fn setup()->(tempfile::TempDir,AppState,crate::agent_run::PreparedAgentChat) {
     (root,state,run)
 }
 
-fn select(state:&AppState,run:&crate::agent_run::PreparedAgentChat,id:&str)->Value {
-    let range=EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]};
-    let design=crate::tests::teaching_design_tests::design_request("local-design",None);
-    let accepted=step(&state.private_context(),&run.turn_ref,design,&[],std::slice::from_ref(&range)).unwrap();
-    let mut request=crate::tests::teaching_design_tests::select_request(id,accepted["design_ref"].as_str().unwrap(),false);
-    request["move"]["delivery_text"]=json!("全程总时间包括行驶时间与停留时间。先分别计算每段所需时间，再求和。");
-    request["delivery_scope"]=json!({"kind":"board_part","relation":"说明全程时间分母","remaining_request":"继续比较不同速度下的全程平均速度"});
-    let normalized=preflight_step(&state.private_context(),&run.turn_ref,&request,&[],std::slice::from_ref(&range)).unwrap();
-    assert_eq!(normalized["delivery_scope"],request["delivery_scope"]);
-    step(&state.private_context(),&run.turn_ref,normalized,&[],&[range]).unwrap()
+fn support() -> Value {
+    json!({"delivery_draft":{"text":"The whole journey includes moving time and stopped time. Add the intervals before comparing its average speed."},"delivery_move_refs":[]})
 }
 
 fn commit(state:&mut AppState,run:&crate::agent_run::PreparedAgentChat,selected:&Value,id:&str,
@@ -83,10 +75,10 @@ fn cancel_and_reopen(state:&mut AppState,turn:&AgentTurnRef) {
 }
 
 #[test]
-fn wb4_local_teaching_survives_cancel_and_freezes_help_for_the_next_expression() {
+fn wb4_ordinary_board_support_survives_cancel_and_freezes_help_for_the_next_expression() {
     let (_root,mut state,run)=setup();
-    let selected=select(&state,&run,"first-support");
-    assert!(record_board_local_delivery(&state.user,&run.turn_ref,"part-one",NOW).is_err(),"a private selection is not a delivery");
+    let selected=support();
+    assert!(record_board_local_delivery(&state.user,&run.turn_ref,"part-one",NOW).is_err(),"an uncommitted draft is not a delivery");
     let part=commit(&mut state,&run,&selected,"part-one",vec![]);
     // Exercise repair after cancellation: the board content is already durable.
     cancel_and_reopen(&mut state,&run.turn_ref);
@@ -112,7 +104,7 @@ fn wb4_local_teaching_survives_cancel_and_freezes_help_for_the_next_expression()
 #[test]
 fn wb4_final_delivery_does_not_replace_a_committed_local_support() {
     let (_root,mut state,run)=setup();
-    let selected=select(&state,&run,"first-support");
+    let selected=support();
     let part=commit(&mut state,&run,&selected,"part-one",vec![]);
     record_board_local_delivery(&state.user,&run.turn_ref,"part-one",NOW).unwrap();
     let mut outcome=crate::tests::tutor_loop_tests::outcome(None);

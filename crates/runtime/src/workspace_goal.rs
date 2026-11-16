@@ -59,11 +59,11 @@ pub(crate) const POLICY: &str = "Workspace learning direction:
 - You may change the path within the accepted goal. For a deep-learning goal, a missing chain-rule connection can justify a local prerequisite explanation and then a return to backpropagation; explain that connection rather than silently replacing the goal with a calculus course. For an exam in three days, use the known syllabus, deadline and observed difficulties to choose useful depth and an attainable next step; do not invent a syllabus or expand into an unrestricted course.
 - Answer a temporary side question as requested and preserve the accepted goal and constraints. Do not rewrite the goal from your summary, a prerequisite, a topic change alone, or an unaccepted suggestion. When proposing a stage, explain how its focus serves the accepted goal and constraints.
 - Only an explicit current-user request to change the overarching goal permits workspace.goal.update. Quote the complete current user message, preserve their exact new goal wording and only explicitly stated constraints. Use the effective revision shown here. A successful result is the authority for the new version; if rejected, keep the accepted goal and explain how the user can edit it in the goal bar.
-- After an accepted goal change, the old stage and its unchosen continuation stop. Plan the next requested work against the accepted new version. A goal's existence does not enable proactive teaching: honor the latest Tutor control state and stop at a user response boundary.";
+- After an accepted goal change, the old stage and its unchosen continuation stop. Plan the next requested work against the accepted new version. A goal's existence does not enable proactive teaching: answer the current request through the ordinary conversation and stop at a user response boundary.";
 
 pub(crate) fn projection(context: &WorkspaceGoalContext, accepted_update: Option<&WorkspaceGoal>, tutor: Option<&Value>) -> String {
     let effective = accepted_update.unwrap_or(&context.goal);
-    let stage = tutor.filter(|tutor| tutor["status"] == "active").map(|tutor| json!({
+    let stage = tutor.filter(|tutor| tutor["status"] == "practice").map(|tutor| json!({
         "binding":tutor["binding"],
         "workspace_goal_revision":tutor["workspace_goal_revision"],
         "user_intent":tutor["user_intent"],
@@ -77,7 +77,7 @@ pub(crate) fn projection(context: &WorkspaceGoalContext, accepted_update: Option
         "effective_goal":effective,
         "exam_calendar":context.effective_exam_calendar(accepted_update),
         "stage_focus":stage,
-        "active_teaching":tutor.is_some_and(|tutor| tutor["status"] == "active"),
+        "active_teaching":tutor.is_some_and(|tutor| tutor["status"] == "practice"),
     }))
 }
 

@@ -31,7 +31,9 @@ reading_path 要给当前问题必需且尚无理解依据的概念与前置安�
 authoring_surface 为 native_board 时，输出原生文字、图形和连线的表达安排，methods 留空，不要求 HTML、交互演示或 presentation.author read_method。先决定要让读者看见什么对象、关系或变化，再安排图形；必要时把同一对象的变化前后或一次具体操作画出来。术语关系图适合整理已理解的概念，不能把排列更多术语当作解释用户卡住的关系。只调位置、字号、连线的修订复用现有计划，不新增教学目标。
 purpose 明确本页用途，可为机制理解、交互探索、深入推导、信息展示或查阅比较，也可以按实际需求组合。learning_goal 写读者要理解的具体关系。reading_path 是读者实际先看到什么、怎样把对象/证据与解释对应、何时操作或推导、最后能够说明什么；不能只罗列抽象章节名或技术组件。长篇连贯推导和完整查阅本身可以是恰当安排，不强制短视频式开场、首屏放图、缩短篇幅、折叠全部公式或增加无必要交互。
 当前关系交代清楚后，reading_path 可以自然留下一个具体接话入口：请用户说说图中某处关系，或观察同一对象的一次变化、预测结果，由此进入下一个知识点。写清这一步能弄清什么，图中已提供足以开始的对象与条件，不让用户猜陌生术语；已展示答案的复述只支持当前理解表达，不当作独立应用。无需把新问题的答案提前展开，也不以答对作为继续获得讲解的条件。通常一个入口足够，和当前已有邀请接续，不叠加相冲突的问题或额外按钮；窄请求、直接讲解或自然结束时无需强加问句。只作视觉修订或 Tutor 仅观察时，不据此新开课程、测验或额外交互流程。
-从 method_catalog 按理解障碍及适用边界选方法，通常一个即可，需要时组合。methods 中 method_id 和 revision 必须是目录列出的精确组合，adaptation 写该方法如何帮助当前具体关系、哪些前提须核实、哪些部分不应照搬。不要仅凭标题相似或有参数就选图表；数值大小比较、对象计数、整体部分、因果对照、推导和查阅各有不同需要。不适用时 methods 可以为空，reason 必须说明具体不适用之处及更合适的表达安排，而不是为了省事跳过选择。
+为需要图形的关键局部，在 reading_path 写出读者观察的对象、进行的操作（若有）以及据以解释的可见结果。同一教学目的可以有不同画法。选中场景时，把其 appearance 中能让这次观察成立的构图、材质或运动特征具体交给作者，并说明新对象放在哪个位置。若只是严密推导或查阅，可用正文、公式或静图自然完成。
+从 method_catalog 按理解障碍及适用边界选方法，通常一个即可，需要时组合。若有 scenes，按 when 选择与当前观察最贴切的一件，在 adaptation 写出其确切 file、怎样用新材料重做和要观察的差别。methods 中 method_id 和 revision 必须是目录列出的精确组合，adaptation 写该方法如何帮助当前具体关系、哪些前提须核实、哪些部分不应照搬。不要仅凭标题相似或有参数就选图表；数值大小比较、对象计数、整体部分、因果对照、推导和查阅各有不同需要。不适用时 methods 可以为空，reason 必须说明具体不适用之处及更合适的表达安排，而不是为了省事跳过选择。
+当读者问实物内部各件装在哪里、拆开后如何对应时，默认把可旋转的立体装配作为主场景。已知部件次序、连接和方向即可做注明不按比例的教学模型。线路、作用步骤或读数可以叠在装配体上，或与它共用状态。用户明确只要平面图或只问电路拓扑时，才把平面图当主表示。
 目录只帮助选型，不等于你或作者已经读过方法正文。选中的方法由主 Agent 随后用 presentation.author read_method 读取卡片、完整示范及适配说明（存在反例时也读取），结合实际材料再制作，不能把目录描述当作完成读取或实际采用的证据。表达方法不授予知识来源、预览或交付权限。
 reason 用当前请求及实际证据解释为什么这样安排。输出只交接教学设计，不预先验收尚未制作的页面，不将作者承诺当页面效果，不新增评分流程。"#;
 
@@ -42,12 +44,17 @@ fn catalog() -> Value {
         .expect("compiled method catalog")
         .iter()
         .map(|method| {
-            json!({
+            let mut entry = json!({
                 "id": method["id"], "revision": method["revision"],
                 "name": method["name"], "obstacle": method["obstacle"],
                 "boundary": method["boundary"], "files": method["files"],
                 "entrypoint": method["entrypoint"]
-            })
+            });
+            if let Some(scenes) = method.get("scenes") {
+                entry["scenes"] = scenes.clone();
+                entry["needs"] = method["needs"].clone();
+            }
+            entry
         })
         .collect();
     json!({"revision": source["revision"], "methods": methods})
@@ -294,6 +301,20 @@ mod tests {
         let actual: Value = serde_json::from_str(&calls[0].user).unwrap();
         assert_eq!(actual["current_request_context"], input);
         assert_eq!(actual["method_catalog"], catalog());
+        for registered in crate::presentation_methods::catalog()["methods"].as_array().unwrap() {
+            let Some(scenes) = registered.get("scenes") else { continue };
+            let id = registered["id"].as_str().unwrap();
+            let revision = registered["revision"].as_u64().unwrap();
+            let supplied = actual["method_catalog"]["methods"].as_array().unwrap().iter()
+                .find(|m| m["id"] == id && m["revision"] == revision).unwrap();
+            assert_eq!(&supplied["scenes"], scenes);
+            for scene in supplied["scenes"].as_array().unwrap() {
+                for field in ["file", "metadata"] {
+                    let file = scene[field].as_str().unwrap();
+                    crate::presentation_methods::source(id, revision, file).unwrap();
+                }
+            }
+        }
         assert!(actual["method_catalog"]["methods"]
             .as_array()
             .unwrap()

@@ -173,6 +173,11 @@ impl ModelObserver for AnswerProjector {
 }
 
 fn stable_end(text: &str) -> Option<usize> {
+    // The final invitation is published by the completed compiler. Never expose
+    // a partial private-purpose JSON object as incremental Markdown.
+    let marker_start=text.strip_prefix(crate::socratic::MARKER).map(|_|0)
+        .or_else(||text.find(&format!("\n{}",crate::socratic::MARKER)).map(|i|i+1));
+    let text=&text[..marker_start.unwrap_or(text.len())];
     let mut end = None;
     let mut brackets = 0usize;
     let mut backticks = false;
@@ -287,6 +292,18 @@ mod tests {
             let patches = patches.0.lock().unwrap();
             assert_eq!(patches.last().unwrap().operation, "discard");
             assert_eq!(patches.iter().filter(|p| p.view.is_some()).count(), if hidden { 0 } else { 1 });
+        }
+    }
+
+    #[test]
+    fn socratic_stream_withholds_private_purpose_at_every_token_boundary() {
+        let raw="正文。\n\n[[socratic]] {\"question\":\"为什么？\",\"purpose\":{\"focus\":\"私有目的。\",\"reason\":\"因为这个[条件]。\"}}\n";
+        for (i,_) in raw.char_indices().chain(std::iter::once((raw.len(),' '))) {
+            if let Some(end)=stable_end(&raw[..i]) {
+                let view=compile_answer_preview(&raw[..end],&[],&Default::default()).unwrap();
+                let visible=view.parts.iter().filter_map(AgentAnswerPart::text).collect::<String>();
+                assert!(!visible.contains("purpose") && !visible.contains("私有") && !visible.contains("[[socratic]]"));
+            }
         }
     }
 

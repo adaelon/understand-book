@@ -176,7 +176,6 @@ describe("IP9 intent build usage ledger and ablation", () => {
         wall_clock_ms: 4_000,
       }],
     });
-    expect(report.digest).toMatch(/^[a-f0-9]{64}$/u);
     expect(report).toEqual(GOLDEN);
   });
 

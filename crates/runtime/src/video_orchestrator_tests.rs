@@ -132,8 +132,11 @@ mod video_runtime {
         run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,&mut EphemeralCompactionCheckpointSink::default(),"Compare this book and video, checking its frames and spoken words","t0").unwrap();
         let reference:PublishedBookRef=serde_json::from_value(reference).unwrap();
         let observed=&context.evidence_ledger.references[&reference];assert!(!observed.ledger.evidence_ranges().is_empty());
-        let bindings=context.evidence_ledger.bindings();assert_eq!(bindings.len(),2,"{:?}",adapter.seen_plans.borrow().last().unwrap().ordered_messages());
-        for binding in bindings {assert_eq!(binding.book_id,reference.book_id);assert_eq!(binding.publication_id.as_deref(),Some(reference.publication_id.as_str()));assert_eq!(binding.source_revision.as_deref(),Some(reference_book().source_fingerprint()));}
+        let bindings=context.evidence_ledger.bindings();
+        assert_eq!(bindings.iter().filter(|binding| binding.book_id == b.base.book_id && binding.publication_id.is_none()).count(),1,"the local text read supplies its own citation");
+        let reference_bindings:Vec<_>=bindings.iter().filter(|binding| binding.book_id == reference.book_id).collect();
+        assert_eq!(reference_bindings.len(),2);
+        for binding in reference_bindings {assert_eq!(binding.publication_id.as_deref(),Some(reference.publication_id.as_str()));assert_eq!(binding.source_revision.as_deref(),Some(reference_book().source_fingerprint()));}
         assert_eq!(context.audio_reviews[0].publication,reference);
         assert!(adapter.seen_plans.borrow().iter().any(|p|!p.video_images.is_empty()));
     }

@@ -1176,6 +1176,28 @@ impl BoardStore {
         Ok(hits)
     }
 
+    /// Personal-note candidates in the same scope used by board search.
+    pub fn personal_note_ids(
+        &self,
+        book_id: &str,
+        publication_id: Option<&str>,
+    ) -> Result<BTreeSet<String>, ToolError> {
+        let _access = access()?;
+        let mut ids = BTreeSet::new();
+        for head in self.list_unlocked()?.into_iter().filter(|head| {
+            self.learning_workspace_id.is_some()
+                || (head.book_id == book_id && head.publication_id.as_deref() == publication_id)
+        }) {
+            let document = self.read_snapshot(&head, head.revision)?;
+            for item in document.items {
+                if let BoardTarget::PersonalNote { reference } = item.target {
+                    ids.insert(reference.note_id);
+                }
+            }
+        }
+        Ok(ids)
+    }
+
     pub fn find_related(
         &self,
         book_id: &str,

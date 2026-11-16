@@ -175,7 +175,7 @@ impl Book {
         hits.sort_by(|a,b| b.0.total_cmp(&a.0).then_with(|| a.1.total_cmp(&b.1)).then_with(|| a.2["vu_id"].as_str().cmp(&b.2["vu_id"].as_str())));
         let total = hits.len(); let next = request.offset.saturating_add(request.limit);
         let candidates: Vec<_> = hits.into_iter().skip(request.offset).take(request.limit).map(|(_,_,v)|v).collect();
-        Ok(json!({"publication":publication,"material":manifest.material,"query":request.query,"within":scope,
+        Ok(json!({"publication":publication,"source_revision":self.source_fingerprint(),"material":manifest.material,"query":request.query,"within":scope,
             "analysis_ids":analyses,"analysis_selection":if request.analysis_id.is_some(){"explicit"}else{"newest_accepted_at_each_position"},
             "candidates":candidates,"discourse":discourse,"total_matches":total,"next_offset":(next<total).then_some(next),
             "coverage":{"accepted":accepted,"gaps":gaps},"evidence_status":"candidate_only",

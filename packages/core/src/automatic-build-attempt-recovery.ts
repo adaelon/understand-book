@@ -16,7 +16,7 @@ const AUTOMATIC_BUILD_STAGES = [
   "profile_sidecar",
   "pass2",
   "book_structure",
-  "formal_objects", "cognitive_materials", "teaching_publish",
+  "formal_objects", "cognitive_materials", "teaching_publish", "course",
   "paper_reading_guide",
 ] as const satisfies readonly AutomaticBuildStage[];
 

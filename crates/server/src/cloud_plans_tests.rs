@@ -72,6 +72,7 @@ fn product(id: &str, tier: &str, duration: &str) -> Product {
         enabled: true,
         test_only: false,
         amount_fen: Some(ReceiptFen::try_from(TEST_PRICE_FEN).unwrap()),
+        budget_micro_cny: None,
         basis: Some(AllowanceBasis {
             version: "cloud-plan-test-basis".into(),
             basis_micro_cny: MicroCny::new(TEST_BASIS_MICRO_CNY),
@@ -93,6 +94,52 @@ fn purchase(product: &str, revision: i64, now: i64) -> Purchase {
         external_ref: None,
         note: "Fixture payment, no real charge".into(),
     }
+}
+
+#[test]
+fn budget_admin_products_use_exact_money_and_preserve_sold_terms() {
+    let f = Fixture::new();
+    let now = at(2027, Month::January, 10, 12, 0);
+    let mut first = product("budget-basic", "basic", "day1");
+    first.basis = None;
+    first.grant_milli_percent = None;
+    first.budget_micro_cny = Some(MicroCny::new(3_333_333));
+    let saved = f.save("budget-save", first.clone(), now);
+    assert_eq!(saved["cloud_plan"]["budget_micro_cny"], 3_333_333);
+    assert_eq!(saved["cloud_plan"]["saleable"], true);
+    let paid = f.purchase("budget-paid", "budget-basic", 1, now);
+    assert_eq!(paid["allowance_period"]["balance"]["granted_micro_cny"], 3_333_333);
+    assert_eq!(paid["allowance_period"]["is_plan"], true);
+    assert_eq!(f.purchase("budget-paid", "budget-basic", 1, now), paid);
+    first.revision = 1;
+    first.budget_micro_cny = Some(MicroCny::new(10_000_000));
+    f.save("budget-edit", first, now + 1);
+    let mut plus = product("budget-plus", "plus", "day1");
+    plus.budget_micro_cny = Some(MicroCny::new(20_000_000));
+    f.save("budget-plus", plus, now + 1);
+    let control = f.store.control.lock().unwrap();
+    let sold = current(&control.connection, "A", now + 1).unwrap().unwrap();
+    assert_eq!(sold.basis.grant(sold.grant_milli_percent).unwrap().value(), 3_333_333);
+    assert_eq!(sold.amount_fen.value(), TEST_PRICE_FEN);
+    let summary = summary(&control.connection, "A", now + 1).unwrap();
+    assert_eq!(summary["purchase_starts_at"], sold.expires_at);
+    assert_eq!(summary["purchase_blocked_by_unlimited"], false);
+}
+
+#[test]
+fn budget_admin_paid_plan_cannot_be_queued_after_unlimited_beta() {
+    let f = Fixture::new();
+    let now = at(2027, Month::January, 10, 12, 0);
+    f.save("catalog", product("basic", "basic", "month"), now);
+    {
+        let control = f.store.control.lock().unwrap();
+        control.connection.execute("INSERT INTO allowance_periods(period_id,user_id,starts_at,expires_at,unlimited) VALUES('beta','A',?,253402300799,1)", [now]).unwrap();
+        assert_eq!(summary(&control.connection, "A", now).unwrap()["purchase_blocked_by_unlimited"], true);
+    }
+    let error = f.store.apply("operator", "paid", "A", Command::CloudPlan(Mutation::Purchase(purchase("basic", 1, now))), now).unwrap_err();
+    assert_eq!(error.error_code, "CLOUD_PLAN_UNLIMITED");
+    assert_eq!(f.count("manual_receipts"), 0);
+    assert_eq!(f.count("cloud_plan_entitlements"), 0);
 }
 
 fn at(year: i32, month: Month, day: u8, hour: u8, minute: u8) -> i64 {

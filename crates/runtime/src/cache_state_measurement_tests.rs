@@ -71,9 +71,9 @@ fn actual_langsmith_working_state_delta_reuses_unchanged_records() {
     let coarse_bytes = latest_delta(&baseline_second).len();
 
     let mut candidate = ContextFragmentLedger::default();
-    refresh_tutor_working_fragments(&mut candidate, &serde_json::json!({"status":"active","agent_working_state":before})).unwrap();
+    refresh_tutor_working_fragments(&mut candidate, &serde_json::json!({"status":"practice","agent_working_state":before})).unwrap();
     let candidate_first = sample(&mut candidate, 2);
-    refresh_tutor_working_fragments(&mut candidate, &serde_json::json!({"status":"active","agent_working_state":after})).unwrap();
+    refresh_tutor_working_fragments(&mut candidate, &serde_json::json!({"status":"practice","agent_working_state":after})).unwrap();
     let candidate_second = sample(&mut candidate, 4);
     assert!(candidate_second[..candidate_first.len()] == candidate_first,
         "the original request prefix must remain byte-for-byte unchanged");

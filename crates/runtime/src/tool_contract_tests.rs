@@ -2,6 +2,45 @@ use super::*;
 use serde_json::json;
 
 #[test]
+fn teacher_corrections_tools_have_closed_operation_contracts() {
+    for status in ["practice","observing","course"] {
+        let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&json!({"status":status})));
+        let tool=registry.registration("tutor.step").unwrap();
+        for request in [json!({"operation":"corrections","correction_action":"search","queries":["平均速度"]}),
+            json!({"operation":"corrections","correction_action":"read","correction_ref":"ref","after":768}),
+            json!({"operation":"corrections","correction_action":"record","operation_id":"record","correction":{
+                "previous_event_ref":"actual-ref","mistake_quote":"old words","corrected_claim":"specific correction","applies_when":"equal distances",
+                "topics":["speed"],"source_quotes":[{"lid":"1.1","quote":"source words"}],"supersedes":[]}}),
+            json!({"operation":"corrections","correction_action":"use","operation_id":"use","correction_ref":"ref","decision":"apply","reason":"The same equal-distance condition."})] {
+            tool.validate_arguments(&request.to_string()).unwrap_or_else(|e|panic!("{request}: {e:?}"));
+        }
+        for request in [json!({"operation":"corrections","correction_action":"record"}),
+            json!({"operation":"trace","queries":["speed"]}),json!({"operation":"corrections","correction_action":"use","correction_ref":"ref"})] {
+            assert!(tool.validate_arguments(&request.to_string()).is_err(),"{request}");
+        }
+    }
+}
+
+#[test]
+fn course_tutor_uses_the_course_mainline_without_generic_design_or_grading_tools() {
+    for status in ["course", "observing"] {
+        let context=json!({"status":status,"inquiry_course":{"lesson":{"progress":{"run_id":"course:1","stage":"prediction"}}},"socratic_dialogue":{"question":"What changed?","purpose":{"learner_inference":"compare two bounds"}}});
+        let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
+        let tool=registry.registration("tutor.step").unwrap();
+        assert_eq!(tool.spec.parameters["properties"]["operation"]["enum"],json!(["trace","understanding","evidence","corrections","closed_book"]));
+        for operation in ["design","select","assess"] {
+            assert!(tool.validate_arguments(&json!({"operation":operation}).to_string()).is_err());
+        }
+        let modules=crate::tutor::instruction_modules(&context,&[],None);
+        assert!(modules.iter().any(|module|module.asset_id=="resident-agent.tutor.course"));
+        assert!(!modules.iter().any(|module|matches!(module.asset_id.as_str(),"resident-agent.tutor.design"|"resident-agent.tutor.select"|"resident-agent.tutor.socratic")));
+        let instructions=crate::tutor::control_instructions(&context);
+        assert!(instructions.contains("saved socratic_dialogue"));
+        assert!(instructions.contains(if status=="course" {"Course tutoring is active"} else {"Course tutoring is not active now"}));
+    }
+}
+
+#[test]
 fn ranked_search_delivery_matches_its_closed_output_schema() {
     let registry = crate::orchestrator::resident_tool_registry();
     let registration = registry.registration("book.search").unwrap();
@@ -175,12 +214,12 @@ fn advertised_examples_survive_provider_projection_and_real_validation() {
         }
     }
     // Includes the metadata-only revision without copying the retained body.
-    assert_eq!(count, 80);
+    assert_eq!(count, 81);
 }
 
 #[test]
 fn tutor_examples_follow_final_state_schema_and_provider_requests() {
-    let action = |kind: &str| json!({"status":"active","current_action":{
+    let action = |kind: &str| json!({"status":"practice","current_action":{
         "action":{"origin":"ui_entry","entry_action":kind},"user_supplement":"",
         "accepted_request":"UI request","answer_ref":null,"answer_text":null,
         "source_excerpt":null,"source_bindings":[],"target":null,
@@ -199,10 +238,10 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
         context
     };
     let cases = [
-        ("active", json!({"status":"active"}), 17),
-        ("native_board_pending", json!({"status":"active","native_board_candidate_pending":true}), 14),
+        ("practice", json!({"status":"practice"}), 17),
+        ("native_board_pending", json!({"status":"practice","native_board_candidate_pending":true}), 13),
         ("native_board_action", native_action, 11),
-        ("active_response", json!({"status":"active","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 17),
+        ("active_response", json!({"status":"practice","learner_context":{"pending_assessment_refs":["action:actual-open"],"uninterpreted_fact_refs":["usage:actual-user"]}}), 17),
         ("observing", json!({"status":"observing"}), 2),
         ("observing_expression", json!({"status":"observing","learner_context":{"uninterpreted_fact_refs":["usage:actual-user"]}}), 2),
         ("reference", json!({"status":"reference"}), 1),
@@ -278,7 +317,7 @@ fn tutor_examples_follow_final_state_schema_and_provider_requests() {
 #[test]
 fn model_tutor_examples_keep_native_selection_and_short_text_repairs() {
     for native_board in [false, true] {
-        let mut context = json!({"status":"active","native_board_candidate_pending":native_board});
+        let mut context = json!({"status":"practice","native_board_candidate_pending":native_board});
         let spec = crate::tutor::model_spec_for_context(&context).unwrap();
         let examples = spec.parameters["examples"].as_array().unwrap();
         assert!(examples.iter().any(|example| example["operation"] == "select"));
@@ -296,7 +335,7 @@ fn model_tutor_examples_keep_native_selection_and_short_text_repairs() {
 
 #[test]
 fn tutor_schema_examples_stay_stable_when_actual_references_change() {
-    for status in ["active", "observing", "reference"] {
+    for status in ["practice", "observing", "reference"] {
         let context = |suffix: &str| json!({"status":status,"learner_context":{
             "pending_assessment_refs":[format!("action:open-{suffix}")],
             "uninterpreted_fact_refs":[format!("usage:learner-{suffix}")]}});
@@ -319,7 +358,7 @@ fn tutor_schema_examples_stay_stable_when_actual_references_change() {
         assert!(!examples.iter().any(|example| example["operation"] == "assess" || example["nature"] == "hypothesis"),
             "stable examples must not fabricate available learner facts");
         if status == "observing" {
-            assert_eq!(next.parameters["properties"]["operation"]["enum"], json!(["trace", "understanding", "evidence"]));
+            assert_eq!(next.parameters["properties"]["operation"]["enum"], json!(["trace", "understanding", "evidence", "corrections", "closed_book"]));
             assert!(next.parameters["properties"].get("move").is_none());
         } else if status == "reference" {
             assert_eq!(next.parameters["properties"]["operation"]["enum"], json!(["trace"]));
@@ -330,7 +369,7 @@ fn tutor_schema_examples_stay_stable_when_actual_references_change() {
 
 #[test]
 fn tutor_intent_origins_follow_the_frozen_mode_action_and_preferences() {
-    let start=json!({"status":"active","default_teaching_intent":null,
+    let start=json!({"status":"practice","default_teaching_intent":null,
         "current_request":"请继续本次学习，结合当前阅读位置和已有回应，选择一个有依据的教学动作。",
         "user_intent":"先讲解一个关系，再根据我的回应继续。","confirmed_preferences":[]});
     let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&start));
@@ -376,15 +415,15 @@ fn tutor_intent_origins_follow_the_frozen_mode_action_and_preferences() {
 
 #[test]
 fn tutor_learner_view_examples_follow_available_facts_and_current_permissions() {
-    for status in ["active", "observing", "reference", "paused", "inactive", "unready"] {
+    for status in ["practice", "observing", "reference", "paused", "inactive", "unready"] {
         for (assessment, hypothesis) in [(false, false), (true, false), (false, true), (true, true)] {
             let context = json!({"status":status,"learner_context":{
                 "pending_assessment_refs":if assessment { vec!["action:actual-open"] } else { vec![] },
                 "uninterpreted_fact_refs":if hypothesis { vec!["usage:actual-user"] } else { vec![] },
             }});
             let view = crate::tutor::learner_view(&context);
-            let expect_assessment = assessment && status == "active";
-            let expect_hypothesis = hypothesis && matches!(status, "active" | "observing");
+            let expect_assessment = assessment && status == "practice";
+            let expect_hypothesis = false; // Ordinary expression capture belongs to the background observer.
             if !expect_assessment && !expect_hypothesis {
                 assert!(view.get("tool_input_examples").is_none(), "no applicable examples in {status}");
                 continue;
@@ -430,7 +469,7 @@ fn tutor_learner_view_examples_follow_available_facts_and_current_permissions() 
 
 #[test]
 fn tutor_neutral_request_can_invite_without_rewriting_learner_intent_or_forcing_every_turn() {
-    let context = json!({"status":"active","current_request":"I still mix moving time up with the whole journey."});
+    let context = json!({"status":"practice","current_request":"I still mix moving time up with the whole journey."});
     let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
     let registration = registry.registration("tutor.step").unwrap();
     let examples = registration.spec.parameters["examples"].as_array().unwrap();
@@ -486,7 +525,7 @@ fn tutor_coach_binding_and_adjustment_stay_private_in_tool_arguments() {
 
 #[test]
 fn tutor_new_support_allocates_help_and_an_optional_remaining_inference() {
-    let context = json!({"status":"active"});
+    let context = json!({"status":"practice"});
     let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
     let registration = registry.registration("tutor.step").unwrap();
     let mut request = registration.spec.parameters["examples"].as_array().unwrap().iter()
@@ -703,7 +742,7 @@ fn goal_operations_never_silently_discard_plan_fields() {
 
 #[test]
 fn tutor_revision_contract_accepts_only_local_text_edits_and_evidence_resubmission() {
-    let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&json!({"status":"active"})));
+    let registry=crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&json!({"status":"practice"})));
     let registration=registry.registration("tutor.step").unwrap();
     let evidence_only=json!({"operation":"revise","draft_ref":"draft:current","edits":[]});
     registration.validate_arguments(&evidence_only.to_string()).unwrap();
@@ -745,15 +784,15 @@ fn tutor_revision_contract_accepts_only_local_text_edits_and_evidence_resubmissi
 
 #[test]
 fn tutor_revision_vocabulary_stays_stable_and_requires_active_text_mode() {
-    let plain=json!({"status":"active"});
-    let with_draft=json!({"status":"active","draft_ref":"draft:current","open_issues":[{"issue":"Missing source evidence"}]});
+    let plain=json!({"status":"practice"});
+    let with_draft=json!({"status":"practice","draft_ref":"draft:current","open_issues":[{"issue":"Missing source evidence"}]});
     for model_facing in [false,true] {
         let schema=|context:&Value| if model_facing {crate::tutor::model_spec_for_context(context)} else {crate::tutor::spec_for_context(context)};
         let first=schema(&plain).unwrap();
         let next=schema(&with_draft).unwrap();
         assert_eq!(serde_json::to_value(first).unwrap(),serde_json::to_value(next).unwrap(),
             "actual draft availability and refs belong in private state, not a changing tool vocabulary");
-        for context in [json!({"status":"observing"}),json!({"status":"reference"}),json!({"status":"active","native_board_candidate_pending":true})] {
+        for context in [json!({"status":"observing"}),json!({"status":"reference"}),json!({"status":"practice","native_board_candidate_pending":true})] {
             let spec=schema(&context).unwrap();
             assert!(!spec.parameters["properties"]["operation"]["enum"].as_array().unwrap().contains(&json!("revise")));
             assert!(spec.parameters["properties"].get("draft_ref").is_none());
@@ -762,7 +801,7 @@ fn tutor_revision_vocabulary_stays_stable_and_requires_active_text_mode() {
         }
     }
     assert!(crate::tutor::execution_guidance(&plain)["text_revision"].is_object());
-    assert!(crate::tutor::execution_guidance(&json!({"status":"active","native_board_candidate_pending":true}))["text_revision"].is_null());
+    assert!(crate::tutor::execution_guidance(&json!({"status":"practice","native_board_candidate_pending":true}))["text_revision"].is_null());
 }
 
 #[test]
@@ -799,7 +838,7 @@ fn tutor_operations_require_their_payloads() {
         json!({"operation":"assess","action_ref":"a1"}),
         true,
     );
-    let mut input = json!({"operation":"select","move":{"move_id":"m1","object_ids":["o1"],"capability":"evaluation","kind":"question","prompt":"Compare","interaction_intent":"guided_inquiry","intent_origin":"current_request"}});
+    let mut input = json!({"operation":"select","move":{"move_id":"m1","object_ids":["o1"],"capability":"evaluation","kind":"question","prompt":"Compare","interaction_intent":"guided_inquiry","intent_origin":"current_request","intent_quote":"Compare"}});
     check("tutor.step", input.clone(), true);
     input["move"]["assessment"] =
         json!({"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});

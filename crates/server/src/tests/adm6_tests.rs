@@ -61,7 +61,7 @@ fn next_review_fixture_request(fake: &tiny_http::Server) -> tiny_http::Request {
                     target_item_ids: vec![item_id.clone()], reason: None,
                 }).collect(),
             }).unwrap())
-        } else if system.starts_with("你是 Understand Book 的教学教练。") {
+        } else if system.starts_with("你整理 Understand Book 普通对话中已经发生的理解变化。") {
             let input: Value = serde_json::from_str(tail).unwrap();
             assert_eq!(input["trigger"], "after_turn");
             assert_eq!(input["teaching_context"]["status"], "observing");
@@ -69,9 +69,7 @@ fn next_review_fixture_request(fake: &tiny_http::Server) -> tiny_http::Request {
                 .filter(|fact| fact["already_interpreted"] != true)
                 .map(|fact| json!({"fact_ref":fact["fact_ref"], "decision":"no_new_information",
                     "reason":"This review transport fixture does not assess learner understanding."})).collect();
-            Some(json!({"next_step":{"focus":"Keep the accepted Resident task",
-                "participation":{"choice":"conclude", "reason":"Observation only."}},
-                "observations":observations, "reason":"The delivered response is already recorded."}))
+            Some(json!({"observations":observations, "reason":"The delivered response is already recorded."}))
         } else { None };
         if let Some(output) = output {
             respond(request, json!({"role":"assistant", "content":output.to_string()}), 10);

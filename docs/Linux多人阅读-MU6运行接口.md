@@ -89,10 +89,10 @@ GET events -> queued snapshot -> run.started -> run.resource / activity / answer
 | 字段 | 默认值 | 含义 |
 | --- | --- | --- |
 | `http_workers` | 4 | 普通 HTTP 请求处理线程；SSE 与同步 chat 等待使用既有独立观察线程 |
-| `active_runs / user_active_runs` | 4 / 1 | 全局/单用户活动份额；领取准备也占份额 |
+| `active_runs / user_active_runs` | 8 / 1 | 全局/单用户活动份额；领取准备也占份额 |
 | `queued_runs / user_queued_runs` | 20 / 4 | 全局/单用户未结接单，含 preparing、queued、claimed、unsaved |
-| `model_slots / user_model_slots` | 2 / 1 | 实际 Provider 调用并发，等待者按用户轮转 |
-| `model_request_timeout_seconds` | 600 | 前台单次模型请求总时限，覆盖响应体；不是整个 Agent 回合时限 |
+| `model_slots / user_model_slots` | 8 / 1 | 前台 Provider 调用并发，等待者按用户轮转；后台复核另有 1 个独立名额 |
+| `model_request_timeout_seconds` | 600 | 前台单次模型请求总时限，覆盖重试、等待和响应体；不是整个 Agent 回合时限 |
 | `background_model_request_timeout_seconds` | 180 | 后台记忆复核单次模型请求总时限；翻译等既有专用任务时限保持不变 |
 | `model_connect_timeout_seconds` | 15 | 建立模型连接时限，实际不超过该次请求总时限 |
 | `preview_slots / plot_slots / animation_slots` | 1 / 1 / 1 | 三个独立制作资源池，每用户各最多 1；网络制作需通过 MU7 执行器探针 |

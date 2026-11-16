@@ -126,6 +126,15 @@ fn cross_book_resident_loop_preserves_main_task_references_learning_and_followup
     assert!(source.label_snapshot.contains("Rust 借用"));
     let resolve=f.action(&f.a,&current,"page","agent/source.resolve",json!({"turn_id":first["turn_id"],"source_ref_id":source.source_ref_id}));
     assert_eq!(resolve["result"]["highlighted_quote"],RUST_SOURCE);
+    let window = f.action(&f.a, &current, "page", "agent/source.read", json!({
+        "source": {"turn_id": first["turn_id"], "source_ref_id": source.source_ref_id},
+        "include_outline": false
+    }));
+    assert_eq!(window["result"]["published_book_ref"], json!(rust));
+    assert!(window["result"]["segments"].as_array().unwrap().iter()
+        .any(|segment| !segment["highlights"].as_array().unwrap().is_empty()));
+    assert_eq!(window["reader"], current["reader"]);
+    assert_eq!(window["revision"], current["revision"]);
     let opened=f.action(&f.a,&current,"page","agent/source.open",json!({"turn_id":first["turn_id"],"source_ref_id":source.source_ref_id}));
     assert_eq!(opened["result"]["opened"],false);assert_eq!(opened["reader"],current["reader"]);
     assert!(opened["result"]["source_url"].as_str().unwrap().contains(&rust.publication_id));

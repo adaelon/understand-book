@@ -9,7 +9,7 @@
 | 正式网址 | https://understandbook.top |
 | 新服务器 | `184.195.172.171`，Ubuntu 24.04 |
 | 正式服务 | `understand-book-multi.service`，已启动并启用开机启动 |
-| 程序版本 | `/opt/understand-book/releases/note-thinking-20261101`（[2026-11-01 后续发布](../note-thinking-20261101/README.md)） |
+| 程序版本 | `/opt/understand-book/releases/coach-cost-20261105`（[2026-11-05 后台学习分析修复](../coach-cost-20261105/README.md)） |
 | 正式数据根 | `/opt/understand-book/data/production-20261031` |
 | 环境文件 | `/opt/understand-book/multi-reader.env` |
 | 切换时完整备份 | `/opt/understand-book/backups/server-move-final-20261031` |

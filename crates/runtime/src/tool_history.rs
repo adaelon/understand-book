@@ -209,7 +209,7 @@ mod tests {
         assert!(projection.declarations.iter().any(|tool|tool.spec.name=="board.author" && !tool.defer_loading));
         assert!(projection.updates.is_empty(),"the tools-disabled series has ended");
         assert_eq!(projection.declarations.iter().map(|tool|tool.spec.clone()).collect::<Vec<_>>(),request.tools,"only the current authorized route is declared");
-        let (wire,executable)=crate::deepseek_messages::request_projection("deepseek-v4-flash",&request,
+        let (wire,executable)=crate::deepseek_messages::request_projection(crate::AgentReasoningEffort::default(), "deepseek-v4-flash",&request,
             crate::deepseek_messages::MessagesCapabilities{tool_update:ToolUpdateMode::AdditionOnly,system_in_history:true}).unwrap();
         let board_name=executable.iter().find(|(_,name)|name.as_str()=="board.author").unwrap().0;
         let wire_board=wire["tools"].as_array().unwrap().iter().find(|tool|tool["name"]==board_name.as_str()).unwrap();

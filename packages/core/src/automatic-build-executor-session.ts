@@ -1,4 +1,5 @@
 import { fitStructureThemeSession, checkpointStructureThemeAction, StructureThemeActionRejected } from "./book-structure-theme-session";
+import { readCourseTask } from "./course-build";
 import {
   finishAutomaticBuildWorker,
   readAutomaticBuildWorker,
@@ -182,7 +183,7 @@ const STAGES = new Set<AutomaticBuildStage>([
   "profile_sidecar",
   "pass2",
   "book_structure",
-  "formal_objects", "cognitive_materials", "teaching_publish",
+  "formal_objects", "cognitive_materials", "teaching_publish", "course",
   "paper_reading_guide",
 ]);
 
@@ -779,6 +780,7 @@ export interface AutomaticBuildSemanticCandidateContractV2 {
 }
 
 export interface AutomaticBuildSemanticCandidateContractV3 {
+  source_review_requirement?: string;
   version: "automatic_build_semantic_candidate_contract.v3";
   format: "strict_json";
   encoding: "utf-8";
@@ -2429,10 +2431,12 @@ function taskDescriptor(
         throw new Error("policy_generation_conflict: frozen BookStructure task is unavailable");
       }
       if (manifest.stage === "paper_reading_guide") throw new Error("executor stage has no semantic descriptor");
+      const courseTask = binding && isAutomaticBuildTaskPolicyBindingV2(binding) && manifest.stage === "course"
+        ? readCourseTask(target, binding.policy_generation_id, workUnitId) : undefined;
       const stage = readAutomaticBuildTaskStage(target, { stage: manifest.stage, work_unit_id: workUnitId,
         ...(task && task.parent_unit_lid !== "stitch" ? { parent_lid: task.parent_unit_lid } : {}) },
         manifest.policy_fingerprint.quality_profile,
-        task && "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
+        courseTask ? { course_goal: courseTask.course_goal } : task && "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
       descriptor = stage?.work_units?.find(candidate => candidate.work_unit_id === workUnitId);
       currentBinding = stage?.task_bindings?.[workUnitId];
       if (task && canonicalAutomaticBuildJson(task.descriptor) !== canonicalAutomaticBuildJson(descriptor)) {
@@ -2482,6 +2486,8 @@ function semanticCandidateContractV3(
     work_unit_id: descriptor.work_unit_id,
     work_unit_kind: descriptor.kind,
     input_hash: descriptor.input_hash,
+    ...(descriptor.stage === "teaching_publish" ? { source_review_requirement:
+      "For each final review sample, verify every LID in the input sample's evidence_lids, including additional coverage evidence. Cite each verified LID in that sample's source_bindings. This applies to both pass and fail: report fail when the evidence does not support the claim." } : {}),
   };
 }
 
@@ -2651,11 +2657,12 @@ export function packedDeliveryMaterial(input: {
   generation_input_ref: string;
   semantic_prompt: string;
   semantic_input: string;
+  payload_digests?: { semantic_prompt: string; semantic_input: string };
   output_contract: AutomaticBuildExecutorOutputContractV3;
   media?: ExecutorMediaInputV1;
 }): AutomaticBuildExecutorDeliveryMaterialV3 {
-  const semanticPromptSha256 = sha256(input.semantic_prompt);
-  const semanticInputSha256 = sha256(input.semantic_input);
+  const semanticPromptSha256 = input.payload_digests?.semantic_prompt ?? sha256(input.semantic_prompt);
+  const semanticInputSha256 = input.payload_digests?.semantic_input ?? sha256(input.semantic_input);
   const promptPack = packDeliverySegment({
     transport_profile: input.execution_profile.transport_profile,
     opaque_session_ref: input.opaque_session_ref,
@@ -2795,6 +2802,7 @@ function renderDeliveryMaterial(input: {
     semantic_prompt: input.semantic_prompt,
     semantic_input: semanticInput,
     output_contract: outputContract,
+    payload_digests: { semantic_prompt: semanticPromptSha256, semantic_input: semanticInputSha256 },
     ...(media ? { media } : {}),
   });
 }
@@ -2872,13 +2880,15 @@ function renderPrivateDeliveryMaterial(input: {
   const semanticInput = input.semantic_input
     ?? canonicalAutomaticBuildJson(input.context.attempt.task);
   const outputContract = privateArtifactCandidateContractV3(input.context.attempt.task, input.execution_profile.transport_profile);
+  const semanticPromptSha256 = sha256(semanticPrompt);
+  const semanticInputSha256 = sha256(semanticInput);
   const generationInputRef = privateGenerationInputRefFor({
     opaque_session_ref: input.opaque_session_ref,
     opaque_handoff_ref: input.opaque_handoff_ref,
     owner_identity: input.context.owner,
     task_id: input.context.attempt.task.task_id,
-    semantic_prompt_sha256: sha256(semanticPrompt),
-    semantic_input_sha256: sha256(semanticInput),
+    semantic_prompt_sha256: semanticPromptSha256,
+    semantic_input_sha256: semanticInputSha256,
     transport_profile: input.execution_profile.transport_profile,
     output_schema_version: outputContract.version,
   });
@@ -2889,6 +2899,7 @@ function renderPrivateDeliveryMaterial(input: {
     semantic_prompt: semanticPrompt,
     semantic_input: semanticInput,
     output_contract: outputContract,
+    payload_digests: { semantic_prompt: semanticPromptSha256, semantic_input: semanticInputSha256 },
   });
 }
 

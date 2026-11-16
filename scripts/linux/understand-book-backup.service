@@ -1,0 +1,11 @@
+[Unit]
+Description=Understand Book consistent off-host business backup
+After=network-online.target
+Wants=network-online.target
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3.12 /opt/understand-book/operations/backup-production.py
+TimeoutStartSec=2h
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7

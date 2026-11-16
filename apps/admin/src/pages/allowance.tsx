@@ -5,294 +5,92 @@ import { useData, DataState, DataTable, Pagination } from "@/components/data";
 import { Field, OperationDialog, useOperations } from "@/components/operation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { percentage, percentageInput, milliPercentage } from "@/lib/allowance";
 import { McpCorrectionDialog } from "./mcp";
 import { CloudPlansPanel } from "./cloud-plans";
-import { AllowanceValue, Disclosure, Distribution, Metric, Notice, overviewMoney, overviewPercentage } from '@/components/analytics';
+import { Distribution, Metric, Notice, overviewMoney } from '@/components/analytics';
 
-export function AllowancePanel({
-  userId,
-  current,
-}: {
-  userId: string;
-  current: Period | null;
-}) {
-  const [action, setAction] = useState(""),
-    [selected, setSelected] = useState<Period | null>(null),
-    [offset, setOffset] = useState(0);
-  const base = `/admin/users/${encodeURIComponent(userId)}`,
-    ops = useOperations();
-  const periods = useData<Page<Period>>(
-    `${base}/allowance-periods?limit=20&offset=${offset}`,
-  );
+const actionsFor = (period: Period) => [
+  ...(!period.balance.unlimited ? ['赠送 / 扣回预算', '收款并补充本期'] : []),
+  ...(!period.is_plan ? ['编辑有效期'] : []),
+];
+
+export function AllowancePanel({ userId, current }: { userId: string; current: Period | null }) {
+  const [action, setAction] = useState(''), [selected, setSelected] = useState<Period | null>(null), [offset, setOffset] = useState(0);
+  const base = `/admin/users/${encodeURIComponent(userId)}`, ops = useOperations();
+  const periods = useData<Page<Period>>(`${base}/allowance-periods?limit=20&offset=${offset}`);
   const now = Math.floor(Date.now() / 1000);
-  const open = (label: string, period: Period | null = current) => {
-    setSelected(period);
-    setAction(label);
-  };
+  const open = (label: string, period: Period | null = current) => { setSelected(period); setAction(label); };
+  const creating = action === '单独赠送 AI 额度';
   const submit = async (data: FormData) => {
-    const text = (key: string) => String(data.get(key) ?? "").trim();
+    const text = (key: string) => String(data.get(key) ?? '').trim();
+    const binding = { period_id: selected?.period_id, revision: selected?.revision };
     let path: string, body: Record<string, unknown>;
-    const binding = {
-      period_id: selected?.period_id,
-      revision: selected?.revision,
-    };
-    if (action === "新建额度期") {
-      path = "allowance-periods";
-      body = {
-        starts_at: timestamp(text("starts_at")),
-        expires_at: timestamp(text("expires_at")),
-        basis: { version: text("basis_version"), basis_micro_cny: moneyInput(text("basis_amount")) },
-      };
-    } else if (action === "配置百分比基准") {
-      path = "allowance-basis";
-      body = { ...binding, basis: { version: text("basis_version"), basis_micro_cny: moneyInput(text("basis_amount")) } };
-    } else if (action === "编辑有效期") {
-      path = "allowance-validity";
-      body = {
-        ...binding,
-        starts_at: timestamp(text("starts_at")),
-        expires_at: timestamp(text("expires_at")),
-      };
-    } else if (action === "登记收款") {
-      path = "percentage-receipts";
-      body = {
-        ...binding,
-        amount_fen: moneyInput(text("amount"), 2),
-        basis_version: selected?.balance.allowance_basis?.version,
-        delta_milli_percent: percentageInput(text("delta")),
-        paid_at: timestamp(text("paid_at")),
-        channel: text("channel"),
-        external_ref: text("external_ref") || null,
-        note: text("note"),
-      };
+    if (creating) {
+      const grant = moneyInput(text('budget'));
+      if (grant <= 0) throw new Error('赠送的 AI 预算须大于零。');
+      path = 'allowance-periods';
+      body = { starts_at: timestamp(text('starts_at')), expires_at: timestamp(text('expires_at')), initial_grant_micro_cny: grant, reason: text('reason') };
+    } else if (action === '编辑有效期') {
+      path = 'allowance-validity';
+      body = { ...binding, starts_at: timestamp(text('starts_at')), expires_at: timestamp(text('expires_at')) };
+    } else if (action === '收款并补充本期') {
+      const amount = moneyInput(text('amount'), 2), budget = moneyInput(text('budget'));
+      if (amount <= 0 || budget <= 0) throw new Error('实际收款和补充预算须大于零。');
+      path = 'receipts';
+      body = { ...binding, amount_fen: amount, delta_micro_cny: budget, paid_at: timestamp(text('paid_at')), channel: text('channel'), external_ref: text('external_ref') || null, note: text('note') };
     } else {
-      path = "allowance-percentage-adjustments";
-      body = {
-        ...binding,
-        basis_version: selected?.balance.allowance_basis?.version,
-        delta_milli_percent: percentageInput(text("delta")),
-        reason: text("reason"),
-      };
+      const delta = moneyInput(text('budget'));
+      if (!delta) throw new Error('请输入要赠送或扣回的预算金额。');
+      path = 'allowance-adjustments'; body = { ...binding, delta_micro_cny: delta, reason: text('reason') };
     }
+    if ('starts_at' in body && Number(body.expires_at) <= Number(body.starts_at)) throw new Error('到期时间须晚于开始时间。');
     return ops.submit(action, `${base}/${path}`, body);
   };
-  return (
-    <section className="analytics-panel">
+  return <section className="analytics-panel">
+    <CloudPlansPanel userId={userId} />
+    <section className="space-y-4 border-t pt-5" aria-label="本期 AI 使用预算">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2>AI 使用额度</h2>
+        <h2>本期 AI 使用预算</h2>
         <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            disabled={ops.blocked}
-            onClick={() => open("新建额度期", null)}
-          >
-            新建额度期
-          </Button>
-          {current && !current.balance.unlimited &&
-            (current.balance.allowance_basis ? ["赠送 / 调整", "登记收款", "编辑有效期"] : ["配置百分比基准", "编辑有效期"]).map((label) => (
-              <Button
-                key={label}
-                variant="outline"
-                disabled={ops.blocked}
-                onClick={() => open(label)}
-              >
-                {label}
-              </Button>
-            ))}
+          {current && actionsFor(current).map(label => <Button key={label} variant="outline" disabled={ops.blocked} onClick={() => open(label)}>{label}</Button>)}
+          {!current && <Button variant="outline" disabled={ops.blocked} onClick={() => open('单独赠送 AI 额度', null)}>单独赠送 AI 额度</Button>}
         </div>
       </div>
-      <p className="text-sm text-muted-foreground">
-        {current?.balance.unlimited ? '内测不限额度，实际使用成本持续记录。' : '百分比按本期固定基准计算，实际收款单独以元记录。'}
-      </p>
-      {current?.balance.unlimited ? (
-        <dl className="grid grid-cols-2 gap-3">
-          <Metric label="当前可用" value="不限额度" detail="内测期间有效" tone="green" />
-          <Metric label="累计已用" value={`${money(current.balance.debited_micro_cny)} 元`} detail="使用成本记录" />
-          <Metric label="在途预留" value={`${money(current.balance.active_reserved_micro_cny)} 元`} />
-          <Metric label="待核算" value={`${money(current.balance.pending_micro_cny)} 元`} />
-        </dl>
-      ) : current ? (
-        <>
-          <dl className="grid grid-cols-2 gap-3"><Metric label="当前可用" value={<AllowanceValue ratio={current.balance.percentages?.available} amount={current.balance.available_micro_cny}/>} detail="可用于后续 AI 调用" tone="green" /><Metric label="本期授予 / 调整" value={<AllowanceValue ratio={current.balance.percentages?.granted} amount={current.balance.granted_micro_cny}/>} detail={current.balance.allowance_basis ? '按本期固定基准计算，可超过 100%' : '本额度期累计授予与调整金额'} /></dl>
-          <Distribution label="本期额度分配" total={current.balance.granted_micro_cny} segments={([
-            ['debited','已扣减',current.balance.debited_micro_cny,'blue'],
-            ['active_reserved','在途预留',current.balance.active_reserved_micro_cny,'violet'],
-            ['pending','待核算占用',current.balance.pending_micro_cny,'amber'],
-            ['available','可用',Math.max(0,current.balance.available_micro_cny),'green'],
-          ] as const).map(([key,label,value,tone])=>({label,value,tone,display:current.balance.percentages ? overviewPercentage(current.balance.percentages[key]) : `${overviewMoney(value)} 元`}))} note={current.balance.allowance_basis ? '色条表示本期额度的分配；各项百分比沿用固定基准。' : '色条按本期实际金额分配。'} />
-          {!current.balance.allowance_basis && <Notice warning>此额度期尚未设置百分比基准，当前按金额展示。配置基准后可使用比例管理。</Notice>}
-          {current.balance.pending_micro_cny > 0 && <Notice warning>有 <AllowanceValue ratio={current.balance.percentages?.pending} amount={current.balance.pending_micro_cny}/> 额度等待核算，可在「费用与账单」中处理。</Notice>}
-          {current.balance.available_micro_cny < 0 && <Notice warning>当前可用额度不足，请核对账目或补充额度。</Notice>}
-          <Disclosure title="精确额度与基准"><dl className="number-detail text-sm">{([
-            ['granted','本期授予 / 调整',current.balance.granted_micro_cny],
-            ['available','当前可用',current.balance.available_micro_cny],
-            ['debited','已扣减',current.balance.debited_micro_cny],
-            ['active_reserved','在途预留',current.balance.active_reserved_micro_cny],
-            ['pending','待核算占用',current.balance.pending_micro_cny],
-          ] as const).map(([key,label,value])=><div key={key}><dt>{label}</dt><dd>{money(value)} 元{current.balance.percentages && <> · {percentage(current.balance.percentages[key])}</>}</dd></div>)}<div><dt>固定百分比基准</dt><dd>{current.balance.allowance_basis ? `${current.balance.allowance_basis.version} · ${money(current.balance.allowance_basis.basis_micro_cny)} 元` : '尚未配置'}</dd></div></dl></Disclosure>
-          <p className="text-sm">
-            有效期：{date(current.starts_at)} — {date(current.expires_at)}
-            （香港时间）
-          </p>
-        </>
-      ) : (
-        <p>当前无有效额度期。账号仍可阅读已授权材料与历史。</p>
-      )}
-      <CloudPlansPanel userId={userId} />
-      {!current?.balance.unlimited && <p className="text-xs text-muted-foreground">补充额度不会改变旧用量比例，新一期不自动结转旧余额。</p>}
-      <details>
-        <summary className="cursor-pointer text-sm">
-          查看各额度期 / 操作旧期
-        </summary>
-        <DataState query={periods} />
-        {periods.data && (
-          <>
-            <DataTable
-              rows={periods.data.items}
-              columns={[
-                { header: "额度期", accessorKey: "period_id" },
-                {
-                  header: "开始",
-                  cell: ({ row }) => date(row.original.starts_at),
-                },
-                {
-                  header: "到期",
-                  cell: ({ row }) => row.original.balance.unlimited ? '内测期间' : date(row.original.expires_at),
-                },
-                {
-                  header: "可用额度",
-                  cell: ({ row }) =>
-                    row.original.balance.unlimited ? '不限额度' : <AllowanceValue ratio={row.original.balance.percentages?.available} amount={row.original.balance.available_micro_cny}/>,
-                },
-                {
-                  header: "操作",
-                  cell: ({ row }) => (
-                    <div className="flex gap-1">
-                      {(row.original.balance.unlimited ? ["编辑有效期"] : row.original.balance.allowance_basis ? ["赠送 / 调整", "登记收款", "编辑有效期"] : ["配置百分比基准", "编辑有效期"]).map(
-                        (label) => (
-                          <Button
-                            variant="ghost"
-                            disabled={ops.blocked}
-                            key={label}
-                            onClick={() => open(label, row.original)}
-                          >
-                            {label}
-                          </Button>
-                        ),
-                      )}
-                    </div>
-                  ),
-                },
-              ]}
-            />
-            <Pagination
-              offset={offset}
-              total={periods.data.total}
-              change={setOffset}
-            />
-          </>
-        )}
-      </details>
-      <OperationDialog
-        title={action}
-        description={
-          action === "登记收款"
-            ? "确认外部已收款后登记；实际收款与授予使用额度在同一笔操作中保存。"
-            : action === "编辑有效期"
-              ? "修改后，该期全部剩余额度使用新的到期时间。"
-              : action === "赠送 / 调整"
-                ? "赠送输入正百分比，下调输入负百分比；下调不得占用已结算与在途额度。"
-                : "固定基准一经绑定不能更改。新建额度期初始为零，时间均为香港时间。"
-        }
-        open={!!action}
-        onOpenChange={(open) => {
-          if (!open) setAction("");
-        }}
-        onSubmit={submit}
-      >
-        {selected && (
-          <p className="break-all text-sm text-muted-foreground">
-            额度期 {selected.period_id} · 基准 {selected.balance.allowance_basis?.version ?? "待配置"}
-          </p>
-        )}
-        {["新建额度期", "配置百分比基准"].includes(action) && <>
-          <Field label="固定基准版本"><Input name="basis_version" required /></Field>
-          <Field label="100% 对应内部成本额度（元）"><Input name="basis_amount" inputMode="decimal" required /></Field>
-          <p className="text-sm text-muted-foreground">按已确定的商业配置填写；该值不表示用户实际付款价格。</p>
-        </>}
-        {["新建额度期", "编辑有效期"].includes(action) && (
-          <>
-            <Field label="开始时间（香港）">
-              <Input
-                name="starts_at"
-                type="datetime-local"
-                defaultValue={dateInput(selected?.starts_at ?? now)}
-                required
-              />
-            </Field>
-            <Field label="到期时间（香港）">
-              <Input
-                name="expires_at"
-                type="datetime-local"
-                defaultValue={dateInput(
-                  selected?.expires_at ?? now + 30 * 86400,
-                )}
-                required
-              />
-            </Field>
-          </>
-        )}
-        {action === "赠送 / 调整" && (
-          <>
-            <Field label="额度调整（%）">
-              <Input
-                name="delta"
-                inputMode="decimal"
-                placeholder="例如 50 或 -2.5"
-                required
-              />
-            </Field>
-            <Field label="原因">
-              <Input name="reason" required />
-            </Field>
-          </>
-        )}
-        {action === "登记收款" && (
-          <>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="实际收款（元）">
-                <Input name="amount" inputMode="decimal" required />
-              </Field>
-              <Field label="授予 AI 使用额度（%）">
-                <Input name="delta" inputMode="decimal" required />
-              </Field>
-            </div>
-            <Field label="付款时间（香港）">
-              <Input
-                name="paid_at"
-                type="datetime-local"
-                defaultValue={dateInput(now)}
-                required
-              />
-            </Field>
-            <Field label="渠道">
-              <Input name="channel" defaultValue="微信" required />
-            </Field>
-            <Field label="外部交易编号（可选）">
-              <Input name="external_ref" />
-            </Field>
-            <Field label="收款备注">
-              <Input name="note" required />
-            </Field>
-          </>
-        )}
-      </OperationDialog>
-      <AllowanceOffers />
+      <p className="text-sm text-muted-foreground">后台按服务成本管理预算，读者看到本期剩余比例。实际收款在「费用与账单」中单独记录。</p>
+      {current?.balance.unlimited ? <dl className="grid grid-cols-2 gap-3"><Metric label="当前可用" value="不限额度" detail="内测期间有效" tone="green" /><Metric label="累计已用" value={`${money(current.balance.debited_micro_cny)} 元`} detail="使用成本记录" /></dl> : current ? <>
+        <dl className="grid grid-cols-2 gap-3"><Metric label="当前可用预算" value={`${overviewMoney(current.balance.available_micro_cny)} 元`} detail="可用于后续 AI 服务" tone="green" /><Metric label="本期预算总额" value={`${overviewMoney(current.balance.granted_micro_cny)} 元`} detail="含套餐、补充与赠送调整" /></dl>
+        <Distribution label="本期预算分配" total={current.balance.granted_micro_cny} segments={([
+          ['已使用', current.balance.debited_micro_cny, 'blue'], ['进行中预留', current.balance.active_reserved_micro_cny, 'violet'],
+          ['待核算占用', current.balance.pending_micro_cny, 'amber'], ['可用', Math.max(0, current.balance.available_micro_cny), 'green'],
+        ] as const).map(([label, value, tone]) => ({ label, value, tone, display: `${overviewMoney(value)} 元` }))} note="可用预算已扣除进行中和待核算的占用，核算后会更新。" />
+        <details className="text-xs text-muted-foreground"><summary className="cursor-pointer">查看精确预算</summary><p className="mt-2">可用 {money(current.balance.available_micro_cny)} 元 · 总额 {money(current.balance.granted_micro_cny)} 元 · 已用 {money(current.balance.debited_micro_cny)} 元 · 预留 {money(current.balance.active_reserved_micro_cny)} 元 · 待核算 {money(current.balance.pending_micro_cny)} 元</p></details>
+        {current.balance.pending_micro_cny > 0 && <Notice warning>有 {money(current.balance.pending_micro_cny)} 元预算等待核算，可在「费用与账单」中处理。</Notice>}
+        {current.balance.available_micro_cny < 0 && <Notice warning>当前预算不足，请核对账目或补充本期预算。</Notice>}
+        <p className="text-sm">有效期：{date(current.starts_at)} — {date(current.expires_at)}（香港）</p>
+        <p className="text-sm text-muted-foreground">补充本期预算立即可用，不延长有效期，也不增加上传空间。{current.is_plan && '需要延长使用时间，请在上方续费套餐。'}</p>
+      </> : <div className="rounded-lg border border-dashed p-5"><p>尚未开通 AI 使用额度。</p><p className="mt-2 text-sm text-muted-foreground">收款开通请使用上方套餐入口；免费体验可选择「单独赠送 AI 额度」，填写预算和有效期即可。账号仍可阅读已授权材料与历史。</p></div>}
     </section>
-  );
+    <details className="border-t pt-4"><summary className="cursor-pointer text-sm">查看有效期与历史预算</summary>
+      <div className="mt-3 space-y-3"><Button variant="outline" disabled={ops.blocked} onClick={() => open('单独赠送 AI 额度', null)}>新建赠送有效期</Button><DataState query={periods} />
+        {periods.data && <><DataTable rows={periods.data.items} columns={[
+          { header: '开始时间', cell: ({ row }) => date(row.original.starts_at) },
+          { header: '到期时间', cell: ({ row }) => row.original.balance.unlimited ? '内测期间' : date(row.original.expires_at) },
+          { header: '可用 AI 预算', cell: ({ row }) => row.original.balance.unlimited ? '不限额度' : `${money(row.original.balance.available_micro_cny)} 元` },
+          { header: '操作', cell: ({ row }) => <div className="flex flex-wrap gap-1">{actionsFor(row.original).map(label => <Button key={label} variant="ghost" disabled={ops.blocked} onClick={() => open(label, row.original)}>{label}</Button>)}</div> },
+        ]} /><Pagination offset={offset} total={periods.data.total} change={setOffset} /></>}
+      </div>
+    </details>
+    <OperationDialog title={action} description={creating ? '免费赠送 AI 使用预算，同时设置有效期。保存后即可使用，无需再做一次额度调整。不包含套餐课程与上传空间。' : action === '收款并补充本期' ? '确认实际收到款项后，增加所选有效期的 AI 预算。该操作不续期。' : action === '编辑有效期' ? '修改这笔独立额度的起止时间。套餐续费请使用套餐开通入口。' : '赠送输入正金额，扣回输入负金额；仅能扣回尚未使用或占用的预算。'} open={!!action} onOpenChange={value => { if (!value) setAction(''); }} onSubmit={submit} submitLabel={creating ? '确认赠送并开通' : action === '收款并补充本期' ? '确认收款并补充预算' : '保存调整'}>
+      {selected && <p className="mb-3 rounded-md bg-muted/40 p-3 text-sm">操作有效期：{date(selected.starts_at)} — {selected.balance.unlimited ? '内测期间' : date(selected.expires_at)}（香港）<br />当前可用：{selected.balance.unlimited ? '不限额度' : `${money(selected.balance.available_micro_cny)} 元 AI 预算`}</p>}
+      {action === '收款并补充本期' && <Field label="实际收款（元）"><Input name="amount" inputMode="decimal" required /></Field>}
+      {action !== '编辑有效期' && <Field label={action === '赠送 / 扣回预算' ? '预算调整（元，赠送为正、扣回为负）' : '增加 AI 使用预算（元）'}><Input name="budget" inputMode="decimal" required /></Field>}
+      {(creating || action === '编辑有效期') && <><Field label="开始时间（香港）"><Input name="starts_at" type="datetime-local" defaultValue={dateInput(selected?.starts_at ?? now)} required /></Field><Field label="到期时间（香港）"><Input name="expires_at" type="datetime-local" defaultValue={dateInput(selected?.expires_at ?? now + 30 * 86400)} required /></Field></>}
+      {(creating || action === '赠送 / 扣回预算') && <Field label="原因"><Input name="reason" required /></Field>}
+      {action === '收款并补充本期' && <><Field label="付款时间（香港）"><Input name="paid_at" type="datetime-local" defaultValue={dateInput(now)} required /></Field><Field label="收款渠道"><Input name="channel" defaultValue="微信" required /></Field><Field label="交易编号（选填）"><Input name="external_ref" /></Field><Field label="备注（选填）"><Input name="note" /></Field></>}
+    </OperationDialog>
+    <AllowanceOffers />
+  </section>;
 }
-
 const operationNames: Record<string, string> = {
   "create-user": "创建账号",
   password: "改密",
@@ -371,7 +169,7 @@ export function HistoryPanel({ userId }: { userId: string }) {
                     },
                     {
                       header: "原授予额度",
-                      cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack" ? "见调用包" : `${percentage(row.original.grant_percentage)} · 基准 ${row.original.allowance_basis?.version ?? "待配置"}`,
+                      cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack" ? "见调用包" : `${money(Number(row.original.grant_micro_cny))} 元 AI 预算`,
                     },
                     {
                       header: "渠道 / 外部编号",
@@ -430,14 +228,14 @@ export function HistoryPanel({ userId }: { userId: string }) {
                       {
                         header:
                           kind === "allowance-adjustments"
-                            ? "额度差额（%）"
+                            ? "AI 预算差额（元）"
                             : "收款差额（元）",
                         cell: ({ row }) =>
                           kind === "allowance-adjustments"
-                            ? percentage(row.original.delta_percentage)
+                            ? `${money(Number(row.original.delta_micro_cny))} 元`
                             : money(Number(row.original.delta_fen), 2),
                       },
-                      { header: "原期额度差额 / 基准", cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack" ? "见调用包" : `${percentage(row.original.delta_percentage)} · ${row.original.allowance_basis?.version ?? "待配置"}` },
+                      { header: "原期 AI 预算差额", cell: ({ row }) => row.original.entitlement_kind === "mcp_call_pack" ? "见调用包" : `${`${money(Number(row.original.delta_micro_cny))} 元`} · ${row.original.allowance_basis?.version ?? "待配置"}` },
                       { header: "原因", accessorKey: "reason" },
                     ]
             }
@@ -461,14 +259,12 @@ export function HistoryPanel({ userId }: { userId: string }) {
             (p) => p.period_id === periodId,
           );
           if (!period) throw new Error("请先加载原收款所属额度期。");
-          if (!period.balance.allowance_basis) throw new Error("请先为原额度期配置百分比基准。");
-          return ops.submit("追加收款更正", `${base}/percentage-receipt-corrections`, {
+          return ops.submit("追加收款更正", `${base}/receipt-corrections`, {
             receipt_id: correction!.receipt_id,
             period_id: period.period_id,
             revision: period.revision,
             delta_fen: moneyInput(String(data.get("amount")), 2),
-            basis_version: period.balance.allowance_basis.version,
-            delta_milli_percent: percentageInput(String(data.get("delta"))),
+            delta_micro_cny: moneyInput(String(data.get("delta"))),
             reason: String(data.get("reason")),
           });
         }}
@@ -492,7 +288,7 @@ export function HistoryPanel({ userId }: { userId: string }) {
         <Field label="收款差额（元）">
           <Input name="amount" inputMode="decimal" required />
         </Field>
-        <Field label="额度差额（%）">
+        <Field label="AI 预算差额（元）">
           <Input name="delta" inputMode="decimal" defaultValue="0" required />
         </Field>
         <Field label="更正原因">
@@ -508,30 +304,29 @@ export function HistoryPanel({ userId }: { userId: string }) {
 function AllowanceOffers() {
   const ops = useOperations();
   const offers = useData<{ items: AllowanceOffer[] }>("/admin/allowance-offers");
-  const [editing, setEditing] = useState<AllowanceOffer | null>(null);
-  const [open, setOpen] = useState(false);
-  return <details className="border-t pt-3">
-    <summary className="cursor-pointer text-sm">补充方案（所有账号）</summary>
-    <p className="my-3 text-sm text-muted-foreground">方案展示实际价格和增加比例，仅对相同基准版本的有效额度期可见。修改方案不改写原收款回执。</p>
-    <Button variant="outline" disabled={ops.blocked} onClick={() => { setEditing(null); setOpen(true); }}>新增补充方案</Button>
+  const [editing, setEditing] = useState<AllowanceOffer | null>(null), [open, setOpen] = useState(false);
+  return <details className="border-t pt-4">
+    <summary className="cursor-pointer text-sm">管理额度加购商品 · 所有账号共用</summary>
+    <p className="my-3 text-sm text-muted-foreground">加购商品只增加当前有效期的 AI 预算，不续期，不增加空间。保存商品后，实际到账仍需在账号上「收款并补充本期」。</p>
+    <Button variant="outline" disabled={ops.blocked} onClick={() => { setEditing(null); setOpen(true); }}>新增加购商品</Button>
     <DataState query={offers} />
-    {offers.data?.items.map(offer => <div key={offer.offer_id} className="my-3 rounded-md border p-3">
-      <p>{offer.title} · {money(offer.amount_fen, 2)} 元 · 增加 {milliPercentage(offer.delta_milli_percent)} · {offer.enabled ? "已启用" : "已停用"}</p>
-      <p className="text-sm text-muted-foreground">基准 {offer.basis_version} · {offer.instructions}</p>
-      <Button variant="ghost" disabled={ops.blocked} onClick={() => { setEditing(offer); setOpen(true); }}>编辑方案</Button>
+    {offers.data?.items.map(offer => <div key={offer.offer_id} className="my-3 space-y-2 rounded-md border p-4">
+      <p className="font-medium">{offer.title}</p>
+      <p>售价 {money(offer.amount_fen, 2)} 元 · 增加 {money(offer.budget_micro_cny)} 元 AI 预算 · {offer.enabled ? "已启用" : "已停用"}</p>
+      <p className="text-sm text-muted-foreground">{offer.instructions}</p>
+      <Button variant="ghost" disabled={ops.blocked} onClick={() => { setEditing(offer); setOpen(true); }}>编辑加购商品</Button>
     </div>)}
-    <OperationDialog title={editing ? "编辑补充方案" : "新增补充方案"} description="按已确认的销售配置填写；保存方案不会授予额度，实际收款后仍需登记收款。" open={open} onOpenChange={setOpen} onSubmit={data => {
+    <OperationDialog title={editing ? "编辑加购商品" : "新增加购商品"} description="分别填写收取的价格和发放的 AI 预算。所有拥有有效额度的账号均可加购。" open={open} onOpenChange={setOpen} submitLabel="保存加购商品" onSubmit={data => {
       const value = (key: string) => String(data.get(key) ?? "").trim();
-      const amount = moneyInput(value("amount"), 2), delta = percentageInput(value("delta"));
-      if (amount <= 0 || delta <= 0) throw new Error("价格和增加比例须大于零。");
-      return ops.submit("保存补充方案", "/admin/allowance-offers", { offer_id: editing?.offer_id ?? crypto.randomUUID(), title: value("title"), amount_fen: amount, delta_milli_percent: delta, basis_version: value("basis_version"), instructions: value("instructions"), enabled: data.get("enabled") === "on" });
+      const amount = moneyInput(value("amount"), 2), budget = moneyInput(value("budget"));
+      if (amount <= 0 || budget <= 0) throw new Error("售价和增加预算须大于零。");
+      return ops.submit("保存额度加购商品", "/admin/allowance-offers", { offer_id: editing?.offer_id ?? crypto.randomUUID(), title: value("title"), amount_fen: amount, budget_micro_cny: budget, instructions: value("instructions"), enabled: data.get("enabled") === "on" });
     }}>
-      <Field label="方案名称"><Input name="title" defaultValue={editing?.title ?? ""} required /></Field>
-      <Field label="实际支付价格（元）"><Input name="amount" inputMode="decimal" defaultValue={editing ? money(editing.amount_fen, 2) : ""} required /></Field>
-      <Field label="增加额度（%）"><Input name="delta" inputMode="decimal" defaultValue={editing ? String(editing.delta_milli_percent / 1000) : ""} required /></Field>
-      <Field label="适用基准版本"><Input name="basis_version" defaultValue={editing?.basis_version ?? ""} required /></Field>
-      <Field label="收款联系与说明"><Input name="instructions" defaultValue={editing?.instructions ?? ""} required /></Field>
-      <Field label="启用方案"><input name="enabled" type="checkbox" defaultChecked={editing?.enabled ?? true} /></Field>
+      <Field label="商品名称"><Input name="title" defaultValue={editing?.title ?? ""} required /></Field>
+      <Field label="售价（元）"><Input name="amount" inputMode="decimal" defaultValue={editing ? money(editing.amount_fen, 2) : ""} required /></Field>
+      <Field label="增加 AI 预算（元）"><Input name="budget" inputMode="decimal" defaultValue={editing ? money(editing.budget_micro_cny) : ""} required /></Field>
+      <Field label="开通说明与联系方式"><Input name="instructions" defaultValue={editing?.instructions ?? ""} required /></Field>
+      <Field label="启用商品"><input name="enabled" type="checkbox" defaultChecked={editing?.enabled ?? true} /></Field>
     </OperationDialog>
   </details>;
 }

@@ -8,6 +8,28 @@ function fixture(): MusicSourceManifest {
 }
 
 describe("curated music source contracts", () => {
+  it('accepts a real PDF and page evidence without invented note or timing coverage', () => {
+    const m = fixture();
+    m.score = { source: m.score.source, title: 'PDF 原谱', pdf_path: 'score/original.pdf' };
+    m.score_objects = []; m.score_marks = []; m.occurrences = []; m.note_alignments = [];
+    m.coverage = []; m.demonstrations = []; m.structure = [];
+    m.events = [{ ...m.events[0], occurrence_ids: [], relations: [], evidence: [{ provenance_id: m.events[0].evidence[0].provenance_id,
+      score_object_ids: [], audio: null, score_page_ids: [m.pages[0].page_id] }] }];
+    expect(musicCapabilities(validateMusicSourceManifest(m))).toEqual(['music', 'music_score', 'music_events']);
+    m.events[0].evidence[0].score_page_ids = ['absent'];
+    expect(() => validateMusicSourceManifest(m)).toThrow('event evidence');
+    m.events = []; m.score.pdf_path = undefined;
+    expect(() => validateMusicSourceManifest(m)).toThrow('score source');
+  });
+  it('keeps unpitched percussion distinct from rests and pitched notes across revisions', () => {
+    const m = fixture();
+    m.score_objects[0].midi_pitch = null; m.score_objects[0].unpitched = true;
+    expect(validateMusicSourceManifest(m).score_objects[0]).toMatchObject({ rest: false, unpitched: true, midi_pitch: null });
+    const changed = structuredClone(m); changed.score_objects[0].unpitched = false; changed.score_objects[0].midi_pitch = 60;
+    expect(() => validateMusicMaterialSuccessor(changed, m)).toThrow('immutable score location');
+    m.score_objects[0].rest = true;
+    expect(() => validateMusicSourceManifest(m)).toThrow('score object');
+  });
   it('preserves score screenshots even without indexed score objects and rejects oversized images', () => {
     const m = fixture(), publication = { book_id: m.book_id, publication_id: 'release-1' };
     const q: MusicQuestionContext = { draft_id: 'staff-lines', publication,

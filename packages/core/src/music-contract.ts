@@ -17,6 +17,11 @@ export type { MusicRights } from "./generated/MusicRights";
 export type { MusicPart } from "./generated/MusicPart";
 export type { MusicScorePage } from "./generated/MusicScorePage";
 export type { MusicScoreObject } from "./generated/MusicScoreObject";
+export type { MusicNoteNotation } from "./generated/MusicNoteNotation";
+export type { MusicWrittenPitch } from "./generated/MusicWrittenPitch";
+export type { MusicRhythmNotation } from "./generated/MusicRhythmNotation";
+export type { MusicTimeModification } from "./generated/MusicTimeModification";
+export type { MusicTremolo } from "./generated/MusicTremolo";
 export type { MusicScoreMark } from "./generated/MusicScoreMark";
 export type { MusicScoreMarkValue } from "./generated/MusicScoreMarkValue";
 export type { MusicTonality } from "./generated/MusicTonality";
@@ -47,7 +52,12 @@ export const MusicAudioLocationZ = z.object({ recording: MusicRecordingRefZ, sta
 export const MusicScoreLocationZ = z.object({ score: MusicScoreRefZ, source_ids: z.array(id) });
 export const MusicVoiceFocusZ: z.ZodType<MusicVoiceFocus> = z.object({ part_id: id, voice: id });
 export const MusicScoreObjectZ = z.object({ source_id: id, part_id: id, measure: id, beat: time, duration_beats: time,
-  voice: id, midi_pitch: z.number().int().min(0).max(127).nullable(), rest: z.boolean(), tie: z.enum(["none", "start", "continue", "stop"]), page_id: id, svg_element_id: id });
+  voice: id, midi_pitch: z.number().int().min(0).max(127).nullable(), rest: z.boolean(), tie: z.enum(["none", "start", "continue", "stop"]), unpitched: z.boolean().optional(),
+  notation: z.object({ written_pitch: z.object({ step: z.enum(['A','B','C','D','E','F','G']), alter: z.number().finite(), octave: z.number().int() }).nullable(),
+    note_type: id.nullable(), dots: z.number().int().nonnegative(), visible: z.boolean(), playback_dynamics: time.nullable(), chord: z.boolean(), grace: z.boolean(),
+    rhythm: z.object({ time_modification: z.object({ actual_notes: z.number().int().positive(), normal_notes: z.number().int().positive(), normal_type: id.nullable(), normal_dots: z.number().int().nonnegative() }).nullable(),
+      tremolos: z.array(z.object({ kind: id, marks: z.number().int().nonnegative() })) }).nullable().optional() }).nullable().optional(),
+  page_id: id, svg_element_id: id });
 export const MusicTonalityZ = z.object({ tonic: id, mode: id, explanation: id, provenance_ids: z.array(id).min(1) });
 export const MusicScoreMarkZ = z.object({ mark_id: id, part_id: id, measure: id, measure_index: z.number().int().positive(), beat: z.number().finite(), staff: id.nullable(),
   score_object_ids: z.array(id).min(1), provenance_id: id,
@@ -60,7 +70,7 @@ export const MusicScoreMarkZ = z.object({ mark_id: id, part_id: id, measure: id,
 export const MusicSourceManifestZ: z.ZodType<MusicSourceManifest> = z.object({
   version: z.literal("music_source_manifest.v1"), book_id: id, title: id,
   work: z.object({ work_id: id, title: id, composer: id, movement: id.nullable(), tonality: MusicTonalityZ.nullable().optional() }),
-  score: z.object({ source: MusicScoreRefZ, title: id, musicxml_path: relativePath }),
+  score: z.object({ source: MusicScoreRefZ, title: id, musicxml_path: relativePath.nullable().optional(), pdf_path: relativePath.nullable().optional() }),
   recording: z.object({ source: MusicRecordingRefZ, title: id, performers: id, media_path: relativePath, content_type: id,
     duration_ms: time.positive(), kind: z.enum(["performance", "score_synthesis"]) }),
   rights: z.array(z.object({ asset_kind: z.enum(["recording", "score", "reference", "font", "soundfont"]), title: id, url: id,
@@ -78,7 +88,7 @@ export const MusicSourceManifestZ: z.ZodType<MusicSourceManifest> = z.object({
     description: id, source_url: id.nullable(), processor: id.nullable() })),
   events: z.array(z.object({ event_id: id, title: id, explanation: id, listen_for: id, start_ms: time, end_ms: time,
     roles: z.array(z.object({ part_id: id, role: id, voice_ids: z.array(id).optional(), theme_id: id.nullable().optional() })),
-    evidence: z.array(z.object({ provenance_id: id, score_object_ids: z.array(id), audio: MusicAudioLocationZ.nullable() })).min(1),
+    evidence: z.array(z.object({ provenance_id: id, score_object_ids: z.array(id), audio: MusicAudioLocationZ.nullable(), score_page_ids: z.array(id).optional() })).min(1),
     relations: z.array(z.object({ target_event_id: id, kind: z.enum(["repetition", "variation", "handoff", "response", "support", "contrast"]), description: id })),
     concept_tags: z.array(id), occurrence_ids: z.array(id).optional() })),
   structure: z.array(z.object({ section_id: id, parent_id: id.nullable(), title: id, description: id, start_ms: time.nullable(), end_ms: time.nullable(),
@@ -106,6 +116,7 @@ export function validateMusicAudioLocation(input: unknown, manifest: MusicSource
 }
 export function validateMusicSourceManifest(input: unknown): MusicSourceManifest {
   const m = MusicSourceManifestZ.parse(input), duration = m.recording.duration_ms;
+  requireValid(!!(m.score.musicxml_path || m.score.pdf_path), 'score source');
   const identities: [string, string[]][] = [["part", m.parts.map(p => p.part_id)], ["page", m.pages.map(p => p.page_id)],
     ["score object", m.score_objects.map(p => p.source_id)], ["occurrence", m.occurrences.map(p => p.occurrence_id)],
     ["provenance", m.provenance.map(p => p.provenance_id)], ["event", m.events.map(p => p.event_id)],
@@ -133,7 +144,7 @@ export function validateMusicSourceManifest(input: unknown): MusicSourceManifest
   for (const n of m.score_objects) {
     const mapped = svgIds.get(n.page_id) ?? new Set<string>();
     requireValid(!!parts.get(n.part_id)?.voices.includes(n.voice) && pages.has(n.page_id)
-      && (n.rest ? n.midi_pitch === null && n.tie === "none" : n.midi_pitch !== null) && !mapped.has(n.svg_element_id), "score object");
+      && (n.rest ? n.midi_pitch === null && n.tie === "none" && !n.unpitched : n.unpitched ? n.midi_pitch === null : n.midi_pitch !== null) && !mapped.has(n.svg_element_id), "score object");
     mapped.add(n.svg_element_id); svgIds.set(n.page_id, mapped);
   }
   for (let i = 0; i < m.occurrences.length; i++) {
@@ -176,9 +187,10 @@ export function validateMusicSourceManifest(input: unknown): MusicSourceManifest
       && unique(role.voice_ids ?? []), "event role");
     for (const evidence of e.evidence) {
       const p = provenance.get(evidence.provenance_id);
-      requireValid(!!p && evidence.score_object_ids.every(id => notes.has(id)), "event evidence");
+      requireValid(!!p && evidence.score_object_ids.every(id => notes.has(id))
+        && unique(evidence.score_page_ids ?? []) && (evidence.score_page_ids ?? []).every(id => pages.has(id)), "event evidence");
       if (evidence.audio) validateMusicAudioLocation(evidence.audio, m);
-      requireValid(evidence.score_object_ids.length > 0 || evidence.audio !== null || p.kind === "reference" || p.kind === "interpretation", "event evidence location");
+      requireValid(evidence.score_object_ids.length > 0 || !!evidence.score_page_ids?.length || evidence.audio !== null || p.kind === "reference" || p.kind === "interpretation", "event evidence location");
     }
     for (const relation of e.relations) requireValid(relation.target_event_id !== e.event_id && events.has(relation.target_event_id), "event relation");
   }
@@ -227,7 +239,7 @@ export function validateMusicMaterialSuccessor(input: unknown, previous: MusicSo
   for (const old of previous.score_objects) {
     const n = notes.get(old.source_id);
     requireValid(!!n && n.part_id === old.part_id && n.measure === old.measure && n.beat === old.beat && n.duration_beats === old.duration_beats
-      && n.voice === old.voice && n.midi_pitch === old.midi_pitch && n.rest === old.rest && n.tie === old.tie, "immutable score location");
+      && n.voice === old.voice && n.midi_pitch === old.midi_pitch && n.rest === old.rest && n.tie === old.tie && !!n.unpitched === !!old.unpitched, "immutable score location");
   }
   return next;
 }
@@ -235,7 +247,7 @@ export function validateMusicMaterialSuccessor(input: unknown, previous: MusicSo
 /** A capability means usable coverage exists; coverage intervals define its extent. */
 export function musicCapabilities(manifest: MusicSourceManifest): string[] {
   const capabilities = ["music"];
-  if (manifest.pages.length && manifest.score_objects.length) capabilities.push("music_score");
+  if (manifest.pages.length) capabilities.push("music_score");
   if (manifest.events.length) capabilities.push("music_events");
   if (manifest.note_alignments.length && manifest.coverage.some(c => c.status === "accepted" && c.granularity === "note")) capabilities.push("music_note_alignment");
   return capabilities;

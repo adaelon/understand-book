@@ -90,7 +90,7 @@ export const PROFILE_SIDECAR_DISCOURSE_FRAGMENT_PROMPT_NAME =
 export const PROFILE_SIDECAR_DISCOURSE_REDUCER_PROMPT_NAME =
   "profile-sidecar-discourse-reducer.md" as const;
 export const PROFILE_SIDECAR_DISCOURSE_FRAGMENT_PROMPT_SHA256 =
-  "6a55eab027ec04049bf01bcf3c6a9cd143a8f7023617230416449bac4f89f761" as const;
+  "d170a2143d659b21cf4523e489547b5d20843da14f101418ac88162bed02605d" as const;
 export const PROFILE_SIDECAR_DISCOURSE_REDUCER_PROMPT_SHA256 =
   "b411666b94c557eb3b9aad21f44285510fd39df0b7fb3ec53004f90208cb6703" as const;
 
@@ -120,6 +120,15 @@ export interface ProfileSidecarDiscourseObservationV1 extends ProfileSidecarDisc
   parent_lid: string;
   source_slice_ordinal: number;
   core_sha256: string;
+}
+
+export type ProfileSidecarDiscourseFragmentCandidateV1 = Omit<ProfileSidecarDiscourseObservationV1, "core_sha256">;
+
+interface DiscourseFragmentContext {
+  parent_lid: string;
+  source_slice_ordinal: number;
+  core_sha256: string;
+  allowed_evidence_lids: string[];
 }
 
 export interface ProfileSidecarDiscourseSourceSliceRangeV1 {
@@ -279,7 +288,8 @@ export function profileSidecarMapReducePolicyMembers(
     {
       kind: "profile_sidecar_discourse_fragment",
       extractor: PROFILE_SIDECAR_DISCOURSE_FRAGMENT_EXTRACTOR,
-      policy_generation_id: `profile-sidecar-discourse-fragment.${qualityProfile}.v1`,
+      // Removing the model's digest echo changes the frozen prompt contract.
+      policy_generation_id: `profile-sidecar-discourse-fragment.${qualityProfile}.v2`,
       policy_fingerprint: profileSidecarDiscourseFragmentPolicy(profile, qualityProfile),
     },
     {
@@ -634,6 +644,7 @@ const observationSchema = z.object({
   core_sha256: sha256Schema,
   ...signalShape,
 }).strict();
+const fragmentCandidateSchema = observationSchema.omit({ core_sha256: true });
 const reductionSchema = z.object({
   version: z.literal("profile_sidecar_discourse_reduction.v1"),
   parent_lid: boundedLid,
@@ -749,18 +760,20 @@ function assertPolicy(input: {
 
 export function parseProfileSidecarDiscourseFragmentObservation(
   input: unknown,
-  context: {
-    parent_lid: string;
-    source_slice_ordinal: number;
-    core_sha256: string;
-    allowed_evidence_lids: string[];
-  },
+  context: DiscourseFragmentContext,
 ): ProfileSidecarDiscourseObservationV1 {
   const parsed = parseClosed<ProfileSidecarDiscourseObservationV1>(
     observationSchema,
     input,
     PROFILE_SIDECAR_DISCOURSE_FRAGMENT_SCHEMA_VERSION,
   );
+  return validateFragmentObservation(parsed, context);
+}
+
+function validateFragmentObservation(
+  parsed: ProfileSidecarDiscourseObservationV1,
+  context: DiscourseFragmentContext,
+): ProfileSidecarDiscourseObservationV1 {
   if (parsed.parent_lid !== context.parent_lid) {
     throw new Error("profile sidecar fragment parent_lid does not match its descriptor");
   }
@@ -1301,8 +1314,10 @@ function renderShadowFragmentInput(
     || context.end < core.end || context.end > source.length) {
     throw new Error("profile sidecar shadow fragment spans are invalid");
   }
-  if (sha256(source.slice(core.start, core.end)) !== slice.core_sha256
-    || sha256(source.slice(context.start, context.end)) !== slice.context_sha256) {
+  const coreSha256 = sha256(source.slice(core.start, core.end));
+  const contextSha256 = core.start === context.start && core.end === context.end
+    ? coreSha256 : sha256(source.slice(context.start, context.end));
+  if (coreSha256 !== slice.core_sha256 || contextSha256 !== slice.context_sha256) {
     throw new Error("profile sidecar shadow fragment source digest drifted");
   }
   return renderProfileSidecarDiscourseFragmentModelInput({
@@ -1597,7 +1612,12 @@ function parseShadowCandidate(
       throw new Error("profile sidecar fragment candidate is missing its source slice");
     }
     const slice = task.descriptor.input_basis.slices[0];
-    return parseProfileSidecarDiscourseFragmentObservation(candidate, {
+    const parsed = parseClosed<ProfileSidecarDiscourseFragmentCandidateV1>(
+      fragmentCandidateSchema,
+      candidate,
+      PROFILE_SIDECAR_DISCOURSE_FRAGMENT_SCHEMA_VERSION,
+    );
+    return validateFragmentObservation({ ...parsed, core_sha256: slice.core_sha256 }, {
       parent_lid: task.route.parent_lid,
       source_slice_ordinal: slice.ordinal,
       core_sha256: slice.core_sha256,

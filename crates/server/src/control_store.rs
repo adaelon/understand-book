@@ -9,7 +9,7 @@ use std::{
     time::Duration,
 };
 
-pub const CONTROL_SCHEMA_VERSION: i64 = 22;
+pub const CONTROL_SCHEMA_VERSION: i64 = 24;
 const APPLICATION_ID: i64 = 0x55424d55;
 
 pub struct ServiceWriter {
@@ -181,6 +181,8 @@ impl ControlStore {
             tx.execute_batch(include_str!("desktop_auth.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("web_usage.sql")).map_err(|_| storage())?;
             tx.execute_batch(include_str!("unlimited_allowance.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("operational_outcomes.sql")).map_err(|_| storage())?;
+            tx.execute_batch(include_str!("operational_recovery.sql")).map_err(|_| storage())?;
             tx.pragma_update(None, "application_id", APPLICATION_ID)
                 .map_err(|_| storage())?;
             tx.pragma_update(None, "user_version", CONTROL_SCHEMA_VERSION)
@@ -328,8 +330,20 @@ impl ControlStore {
         if (1..=21).contains(&version) {
             let tx=connection.transaction().map_err(|_|storage())?;
             tx.execute_batch(include_str!("personal_run_schema.sql")).map_err(|_|storage())?;
-            tx.pragma_update(None,"user_version",CONTROL_SCHEMA_VERSION).map_err(|_|storage())?;
+            tx.pragma_update(None,"user_version",22).map_err(|_|storage())?;
             tx.commit().map_err(|_|storage())?;
+        }
+        if (1..=22).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("operational_outcomes.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None,"user_version",23).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
+        }
+        if (1..=23).contains(&version) {
+            let tx = connection.transaction().map_err(|_| storage())?;
+            tx.execute_batch(include_str!("operational_recovery.sql")).map_err(|_| storage())?;
+            tx.pragma_update(None,"user_version",CONTROL_SCHEMA_VERSION).map_err(|_| storage())?;
+            tx.commit().map_err(|_| storage())?;
         }
         memory::ReaderPrivateStorageGate::secure_file(&writer.root.join("control.sqlite"))?;
         eprintln!("Service SQLite {}: WAL, synchronous=FULL, foreign_keys=ON, busy_timeout=5000ms, schema={CONTROL_SCHEMA_VERSION}", rusqlite::version());
@@ -500,7 +514,9 @@ mod tests {
         let mut store=ControlStore::open(writer.clone()).unwrap();store.create_user("A").unwrap();
         store.connection.execute_batch("INSERT INTO book_publications VALUES('book','pub','directory','{}'); INSERT INTO reader_workspaces(owner_user_id,workspace_id) VALUES('A','workspace'); INSERT INTO run_admissions(owner_user_id,client_request_id,turn_id,chat_session_id,workspace_id,workspace_generation,book_id,publication_id,dispatch_state,attempt,cancel_requested) VALUES('A','old-key','old-turn','chat','workspace',3,'book','pub','queued',2,1);").unwrap();
         let old=include_str!("personal_run_schema.sql").replace("workspace_id TEXT,","workspace_id TEXT NOT NULL,").replace("book_id TEXT, publication_id TEXT,","book_id TEXT NOT NULL, publication_id TEXT NOT NULL,");
-        store.connection.execute_batch(&old).unwrap();store.connection.pragma_update(None,"user_version",21).unwrap();drop(store);
+        store.connection.execute_batch(&old).unwrap();
+        store.connection.execute_batch("DROP TABLE operational_successes; DROP TABLE operational_outcomes;").unwrap();
+        store.connection.pragma_update(None,"user_version",21).unwrap();drop(store);
         let store=ControlStore::open(writer.clone()).unwrap();
         let before:(String,i64,i64,i64)=store.connection.query_row("SELECT dispatch_state,workspace_generation,attempt,cancel_requested FROM run_admissions WHERE turn_id='old-turn'",[],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?))).unwrap();assert_eq!(before,("queued".into(),3,2,1));
         store.connection.execute("INSERT INTO run_admissions(owner_user_id,client_request_id,turn_id,chat_session_id,workspace_generation,dispatch_state) VALUES('A','new-key','new-turn','personal-chat',0,'queued')",[]).unwrap();

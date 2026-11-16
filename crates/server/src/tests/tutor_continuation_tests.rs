@@ -33,7 +33,7 @@ fn tc3_views(state: &mut AppState, turn: &AgentTurnRef) -> Value {
 
 fn tc4_offer(state: &mut AppState) -> (AgentTurnRef, Value) {
     enable(state);
-    let run = prepare(state, json!({"message":"Explain average speed", "question_quote":quote()}));
+    let run = super::tutor_loop_tests::prepare_practice_chat(state, &json!({"message":"Explain average speed", "question_quote":quote()}).to_string(), "1000").unwrap_or_else(|r|panic!("{}",r.body));
     tc3_select(state, &run.turn_ref, tc3_move(state)).unwrap();
     super::tutor_loop_tests::finish(state, &run.turn_ref, &super::tutor_loop_tests::outcome(None));
     let view = tc3_views(state, &run.turn_ref)["activities"][0]["continuation"].clone();
@@ -488,8 +488,9 @@ fn continuation_tc4_local_restarts_repair_facts_without_execution() {
             let turn = &state.user.agent_history.sessions[0].turns[1];
             assert_eq!(turn.error.as_ref().unwrap().error_code, "INTERRUPTED");
             if point != "accepted" { assert!(turn.domain.local_preparation.is_some()); }
-            let events = state.user.learning_store().unwrap().teaching_turn_events(
-                view.control.current_tutor_session_id.as_deref().unwrap(), &accepted).unwrap();
+            let store=state.user.learning_store().unwrap();
+            let owner=store.teaching_event(&format!("binding:{}",if action=="choice" {&origin.turn_id} else {&accepted}));
+            let events=owner.map(|bound|store.teaching_turn_events(&bound.binding.tutor_session_id,&accepted).unwrap()).unwrap_or_default();
             assert_eq!(events.iter().filter(|e| e.kind == TeachingFact::ContinuationChosen).count(), usize::from(action == "choice"));
             assert!(!events.iter().any(|e| e.kind == TeachingFact::LearnerAction));
             println!("TC4_EVIDENCE {}", json!({"host":"local","action":action,"fault":point,"request":input,
@@ -501,7 +502,7 @@ fn continuation_tc4_local_restarts_repair_facts_without_execution() {
 
 #[test]
 fn continuation_tc4_local_choice_boundaries_and_historical_answer() {
-    for boundary in ["pause", "off", "revision", "source", "head", "wrong_head", "foreign_chat", "scene"] {
+    for boundary in ["source", "head", "wrong_head", "foreign_chat", "scene"] {
         let (_root, mut state) = fixture(true);
         let (origin, mut input) = tc4_offer(&mut state);
         let before = state.user.agent_history.sessions[0].turns.len();
@@ -513,9 +514,9 @@ fn continuation_tc4_local_choice_boundaries_and_historical_answer() {
             },
             "off" | "revision" => {
                 let view = state.user.learning_store().unwrap().state().unwrap();
-                post_ok(&mut state, "/tutor/mutate", json!({"operation_id":"off","expected_revision":view.control.revision,
+                super::tutor_loop_tests::legacy_control(&mut state,  json!({"operation_id":"off","expected_revision":view.control.revision,
                     "action":{"kind":"set_enabled","enabled":false}}));
-                if boundary == "revision" { post_ok(&mut state, "/tutor/mutate", json!({"operation_id":"on","expected_revision":view.control.revision+1,
+                if boundary == "revision" { super::tutor_loop_tests::legacy_control(&mut state,  json!({"operation_id":"on","expected_revision":view.control.revision+1,
                     "action":{"kind":"set_enabled","enabled":true}})); }
             },
             "source" => state.workspace.book = Arc::new(Book::new(state.workspace.book.base.clone(), &format!("{SOURCE}\nchanged"))),
@@ -539,7 +540,12 @@ fn continuation_tc4_local_choice_boundaries_and_historical_answer() {
 }
 
 fn tc4_network_offer() -> (super::mu5_tests::Fixture, Value, Value, Probe) {
-    let (f, w, input, probe) = network_fixture();
+    let (f, w, mut input, probe) = network_fixture();
+    let reference = serde_json::from_value(w["published_book_ref"].clone()).unwrap();
+    let publication = f.access.library.lock().unwrap().load("A", &reference).unwrap();
+    input["expected_chat_head"]=Value::Null;
+    input["entry_action"]=json!("learn_with_purpose");input["learning_purpose"]=json!("practice");
+    input["source_id"]=json!(publication.book.base.book_id);input["source_revision"]=json!(publication.book.source_fingerprint());
     let handle = f.access.users.lock().unwrap().get_for_recovery("A", "1000").unwrap();
     handle.lock().unwrap().learning_store().unwrap().mutate(&serde_json::from_value(json!({"operation_id":"enable",
         "expected_revision":0,"action":{"kind":"set_enabled","enabled":true}})).unwrap(), "1000").unwrap();
@@ -846,7 +852,7 @@ fn continuation_tc3_optional_set_delivers_once_and_reads_without_provider() {
     for options in 0..=2 {
         let (_root,mut state)=fixture(true); enable(&mut state);
         let probe=Probe::default(); state.services.adapter=Box::new(probe.clone());
-        let run=prepare(&mut state,json!({"message":"Explain average speed"}));
+        let run=prepare_practice(&mut state,json!({"message":"Explain average speed"}));
         let mut movement=tc3_move(&state);
         movement["hint"]=json!("PRIVATE_HELP"); movement["explanation"]=json!("PRIVATE_ANSWER");
         if options==0 { movement.as_object_mut().unwrap().remove("continuation"); }
@@ -872,7 +878,7 @@ fn continuation_tc3_optional_set_delivers_once_and_reads_without_provider() {
         assert!(!first.to_string().contains("PRIVATE_"));
         for key in ["hint","explanation","assessment"] { assert!(view["move"].get(key).is_none()); }
         let store=state.user.learning_store().unwrap();
-        let id=store.state().unwrap().control.current_tutor_session_id.unwrap();
+        let id=run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
         let events=store.teaching_turn_events(&id,&run.turn_ref.turn_id).unwrap();
         assert_eq!(events.iter().filter(|e| e.kind==TeachingFact::MoveSelected).count(),1);
         assert_eq!(events.iter().filter(|e| e.kind==TeachingFact::MessageDelivered).count(),1);
@@ -884,7 +890,7 @@ fn continuation_tc3_optional_set_delivers_once_and_reads_without_provider() {
 #[test]
 fn continuation_tc3_rejects_second_set_unread_target_and_selection_without_design() {
     let (_root,mut state)=fixture(true); enable(&mut state);
-    let run=prepare(&mut state,json!({"message":"Explain average speed"}));
+    let run=prepare_practice(&mut state,json!({"message":"Explain average speed"}));
     let movement=tc3_move(&state);
     let mut missing=movement.clone(); missing.as_object_mut().unwrap().remove("target");
     assert!(teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":missing.clone()}),&[],
@@ -915,7 +921,7 @@ fn continuation_tc3_rejects_second_set_unread_target_and_selection_without_desig
 fn continuation_tc3_failed_or_cancelled_delivery_keeps_candidates_private() {
     for status in [AgentAssistantStatus::Failed,AgentAssistantStatus::Cancelled] {
         let (_root,mut state)=fixture(true); enable(&mut state);
-        let run=prepare(&mut state,json!({"message":"Explain average speed"}));
+        let run=prepare_practice(&mut state,json!({"message":"Explain average speed"}));
         tc3_select(&state,&run.turn_ref,tc3_move(&state)).unwrap();
         let saved=state.user.agent_history.sessions[0].turns.last_mut().unwrap();
         saved.status=status; saved.outcome=Some(super::tutor_loop_tests::outcome(None));
@@ -928,7 +934,7 @@ fn continuation_tc3_pending_formal_activity_suppresses_related_suggestions() {
     for object_only in [false,true] {
         let (_root,mut state)=fixture(true);
         let (_original,delivery)=activity(&mut state,object_only);
-        let run=prepare(&mut state,json!({"message":"Explain the denominator again"}));
+        let run=prepare_practice(&mut state,json!({"message":"Explain the denominator again"}));
         let movement=tc3_move(&state);
         let error=tc3_select(&state,&run.turn_ref,movement.clone()).unwrap_err();
         assert!(error.message.contains("正式活动"),"{error:?}");
@@ -941,7 +947,7 @@ fn continuation_tc3_pending_formal_activity_suppresses_related_suggestions() {
 fn continuation_tc3_current_assessment_and_unrelated_history_are_distinct() {
     let (_root,mut state)=fixture(true);
     activity(&mut state,false);
-    let run=prepare(&mut state,json!({"message":"Explain the bicycle colour"}));
+    let run=prepare_practice(&mut state,json!({"message":"Explain the bicycle colour"}));
     let mut movement=tc3_move(&state);
     movement["target"]["source_bindings"][0]["start_lid"]=json!("1.2");
     movement["target"]["source_bindings"][0]["end_lid"]=json!("1.2");
@@ -952,7 +958,7 @@ fn continuation_tc3_current_assessment_and_unrelated_history_are_distinct() {
         &[EvidenceRange{start_lid:"1.2".into(),end_lid:"1.2".into(),ranges:vec![]}]).unwrap();
 
     let (_root,mut state)=fixture(true); enable(&mut state);
-    let run=prepare(&mut state,json!({"message":"Explain average speed"}));
+    let run=prepare_practice(&mut state,json!({"message":"Explain average speed"}));
     let mut movement=tc3_move(&state);
     movement["actions"]=json!(["submit"]);
     movement["assessment"]=json!({"rule":{"kind":"choice_set","choices":["A","B"],"correct":["A"]},
@@ -968,9 +974,9 @@ fn continuation_tc3_current_assessment_and_unrelated_history_are_distinct() {
 }
 
 #[test]
-fn continuation_tc3_delivery_failure_and_pause_do_not_offer_executable_candidates() {
+fn continuation_tc3_failed_delivery_stays_private_and_legacy_pause_does_not_block() {
     let (_root,mut state)=fixture(true); enable(&mut state);
-    let run=prepare(&mut state,json!({"message":"Explain average speed"}));
+    let run=prepare_practice(&mut state,json!({"message":"Explain average speed"}));
     tc3_select(&state,&run.turn_ref,tc3_move(&state)).unwrap();
     let mut result=super::tutor_loop_tests::outcome(None);
     result.delivery_diagnostics=Some(runtime::orchestrator::AnswerDeliveryDiagnostics {
@@ -982,13 +988,13 @@ fn continuation_tc3_delivery_failure_and_pause_do_not_offer_executable_candidate
     assert_eq!(tc3_views(&mut state,&run.turn_ref)["activities"],json!([]));
 
     let (_root,mut state)=fixture(true); enable(&mut state);
-    let run=prepare(&mut state,json!({"message":"Explain average speed"}));
+    let run=prepare_practice(&mut state,json!({"message":"Explain average speed"}));
     tc3_select(&state,&run.turn_ref,tc3_move(&state)).unwrap();
     let revision=state.user.learning_store().unwrap().state().unwrap().control.revision;
-    post_ok(&mut state,"/tutor/mutate",json!({"operation_id":"pause","expected_revision":revision,
+    super::tutor_loop_tests::legacy_control(&mut state,json!({"operation_id":"pause","expected_revision":revision,
         "action":{"kind":"set_enabled","enabled":false}}));
     super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
-    assert_eq!(tc3_views(&mut state,&run.turn_ref)["activities"][0]["continuation"]["availability"]["status"],"stale");
+    assert_eq!(tc3_views(&mut state,&run.turn_ref)["activities"][0]["continuation"]["availability"]["status"],"eligible");
 }
 
 #[test]
@@ -1002,7 +1008,7 @@ fn continuation_tc3_fixture_supports_lexical_source_discovery() {
 fn continuation_tc3_incomplete_and_empty_answers_cannot_publish_suggestions() {
     for empty in [false,true] {
         let (_root,mut state)=fixture(true); enable(&mut state);
-        let run=prepare(&mut state,json!({"message":"Explain average speed"}));
+        let run=prepare_practice(&mut state,json!({"message":"Explain average speed"}));
         tc3_select(&state,&run.turn_ref,tc3_move(&state)).unwrap();
         let mut result=super::tutor_loop_tests::outcome(None); result.incomplete=true;
         if empty { result.answer=None; result.answer_view=None; }
@@ -1091,27 +1097,90 @@ fn continuation_tc2_selection_freezes_action_without_inventing_user_text_or_sess
 }
 
 #[test]
-fn continuation_tc2_default_off_enable_then_continue_is_explicit_and_bounded() {
-    let (_root, mut state) = fixture(true);
-    let probe=Probe::default(); state.services.adapter=Box::new(probe.clone());
-    let input = selection_input(&state,"first");
-    post_ok(&mut state,"/agent/chat",input);
-    let original = state.user.agent_history.sessions[0].turns[0].turn_id.clone();
-    let continuation = json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":"continue","entry_action":"continue_answer",
+fn continuation_tc2_ordinary_answers_continue_without_the_removed_switch() {
+    let (_root,mut state)=fixture(true);let probe=Probe::default();state.services.adapter=Box::new(probe.clone());
+    let input=selection_input(&state,"first");post_ok(&mut state,"/agent/chat",input);
+    let original=state.user.agent_history.sessions[0].turns[0].turn_id.clone();
+    let input=json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":"continue","entry_action":"continue_answer",
         "answer_ref":{"turn_id":original},"expected_chat_head":original});
-    assert!(prepare_agent_chat(&mut state,&continuation.to_string(),"1001").err().unwrap().body.contains("INTERACTION_UNAVAILABLE"));
-    enable(&mut state);
-    assert_eq!(probe.0.load(Ordering::SeqCst),1);
-    assert!(state.user.learning_store().unwrap().state().unwrap().sessions.is_empty());
-    let run=prepare(&mut state,continuation.clone());
-    assert_eq!(run.tutor.as_ref().unwrap()["status"],"active");
+    let run=prepare(&mut state,input.clone());
+    assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing");
     assert!(run.agent_message.contains(scenario()["answer"].as_str().unwrap()));
-    let view=state.user.learning_store().unwrap().state().unwrap();
-    let session=view.sessions.values().next().unwrap();
-    assert!(session.user_intent.contains(scenario()["quote"].as_str().unwrap()));
-    assert!(!session.material_scope[0].scope_refs.is_empty());
-    assert!(prepare_agent_chat(&mut state,&continuation.to_string(),"1002").is_err());
-    assert_eq!(state.user.learning_store().unwrap().state().unwrap().sessions.len(),1);
+    assert!(state.user.learning_store().unwrap().state().unwrap().sessions.is_empty());
+    assert!(!state.user.learning_store().unwrap().state().unwrap().control.enabled);
+    let repeat=prepare_agent_chat(&mut state,&input.to_string(),"1002").err().unwrap();
+    assert_eq!(serde_json::from_str::<Value>(&repeat.body).unwrap()["turn_id"],run.turn_ref.turn_id);
+    assert_eq!(probe.0.load(Ordering::SeqCst),1);
+}
+
+#[test]
+fn continuation_answer_practice_keeps_original_scope_and_enters_practice() {
+    for pending_question in [false, true] {
+        let (_root, mut state) = fixture(true);
+        let original = if pending_question { activity(&mut state, false).0 } else {
+            let input = selection_input(&state, "original");
+            let run = prepare(&mut state, input);
+            super::tutor_loop_tests::finish(&mut state, &run.turn_ref, &super::tutor_loop_tests::outcome(None));
+            run.turn_ref
+        };
+        let scope = state.user.agent_history.sessions[0].turns[0].domain.interaction.clone().unwrap();
+        let input = json!({"message":"", "entry_action":"continue_answer", "learning_purpose":"practice",
+            "answer_ref":{"turn_id":original.turn_id,"excerpt":"total distance"},
+            "session_id":original.session_id,"client_request_id":"answer-practice","expected_chat_head":original.turn_id,
+            "source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint()});
+        let run = prepare(&mut state, input);
+        let context = run.tutor.as_ref().unwrap();
+        let action = &context["current_action"];
+        assert_eq!(action["action"]["entry_action"], "continue_answer");
+        assert_eq!(action["answer_ref"]["turn_id"], original.turn_id);
+        assert_eq!(action["answer_text"], "total distance");
+        assert_eq!(action["source_bindings"], json!(scope.source_bindings));
+        assert_eq!(action["source_excerpt"], json!(scope.source_excerpt));
+        assert_eq!(action["target"], json!(scope.target));
+        assert_eq!(action["accepted_request"], "根据这段回答给我一道应用题");
+        assert_eq!(action["learning_purpose"], "practice");
+        assert_eq!(context["learning_purpose"], "practice");
+        assert_eq!(context["status"], "practice");
+        assert!(!context["learner_context"]["responding_to_practice"].is_object());
+        assert_ne!(context["outside_current_request"], true);
+        assert_eq!(context["current_request"], "");
+        assert!(run.agent_message.contains("根据这段回答给我一道应用题"));
+        let stored = state.user.learning_store().unwrap().teaching_event(&format!("binding:{}", run.turn_ref.turn_id)).unwrap();
+        assert_eq!(stored.payload["current_action"], *action);
+    }
+}
+
+#[test]
+fn continuation_answer_practice_rejects_unavailable_original_answers() {
+    use crate::interaction_input::InteractionInput;
+    for boundary in ["pending", "failed", "cancelled", "foreign_chat", "excerpt", "source", "unready"] {
+        let (_root, mut state) = fixture(boundary != "unready");
+        let original_input = selection_input(&state, "original");
+        let original = prepare(&mut state, original_input).turn_ref;
+        if boundary != "pending" {
+            super::tutor_loop_tests::finish(&mut state, &original, &super::tutor_loop_tests::outcome(None));
+        }
+        let mut input = json!({"message":"", "entry_action":"continue_answer", "learning_purpose":"practice",
+            "answer_ref":{"turn_id":original.turn_id},"session_id":original.session_id,
+            "expected_chat_head":original.turn_id,"client_request_id":"answer-practice",
+            "source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint()});
+        match boundary {
+            "failed" => state.user.agent_history.sessions[0].turns[0].status = AgentAssistantStatus::Failed,
+            "cancelled" => state.user.agent_history.sessions[0].turns[0].status = AgentAssistantStatus::Cancelled,
+            "foreign_chat" => { route_agent_new(&mut state, "1001"); },
+            "excerpt" => input["answer_ref"]["excerpt"] = json!("not present in the delivered answer"),
+            "source" => state.workspace.book = Arc::new(Book::new(state.workspace.book.base.clone(), &format!("{SOURCE}\nchanged"))),
+            _ => {},
+        }
+        let error = InteractionInput::parse(&input).unwrap().resolve(&state.user, &state.workspace, &input, None)
+            .err().expect("practice must retain original-answer validation");
+        let expected = match boundary {
+            "source" => "INTERACTION_STALE",
+            "unready" => "INTERACTION_UNAVAILABLE",
+            _ => "INTERACTION_INVALID",
+        };
+        assert_eq!(error.error_code, expected, "{boundary}");
+    }
 }
 
 #[test]
@@ -1132,49 +1201,25 @@ fn continuation_tc2_rejects_stale_and_unresolved_source_before_acceptance() {
 }
 
 #[test]
-fn continuation_tc2_unready_paused_ended_and_other_material_keep_session_boundary() {
+fn continuation_tc2_ordinary_help_and_continuation_do_not_depend_on_a_legacy_goal() {
     for condition in ["unready","paused","ended","other"] {
-        let (_root,mut state)=fixture(condition != "unready");
-        enable(&mut state);
-        if condition != "unready" {
-            let view=state.user.learning_store().unwrap().state().unwrap();
-            let source=if condition == "other" { "another-book".into() } else { state.workspace.book.base.book_id.clone() };
-            post_ok(&mut state,"/tutor/mutate",json!({"operation_id":"start-boundary","expected_revision":view.control.revision,
-                "action":{"kind":"start","user_intent":"original goal","explicit_constraints":[],
-                    "material_scope":[{"source_id":source,"scope_refs":[],"role":"primary"}],"default_teaching_intent":null}}));
-            if condition != "other" {
-                let view=state.user.learning_store().unwrap().state().unwrap();
-                post_ok(&mut state,"/tutor/mutate",json!({"operation_id":"boundary","expected_revision":view.control.revision,
-                    "action":{"kind":if condition=="paused" {"pause"} else {"end"},"session_id":view.control.current_tutor_session_id}}));
-            }
+        let (_root,mut state)=fixture(condition!="unready");enable(&mut state);
+        let view=state.user.learning_store().unwrap().state().unwrap();
+        if condition=="other" {
+            post_ok(&mut state,"/tutor/mutate",json!({"operation_id":"other-goal","expected_revision":view.control.revision,
+                "action":{"kind":"start","user_intent":"Another source","explicit_constraints":[],"material_scope":[{"source_id":"other-book","scope_refs":[],"role":"primary"}],"default_teaching_intent":null}}));
+        } else if condition!="unready" {
+            post_ok(&mut state,"/tutor/mutate",json!({"operation_id":"old-goal","expected_revision":view.control.revision,
+                "action":{"kind":if condition=="paused" {"pause"} else {"end"},"session_id":view.control.current_tutor_session_id}}));
         }
         let before=state.user.learning_store().unwrap().state().unwrap();
-        let request=selection_input(&state,"boundary-help");
-        let run=prepare(&mut state,request);
-        if condition == "other" {
-            // Source-scoped restoration allows this material's first explicit
-            // question to create its own stage without inheriting another book.
-            assert_eq!(run.tutor.as_ref().unwrap()["status"],"active");
-            let after=state.user.learning_store().unwrap().state().unwrap();
-            let old=before.control.current_tutor_session_id.as_ref().unwrap();
-            let current=run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap();
-            assert_ne!(current,old);
-            assert_eq!(after.sessions[old].user_intent,before.sessions[old].user_intent);
-            assert_eq!(after.sessions[old].material_scope,before.sessions[old].material_scope);
-            assert!(after.sessions[current].material_scope.iter().all(|material|material.source_id==state.workspace.book.base.book_id));
-        } else {
-            assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing","{condition}");
-            assert_eq!(json!(state.user.learning_store().unwrap().state().unwrap()),json!(before));
-        }
+        let input=selection_input(&state,"help");let run=prepare(&mut state,input);
+        assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing");
         super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
-        let request=json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":"boundary-continue","entry_action":"continue_answer",
+        let input=json!({"message":"","session_id":run.turn_ref.session_id,"client_request_id":"continue","entry_action":"continue_answer",
             "answer_ref":{"turn_id":run.turn_ref.turn_id},"expected_chat_head":run.turn_ref.turn_id});
-        if condition == "other" {
-            let continued=prepare_agent_chat(&mut state,&request.to_string(),"1002").unwrap_or_else(|reply|panic!("{}",reply.body));
-            assert_eq!(continued.tutor.as_ref().unwrap()["binding"]["tutor_session_id"],run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"]);
-        } else {
-            assert!(prepare_agent_chat(&mut state,&request.to_string(),"1002").err().unwrap().body.contains("INTERACTION_UNAVAILABLE"));
-        }
+        let next=prepare(&mut state,input);assert_eq!(next.tutor.as_ref().unwrap()["status"],"observing");
+        assert_eq!(state.user.learning_store().unwrap().state().unwrap(),before);
     }
 }
 
@@ -1185,7 +1230,7 @@ fn continuation_tc2_current_question_routes_answer_and_source_without_recording_
         let (turn,delivery)=activity(&mut state,object_only);
         if !enabled {
             let view=state.user.learning_store().unwrap().state().unwrap();
-            post_ok(&mut state,"/tutor/mutate",json!({"operation_id":"off","expected_revision":view.control.revision,"action":{"kind":"set_enabled","enabled":false}}));
+            super::tutor_loop_tests::legacy_control(&mut state,json!({"operation_id":"off","expected_revision":view.control.revision,"action":{"kind":"set_enabled","enabled":false}}));
         }
         let request=json!({"message":"","entry_action":"clarify_answer","answer_ref":{"turn_id":turn.turn_id},"expected_chat_head":turn.turn_id});
         let result=post_ok(&mut state,"/agent/chat",request);
@@ -1249,7 +1294,7 @@ fn continuation_tc2_network_continue_uses_original_answer_and_same_key() {
     let action=second.domain.interaction.as_ref().unwrap();
     assert_eq!(action.answer_ref.as_ref().unwrap().turn_id,first["turn_id"].as_str().unwrap());
     assert!(second.teaching_ref.is_none());
-    assert_eq!(user.learning_store().unwrap().state().unwrap().sessions.len(),1);
+    assert!(user.learning_store().unwrap().state().unwrap().sessions.is_empty());
 }
 
 #[test]
@@ -1289,15 +1334,15 @@ fn continuation_tc2_cross_lid_and_direct_help_require_full_source_before_select(
     let mut wrong=movement.clone();wrong["kind"]=json!("question");wrong["interaction_intent"]=json!("neutral");wrong["intent_origin"]=json!("neutral");
     let reads=[EvidenceRange{start_lid:"1.1".into(),end_lid:"1.2".into(),ranges:vec![]}];
     assert!(super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":wrong}),&[],&reads).is_err());
-    super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],&reads).unwrap();
+    assert!(super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],&reads).is_err());
+    assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing");
 }
 
 #[test]
 fn continuation_tc2_network_question_help_returns_location_without_run() {
     let (_root,mut local)=fixture(true);
     let (_,delivery)=activity(&mut local,false);
-    let local_view=local.user.learning_store().unwrap().state().unwrap();
-    let local_session=local_view.control.current_tutor_session_id.unwrap();
+    let local_session=local.user.learning_store().unwrap().teaching_event(&delivery).unwrap().binding.tutor_session_id;
     let rows=local.user.learning_store().unwrap().teaching_events(&local_session,0,100).unwrap();
     let (f,w,mut request,probe)=network_fixture();
     let context=f.access.users.lock().unwrap().get_for_recovery("A","1000").unwrap();
@@ -1332,11 +1377,16 @@ fn post_ok(state: &mut AppState, path: &str, input: Value) -> Value {
     serde_json::from_str(&reply.body).unwrap()
 }
 fn enable(state: &mut AppState) {
-    post_ok(state, "/tutor/mutate", json!({"operation_id":"tc0-enable","expected_revision":0,
+    super::tutor_loop_tests::legacy_control(state,  json!({"operation_id":"tc0-enable","expected_revision":0,
         "action":{"kind":"set_enabled","enabled":true}}));
+    teaching::start_request(&state.private_context(),"historical-goal").unwrap();
 }
 fn prepare(state: &mut AppState, input: Value) -> agent_run::PreparedAgentChat {
     prepare_agent_chat(state, &input.to_string(), "1000").unwrap_or_else(|reply| panic!("{}", reply.body))
+}
+
+fn prepare_practice(state:&mut AppState,input:Value)->agent_run::PreparedAgentChat {
+    super::tutor_loop_tests::prepare_practice_chat(state,&input.to_string(),"1000").unwrap_or_else(|reply|panic!("{}",reply.body))
 }
 
 /// Both the source-only contract and historical object-only assessment remain supported.
@@ -1356,10 +1406,10 @@ fn activity(state: &mut AppState, object_only: bool) -> (AgentTurnRef, String) {
             "teaching_map_revision":"v1","map_path":"teaching/versions/v1/map.json",
             "coverage":{"source":"complete","structure":"complete","objects":"complete","cognitive_materials":"complete","source_review":"passed"},"limitations":[]}).to_string()).unwrap();
     }
-    let run = prepare(state, json!({"message":"Explain average speed"}));
+    let run = super::tutor_loop_tests::prepare_practice_chat(state, r#"{"message":"Practice the denominator"}"#, "1000").unwrap_or_else(|r|panic!("{}",r.body));
     let mut movement = json!({"move_id":"question","object_ids":[],"capability":"explanation","kind":"question",
         "interaction_intent":"neutral","intent_origin":"neutral","prompt":"Which quantity is the denominator? A total time; B colour.",
-        "actions":["submit","revise","request_hint","reveal"],"hint":"Look at the elapsed time.","explanation":"A: total time.",
+        "actions":["submit","revise","request_hint","reveal","skip"],"hint":"Look at the elapsed time.","explanation":"A: total time.",
         "target":{"learning_focus":"average speed","expected_performance":"Identify the denominator","capability":"explanation",
             "source_bindings":[{"source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint(),"start_lid":"1.1","end_lid":"1.1"}],"object_refs":[]},
         "assessment":{"rule":{"kind":"choice_set","choices":["A","B"],"correct":["A"]},"source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"}});
@@ -1410,7 +1460,8 @@ impl ModelAdapter for ActionToolContract {
                     .contains(&json!(field)), "the current action forbids duplicate input: {field}");
             }
         } else if let Some(tool) = tool {
-            assert_eq!(tool.parameters["properties"]["operation"]["enum"], json!(["trace","understanding","evidence"]));
+            let ordinary:Vec<_>=tool.parameters["properties"]["operation"]["enum"].as_array().unwrap().iter().filter(|name|*name!=&json!("closed_book")).cloned().collect();
+            assert_eq!(ordinary,json!(["trace","understanding","evidence","corrections"]).as_array().unwrap().clone());
             assert!(!tool.description.contains("Select"));
         }
         self.observations.lock().unwrap().push(active);
@@ -1429,7 +1480,7 @@ fn tutor_to3_projected_ui_examples_execute_with_runtime_bound_fields() {
     let (_root, mut state) = fixture(true);
     enable(&mut state);
     let example = runtime::tutor::spec().parameters["examples"].as_array().unwrap().iter()
-        .find(|e| e["operation"] == "select").unwrap().clone();
+        .find(|e| e["operation"] == "understanding").unwrap().clone();
     for action in ["explain_selection", "continue_answer", "clarify_answer"] {
         let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
         let previous_design_ref={
@@ -1446,16 +1497,15 @@ fn tutor_to3_projected_ui_examples_execute_with_runtime_bound_fields() {
         let result = post_ok(&mut state, "/agent/chat", input);
         assert_eq!(result["incomplete"], false, "{action}: {result}");
         let sent = observed.lock().unwrap();
-        assert!(sent[0]["move"].get("capability").is_none(),"the accepted source target supplies capability for every UI action");
-        for key in ["interaction_intent", "intent_origin"] {
-            assert_eq!(sent[0]["move"].get(key).is_none(),action!="clarify_answer");
-        }
-        let chat = &state.user.agent_history.sessions[0];
-        let deliveries = state.user.learning_store().unwrap().teaching_deliveries(&chat.id, &chat.turns.last().unwrap().turn_id).unwrap();
-        assert_eq!(deliveries.len(), 1);
-        assert_eq!(deliveries[0].payload["move"]["intent_origin"],if action=="clarify_answer" {"neutral"} else {"current_action"});
-        assert_eq!(deliveries[0].payload["move"]["interaction_intent"],if action=="explain_selection" {"direct_explanation"} else {"neutral"});
-        assert_eq!(deliveries[0].payload["move"]["target"]["source_bindings"][0]["source_revision"], state.workspace.book.source_fingerprint());
+        assert_eq!(sent[0]["operation"],"understanding");
+        let chat=&state.user.agent_history.sessions[0];
+        let turn=chat.turns.last().unwrap();
+        let store=state.user.learning_store().unwrap();
+        let bound=store.teaching_event(&format!("binding:{}",turn.turn_id)).unwrap();
+        assert_eq!(bound.payload["status"],"observing");
+        assert_eq!(bound.payload["current_action"]["source_bindings"][0]["source_revision"],state.workspace.book.source_fingerprint());
+        assert!(store.teaching_deliveries(&chat.id,&turn.turn_id).unwrap().is_empty());
+
     }
 }
 
@@ -1468,9 +1518,6 @@ fn action_contract_samples() -> Vec<Value> {
     let answer = || AssistantTurn { provider_continuation:None, text:Some(scenario()["answer"].as_str().unwrap().into()),
         tool_calls:vec![], usage_total_tokens:Some(1) };
     let observations = Arc::new(std::sync::Mutex::new(Vec::new()));
-    let movement = json!({"move_id":"continue","object_ids":[],"kind":"explain",
-        "prompt":"Compare total distance and total time.","target":{"learning_focus":"平均速度",
-        "expected_performance":"解释分母","capability":"explanation","source_bindings":resolved_action(&state).source_bindings,"object_refs":[]}});
     let samples = Arc::new(std::sync::Mutex::new(Vec::new()));
     state.services.adapter = Box::new(TutorRequestRecorder { samples:samples.clone(), directory:None, inner:Box::new(ActionToolContract {
         observations:observations.clone(), inner:Box::new(ChatStubAdapter::scripted(vec![
@@ -1483,21 +1530,19 @@ fn action_contract_samples() -> Vec<Value> {
     assert!(state.user.learning_store().unwrap().state().unwrap().sessions.is_empty());
     enable(&mut state);
     state.services.adapter=Box::new(TutorRequestRecorder {samples:samples.clone(),directory:None,inner:Box::new(ActionToolContract {
-        observations:observations.clone(),inner:Box::new(ContinuationDelivery {movement,previous_design_ref:None,stage:Default::default()})
+        observations:observations.clone(),inner:Box::new(ChatStubAdapter::scripted(vec![
+            tool_call("book.text",json!({"lid":"1.1","end_lid":"1.1"})), answer(),
+        ]))
     })});
     let input = json!({"message":"","session_id":state.workspace.selected_chat,"client_request_id":"contract-next",
         "entry_action":"continue_answer","answer_ref":{"turn_id":original},"expected_chat_head":original});
     post_ok(&mut state,"/agent/chat",input);
-    assert_eq!(*observations.lock().unwrap(), vec![false,false,true,true,true,true]);
+    assert_eq!(*observations.lock().unwrap(), vec![false,false,false,false]);
     let session = &state.user.agent_history.sessions[0];
     let turn = &session.turns[1];
     assert_eq!(turn.status,AgentAssistantStatus::Completed);
     let deliveries = state.user.learning_store().unwrap().teaching_deliveries(&session.id,&turn.turn_id).unwrap();
-    assert_eq!(deliveries.len(),1);
-    assert_eq!(deliveries[0].payload["move"]["interaction_intent"],"neutral");
-    assert_eq!(deliveries[0].payload["move"]["intent_origin"],"current_action");
-    assert_eq!(deliveries[0].payload["move"]["kind"],"explain");
-    assert_eq!(deliveries[0].payload["move"]["capability"],"explanation");
+    assert!(deliveries.is_empty());
     let result = samples.lock().unwrap().clone();
     result
 }
@@ -1572,7 +1617,7 @@ fn continuation_tc2a_continue_omits_assessment_workflow() {
     let samples = action_contract_samples();
     let continued = samples[2].to_string();
     assert!(!continued.contains("If a formal open response is pending"), "continuation without a formal response carries the assessment workflow");
-    assert!(continued.contains("Select validates and saves the exact delivery through the host"));
+    assert!(!continued.contains("Select validates and saves the exact delivery through the host"));
     for workflow in ["assessment", "understanding", "presentation"] {
         assert!(!continued.contains(&format!("resident-agent.tutor.{workflow}")));
     }
@@ -1636,7 +1681,7 @@ fn continuation_baseline_foundation_and_selection_are_shared_across_ready_states
         if !ready { assert_eq!(readiness["blocked_stage"], "book_structure"); }
         enable(&mut state);
         let run = prepare(&mut state, json!({"message":"Explain average speed","question_quote":quote()}));
-        assert_eq!(run.tutor.as_ref().unwrap()["status"], if ready { "active" } else { "observing" });
+        assert_eq!(run.tutor.as_ref().unwrap()["status"], "observing");
         assert_eq!(run.scope.question_quote.as_ref().unwrap().quote, scenario()["quote"]);
         assert!(run.agent_message.contains(scenario()["quote"].as_str().unwrap()));
     }
@@ -1807,6 +1852,25 @@ fn continuation_red_answer_excerpt_reaches_model_input() {
 }
 
 #[test]
+fn continuation_answer_excerpt_can_cross_a_source_citation() {
+    let (_root, mut state) = fixture(true);
+    let first = prepare(&mut state, json!({"message":"Explain average speed"}));
+    let mut answer = super::tutor_loop_tests::outcome(None);
+    answer.answer = Some("Distance divided by time gives average speed.".into());
+    answer.answer_view = Some(AgentAnswerView { parts: vec![
+        AgentAnswerPart::Markdown { text: "Distance divided by time".into() },
+        AgentAnswerPart::Sources { source_ref_ids: vec![] },
+        AgentAnswerPart::Markdown { text: " gives average speed.".into() },
+    ], sources: vec![] });
+    super::tutor_loop_tests::finish(&mut state, &first.turn_ref, &answer);
+    let excerpt = "time gives average speed";
+    let next = prepare(&mut state, json!({"message":"This step is unclear","entry_action":"clarify_answer",
+        "session_id":first.turn_ref.session_id,"client_request_id":"clarify-citation","expected_chat_head":first.turn_ref.turn_id,
+        "answer_ref":{"turn_id":first.turn_ref.turn_id,"excerpt":excerpt}}));
+    assert!(next.agent_message.contains(excerpt));
+}
+
+#[test]
 fn continuation_baseline_local_blank_chat_is_rejected() {
     let (_root, mut state) = fixture(true);
     assert!(prepare_agent_chat(&mut state, r#"{"message":"   "}"#, "1000").is_err(),
@@ -1859,6 +1923,30 @@ fn continuation_contract_input_shapes_and_normalized_identity() {
 }
 
 #[test]
+fn continuation_answer_practice_contract_is_explicit_and_exclusive() {
+    use crate::interaction_input::InteractionInput;
+    let input = json!({"message":"","entry_action":"continue_answer","learning_purpose":"practice",
+        "answer_ref":{"turn_id":"original"},"expected_chat_head":"latest"});
+    assert!(matches!(InteractionInput::parse(&input).unwrap(), InteractionInput::Answer { .. }));
+    let normalized = run_admission::normalize("w", &input).unwrap();
+    assert_eq!(normalized["learning_purpose"], "practice");
+    let mut ordinary = input.clone();
+    ordinary.as_object_mut().unwrap().remove("learning_purpose");
+    assert!(InteractionInput::parse(&ordinary).is_ok());
+    assert_ne!(normalized, run_admission::normalize("w", &ordinary).unwrap());
+    for (key, value) in [("learning_purpose", json!("understand")), ("learning_purpose", json!("discover")),
+        ("learning_purpose", json!("exam")), ("learning_purpose", json!("explore")),
+        ("entry_action", json!("clarify_answer")), ("entry_action", json!("learn_with_purpose")),
+        ("answer_ref", Value::Null), ("expected_chat_head", Value::Null), ("chapter_lid", json!("1")),
+        ("question_quote", quote()), ("question_anchor_lid", json!("1.1")),
+        ("teaching_choice", json!({"delivery_ref":"delivery","option_id":"next"}))] {
+        let mut invalid = input.clone();
+        invalid[key] = value;
+        assert_eq!(InteractionInput::parse(&invalid).unwrap_err().error_code, "INTERACTION_INVALID", "{invalid}");
+    }
+}
+
+#[test]
 fn continuation_contract_references_reject_invalid_clarification() {
     let (_root,mut state)=fixture(true);
     let probe=Probe::default(); state.services.adapter=Box::new(probe.clone());
@@ -1898,7 +1986,7 @@ fn continuation_contract_snapshot_survives_jsonl_and_drives_current_action() {
     let snapshot=resolved_action(&state);
     let mut session=state.user.agent_history.sessions[0].clone();
     let turn=append_pending_agent_turn(&mut session,"操作：帮我弄懂这段".into(),None,Some(serde_json::from_value(quote()).unwrap()),
-        None,None,None,None,None,None,"1001").unwrap();
+        None,None,None,None,None,None,false,"1001").unwrap();
     session.turns.last_mut().unwrap().domain.interaction=Some(snapshot.clone());
     state.user.session_store.as_mut().unwrap().accept(&mut state.user.agent_history,session,"1001").unwrap();
     let (history,store)=crate::session_store::load_chat_storage(&state.user.history_path).unwrap();
@@ -1915,30 +2003,10 @@ fn continuation_contract_snapshot_survives_jsonl_and_drives_current_action() {
     let ranges=[EvidenceRange { start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![] }];
     let mut bad=movement.clone(); bad["interaction_intent"]=json!("guided_inquiry"); bad["kind"]=json!("question");
     assert!(super::tutor_loop_tests::step_with_design(&state.private_context(),&turn,json!({"operation":"select","move":bad}),&[],&ranges).is_err());
-    let store=state.user.learning_store().unwrap();
-    let binding=store.teaching_event(&format!("binding:{}",turn.turn_id)).unwrap().binding;
-    let design=store.current_teaching_design(&binding.tutor_session_id,&binding.source_id,&binding.source_revision).unwrap().unwrap();
-    let mut request=json!({"operation":"select","move":movement});
-    request["move"]["design_ref"]=json!(design.event_id);
-    request["move"]["block_refs"]=json!(["total-time"]);
-    request["move"]["interaction_intent"]=json!("neutral");
-    request["move"]["intent_origin"]=json!("neutral");
-    request["move"]["intent_quote"]=json!("ignored model quote");
-    request["move"]["preference_ref"]=json!("ignored model preference");
-    super::tutor_loop_tests::fixture_participation(&mut request["move"]);
-    let before=store.teaching_turn_events(&binding.tutor_session_id,&turn.turn_id).unwrap().len();
-    let normalized=teaching::preflight_step(&state.private_context(),&turn,&request,&[],&ranges).unwrap();
-    assert_eq!(normalized["move"]["interaction_intent"],"direct_explanation");
-    assert_eq!(normalized["move"]["intent_origin"],"current_action");
-    assert!(normalized["move"]["intent_quote"].is_null());
-    assert!(normalized["move"]["preference_ref"].is_null());
-    assert_eq!(store.teaching_turn_events(&binding.tutor_session_id,&turn.turn_id).unwrap().len(),before);
-    let selected=teaching::step(&state.private_context(),&turn,request,&[],&ranges).unwrap();
-    let saved=state.user.learning_store().unwrap().teaching_event(selected["selected"].as_str().unwrap()).unwrap();
-    assert_eq!(saved.payload["move"],normalized["move"],"review and commit must see the same accepted action intent");
-    assert_eq!(saved.payload["move"]["interaction_intent"], "direct_explanation");
-    assert_eq!(saved.payload["move"]["intent_origin"], "current_action");
-    assert!(saved.payload["move"]["intent_quote"].is_null());
+    assert_eq!(context["status"],"observing");
+    assert!(context["current_design"].is_null());
+    assert!(!state.user.learning_store().unwrap().teaching_turn_events(context["binding"]["tutor_session_id"].as_str().unwrap(),&turn.turn_id).unwrap()
+        .iter().any(|event|matches!(event.kind,TeachingFact::DesignRevised|TeachingFact::MoveSelected)));
 }
 
 #[test]
@@ -1951,7 +2019,7 @@ fn continuation_contract_no_action_cannot_claim_current_action() {
             "source_bindings":resolved_action(&state).source_bindings,"object_refs":[]}});
     let error=super::tutor_loop_tests::step_with_design(&state.private_context(),&run.turn_ref,json!({"operation":"select","move":movement}),&[],
         &[EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![]}]).unwrap_err();
-    assert!(error.message.contains("current_action 不支持"),"{}",error.message);
+    assert!(error.message.contains("明确的练习请求"),"{}",error.message);
     let saved=&state.user.agent_history.sessions[0].turns[0];
     let mut old=serde_json::to_value(saved).unwrap(); old.as_object_mut().unwrap().remove("domain");
     let reread: AgentChatTurn=serde_json::from_value(old).unwrap();
@@ -1965,7 +2033,7 @@ fn continuation_contract_candidate_snapshot_freezes_before_chat_acceptance() {
     let snapshot=resolved_action(&state);
     let mut candidate=state.user.agent_history.sessions[0].clone();
     let turn=append_pending_agent_turn(&mut candidate,"操作：帮我弄懂这段".into(),None,None,
-        None,None,None,None,None,None,"1001").unwrap();
+        None,None,None,None,None,None,false,"1001").unwrap();
     assert!(state.user.agent_history.sessions[0].turns.is_empty());
     let frozen=teaching::freeze_prepare(&state.private_context(),&turn,&json!({"message":""}),Some(&snapshot),"1001").unwrap();
     let context=frozen.context.unwrap();

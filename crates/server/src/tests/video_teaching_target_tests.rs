@@ -1,4 +1,5 @@
 use super::*;
+use crate::tests::tutor_loop_tests::prepare_activity_chat as prepare_agent_chat;
 
 fn binding() -> TeachingBinding {
     TeachingBinding { tutor_session_id:"tutor".into(), session_revision:1, control_revision:1,
@@ -135,7 +136,7 @@ fn video_teaching_target_design_delivery_and_next_turn_preserve_media_sources() 
     let displayed=route(&state.private_context(),Req {method:"POST",url:"/tutor/display",body:&display,now:"display"});
     assert_eq!(displayed.status,200,"{}",displayed.body);
     let result=behavior(&state.private_context(),BehaviorRequest { operation_id:"video-answer".into(),delivery_ref:delivered.event_id,
-        action:"submit".into(),response:Some("all".into()),response_origin:None,scene:None },"answer").unwrap();
+        action:"submit".into(),response:Some("all".into()),reasoning:None,response_origin:None,scene:None },"answer").unwrap();
     assert_eq!(result["assessment"],"correct","a video-only target must assess an actual submission without invented text LIDs");
 }
 

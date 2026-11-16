@@ -3,8 +3,6 @@ import { createRequire } from "node:module";
 import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import path from "node:path";
 import { tmpdir } from "node:os";
-import { createCanvas } from "@napi-rs/canvas";
-import { createWorker, PSM } from "tesseract.js";
 import { extractPdfTextGeometry, type PdfTextGeometry } from "./pdf-geometry";
 import { sourceFromPdfGeometry } from "./pdf-native-source";
 import { pdfOcrSession, type PdfOcrResult, type PdfBox } from "./pdf-ocr";
@@ -14,11 +12,14 @@ import { buildSourceManifestV2 } from "./source-manifest";
 import { pdfUserSpaceCoordinateSystem, type PdfSelectionMapPageShard, type PdfSourceMapEntry } from "./pdf-source-map";
 import type { HybridFoundationArtifacts } from "./hybrid-foundation";
 
-const require = createRequire(import.meta.url);
 const sha = (value: string | Uint8Array) => createHash("sha256").update(value).digest("hex");
 const config = { algorithm: "pdf_text_layer_v1" as const, lookback_words: 0, lookahead_words: 0, merge_gap_utf16: 0, coordinate_system: "pdf_user_space" as const, normalization: ["literal_markdown", "reading_order"] };
 
 export async function extractPdfWithOcr(pdf: Uint8Array, options: { signal?: AbortSignal; onProgress?: (message: string) => void } = {}) {
+  // Resolve native bindings, worker scripts and WASM beside the packaged sidecar.
+  const require = createRequire(process.env.UNDERSTAND_BOOK_SIDECAR_SELF || import.meta.url);
+  const { createCanvas } = require("@napi-rs/canvas") as typeof import("@napi-rs/canvas");
+  const { createWorker, PSM } = require("tesseract.js/src/index.js") as typeof import("tesseract.js");
   const ocr = pdfOcrSession({
     ...options,
     async createWorker() {

@@ -348,6 +348,7 @@ mod tests {
                 // stopped service prevents this regression from sending HTTP.
                 let service = ServiceAdapter::from_config(
                     ProviderConfig {
+                        agent_reasoning_effort: Default::default(),
                         mode,
                         api_key: "CANARY_PRIVATE_KEY".into(),
                         base_url: endpoint.into(),

@@ -3,6 +3,25 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 pub use crate::tutor_continuation::TeachingContinuation;
 
+/// Recovery describes the draft that actually exists, not a hypothetical one
+/// implied by the tool vocabulary. Source failures include an executable read.
+pub(crate) fn with_recovery(result: String, draft_ref: Option<&str>, operation: &str) -> String {
+    let Ok(mut body) = serde_json::from_str::<Value>(&result) else { return result; };
+    if body.get("error_code").is_none() { return result; }
+    if matches!(operation, "select" | "revise") { body["recovery"] = match draft_ref {
+        Some(reference) => json!({"draft_ref":reference,
+            "operation":"revise_or_select",
+            "guidance":"This exact retained draft supports edits to delivery_text/public_prompt and move_changes for participation/response_expectation/coach_adjustment. For a source-only correction, read next_calls then revise with edits:[]. For any other field (including intent or source target), resend a complete corrected select; revise preserves those fields."}),
+        None => json!({"operation":"select",
+            "guidance":"No editable draft exists. Submit a complete corrected select with the full body; do not call revise or invent a draft_ref."}),
+    }; }
+    if let Ok(range) = serde_json::from_value::<read_tools::EvidenceRange>(body["missing_source_read"].clone()) {
+        body["next_calls"] = json!([{"tool":"book.text","arguments":{
+            "lid":range.start_lid,"end_lid":range.end_lid}}]);
+    }
+    body.to_string()
+}
+
 pub fn public_arguments(arguments: &str) -> String {
     let Ok(mut value) = serde_json::from_str::<Value>(arguments) else {
         return "{}".into();
@@ -13,6 +32,7 @@ pub fn public_arguments(arguments: &str) -> String {
         fields.remove("coach_ref");
         fields.remove("coach_adjustment");
         fields.remove("delivery_text");
+        fields.remove("closed_book");
         fields.remove("move_changes"); // Private draft edits, including new invitations.
         if let Some(edits) = fields.remove("edits").and_then(|value| value.as_array().cloned()) {
             fields.insert("edits".into(), json!(edits.iter().map(|edit| {
@@ -73,6 +93,41 @@ pub enum TeachingParticipation {
     },
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ChoiceOption {
+    pub id: String,
+    pub text: String,
+}
+
+/// What a learner can see and enter. Correct ids and grading criteria live in the assessment.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum AnswerInput {
+    SingleChoice { options: Vec<ChoiceOption> },
+    MultipleChoice { options: Vec<ChoiceOption> },
+    WorkedSolution,
+}
+
+impl AnswerInput {
+    pub fn matches_assessment(&self, contract: Option<&memory::assessment::AssessmentContract>) -> bool {
+        use memory::assessment::ScoringRule;
+        match (self, contract.map(|c| &c.rule)) {
+            (Self::WorkedSolution, Some(ScoringRule::Open { items })) =>
+                !items.is_empty() && items.iter().all(|i| !i.source_lids.is_empty()),
+            (Self::SingleChoice { options } | Self::MultipleChoice { options },
+                Some(ScoringRule::ChoiceSet { choices, correct })) => {
+                let ids: std::collections::BTreeSet<_> = options.iter().map(|o| &o.id).collect();
+                options.len() >= 2 && ids.len() == options.len() && ids == choices.iter().collect()
+                    && options.iter().map(|o| o.text.trim()).collect::<std::collections::BTreeSet<_>>().len() == options.len()
+                    && options.iter().all(|o| !o.text.trim().is_empty() && !o.id.trim().is_empty())
+                    && (!matches!(self, Self::SingleChoice { .. }) || correct.len() == 1)
+            }
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TeachingMove {
@@ -121,6 +176,8 @@ pub struct TeachingMove {
     pub explanation: Option<String>,
     #[serde(default)]
     pub assessment: Option<memory::assessment::AssessmentContract>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub answer_input: Option<AnswerInput>,
     /// Retrieval practice; its hints replace the single `hint`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub practice: Option<crate::practice::PracticeSpec>,
@@ -145,11 +202,11 @@ pub(crate) fn target_input_schema() -> Value {
 fn design_input_schema() -> Value {
     let mut schema = book_tool_contracts::schema_value::<memory::teaching_design::TeachingDesign>();
     schema["properties"]["target"] = target_input_schema();
-    schema["properties"]["organizing_model"]["description"] = json!("The subject-matter relationship and current question guiding this plan, not a second learner profile. Any claim about this learner's understanding must follow the actual expressions resolved in learner_grounding; delivered help is not evidence of understanding. Keep unobserved understanding unknown while explaining the current question.");
+    schema["properties"]["organizing_model"]["description"] = json!("The learning question, sequence and purpose of this plan. Organize how to investigate the read material; do not invent an overarching subject-matter conclusion. This is a teaching arrangement, not a knowledge source or learner profile. Any claim about this learner's understanding must follow the actual expressions resolved in learner_grounding; delivered help is not evidence of understanding. Keep unobserved understanding unknown while explaining the current question.");
     schema["properties"]["basis_refs"]["description"] = json!("Actual learner-expression fact refs or current understanding evidence refs whose original expressions can be resolved. Delivered answers, displayed pages and clicks are support context, not understanding bases. An empty list is valid when choosing an explanation without a learner diagnosis.");
     schema["properties"]["revision_reason"]["description"] = json!("Explain which current request or original expression changes the support, depth or focus. Use basis_refs for actual expression/evidence references from continuity; current explicit requests take precedence over historical teaching_implication or preferences. Preserve historical facts and help conditions.");
     schema["properties"]["blocks"]["items"]["properties"]["purpose"]["description"] = json!("What understanding or useful judgment this connection enables. For chapter guidance, connect it to the selected question rather than listing a topic to cover.");
-    schema["properties"]["blocks"]["items"]["properties"]["relation"]["description"] = json!("A usable connection with its decisive conditions. Separate connections that the learner may need help establishing independently, rather than putting a whole topic and its cases inside one block.");
+    schema["properties"]["blocks"]["items"]["properties"]["relation"]["description"] = json!("A concrete learning question or operation to work on using source_bindings, retaining the material's decisive conditions. For example: compare expiry payoff with the pre-expiry price described in the source. If citing a material relationship, preserve its scope and conditions. Do not turn a temporary analogy, inferred causal story or unverified quantitative correspondence into a reusable factual conclusion.");
     schema["properties"]["focus_block_refs"]["description"] = json!("Current working scope, chosen from the learner's expressed foothold and unresolved connection. Moves and presentations must stay within it; revise the design before changing focus. Other blocks remain available for later work without being explained now.");
     schema["properties"]["representation"] = book_tool_contracts::schema_value::<memory::teaching_design::TeachingRepresentation>();
     schema["properties"]["representation"]["description"] = json!("Choose how to make this connection usable from the actual confusion. text: why prose or an inline comparison suffices. presentation: why a persistent visible example helps and what concrete relationship the learner can observe, compare or change. It need not be requested by the learner. An accepted presentation choice exposes the page authoring tool in the next sampling. Existing page observations can support later text feedback without rebuilding the page.");
@@ -165,7 +222,11 @@ pub(crate) fn validate_arguments(
     messages: &[crate::Message],
     arguments: &str,
 ) -> Result<(), crate::tool_registry::ToolArgumentError> {
-    let result = registration.validate_arguments(arguments);
+    let normalized = serde_json::from_str::<Value>(arguments).ok().map(|mut request| {
+        bind_context_fields(&mut request, context);
+        request.to_string()
+    });
+    let result = registration.validate_arguments(normalized.as_deref().unwrap_or(arguments));
     if result.is_ok() { return result; }
     let retry = serde_json::from_str::<Value>(arguments).ok().is_some_and(|request| {
         let Some(context) = context else { return false; };
@@ -199,6 +260,22 @@ pub(crate) fn validate_arguments(
     replay.validate_arguments(arguments)
 }
 
+/// Fill a unique focus only after the teacher explicitly adopts this design.
+/// Omitting design_ref means a local source-grounded reply, even when a plan exists.
+pub(crate) fn bind_context_fields(request: &mut Value, context: Option<&Value>) {
+    let Some(context) = context.filter(|c| c["status"] == "practice") else { return; };
+    if request["operation"] != "select" || context["native_board_candidate_pending"] == true
+        || request["move"].get("board_candidate_revision").is_some() { return; }
+    let Some(movement) = request["move"].as_object_mut() else { return; };
+    if movement.get("design_ref").and_then(Value::as_str).is_some()
+        && movement.get("design_ref") == context["current_design"].get("design_ref")
+        && !movement.contains_key("block_refs") {
+        if let Some(focus) = context["current_design"]["design"]["focus_block_refs"].as_array().filter(|v| v.len() == 1) {
+            movement.insert("block_refs".into(), json!(focus));
+        }
+    }
+}
+
 /// A board part is a complete piece of support within the unchanged request.
 /// The caller supplies whether this run has a real, frozen board context.
 pub fn validate_delivery_scope(request: &Value, has_board_context: bool) -> Result<Option<Value>, read_tools::ToolError> {
@@ -227,7 +304,7 @@ pub fn spec() -> crate::ToolSpec {
     let mut tool = crate::ToolSpec { name: "tutor.step".into(), description:
         "Select one source-grounded move after reading original text, video transcript/frames/audio review, or prepared music with music.read this turn. Video and music targets use current-turn source.present IDs in source_ref_ids and source_bindings:[]; the host binds exact source provenance. Supply target with learning_focus, expected_performance, capability, exact source_bindings for full text LIDs (start_lid, end_lid; omit source_id/source_revision to use the runtime-bound current source), and optional object_refs. object_ids may be empty when no applicable formal objects exist. If using available objects, read them with material and include their exact revisions in target.object_refs; missing cognitive material does not block teaching. trace rereads private delivered facts. Explicit direct explanation overrides guided inquiry. Select with operation=select and a move; final delivery presents it. Optional presentation must already be delivered in this turn. Optional assessment freezes private criteria before delivery. assess evaluates an existing formal response in one isolated model call; understanding reads evidence; evidence proposes a sourced ungraded interpretation. Page calculations never assess correctness. Private keys and help must not enter public text. No direct mastery updates."
         .into(), parameters: json!({"type":"object","properties":{
-            "operation":{"type":"string","enum":["material","trace","design","select","revise","outside","assess","understanding","evidence"]},
+            "operation":{"type":"string","enum":["material","trace","design","select","revise","outside","assess","understanding","evidence","corrections"]},
             "evidence_ref":{"type":"string","description":"Read one evidence interpretation with operation=understanding; after is the character offset."},
             "operation_id":{"type":"string","description":"A new identity for this design revision or interpretation; retry the same input with the same identity."},"supersedes":{"type":"string","description":"An existing evidence_ref being revised, obtained from understanding."},
             "nature":{"type":"string","enum":["hypothesis"]},
@@ -242,7 +319,7 @@ pub fn spec() -> crate::ToolSpec {
             "move":{"type":"object","properties":{
                 "move_id":{"type":"string"},"object_ids":{"type":"array","items":{"type":"string"}},
                 "interpretation_refs":{"type":"array","items":{"type":"string"},"description":"Current evidence references actually adopted for this move; superseded interpretations cannot be adopted."},
-                "target":{"anyOf":[target_input_schema(),{"type":"null"}],"description":"Supply the local working target when the current request is narrower or otherwise changes scope, including a typed follow-up or confirmation about one connection in a broader design. Use expected_performance and exact source_bindings for this answer, and read that scope this turn. If omitted, reuse the latest delivered target for these relationships in the same design revision, otherwise use the entire accepted design target; block_refs alone does not narrow its source ranges. Omit only when that inherited scope still fits the current request."},
+                "target":{"anyOf":[target_input_schema(),{"type":"null"}],"description":"Required for a direct reply without design_ref. Supply learning_focus, expected_performance, capability and exact source_bindings for this answer, and read that scope this turn. When explicitly adopting a design, supply this local target if the request changes its working scope; omit only when the latest delivered target for those relationships in the same design revision, or otherwise the accepted design target, still fits. block_refs alone does not narrow source ranges."},
                 "capability":{"type":"string"},"kind":{"type":"string","enum":["explain","observe","compare","question","source_focus"]},
                 "interaction_intent":{"type":"string","enum":["direct_explanation","guided_inquiry","neutral"]},
                 "intent_origin":{"type":"string","enum":["current_request","current_action","session_default","confirmed_preference","neutral"],"description":"The provenance of an explicit teaching-mode preference, not the reason for choosing a useful move. A saved learning goal is not a session_default mode. session_default requires a non-null default_teaching_intent and that exact interaction_intent. With no explicit mode, use intent_origin=neutral and interaction_intent=neutral; kind=explain remains valid and should follow the accepted learning goal. current_action requires the frozen current_action snapshot; omit intent_quote because its accepted_request is a UI action, not user-authored text. current_request requires an exact quote of this turn's current_request (the real user_supplement for a UI action), which takes priority over defaults."},
@@ -252,15 +329,32 @@ pub fn spec() -> crate::ToolSpec {
                 "prompt":{"type":"string","description":"Short teaching focus for this move. The complete answer belongs in delivery_text; this field never substitutes for its body."},"actions":{"type":"array","items":{"type":"string","enum":["submit","revise","request_hint","reveal","skip","self_report"]}},
                 "presentation":{"type":"object","properties":{"presentation_id":{"type":"string"},"revision":{"type":"integer"}},"required":["presentation_id","revision"]},
                 "hint":{"type":"string"},"explanation":{"type":"string"},
-                "assessment":{"type":"object","description":"Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID],source_ref_ids:[source.present ID]}]},source_lids:[LID],source_ref_ids:[source.present ID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Supply text LIDs and/or current-turn media/music references bound to the teaching target; pure media uses source_lids:[]. Each open criterion names its supporting subset. Use only material actually read this turn; visual assessment reopens the frozen pixels, music uses the prepared score/analysis without claiming heard performance. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Never copy the private key/rubric into page files or final text. Choice tokens belong in the public prompt; responses are a token or JSON array. Help and revised attempts are retained separately."}
+                "assessment":{"type":"object","description":"Optional private frozen scoring contract. {rule:{kind:choice_set,choices:[tokens],correct:[tokens]} OR rule:{kind:open,items:[{id,criterion,source_lids:[LID],source_ref_ids:[source.present ID]}]},source_lids:[LID],source_ref_ids:[source.present ID],source_sufficient:boolean,feedback:after_submit|on_reveal}. Supply text LIDs and/or current-turn media/music references bound to the teaching target; pure media uses source_lids:[]. Each open criterion names its supporting subset. Use only material actually read this turn; visual assessment reopens the frozen pixels, music uses the prepared score/analysis without claiming heard performance. Open criterion states necessary conditions, equivalent expressions and acceptable omissions. Never copy the private key/rubric into page files or final text. For ordinary choice and calculation questions supply move.answer_input and both submit and revise. For choices place option labels only in answer_input.options; the learner selects them on the card. Help and revised attempts are retained separately."}
             },"required":["move_id","object_ids","capability","kind","prompt","interaction_intent","intent_origin"]}
         },"required":["operation"]}) };
     let properties = &mut tool.parameters["properties"];
+    properties["correction_action"] = json!({"type":"string","enum":["search","read","record","use"],"description":"Teacher-owned corrections across chats and stages, restricted to this reader/workspace/source version. search retrieves candidates by topic (after=candidate offset); read retrieves an exact correction_ref in chunks (after=character offset, follow next); record saves a source-checked correction to your own actual earlier words; use records whether a candidate applies to this request. Never student mastery evidence. Read details_truncated candidates before deciding."});
+    properties["queries"] = json!({"type":"array","minItems":1,"maxItems":6,"items":{"type":"string","minLength":2,"maxLength":80},"description":"Specific topic words or short synonyms from the current question and source language. Space-separated query terms match independently; stored topic phrases also match within a longer query. A match returns candidates, not a verdict of applicability. Follow next to page through matches."});
+    properties["correction"] = book_tool_contracts::schema_value::<memory::teacher_corrections::TeacherCorrection>();
+    for field in ["mistake_quote","corrected_claim","applies_when"] {
+        properties["correction"]["properties"][field]["minLength"] = json!(1);
+        properties["correction"]["properties"][field]["maxLength"] = json!(1600);
+    }
+    properties["correction"]["properties"]["topics"] = json!({"type":"array","minItems":1,"maxItems":8,
+        "items":{"type":"string","minLength":2,"maxLength":80},"description":"1–8 specific subject terms, optionally including source-language synonyms."});
+    properties["correction"]["properties"]["source_quotes"]["minItems"] = json!(1);
+    properties["correction"]["properties"]["source_quotes"]["maxItems"] = json!(6);
+    properties["correction"]["properties"]["source_quotes"]["items"]["properties"]["quote"]["minLength"] = json!(1);
+    properties["correction"]["properties"]["source_quotes"]["items"]["properties"]["quote"]["maxLength"] = json!(1600);
+    properties["correction_ref"] = json!({"type":"string","description":"Exact candidate correction_ref returned by corrections search."});
+    properties["decision"] = json!({"type":"string","enum":["apply","not_applicable"]});
+    properties["reason"] = json!({"type":"string","minLength":1,"maxLength":1600,"description":"Why this teacher correction does or does not apply under this question's actual conditions. Current explicit request controls teaching style."});
     properties["understanding"] = book_tool_contracts::schema_value::<memory::understanding::UnderstandingObservation>();
     properties["note_links"] = json!({"type":"array","items":book_tool_contracts::schema_value::<memory::understanding::NoteEvidenceLink>()});
     tool.description.push_str(" For evidence, understanding separates demonstrated capabilities, concrete difficulties, and unconfirmed parts. Questions alone are not misconceptions; supplied explanations or copied notes do not prove independent use. Use note_links with exact offered NoteRef and a quote from that saved version only when the interpretation concerns that part. known_focuses offers stable private relationships: reuse focus_ref and its exact learning_focus only for the same relationship; new relationships omit it. For open assessment, each rubric item should carry target (same TeachingTarget shape, at most one object, its specific capability) and optional note_refs drawn from move.note_refs. Split concept understanding from calculation criteria. Without this attribution only an aggregate task result is retained. Never give every object the whole-question result.");
     properties["move"]["properties"]["note_refs"]=json!({"type":"array","items":{"type":"object","required":["note_id","revision"],"properties":{"note_id":{"type":"string"},"revision":{"type":"integer","minimum":1}}},"description":"Exact personally saved versions actually read and adopted in this support. Explain the concrete effect in participation.reason. Separate from learner fact_refs; recall or saving never proves mastery."});
     properties["move"]["properties"]["practice"] = crate::practice::schema();
+    properties["move"]["properties"]["answer_input"] = book_tool_contracts::schema_value::<AnswerInput>();
     properties["draft_ref"] = json!({"type":"string","minLength":1,"description":"revise: copy the exact current draft_ref from the private unaccepted text draft. It identifies this run's latest editable version and expires when replaced, accepted or cleared by a new design/outside decision. A review_ref or accepted move reference is not a draft_ref."});
     properties["edits"] = json!({"type":"array","description":"revise: atomically replace the selected whole paragraphs using the host's editable_paragraphs for this draft_ref, then submit the complete preserved select for host source, version and delivery checks. Every paragraph number refers to the same original draft, not the result of earlier edits. Use [] after reading missing evidence when the current wording is supported. Untouched paragraphs and unnamed fields remain unchanged; use move_changes for supported metadata corrections and do not resend the full body.","items":{
         "type":"object","additionalProperties":false,"required":["field","paragraph","new_text"],"properties":{
@@ -283,6 +377,16 @@ pub fn spec() -> crate::ToolSpec {
     properties["move"]["properties"]["responds_to"] = book_tool_contracts::schema_value::<memory::teaching_design::TeachingResponseLink>();
     properties["move"]["properties"]["response_expectation"] = book_tool_contracts::schema_value::<memory::teaching_design::ResponseExpectation>();
     properties["move"]["properties"]["participation"] = book_tool_contracts::schema_value::<TeachingParticipation>();
+    properties["move"]["allOf"] = json!([
+        {"if":{"required":["participation"],"properties":{"participation":{"required":["choice"],"properties":{"choice":{"enum":["invite"]}}}}},
+         "then":{"anyOf":[
+             {"required":["response_expectation"],"properties":{"response_expectation":{"type":"object"}}},
+             {"required":["assessment"],"properties":{"assessment":{"type":"object"}}},
+             {"required":["actions"],"properties":{"actions":{"type":"array","contains":{"enum":["submit"]}}}}
+         ]}},
+        {"if":{"required":["intent_origin"],"properties":{"intent_origin":{"enum":["current_request"]}}},
+         "then":{"required":["intent_quote"],"properties":{"intent_quote":{"type":"string","minLength":1}}}}
+    ]);
     properties["move"]["properties"]["coach_adjustment"] = book_tool_contracts::schema_value::<crate::tutor_coach::CoachAdjustment>();
     properties["move"]["properties"]["coach_adjustment"]["description"] = json!("Only when the latest actual user input or execution facts materially change the automatically supplied coach guidance. Explain the specific change in reason and cite available actual fact_refs. Omit for ordinary implementation or wording choices. Never claim the coach has seen the new user input.");
     // Defaults read existing persisted choices; newly authored support must
@@ -351,9 +455,11 @@ fn input_examples() -> Value {
     assessment["participation"] = json!({"choice":"invite","reason":"A comparison can distinguish moving-only speed from the whole-trip relationship after its premises are available.",
         "learner_inference":"Whether faster movement alone establishes a higher whole-trip average speed for these two journeys.",
         "support":"Supply average speed as distance divided by all elapsed time; the prompt supplies equal distances, moving times and the stop."});
-    assessment["prompt"] = json!("A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.");
-    assessment["delivery_text"] = json!("Whole-trip average speed is distance divided by all elapsed time, including stops. A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so my average speed for the whole trip was higher.' Is that claim correct? Explain using both journeys.");
-    assessment["actions"] = json!(["submit", "reveal"]);
+    assessment["prompt"] = json!("A and B each travel 10 km. A takes 10 minutes moving and stops for 5 minutes; B takes 12 minutes without stopping. A says, 'I moved faster, so I completed the whole trip more quickly.' Is that claim correct? Explain using both journeys.");
+    assessment["delivery_text"] = assessment["prompt"].clone();
+    assessment["actions"] = json!(["submit", "revise", "request_hint", "reveal", "skip"]);
+    assessment["practice"] = json!({"entry":"warmup","mode":"recall","distance":"adjacent",
+        "hints":[{"kind":"structure","text":"Compare the intervals between departure and arrival for each traveler."}]});
     assessment["explanation"] = json!("For the whole trip, average speed uses total distance divided by all elapsed time. A takes 10 + 5 = 15 minutes and B takes 12; over the same 10 km, B has the greater whole-trip average speed. Excluding the stop gives A's moving-only average speed; that answers a different question and cannot support A's whole-trip claim.");
     assessment["assessment"] = json!({"rule":{"kind":"open","items":[{"id":"total-time",
         "criterion":"Rejects A's claim: A's total journey time includes the stop, giving 15 minutes versus B's 12; for the same distance, B has the greater average speed. Equivalent wording or time units are accepted; numerical speed calculations may be omitted. Repeating the definition without applying it to these journeys is insufficient.","source_lids":["1.1"]}]},
@@ -384,13 +490,17 @@ fn input_examples() -> Value {
     direct["prompt"] = json!("Use the earlier journey to derive the whole-trip average-speed formula at the requested depth, even if an earlier preference favored simple examples.");
     direct["delivery_text"] = json!("Define the average speed as the constant speed that would cover the same total distance d during the same elapsed time T. A constant speed v covers vT, so matching this journey gives vT = d. With T positive, dividing both sides by T gives v = d/T. In the earlier 10 km journey, 10 minutes moving plus 5 stopped gives T = 15 minutes = 0.25 hours, so the whole-trip average is 10/0.25 = 40 km/h. The stop belongs to that elapsed interval even though it adds no distance.");
     direct["participation"] = json!({"choice":"conclude","reason":"The current explicit request asks for the full derivation with the previous example; complete it without a preliminary test or a new invitation."});
+    for movement in [&mut explain, &mut direct] {
+        movement.as_object_mut().unwrap().remove("design_ref");
+        movement.as_object_mut().unwrap().remove("block_refs");
+    }
     json!([
         {"operation":"material"},
         {"operation":"trace","after":0},
         {"operation":"design","operation_id":"design-speed","design":{
-            "target":target,"organizing_model":"A journey's average speed compares distance with all time spent on that journey.",
+            "target":target,"organizing_model":"Use the source definition to compare two equal-distance journeys, then examine which elapsed intervals belong in each denominator.",
             "representation":{"kind":"text","reason":"One concrete journey and its stop make the missing time relationship usable in a short comparison."},
-            "blocks":[{"block_id":"total-time","relation":"Time spent stopped still belongs to the whole journey.","purpose":"Distinguish whole-journey average speed from moving-only speed.","source_bindings":[{"start_lid":"1.1","end_lid":"1.1"}]}],
+            "blocks":[{"block_id":"total-time","relation":"Using the source definition, which intervals belong to the elapsed time of the whole journey?","purpose":"Distinguish whole-journey average speed from moving-only speed.","source_bindings":[{"start_lid":"1.1","end_lid":"1.1"}]}],
             "focus_block_refs":["total-time"],"revision_reason":"Initial design for the learner's current request."}},
         {"operation":"revise","draft_ref":"<current_draft_ref>","edits":[{"field":"delivery_text","paragraph":2,"new_text":"All elapsed journey time, including the stop, belongs in the denominator. For the same 10 km journey, 10 minutes moving and 5 minutes stopped give 15 minutes in total, so the whole-journey average speed is 40 km/h."}]},
         {"operation":"revise","draft_ref":"<current_draft_ref>","edits":[]},
@@ -453,26 +563,37 @@ pub fn action_intent(context: &Value) -> Option<(&'static str, &'static str)> {
 /// vocabulary is projected separately so ordinary state changes keep its prefix.
 pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
     let status = context["status"].as_str()?;
-    let allowed: &[&str] = match status {
-        "active" if context["native_board_candidate_pending"] == true => &["material", "trace", "design", "select", "outside", "assess", "understanding", "evidence"],
-        "active" => &["material", "trace", "design", "select", "revise", "outside", "assess", "understanding", "evidence"],
-        "observing" => &["trace", "understanding", "evidence"],
+    let closed = context["closed_book"]["status"] == "active";
+    let allowed: &[&str] = if closed { &["trace", "understanding", "corrections", "evidence", "closed_book"] } else { match status {
+        "practice" if context["native_board_candidate_pending"] == true => &["material", "trace", "design", "select", "outside", "assess", "understanding", "evidence", "corrections", "closed_book"],
+        "practice" => &["material", "trace", "design", "select", "revise", "outside", "assess", "understanding", "evidence", "corrections", "closed_book"],
+        "observing" | "course" => &["trace", "understanding", "evidence", "corrections", "closed_book"],
         "reference" => &["trace"],
         _ => return None,
+    }
     };
     let mut tool = spec();
+    if allowed.contains(&"closed_book") {
+        tool.parameters["properties"]["closed_book"] = json!({"type":"object","properties":{
+            "action":{"type":"string","enum":if closed {json!(["clarify","question","followup","help","retry","complete","pause","exit"])}else{json!(["start"])}},
+            "text":{"type":"string","minLength":1},"target":{"type":"string"},"criteria":{"type":"string"},
+            "provides_help":{"type":"boolean"},"reason":{"type":"string"},"learner_quote":{"type":"string"}
+        },"required":["action","text","provides_help","reason"],"additionalProperties":false,
+        "description":"Only when the learner explicitly requests closed-book dialogue, use action=start with their exact learner_quote, a narrow observable target, frozen criteria, and text containing one self-contained first question without its solution. If the topic is unclear, leave criteria empty and ask what they want to practice; identifying the topic never completes practice. The host hides old explanations and delivers text exactly. Ordinary questions or practice requests do not authorize enabling this mode. Subsequent active turns use the closed-book policy."});
+        tool.parameters["anyOf"].as_array_mut().unwrap().push(json!({"properties":{"operation":{"enum":["closed_book"]},"closed_book":{}},"required":["operation","closed_book"]}));
+    }
     let schema = &mut tool.parameters;
     schema["properties"]["operation"]["enum"] = json!(allowed);
     let branches = schema["anyOf"].as_array_mut().unwrap();
     branches.retain(|branch| {
         let operation = branch["properties"]["operation"]["enum"][0].as_str().unwrap();
         allowed.contains(&operation)
-            && (status == "active" || operation != "evidence" || branch["properties"].get("nature").is_some())
+            && (status == "practice" || operation != "evidence" || branch["properties"].get("nature").is_some())
     });
     let fields: std::collections::HashSet<String> = branches.iter()
         .flat_map(|branch| branch["properties"].as_object().unwrap().keys().cloned()).collect();
     schema["properties"].as_object_mut().unwrap().retain(|field, _| fields.contains(field));
-    if status == "active" {
+    if status == "practice" && !closed {
         if context["current_design"]["design_ref"].is_string() {
             let design = &mut schema["properties"]["design"];
             design["required"].as_array_mut().unwrap().push(json!("previous_ref"));
@@ -480,14 +601,15 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
                 "description":"Copy current_design.design_ref from the current context when revising this design. The host checks the exact current predecessor; omit only for the first design, when no current_design exists."});
         }
         let movement = &mut schema["properties"]["move"];
-        movement["required"].as_array_mut().unwrap().extend([json!("design_ref"), json!("block_refs"), json!("participation")]);
+        movement["required"].as_array_mut().unwrap().push(json!("participation"));
         movement["anyOf"] = json!([{"required":["delivery_text"]},{"required":["board_candidate_revision"]}]);
         if context["native_board_candidate_pending"] == true {
             movement.as_object_mut().unwrap().remove("anyOf");
             movement["required"].as_array_mut().unwrap().push(json!("board_candidate_revision"));
             movement["properties"].as_object_mut().unwrap().remove("delivery_text");
         }
-        movement["properties"]["block_refs"]["minItems"] = json!(1);
+        movement["properties"]["design_ref"]["description"] = json!("Adopt the exact current design only for work that uses its planned focus. Omit for an ordinary explanation, clarification or correction; then supply an explicit source-grounded target and omit block_refs. An existing plan is not automatically adopted. Practice, assessed activities and teaching presentations require a design.");
+        movement["properties"]["block_refs"]["description"] = json!("Use actual focus blocks from the explicitly adopted design. Omit for a direct local reply without design_ref. When the adopted design has one focus block the host can bind it.");
         if context["current_action"].is_object() {
             // Reading actions always select a source target. Its capability is
             // authoritative; the server fills the duplicate persisted field.
@@ -527,13 +649,13 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
             }
         }
     } else {
-        tool.description = if status == "observing" {
-            "Observe understanding while answering the ordinary request. trace rereads delivered facts; understanding reads current interpretations; evidence with nature=hypothesis records a source-grounded, correctable interpretation of actual learner facts after reading the original text this turn. Keep unknowns unknown; a UI click or assistant answer is not learner understanding evidence."
+        tool.description = if matches!(status, "observing" | "course") {
+            "Answer the ordinary request. The background observation job records the learner's expression, prior help and knowledge links after delivery. Do not call evidence to duplicate that automatic record. trace rereads delivered facts; understanding reads saved interpretations. Only when the learner explicitly asks to save or correct a saved understanding, first read it with understanding, then use evidence with nature=hypothesis for the requested source-grounded update. Correcting your explanation is an ordinary dialogue reply, not a request to replace a saved interpretation. A UI click or assistant answer is not learner understanding evidence."
         } else {
             "Read previously delivered teaching events with trace. event_id selects an exact stored event; after continues a bounded read. Use the original facts to answer the ordinary request."
         }.into();
     }
-    if status == "active" && context["native_board_candidate_pending"] == true {
+    if status == "practice" && !closed && context["native_board_candidate_pending"] == true {
         let intent_resolved = action_intent(context).is_some() || context["native_selection_intent_resolved"] == true;
         let movement = &mut schema["properties"]["move"];
         let properties = movement["properties"].as_object_mut().unwrap();
@@ -564,7 +686,7 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
     let mut examples = input_examples().as_array().unwrap().clone();
     examples.retain_mut(|example| {
         let operation = example["operation"].as_str().unwrap();
-        if !allowed.contains(&operation) || (status != "active" && operation == "evidence" && example["nature"] != "hypothesis") {
+        if !allowed.contains(&operation) || (status != "practice" && operation == "evidence" && example["nature"] != "hypothesis") {
             return false;
         }
         if operation == "assess" || example["nature"] == "hypothesis" { return false; }
@@ -573,6 +695,9 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
             example["design"]["revision_reason"] = json!("Revise the support for the learner's current expression; copy the actual current_design.design_ref into previous_ref.");
         }
         if let Some(movement) = example.get_mut("move").and_then(Value::as_object_mut) {
+            // Text practice owns its hints and scoring contract. A native board
+            // selection cannot publish that contract after its fields are removed.
+            if context["native_board_candidate_pending"] == true && movement.get("practice").is_some_and(Value::is_object) { return false; }
             let resolved_selection_intent = action_intent(context).map(|(intent, _)| intent)
                 .or_else(|| (context["native_board_candidate_pending"] == true)
                     .then(|| context["native_selection_resolved_intent"].as_str()).flatten());
@@ -602,12 +727,12 @@ pub(crate) fn spec_for_context(context: &Value) -> Option<crate::ToolSpec> {
     });
     schema["examples"] = json!(examples);
     // Reduced descriptions still identify the sample data as illustrative.
-    if status != "active" {
+    if status != "practice" {
         tool.description.push_str(" Examples use an average-speed fixture; replace references and content with actual learner facts and source text. Examples are not evidence.");
     }
     if status != "reference" {
         tool.description.push_str(" Applicable assess/hypothesis examples appear in the current learner view. Angle-bracket references are placeholders, never event IDs.");
-        if status == "active" {
+        if status == "practice" && !closed {
             tool.description.push_str(" For assess, take the original response ID from pending_assessment_refs in the current learner view or trace.");
         }
         tool.description.push_str(" For a hypothesis, choose actual relevant learner-expression IDs from uninterpreted_fact_refs or trace, and read their original words before interpreting them.");
@@ -621,9 +746,10 @@ pub(crate) fn model_spec_for_context(context: &Value) -> Option<crate::ToolSpec>
     let status = context["status"].as_str()?;
     let native_board = context["native_board_candidate_pending"] == true;
     let mut tool = spec_for_context(&json!({"status":status,"native_board_candidate_pending":native_board,
+        "closed_book":{"status":context["closed_book"]["status"]},
         "native_selection_intent_resolved":action_intent(context).is_some(),
         "native_selection_resolved_intent":action_intent(context).map(|(intent, _)|intent)}))?;
-    if status != "active" { return Some(tool); }
+    if status != "practice" || context["closed_book"]["status"] == "active" { return Some(tool); }
 
     let schema = &mut tool.parameters;
     schema["properties"]["design"]["properties"]["previous_ref"] = json!({
@@ -632,7 +758,7 @@ pub(crate) fn model_spec_for_context(context: &Value) -> Option<crate::ToolSpec>
     let movement = &mut schema["properties"]["move"];
     if !native_board {
         movement["required"].as_array_mut().unwrap().retain(|field|
-            !field.as_str().is_some_and(|name| ["capability", "interaction_intent", "intent_origin"].contains(&name)));
+            !field.as_str().is_some_and(|name| ["capability", "interaction_intent", "intent_origin", "design_ref", "block_refs"].contains(&name)));
         movement["properties"]["capability"]["description"] = json!("Required when there is no current_action. When current_action exists, omit this duplicate field and supply move.target; the host binds its capability.");
         movement["properties"]["interaction_intent"]["description"] = json!("Supply with intent_origin unless the latest Tutor execution state resolves the intent. When the host resolves it, omit interaction_intent, intent_origin, intent_quote and preference_ref.");
         movement["properties"]["intent_origin"] = spec().parameters["properties"]["move"]["properties"]["intent_origin"].clone();
@@ -670,7 +796,7 @@ pub(crate) fn execution_guidance(context: &Value) -> Value {
             "move_changes":["participation","response_expectation","coach_adjustment"],
             "preserved":"All unnamed fields, including the complete body, source target, design, move identity and finish. move_changes replaces named fields; null removes only response_expectation/coach_adjustment. Full host select validation still applies."})),
         "current_design_ref":context["current_design"]["design_ref"],
-        "design_previous_ref_required":context["status"] == "active" && context["current_design"]["design_ref"].is_string(),
+        "design_previous_ref_required":context["status"] == "practice" && context["current_design"]["design_ref"].is_string(),
         "move_required":movement["required"],
         "move_forbidden":forbidden,
         "allowed_move_kinds":movement["properties"]["kind"]["enum"],
@@ -682,22 +808,53 @@ pub(crate) fn execution_guidance(context: &Value) -> Value {
 
 /// Input facts stay frozen; the latest design, understanding and permissions
 /// are supplied separately at sampling boundaries.
+pub(crate) fn requires_practice_delivery(context: &Value) -> bool {
+    context["closed_book"]["status"] == "active" || (context["status"] == "practice"
+        && !context["learner_context"]["responding_to_practice"].is_object()
+        && context["outside_current_request"] != true)
+}
+
 pub fn control_instructions(context: &Value) -> String {
+    if context["closed_book"]["status"] == "active" {
+        let practice=&context["closed_book"];
+        return format!("{}\n\nCurrent host state: attempt={}, assisted={}, needs_retry={}. Help before this attempt is learning history; it does not change the current assisted field. Judge the current learner reply against this attempt's question: {}",
+            include_str!("closed_book_prompt.md"),practice["attempt"],practice["assisted"],practice["needs_retry"],practice["current_question"]);
+    }
     let status = context["status"].as_str().unwrap_or("inactive");
     let operations = match status {
-        "active" => "Use the frozen Tutor input facts and the current design and learner views; teaching and assessment operations are available.",
-        "observing" => "Answer the ordinary request; only trace, understanding and hypothesis evidence operations are available.",
+        "course" => "Course tutoring is active for the accepted course run, within its own course run. Use its prepared lesson, current position, learner expressions, delivered help and understanding records as the teaching mainline. Use trace, understanding, corrections and hypothesis evidence; the course owns progression and assessment. Do not create another design or select a competing teaching task. An explicit request for closed-book dialogue (练到会) can use closed_book action=start with the learner's exact request quote, a narrow target, criteria, and one self-contained first question in text.",
+        "practice" => "The learner explicitly requested a practice problem or responded to an existing one. Use the original question, assistance and assessment records. When responding to a problem, explain the feedback directly; a new design or selected teaching move is not required to answer.",
+        "observing" => "Answer the ordinary request using trace, understanding, corrections and hypothesis evidence when useful. Only when the learner explicitly requests closed-book dialogue (练到会), use closed_book action=start with their exact request quote, a narrow target, criteria and one self-contained first question in text. This starts a mode that hides old explanations and waits for independent answers; ordinary explanation or practice requests do not enable it.",
         "reference" => "Answer the ordinary request; only trace is available. Do not advance teaching or assessment.",
         _ => "Tutor is off. Do not select or advance teaching or assessment. Ordinary requests continue.",
     };
     let mut instructions = format!("Current Tutor status: {status}. This latest control state overrides earlier Tutor status and permissions. {operations}");
-    if status == "active" && context["current_design"]["design_ref"].is_string() {
+    if matches!(status, "practice" | "observing" | "course") {
+        instructions.push_str(" Teacher correction memory: when the current exchange reveals an error in your own earlier explanation, reread the relevant original source and use tutor.step operation=corrections, correction_action=record before completing the corrected answer. Obtain previous_event_ref from recent_facts or trace; mistake_quote must be exact teacher words. Supply corrected_claim, applies_when, topics (include useful terms in both the conversation and source language), and source_quotes containing exact quotes at LIDs actually read this turn. Search existing corrections first when refining one; supersedes contains only the exact correction_refs that this new correction replaces. A saved correction becomes recallable after this turn completes delivery. Do not create one from a learner error, a mere preference change, or an unsupported guess; teacher memory never proves the learner understands anything.");
+        if context["teacher_corrections"]["record_count"].as_u64().unwrap_or(0) > 0 {
+            instructions.push_str(" When rejecting a candidate as not_applicable, do not transfer its prerequisites to the new case. Establish the current case's conditions independently from the source; a correct number with conditions copied from another case is still wrong. A shared definition may remain useful, but must be separated from the rejected case-specific formula and prerequisites. When refining a missing necessary condition, use an actual earlier teacher quote: search provides delivery_ref, corrections read includes the actual delivery, and trace can read recent event references. supersedes replaces only the same corrected relationship; a separate teacher error needs its own record.");
+            instructions.push_str(" Previous teacher corrections exist beyond recent chat history. For a material question, call corrections search with precise topic terms before relying on an old explanation. Read each relevant candidate's original mistake, corrected claim, source quotes and applies_when; semantic conditions decide applicability, not shared words or past review acceptance. Use correction_action=use with apply/not_applicable and a specific reason for candidates considered. Apply the corrected relationship to the actual answer; do not repeat a superseded mistake. Historical teaching advice yields to the current explicit request (including a complete direct answer without questions). Empty matches may need a source-language synonym; never pretend a correction was found. Read more result pages only when needed.");
+        }
+    }
+    if context["socratic_dialogue"]["question"].is_string() {
+        instructions.push_str(" The saved socratic_dialogue contains the exact last delivered question, its purpose and actual prior_help. Interpret the new reply against that original purpose and help conditions before choosing another step. The purpose is teacher intent, never evidence that the learner lacks or has mastered a skill. Accept sufficient equivalent reasoning without inventing a new passing condition. Answer a counterquestion or correct a mistaken premise first; a changed request takes precedence. If purpose is absent, use the actual question and help without inventing a prior diagnosis.");
+    }
+    if context["inquiry_course"].is_object() {
+        if status != "course" {
+            instructions.push_str(" Course tutoring is not active now. Preserve the saved course position and records; answer the learner's current question without automatically resuming, advancing, inviting a course exercise or certifying completion. The learner resumes from the course controls.");
+        }
+        return instructions;
+    }
+    if let Some(question) = context["socratic_dialogue"]["question"].as_str() {
+        instructions.push_str(&format!("\nSocratic dialogue, already underway. Your last delivered question was {}. The reader's current message is their reply, which can also be a correction, a counterquestion or a change of subject. For a conversational reply, use the established material, the actual scene and their words. In one short paragraph, name the specific connection they made and explain only what they need now. Do not replay the derivation, prepare another page, or look up the same material just to respond. If the current request benefits from an invitation, ask one new reachable question shaped by this reply, in a single sentence; otherwise give the needed help and finish. If they did not follow your earlier question, give a smaller foothold instead of repeating it. When they ask to stop or just want the answer, finish without another question. A genuinely new task takes precedence.", json!(question)));
+    }
+    if status == "practice" && context["current_design"]["design_ref"].is_string() {
         instructions.push_str(" Compare the current request with the inherited target before select. A typed follow-up or confirmation about only part of the design needs an explicit local move.target when the inherited scope is broader: state the current connection and its exact sources, then read them this turn. block_refs alone does not narrow inherited source ranges. Same-scope continuation may reuse the delivered local target. A design revision must include previous_ref copied from current_design.design_ref.");
     }
-    if status == "active" {
+    if status == "practice" {
         instructions.push_str(" With a real board_context, select may declare delivery_scope={kind:'board_part',relation,remaining_request} to save a complete local support while continuing this same request. Keep the full original request and actual committed deliveries in view; relation identifies the connection completed here and remaining_request names the still-required work. A board part requires participation.choice=support, no question, assessment, response_expectation or continuation, and finish omitted or false. Once the full request is complete, omit delivery_scope and select the final delivery; its closing text may build on already committed parts without copying them. A selected draft is not a committed part until the board delivery succeeds.");
     }
-    if status == "active" && context["native_board_candidate_pending"] == true {
+    if status == "practice" && context["native_board_candidate_pending"] == true {
         instructions.push_str(" Native board select is compact: move.board_candidate_revision identifies the complete inspected candidate. The host binds the accepted teaching design, its focus relationships, inherited source target, stable move identity and support metadata; do not repeat canvas block IDs or those host-owned fields. Supply interaction_intent only when the execution contract requires the unresolved user-mode decision. Omit participation for ordinary publication of support without a new learner task; use its optional override and response_expectation only for a real reasoning-allocation choice. Every public response prompt must already occur in the previewed candidate.");
     }
     instructions
@@ -706,6 +863,7 @@ pub fn control_instructions(context: &Value) -> String {
 /// Frozen task data is separate from workflows selected for each sampling.
 pub fn instructions(context: &Value) -> String {
     let mut data = context.clone();
+    reuse_support_bodies(&mut data);
     // The storage snapshot keeps both access paths. Send one copy of identical
     // data, including the complete original answer and accepted source scope.
     if let Some(learner) = data.get_mut("learner_context").and_then(Value::as_object_mut) {
@@ -735,6 +893,9 @@ const LEARNER_VIEW_FIELDS: &[&str] = &[
 ];
 
 pub(crate) fn learner_view(context: &Value) -> Value {
+    let mut projected=context.clone();
+    reuse_support_bodies(&mut projected);
+    let context=&projected;
     let mut fields = serde_json::Map::new();
     for key in LEARNER_VIEW_FIELDS {
         // The shared grounding view resolves interpretations to original words.
@@ -742,21 +903,19 @@ pub(crate) fn learner_view(context: &Value) -> Value {
         // competing learner profile. The stored/UI views retain their history.
         if matches!(*key, "entries" | "interpretations") { continue; }
         if let Some(value) = context["learner_context"].get(*key) {
-            fields.insert((*key).into(), value.clone());
+            fields.insert((*key).into(), if *key == "learner_grounding" {
+                model_learner_grounding(value)
+            } else { value.clone() });
         }
     }
     let status = context["status"].as_str().unwrap_or("inactive");
     let has_refs = |key: &str| context["learner_context"][key].as_array().is_some_and(|refs| !refs.is_empty());
-    let assessment = status == "active" && has_refs("pending_assessment_refs");
-    let hypothesis = matches!(status, "active" | "observing") && has_refs("uninterpreted_fact_refs");
-    if assessment || hypothesis {
+    let assessment = status == "practice" && has_refs("pending_assessment_refs");
+    if assessment {
         let mut examples = input_examples().as_array().unwrap().clone();
         examples.retain_mut(|example| {
             if assessment && example["operation"] == "assess" {
                 example["action_ref"] = json!("<pending_assessment_action_ref>");
-                true
-            } else if hypothesis && example["nature"] == "hypothesis" {
-                example["fact_refs"] = json!(["<learner_expression_fact_ref>"]);
                 true
             } else {
                 false
@@ -768,14 +927,103 @@ pub(crate) fn learner_view(context: &Value) -> Value {
             "examples":examples,
         }));
     }
-    Value::Object(fields)
+    let mut view=Value::Object(fields);
+    project_observation_boundaries(&mut view);
+    view
 }
 
-const GUIDANCE_REVISION: &str = "teaching-design.v30";
+/// Body copies across frozen facts and current support views point to one
+/// delivered event. Events and scene/help metadata remain separate. Identical
+/// words in different turns never establish that they were the same delivery.
+fn reuse_support_bodies(context: &mut Value) {
+    let mut bodies=Vec::<(String,Option<(String,String)>,String)>::new();
+    if let Some(support)=context.pointer_mut("/learner_context/learner_grounding/delivered_support").and_then(Value::as_array_mut) {
+        for delivery in support {
+            let (Some(id),Some(answer))=(delivery["delivery_ref"].as_str(),delivery["answer"].as_str()) else {continue;};
+            if answer.is_empty() {continue;}
+            let origin=delivery_identity(delivery);
+            if let Some((reference,_,_))=bodies.iter().find(|(known,prior,text)| known==id || origin.is_some() && origin==*prior && text==answer) {
+                let reference=reference.clone();
+                delivery.as_object_mut().unwrap().remove("answer");
+                delivery["answer_ref"]=json!(reference);
+            } else {bodies.push((id.to_owned(),origin,answer.to_owned()));}
+        }
+    }
+    fn replace(value:&mut Value,bodies:&[(String,Option<(String,String)>,String)]) {
+        match value {
+            Value::Object(fields) => {
+                let id=fields.get("delivery_ref").or_else(||fields.get("event_id")).and_then(Value::as_str);
+                let original=fields.get("original_ref");
+                let origin=original.and_then(|v|Some((v["session_id"].as_str()?.to_owned(),v["turn_id"].as_str()?.to_owned())));
+                let is_answer=fields.get("kind").is_some_and(|v|v=="message_delivered")
+                    || fields.get("usage").is_some_and(|v|v["kind"]=="assistant_delivery")
+                    || fields.contains_key("delivery_ref") && fields.contains_key("answer_preview");
+                if is_answer && fields.contains_key("answer_preview") {
+                    if let Some((reference,_,_))=bodies.iter().find(|(known,prior,_)|id==Some(known.as_str()) || origin.is_some() && origin==*prior) {
+                        fields.remove("answer_preview");
+                        fields.insert("answer_ref".into(),json!(reference));
+                    }
+                }
+                for item in fields.values_mut() {replace(item,bodies);}
+            }
+            Value::Array(items)=>for item in items {replace(item,bodies);},
+            _=>{},
+        }
+    }
+    replace(context,&bodies);
+}
+
+fn delivery_identity(delivery:&Value)->Option<(String,String)> {
+    if !matches!(delivery["kind"].as_str(),Some("message_delivered"|"usage_observed")) {return None;}
+    let original=&delivery["original_ref"];
+    Some((original["session_id"].as_str()?.to_owned(),original["turn_id"].as_str()?.to_owned()))
+}
+
+/// All routes to the same observation keep its epistemic status. A continuity
+/// preview must not turn an unassessed hypothesis back into current advice.
+fn project_observation_boundaries(value: &mut Value) {
+    match value {
+        Value::Object(fields) => {
+            if fields.get("nature").is_some_and(|v|v=="hypothesis")
+                && fields.get("status").is_some_and(|v|v=="unassessed") {
+                fields.remove("interpretation");
+                fields.remove("teaching_implication");
+            }
+            for item in fields.values_mut() { project_observation_boundaries(item); }
+        }
+        Value::Array(items) => for item in items { project_observation_boundaries(item); },
+        _ => {},
+    }
+}
+
+/// Keep original expressions and help available without presenting an
+/// unassessed diagnosis or its proposed lesson as the learner's current state.
+/// Full historical interpretations remain readable by their evidence_ref.
+pub fn model_learner_grounding(grounding: &Value) -> Value {
+    let mut view = grounding.clone();
+    let Some(items) = view.get_mut("interpretations").and_then(Value::as_array_mut) else { return view; };
+    let mut pending = Vec::new();
+    items.retain(|item| {
+        if item["nature"] != "hypothesis" || item["status"] != "unassessed" { return true; }
+        let mut reference = item.clone();
+        if let Some(fields) = reference.as_object_mut() {
+            fields.remove("interpretation");
+            fields.remove("teaching_implication");
+        }
+        pending.push(reference);
+        false
+    });
+    if !pending.is_empty() {
+        view["hypotheses_to_check"] = json!(pending);
+    }
+    view
+}
+
+const GUIDANCE_REVISION: &str = "teaching-design.v34";
 const COMMON: &str = "Tutor evidence and request boundaries:
 Follow the current request before session defaults or preferences. Follow current_action.accepted_request within its original source scope; real user_supplement takes precedence. A pure UI click and an assistant answer supply no learner understanding evidence. For answer continuation, advance one useful step from the referenced answer and verify its claims against the original source.
 Continuation displayed/chosen facts and repeated choices describe interaction only, never performance or permanent preferences. clarify_answer requests a smaller step or a different explanation of the referenced answer; it does not diagnose missing prerequisites. continue_answer requests further help, not a claim of difficulty. Answer excerpts are assistant-authored context. Only actual learner expression belongs in uninterpreted_fact_refs; absent choice or returning to reading says nothing about understanding.
-Use learner_grounding as the shared basis for understanding records, design and delivery: expressions contains actual learner words; interpretations contains correctable readings of those words; delivered_support contains help, not learner performance. A learner_correction expression is original user text addressed by evidence_ref; adopt that existing record rather than using its id as an event fact_ref. A question can express uncertainty without asserting its proposed answer. A correct confirmation supports the connection expressed, not an invented stronger claim to correct. Historical current_target, expected_performance and teaching_implication are revisable assistant-authored plans, not learner evidence. Withdraw unsupported premises wherever they occur, including organizing_model and participation; do not create another learner profile in a design. User corrections supersede interpretations, never original words. Preserve independent, assisted and revised conditions. Stable preferences use ProfileFact confirmation.
+Use learner_grounding as the shared basis for understanding records, design and delivery: expressions contains actual learner words; interpretations contains assessed readings of those words; hypotheses_to_check contains unresolved historical references and original quotations, not a diagnosis of the current learner. Read an exact historical interpretation only when needed to revisit it. delivered_support contains help, not learner performance. A learner_correction expression is original user text addressed by evidence_ref; adopt that existing record rather than using its id as an event fact_ref. A question can express uncertainty without asserting its proposed answer. A correct confirmation supports the connection expressed, not an invented stronger claim to correct. Historical current_target, expected_performance and teaching_implication are revisable assistant-authored plans, not learner evidence. Withdraw unsupported premises wherever they occur, including organizing_model and participation; do not create another learner profile in a design. User corrections supersede interpretations, never original words. Preserve independent, assisted and revised conditions. Stable preferences use ProfileFact confirmation.
 Read the needed original source this turn; structures and locators are not source evidence. A TeachingTarget's source_bindings declares whole LIDs: read their full text, not only the selected substring. For video, read the actual saved transcript with book tools and register its quote, or observe relevant frames/audio with video.read_frames/video.review_audio and register the returned target with source.present. Put those returned IDs in target.source_ref_ids. Do not treat transcript text as unseen pictures or unheard audio. For music, read notation/events with music.read and register music_target with source.present; put its returned IDs in target.source_ref_ids. Use source_bindings:[] when the media/music references supply the target; never fabricate text LIDs or author media_bindings/music_bindings. Design blocks may use empty source_bindings when supported by the media/music target. Before inheriting a prior target, re-read and register its exact original scope this turn; audio re-review may issue a new receipt for the same clip. Distinguish source claims from supplementary rules, examples and analogies you supply; preserve their conditions and limits in examples and recaps too. State the property that makes a rule apply to this case; a broad category label is not a substitute for that condition. Keep private keys, rubrics and unrevealed help out of public text and presentation files. The latest control state and actual tool contract determine permissions; guidance grants none.
 When math_context or mathematical context links are available, use their evidence and next_calls to read the relevant statement, conditions and invoked result before selecting a teaching connection. uses identifies an invoked result, not a diagnosed learner prerequisite; proves locates an author's proof opening, while asks_to_prove is the exercise's task. Keep the exercise target, available premises and any solution you construct distinct. Do not claim the source supplied your solution or require a learner attempt when direct explanation was requested. An empty assumptions list and an unresolved reference leave the source question open, rather than licensing an unconditional claim.
 Before writing a question to establish independent application, identify the specific judgment, a supported answer and a brief checkable rationale: which conditions make which relationship apply. The public learning target names what to judge, not the answer to that judgment. State necessary scenario assumptions, and narrow or replace a task whose decisive answer lacks support; imagined settings do not establish new subject-matter rules. Supply the information needed to decide while leaving the target inference to the learner. An invitation to express current understanding or make an exploratory conjecture need not be an independent application test; interpret its answer under the support actually received. For choice questions, use comparable alternatives on one judgment axis and plausible distinct reasoning errors, without wording giveaways. A designed distractor is not evidence that this learner holds that misconception.
@@ -786,27 +1034,30 @@ const DISCOVERY: &str = "Optional Tutor workflows:
 Ordinary questions and assisted restatements can support a correctable understanding observation without an exercise. Their original words and input-time help are captured after delivery; answer this current request from its actual words without calling understanding/evidence merely to make that background record. Capture may still be pending next turn and must not be awaited. When the user explicitly asks to record an observation or corrects a saved interpretation, use tutor.step understanding to read the actual current view and load the update workflow, then make the requested supported update; trace rereads exact delivered facts. Background capture appends new observations and does not replace this explicit correction. No hypothesis is required for uninformative input.
 For a formal submit/revise response, trace can recover its original action_ref; assess uses the private evaluator when available. Ungraded observations are not scores. Use only operations in this sampling's tool contract. Active teaching chooses its representation in the design: choosing presentation makes the existing authoring workflow available after that design is accepted. Other rich explanation can be discovered with tool.search presentation_authoring.";
 
-const DESIGN: &str = "Design the current learning connection before generating support:
+const DESIGN: &str = "Use a teaching design only when the task needs a continuing learning arrangement, a formal practice activity or a teaching presentation. Ordinary explanations, clarifications and corrections can select directly with an explicit source-grounded target, without design_ref or block_refs, even when an older design exists. A local reply does not rewrite that plan or establish learner progress.
+A design organizes learning questions, their sequence and the material to use; it is not an intermediate knowledge summary to believe while composing the answer. In blocks[].relation write the concrete question/comparison/operation supported by source_bindings. Use prebuilt relationships as locators and retain the conditions of the original text. Do not store a new general law inferred from a news example or a temporary analogy. Resolve factual uncertainty in the main answer from the actual evidence, with unknowns left unknown.
+When a continuing learning arrangement is needed:
 Apply the shared learner starting point to each focus relationship and its necessary prerequisites. When their understanding is unconfirmed, plan a concrete entry the learner can use without knowing the book's terminology; keep the understanding record unknown. Supply only prerequisites needed for the current question, retaining that question and a return_to connection if a longer detour is needed. Previously delivered support helps you resume without mechanical repetition; only the learner's relevant expression supports reducing explanatory help. An explicit request to skip basics or go directly into a derivation determines the requested depth without an entry test. Observation or prediction can be the first step when its supplied objects and conditions already let a beginner start; no compulsory teach-then-test sequence is needed.
 For a live presentation demonstration, use presentation.interact observe, then chain declared actions from each actual saved receipt. Explain common conditions and the observed difference using that scene. Local demonstration steps can continue without a learner reply; stop for a response only when the next step needs their judgment. Leave the same page operable for their own edits or questions. On failure/cancellation observe again before continuing. The result's teaching.action_ref and assistance_refs record teacher usage and displayed support, never LearnerAction or independent mastery. Reopened delivered_support includes teacher_actions and displayed_help; continuity and learner_grounding retain the input-time help and original scenes. A later independent parameter change is a new observation under the help already received, not proof that earlier help disappeared. Honor a current request to explain the formula directly.
 When workspace_goal.v1 is present, the accepted overarching goal and explicit constraints bound stage planning. Explain how this stage or local prerequisite serves that direction in organizing_model; choose depth and timing accordingly. The phase focus is your revisable plan, not a rewrite of the user's goal. A temporary side question may be answered ordinarily while that goal is retained. An accepted goal revision stops the prior phase; do not resume its old continuation under the new goal.
 For chapter guidance, chapter_scope and material_scope freeze the chapter requested for this session; a later Reader viewport does not change that scope. Use BookStructure and available CognitiveMaterials to locate promising relationships, then read the relevant original text before committing. guide_path can contain other chapters: choose within the frozen chapter. A chapter binding is a locator, not proof that the chapter has been read; target.source_bindings must name only the local full LIDs actually read for this support. For video or music, material_scope may contain frozen JSON locators for an explicitly selected clip, frame, score or part. An empty scope_refs means the whole current material, not an observed full duration. Read the requested local scope and declared available coverage; target.source_ref_ids carries actual media/music reads instead of invented text LIDs.
 Choose the first worthwhile question by judgment: what would let this learner explain, distinguish or use something that matters in the chapter, from their actual purpose, curiosity or obstacle? Favor a central relationship with a concrete consequence and enough source support to make progress now. Unknown background calls for a revisable concrete entry point. Do not rank topics by novelty, coverage or a numeric score, and do not ask the reader to select from a generated syllabus. Keep unchosen candidate questions temporary; open_question_refs is for actual unresolved learner expressions. In organizing_model state the selected question and why it is worth understanding now; use block purpose for its payoff, a local expected_performance for the next reachable connection, and actual basis_refs for the learner facts used. Reuse an applicable existing design and stable blocks instead of manufacturing a second teaching plan.
 Use organizing_model as the overall direction, not a coverage outline for this answer. Choose target and focus_block_refs from the connection the learner can work on now: what their actual words already connect, and the next missing link. A worthwhile question can open the next concept through a concrete observation, tension or changed condition instead of reviewing this one again. State how that next connection grows from the current one and what it will make understandable; supply enough material for an initial thought without requiring its unexplained name or rule. Separate independently difficult connections into reusable blocks under the shared explanation principle's current scope.
-Reuse current_design when this working connection still fits. Otherwise read the source and call design with the local target, relevant relationship blocks, current focus and real basis_refs. Keep stable block IDs for unchanged relationships, cite previous_ref and name the actual expression behind revision_reason. Moves, invitations and presentation regions must stay within the current focus; revise and consume the design in a subsequent sampling before changing it. A design is neither delivered support nor learner evidence.
+Explicitly adopt current_design only when this working connection still fits. For a simple side question reply directly without adopting or replacing it. For a sustained change, read the source and call design with the local target, relevant relationship blocks, current focus and real basis_refs. Keep stable block IDs for unchanged relationships, cite previous_ref and name the actual expression behind revision_reason. Moves, invitations and presentation regions must stay within the current focus; revise and consume the design in a subsequent sampling before changing it. If a source check disproves a relation used by the old plan, revise that block, organizing_model and affected dependent connections before reusing the plan; retain unaffected block IDs. A correction must change the unsupported premise as well as the wording of the answer. A design is neither source evidence, delivered support nor learner evidence.
 Use learning_opportunity.continuity to resume relevant work: previous_work preserves the original expression, input-time assistance, exact attempt assessment and source identity; teaching_implications and open_questions preserve their evidence references and scope. Follow read_more when the chosen support depends on omitted original words or help. Use actual expression fact_refs or current evidence_ref values in basis_refs; move.interpretation_refs takes only adopted evidence_ref values. Explain in revision_reason how the current request changes the support. Do not use a delivery_ref, assessment_ref or saved_state_ref as a learner-expression basis. Current requests determine depth and form even when an older implication suggests another approach; this changes the plan, not the historical evidence. Apply the shared writing rules to operational barriers, open tasks and short responses.
 Choose representation from the actual obstacle, without waiting for the learner to request a page. Text or an inline comparison can establish a short connection. A page can make a relationship usable when the learner needs to keep the same objects visible, compare conditions, inspect a process or change a condition and observe its consequence. State why this representation helps the current confusion; for presentation name the concrete observation, not a topic to illustrate. Revise a text choice when the learner still cannot track the relation it describes, rather than treating the first choice as permanent. A presentation choice activates authoring in the next sampling and must be fulfilled by an actual page before treating it as delivered help. Preserve a useful existing scene for follow-up; a text reply to its observation need not create another page. Do not force a page, an operation, or a question into every delivery.
 When the shared explanation principle calls for a smaller connection or a different representation, update the working target and focus accordingly. Preserve the actual unresolved question in open_question_refs and use return_to for a detour's original relationship, invitation or scene. learning_opportunity.return_context exposes those saved facts and help: use them to reconnect when the learner's expression warrants it, not to impose an automatic sequence.
-Select with exact design_ref and block_refs. learner_context.current_target retains the latest actually delivered local target within this design; it describes ongoing work, not demonstrated understanding. When support responds to a real learner explanation or doubt, link that original fact in responds_to.fact_refs, including an opening expression without a prior invitation. Also link any pending_response_invitation; continue, address or defer that invitation according to the delivery. interpretation_refs link relevant correctable hypotheses. learning_opportunity pairs responding_to_expressions, actual delivered help, its original reasoning allocation, and learner_expressions made after receiving it. Each expression keeps its own input-time support and help; responding_to_expressions identifies what this help addressed, not an automatic pretest. Earlier support keeps its original relationship and target across a focus change; read whether it supplies a premise for the current connection. Use the actual expression to decide whether to repair the same connection, change the question, or close this local work; neither turn count nor route coverage decides progress. Delivery does not prove the learner can use it; absence from the bounded view does not mean help never existed. A response_expectation carries one self-contained invitation within the move's relationships; ordinary chat can answer without a score. Helping an existing invitation preserves it with responds_to rather than opening a duplicate.";
+When adopting a design select with its exact design_ref and block_refs; for a direct local reply omit both and supply target. learner_context.current_target retains the latest actually delivered local target within this design; it describes ongoing work, not demonstrated understanding. When support responds to a real learner explanation or doubt, link that original fact in responds_to.fact_refs, including an opening expression without a prior invitation. Also link any pending_response_invitation; continue, address or defer that invitation according to the delivery. interpretation_refs link relevant correctable hypotheses. learning_opportunity pairs responding_to_expressions, actual delivered help, its original reasoning allocation, and learner_expressions made after receiving it. Each expression keeps its own input-time support and help; responding_to_expressions identifies what this help addressed, not an automatic pretest. Earlier support keeps its original relationship and target across a focus change; read whether it supplies a premise for the current connection. Use the actual expression to decide whether to repair the same connection, change the question, or close this local work; neither turn count nor route coverage decides progress. Delivery does not prove the learner can use it; absence from the bounded view does not mean help never existed. A response_expectation carries one self-contained invitation within the move's relationships; ordinary chat can answer without a score. Helping an existing invitation preserves it with responds_to rather than opening a duplicate.";
 
 const SELECT: &str = "Select one teaching move:
+When the learner just explained an example and now asks how the next mechanism works, open delivery_text with that same example and show the mechanism operating on it. previous_user_words and previous_teaching_focus help recover its meaning. If one adjacent reading.connection offers a reachable new inference, leave that step to the learner with one concrete change of condition and response_expectation, before naming or solving the extension. Honor a narrow or answer-only request. If their reply makes the connection, use their wording to develop it; if they ask why an object in the example was treated a certain way, demonstrate that local decision first. Their everyday term can instantiate the preceding lesson even if it never occurs literally in that passage. Stay there until the difficulty is resolved or the learner changes topic.
 Tutor mission: start from the learner's current understanding, provide cognitive building blocks they can understand, use and combine to build new understanding, and help them gradually use it independently.
-For a follow-up, start in this same sampling from the current request and the evidence already available; do not classify its difficulty in a separate call. Reuse the accepted design and exact source locations when they still fit. Read the needed original source this turn directly at those locations instead of searching for them again. Supply an explicit move.target for the current relation. A confirmation or local correction can finish with that relation and its necessary conditions; do not add an exercise, new design or adjacent mechanism merely because the broader lesson contains one. If one fact is missing, read that fact; if the request needs a full derivation, presentation or other operation, do that work. Once all requested work is complete, set select.finish=true to deliver the selected body immediately. If operations remain, leave finish false and continue them; this is a completion declaration, not a difficulty label.
+For a follow-up, start in this same sampling from the current request and the evidence already available; do not classify its difficulty in a separate call. Ordinary explanations, clarifications and corrections select directly with target, omitting design_ref and block_refs. Reuse the read source locations when they fit; explicitly adopt a design only when continuing its planned learning task. Read the needed original source this turn directly at those locations instead of searching for them again. Supply an explicit move.target for the current relation. A confirmation or local correction can finish with that relation and its necessary conditions; do not add an exercise, new design or adjacent mechanism merely because the broader lesson contains one. If one fact is missing, read that fact; if the request needs a full derivation, presentation or other operation, do that work. Once all requested work is complete, set select.finish=true to deliver the selected body immediately. If operations remain, leave finish false and continue them; this is a completion declaration, not a difficulty label.
 Start from learner_context's current request, intent, constraints and grounded expressions. Reconsider the current target against them; a self-report is not demonstrated ability, but an explicit request to skip basics or go deeper still controls this delivery. When relevant understanding is unconfirmed or the learner is confused, make the current question accessible without assuming its terminology or prerequisites: give the necessary objects, meanings and connection, using one usable example when it helps. A question that names a term can use that term in the answer; it does not by itself establish its meaning or related concepts as understood. Answer the question directly and supply only the prerequisites needed here. No understanding record, placement question or proof of mastery is required to provide this help. Keep unknowns unknown instead of inventing a misconception to justify the explanation.
 Choose a reachable connection for this delivery, with the support needed to use it. Keep move.target local to that connection even when the overall organizing model is broader. expected_performance names the capability, not source wording or lesson order. Make the chosen representation operational: point to the concrete part, show the relation there, and leave adjacent unresolved work for a later decision. Missing formal objects do not block teaching from the read source.
 For chapter guidance, let the selected question determine what you explain, which source passage or concrete case you use, and where this delivery stops. Make its relevance clear naturally, then supply the chosen connection through the focused blocks. A question in the design followed by an unrelated chapter summary does not fulfill it. guide_chapter is neutral interaction intent; support, invite or conclude remains a teaching judgment, without a compulsory opening quiz or a required jump to another passage.
 Choose participation from the current request, actual expression, pending invitations and learning_opportunity. support supplies a missing connection or helps an existing attempt; invite asks for a concrete expression of understanding or an accessible observation, prediction or conjecture that can open the next connection; conclude acknowledges a sufficient attempt or completes the current request. This is the teacher's decision about reasoning responsibility, not a change to user intent. neutral permits a teacher-initiated invitation without inventing a request or preference. After completing the current requested help, consider one useful entry when hearing the learner would inform the next step; do not add a ritual quiz or both an invitation and a continuation menu. A beginner may explore a new connection from supplied objects and conditions; reviewing or proving mastery of the preceding concept is not required to advance. Make the link and benefit visible without asking them to guess an unexplained term or rule. Actual learner expression can justify reducing support for a later application, but delivered premises alone do not establish that they can use them. If they already expressed the needed connection, do not ask for it again: choose a worthwhile forward step or finish. Explicit requests for a complete explanation, direct help or to stop take priority.
-Allocate the actual reasoning before writing delivery_text. For support, name the missing connection supplied now and, when useful, the small learner_inference still open after it; use null when none is needed. This unfinished connection is carried with the delivered help, not asked automatically. For invite, name the available support and the concrete understanding to express or the observation, prediction or conjecture to explore in learner_inference. Put one self-contained ordinary invitation in response_expectation, or use a submit activity when an actual formal attempt is appropriate. Supply what makes a first response possible: concrete objects, necessary meanings and conditions, with a small analogous demonstration when needed. Expressing a model can use already explained reasoning; an independent application must leave that application unanswered. An exploratory conjecture may surface the next question without requiring knowledge of its eventual formal explanation. Clearly identify supplementary rules absent from the source and make them usable. Keep the invitation within the accepted design and source scope; revise and consume the design before moving its focus. support and conclude open no new task; helping a pending invitation can continue it. These private allocations are not public teaching text.
+Allocate the actual reasoning before writing delivery_text. For support, name the missing connection supplied now and, when useful, the small learner_inference still open after it; use null when none is needed. This unfinished connection is carried with the delivered help, not asked automatically. For invite, name the available support and the concrete understanding to express or the observation, prediction or conjecture to explore in learner_inference. Put one self-contained ordinary invitation in response_expectation, or use a submit activity when an actual formal attempt is appropriate. Supply what makes a first response possible: concrete objects, necessary meanings and conditions, with a small analogous demonstration when needed. Expressing a model can use already explained reasoning; an independent application must leave that application unanswered. An exploratory conjecture may surface the next question without requiring knowledge of its eventual formal explanation. Clearly identify supplementary rules absent from the source and make them usable. Keep the invitation within this move's source-grounded target; when adopting a design also stay within its focus, revising and consuming that design before changing its planned scope. support and conclude open no new task; helping a pending invitation can continue it. These private allocations are not public teaching text.
 To establish independent relationship understanding, use a judgment not already supplied by the source or delivered explanation. If copying or paraphrasing fully satisfies it, that response supports expression or recall only. Asking for the learner's own model remains useful diagnosis; do not turn every such invitation into a test. When independent application matters, choose a suitable changed condition, new context, comparison or apparent counterexample, and leave its application to the learner. Match expected_performance and any frozen scoring criteria to the specific application. Reading and quoting the source remain allowed.
 Resolve the whole request: when the learner requests explanation followed by their own judgment, that requested interaction is guided_inquiry; kind=explain can supply its support. A teacher-initiated invitation does not make neutral user intent guided_inquiry. For an explicit request for a complete explanation, direct answer only, summary or translation, deliver the whole requested content without requiring an answer first. A learner expressing confusion or asking why does not alone request that the teacher perform every subsequent inference. Respect resolved action intent, interpret real supplementary text and preferences, and adapt using applicable understanding records. If outside the learning intent, use outside and answer ordinarily. Do not change the user's learning goal.
 After a learner response, first address the pending invitation and the relationships actually expressed, accepting equivalent natural wording. Name the correct connection; if it is partly correct, preserve that part and help with the missing link. An omitted detail remains unconfirmed, not automatically misunderstood. Correct a misconception only when the expressed claim conflicts with the supported relationship; identify that conflict rather than asking for a preferred phrase. A tentative prediction that opens a new concept is a starting point for explanation, not a failed entry test. If they say they do not know, give a smaller demonstration or useful clue. If they ask for the explanation, say continue, skip the invitation or raise a different question, address or defer it through responds_to and follow the actual request without repeating the demand; none of these responses proves understanding. When they accept an offered next step, fulfill that specific step instead of asking them to choose again. Choose subsequent help from this expression and the help received. When asked to explain again or when support does not fit, change the entry point or representation using their feedback: a concrete process, example or comparison must expose the needed relationship, not lengthen the same outline. Ask one locating question only if needed to choose useful support. If their explanation or application supports less help on this task, leave more of the next judgment to them; distinguish local performance from copied reasoning and wider transfer. These are judgments, not a fixed sequence or an error-count ladder.
@@ -836,7 +1087,8 @@ For an existing ungraded source-discrimination activity with capability=evaluati
 const PRACTICE: &str = "Retrieval practice (this request asks to practice, not to be taught):
 Practice makes a relationship the learner has already met come to mind and run in a situation unlike the one where it was taught. Choose a target from relationships in the read material that this learner has met in delivered help, learner expressions, or the saved idea of a note revisit; prefer one with less independent evidence or one that later relationships depend on. If nothing has been met yet, say so briefly and offer ordinary help instead of testing unseen material.
 Select one complete move using the current select contract: kind=question, the current design_ref and block_refs, a source-grounded target, participation.choice=invite with its reason, learner_inference and support, actions including submit, revise, request_hint, reveal and skip so the learner can correct a wrong answer, a frozen assessment, private explanation as your committed worked solution, and move.practice. Do not send the retired interaction_intent or intent_origin fields. The public prompt itself must contain the concrete problem and every given the learner needs, not instructions describing a problem to be written later. Never name, define or quote the practiced relationship in the prompt; only the situation's features should bring it to mind. mode=recall uses one or two decision points from a fresh cue; discriminate puts the relationship against a close look-alike so the separating feature carries the signal; compose needs a held chain under some load. No independent review runs before the learner sees the problem: the host checks only the contract, sources and that public text does not state the relationship's label. So before select, solve it yourself, look for any route that skips the target, and confirm the material read this turn suffices; fix or discard an unsound problem. A wrong committed solution grades the learner against an error.
-The private assessment object must include rule, source_lids and/or source_ref_ids, source_sufficient, and feedback. Use rule={kind:open,items:[{id,criterion,source_lids:[actual LIDs]}]} for a written answer, or rule={kind:choice_set,choices:[public tokens],correct:[correct tokens]} for choices. Set source_sufficient only after checking the material actually read this turn, and set feedback=on_reveal so private criteria stay hidden while the problem is open. Include practice.entry, mode, distance and ordered hints in this same complete call; practice.hints replaces move.hint. If validation rejects the call, correct the named nested field in the full move and resubmit one valid JSON object.
+Before committing a problem, check every stated case or branch against its setup: claims such as always, both, only, or at the same time must follow from the actual rules. If a claim needs an extra condition, state that condition in the problem or remove the claim. Solve using only the givens; do not silently repair a contradictory problem in its explanation or grading criteria.
+The private assessment object must include rule, source_lids and/or source_ref_ids, source_sufficient, and feedback. Use rule={kind:open,items:[{id,criterion,source_lids:[actual LIDs]}]} for a written answer, or rule={kind:choice_set,choices:[public tokens],correct:[correct tokens]} for choices. Set source_sufficient only after checking the material actually read this turn, and use feedback=after_submit for worked_solution, on_reveal for choices. For ordinary choice questions supply move.answer_input={kind:single_choice or multiple_choice,options:[{id,text},...]} with all public options; put only the stem in prompt. For math calculations supply answer_input={kind:worked_solution}, a self-contained problem requiring actual working, and separate rubric items for method, intermediate reasoning and requested result; list mathematically equivalent methods and appropriate partial credit. Ground each worked criterion in text source_lids and include its retry_prompt, a short public question that asks for the missing work without revealing the result or method. Use the native practice cards for board and presentation controls for presentation. A request for choices or calculations can target a concept already read in the current exam section. Include practice.entry, mode, distance and ordered hints in this same complete call; practice.hints replaces move.hint. If validation rejects the call, correct the named nested field in the full move and resubmit one valid JSON object.
 Choosing the next problem: learner_context.practice_history lists recent problems on this material, newest first, with each outcome (clean, held, helped, missed, open) and level. Reuse the exact target.learning_focus from that history when returning to the same relationship; a new situation is not a new relationship. Different relationships can share source paragraphs, so give each its own precise focus and retain applicable formal object references. Prefer relationships with less independent evidence (learner_context.entries and practice_history), ones that later relationships depend on, or ones least recently practiced. The host enforces these rules: never practice the relationship of the most recent problem again (interleave; a note revisit is exempt); after two consecutive misses on a relationship choose another; on the same relationship raise difficulty after clean, hold it after held and lower it after helped or missed, where difficulty is mode first (recall < discriminate < compose) and then practice.distance (near < adjacent < far); a retry always uses a new situation. Always record practice.distance.
 For entry=board, give 3–6 short cards in practice.cards, each a premise or a distractor; the learner picks the cards that together establish the stated conclusion, and the assessment is a choice_set over all card ids whose correct set is exactly the premises. For entry=presentation, the goal is reached by operating an already delivered page: reference it in move.presentation and freeze an open rubric over the submitted control values, never the page's own computed result.
 In an exam sprint (workspace goal constraints with an exam date and scope), use entry=exam_daily, stay within the confirmed exam scope, and prefer relationships the scope weights most; a course's prepared exercises may be adapted only with their original source.
@@ -869,35 +1121,49 @@ pub(crate) fn instruction_modules(
     presentation: Option<&crate::agent_prompt::PresentationGuidance>,
 ) -> Vec<crate::InstructionModule> {
     let status = context["status"].as_str().unwrap_or("inactive");
-    if !matches!(status, "active" | "observing" | "reference") { return Vec::new(); }
+    if !matches!(status, "practice" | "course" | "observing" | "reference") { return Vec::new(); }
     let module = |name: &str, text: &str| crate::InstructionModule::new(
         format!("resident-agent.tutor.{name}"), GUIDANCE_REVISION, text);
     let mut modules = vec![module("common", COMMON)];
     modules.push(crate::InstructionModule::new(
-        "resident-agent.tutor.writing", "plain-explanation.v8", include_str!("tutor_writing_rules.md")));
+        "resident-agent.tutor.correction", "v1", include_str!("tutor_correction.md")));
+    modules.push(crate::InstructionModule::new(
+        "resident-agent.tutor.writing", "plain-explanation.v9", include_str!("tutor_writing_rules.md")));
+    if status == "course" || context["inquiry_course"].is_object() {
+        modules.push(module("course", &format!("{}\n{}",include_str!("tutor_course.md"),crate::socratic::DELIVERY)));
+        if requested_operation(messages, &["understanding", "evidence"]) {
+            modules.push(module("understanding", UNDERSTANDING));
+        }
+        return modules;
+    }
     if status == "reference" { return modules; }
     modules.push(module("discovery", DISCOVERY));
-    if status == "active" {
+    let practice = context["learning_purpose"] == "practice"
+        || context["learner_context"]["responding_to_practice"].is_object()
+        || context["learner_context"]["pending_activity"]["practice"].is_object();
+    if !practice {
+        let delivery = if status == "practice" {
+            "First choose support, invite or conclude from the current request and actual expression; ordinary explanations and corrections can finish without a question. Only when you choose invite, use response_expectation with socratic=true, the one learner-facing question in public_prompt, and block_refs only when adopting a design. Leave the question out of delivery_text (a native board preview must already contain it). On the next reply connect responds_to to the real expression. Reuse the existing topic, design and page; choose text for the conversational exchange. Conclude without an invitation when appropriate."
+        } else {
+            crate::socratic::DELIVERY
+        };
+        modules.push(crate::InstructionModule::new("resident-agent.tutor.socratic", "v5",
+            format!("{}\n{delivery}", crate::socratic::GUIDANCE)));
+    }
+    if requires_practice_delivery(context) {
         modules.push(module("design", DESIGN));
         modules.push(module("select", SELECT));
         modules.push(module("continuation", CONTINUATION));
     }
-    let current_request = context["current_action"]["user_supplement"].as_str()
-        .or_else(|| context["current_request"].as_str())
-        .or_else(|| context["learner_context"]["current_request"].as_str()).unwrap_or("");
-    let learner_facts = context["learner_context"]["recent_facts"].as_array().into_iter().flatten().any(|fact|
-        matches!(fact["usage"]["kind"].as_str(), Some("user_message" | "reading_action"))
-            && fact["response_preview"]["text"].as_str().is_some_and(|s| !s.trim().is_empty() && s != "null"));
-    if !current_request.trim().is_empty() || learner_facts
-        || requested_operation(messages, &["understanding", "evidence"])
+    if requested_operation(messages, &["understanding", "evidence"])
     {
         modules.push(module("understanding", UNDERSTANDING));
     }
-    if status == "active" && context["learner_context"]["pending_assessment_refs"].as_array().is_some_and(|v| !v.is_empty())
+    if status == "practice" && context["learner_context"]["pending_assessment_refs"].as_array().is_some_and(|v| !v.is_empty())
     {
         modules.push(module("assessment", ASSESSMENT));
     }
-    if status == "active" {
+    if status == "practice" {
         // Posing follows the accepted entry; an answer arrives as a later turn
         // that references the delivered problem, so it needs its own rules.
         if serde_json::from_value::<crate::tutor_continuation::ResolvedInteraction>(context["current_action"].clone())
@@ -908,7 +1174,7 @@ pub(crate) fn instruction_modules(
             modules.push(module("practice-response", PRACTICE_RESPONSE));
         }
     }
-    if status == "active" {
+    if status == "practice" {
         if let Some(guidance) = presentation {
             use crate::agent_prompt::PresentationPhase;
             let text = match guidance.phase {
@@ -1477,6 +1743,139 @@ mod followup_contract_tests {
     use super::*;
 
     #[test]
+    fn cache_recovery_uses_actual_draft_and_executable_missing_source() {
+        let failed = json!({"error_code":"TEACHING_INVALID","missing_source_read":{
+            "start_lid":"1.36.6","end_lid":"1.36.6","ranges":[]}}).to_string();
+        let no_draft:Value = serde_json::from_str(&with_recovery(failed.clone(),None,"select")).unwrap();
+        assert_eq!(no_draft["recovery"]["operation"],"select");
+        assert!(no_draft["draft_ref"].is_null());
+        assert_eq!(no_draft["next_calls"][0]["arguments"],json!({"lid":"1.36.6","end_lid":"1.36.6"}));
+        let retained:Value = serde_json::from_str(&with_recovery(failed,Some("teaching-draft:2"),"select")).unwrap();
+        assert_eq!(retained["recovery"]["draft_ref"],"teaching-draft:2");
+        assert!(retained["recovery"]["guidance"].as_str().unwrap().contains("intent or source target"));
+    }
+
+    #[test]
+    fn cache_host_binds_only_unique_current_design_references() {
+        let mut context = json!({"status":"practice","current_design":{"design_ref":"accepted", "design":{"focus_block_refs":["one"]}}});
+        let mut request = json!({"operation":"select","move":{}});
+        bind_context_fields(&mut request,Some(&context));
+        assert_eq!(request["move"],json!({}), "a local reply must not silently adopt the saved plan");
+        request["move"]["design_ref"] = json!("accepted");
+        bind_context_fields(&mut request,Some(&context));
+        assert_eq!(request["move"]["block_refs"],json!(["one"]));
+        request["move"]["design_ref"] = json!("stale");
+        bind_context_fields(&mut request,Some(&context));
+        assert_eq!(request["move"]["design_ref"],"stale", "do not hide a stale explicit choice");
+        context["current_design"]["design"]["focus_block_refs"] = json!(["one","two"]);
+        let mut request = json!({"operation":"select","move":{}});
+        bind_context_fields(&mut request,Some(&context));
+        assert!(request["move"]["block_refs"].is_null(), "choosing supported relationships is semantic");
+    }
+
+    #[test]
+    fn cache_select_schema_exposes_invitation_and_intent_quote_requirements() {
+        let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&json!({"status":"practice"})));
+        let registration = registry.registration("tutor.step").unwrap();
+        let mut request = input_examples().as_array().unwrap().iter().find(|v| v["operation"] == "select"
+            && v["move"]["response_expectation"].is_object()).unwrap().clone();
+        registration.validate_arguments(&request.to_string()).unwrap();
+        request["move"].as_object_mut().unwrap().remove("response_expectation");
+        assert!(registration.validate_arguments(&request.to_string()).is_err());
+        let mut request = input_examples().as_array().unwrap().iter().find(|v|v["operation"] == "select"
+            && v["move"]["intent_origin"] == "current_request").unwrap().clone();
+        registration.validate_arguments(&request.to_string()).unwrap();
+        request["move"].as_object_mut().unwrap().remove("intent_quote");
+        assert!(registration.validate_arguments(&request.to_string()).is_err());
+    }
+
+    #[test]
+    fn ordinary_dialogue_leaves_automatic_capture_to_coach_and_opens_explicit_updates_on_read() {
+        let context=json!({"status":"practice","current_request":"我现在理解了，也纠正一下你刚才的解释",
+            "learner_context":{"uninterpreted_fact_refs":["actual-expression"]}});
+        let has_workflow=|messages:&[crate::Message]| instruction_modules(&context,messages,None).iter()
+            .any(|module|module.asset_id=="resident-agent.tutor.understanding");
+        let mut messages=vec![crate::Message::user("我现在理解了")];
+        assert!(!has_workflow(&messages));
+        assert!(learner_view(&context).get("tool_input_examples").is_none());
+        let mut call=crate::Message::system("");call.role=crate::Role::Assistant;
+        call.tool_calls=vec![crate::ToolCall{id:"read-understanding".into(),name:"tutor.step".into(),arguments:json!({"operation":"understanding"}).to_string()}];
+        messages.push(call);
+        assert!(has_workflow(&messages));
+        messages.push(crate::Message::user("接着刚才的问题"));
+        assert!(!has_workflow(&messages),"a prior explicit update must not activate the workflow for a later ordinary reply");
+    }
+
+    #[test]
+    fn learning_quality_unassessed_diagnosis_does_not_become_current_learner_state() {
+        let context=json!({"status":"practice","learner_context":{"learner_grounding":{
+            "expressions":[{"fact_ref":"f:question","text":"为什么你说卖出一定亏？"}],
+            "delivered_support":[{"delivery_ref":"d:prior","text":"老师之前的解释"}],
+            "interpretations":[
+                {"evidence_ref":"e:guess","nature":"hypothesis","status":"unassessed",
+                 "interpretation":"用户混淆了两笔交易","teaching_implication":"纠正用户并继续成本题",
+                 "learner_quote":"做多具体要做什么？","fact_refs":["f:earlier"]},
+                {"evidence_ref":"e:assessed","nature":"assessment","status":"supported","interpretation":"按当前题目条件完成计算"}
+            ]}}});
+        let view=learner_view(&context);
+        let grounding=&view["learner_grounding"];
+        assert_eq!(grounding["expressions"],context["learner_context"]["learner_grounding"]["expressions"]);
+        assert_eq!(grounding["delivered_support"],context["learner_context"]["learner_grounding"]["delivered_support"]);
+        assert_eq!(grounding["interpretations"].as_array().unwrap().len(),1);
+        assert_eq!(grounding["hypotheses_to_check"][0]["evidence_ref"],"e:guess");
+        assert_eq!(grounding["hypotheses_to_check"][0]["learner_quote"],"做多具体要做什么？");
+        assert!(!view.to_string().contains("用户混淆了两笔交易"));
+        assert!(!view.to_string().contains("纠正用户并继续成本题"));
+        assert_eq!(context["learner_context"]["learner_grounding"]["interpretations"].as_array().unwrap().len(),2);
+    }
+
+    #[test]
+    fn learning_quality_continuity_uses_the_same_observation_boundary() {
+        let guess=json!({"evidence_ref":"e:guess","nature":"hypothesis","status":"unassessed",
+            "interpretation":"UNASSESSED_DIAGNOSIS","teaching_implication":"SPECULATIVE_NEXT_LESSON",
+            "learner_quote":"Is that loss actually established?","correction":"I was asking for evidence.",
+            "fact_refs":["question"],"support_delivery_refs":["help-before-question"]});
+        let context=json!({"status":"practice","learner_context":{
+            "learning_opportunity":{"continuity":{"teaching_implications":[guess.clone()]},
+                "delivered_support":[{"learner_expressions":[{"interpretations":[guess.clone()]}]}]},
+            "learner_grounding":{"expressions":[],"interpretations":[guess]}}});
+        let view=learner_view(&context);
+        assert!(!view.to_string().contains("UNASSESSED_DIAGNOSIS"));
+        assert!(!view.to_string().contains("SPECULATIVE_NEXT_LESSON"));
+        let implication=&view["learning_opportunity"]["continuity"]["teaching_implications"][0];
+        assert_eq!(implication["status"],"unassessed");
+        assert_eq!(implication["correction"],"I was asking for evidence.");
+        assert_eq!(implication["support_delivery_refs"],json!(["help-before-question"]));
+        assert!(context.to_string().contains("UNASSESSED_DIAGNOSIS"),"stored observations stay intact");
+    }
+
+    #[test]
+    fn learning_quality_support_body_reuse_preserves_distinct_delivery_times_and_scenes() {
+        let origin=|turn:&str|json!({"kind":"chat_turn","session_id":"chat","turn_id":turn});
+        let context=json!({"status":"practice","learner_context":{
+            "recent_facts":[{"event_id":"usage:answer","usage":{"kind":"assistant_delivery"},"original_ref":origin("one"),"answer_preview":{"text":"The same answer"}}],
+            "learner_grounding":{"delivered_support":[
+                {"kind":"message_delivered","delivery_ref":"delivery:one","original_ref":origin("one"),"answer":"The same answer","scene":{"state":"before"}},
+                {"kind":"usage_observed","delivery_ref":"usage:answer","original_ref":origin("one"),"answer":"The same answer"},
+                {"kind":"message_delivered","delivery_ref":"delivery:two","original_ref":origin("two"),"answer":"The same answer","scene":{"state":"after"}}]},
+            "learning_opportunity":{"delivered_support":[{"delivery_ref":"delivery:one","answer_preview":{"text":"The same answer"},"displayed_help":[{"fact_ref":"later-help","text_preview":"Separate help"}]}]}}});
+        let view=learner_view(&context);
+        let support=&view["learner_grounding"]["delivered_support"];
+        assert_eq!(support[0]["answer"],"The same answer");
+        assert_eq!(support[1]["answer_ref"],"delivery:one");
+        assert!(support[1].get("answer").is_none());
+        assert_eq!(support[2]["answer"],"The same answer","a second delivery remains distinct");
+        assert_eq!(support[2]["scene"]["state"],"after");
+        let opportunity=&view["learning_opportunity"]["delivered_support"][0];
+        assert_eq!(opportunity["answer_ref"],"delivery:one");
+        assert_eq!(opportunity["displayed_help"][0]["text_preview"],"Separate help");
+        let frozen=instructions(&context);
+        assert!(!frozen.contains("The same answer"));
+        assert!(frozen.contains("delivery:one"));
+        assert_eq!(context["learner_context"]["learner_grounding"]["delivered_support"][1]["answer"],"The same answer");
+    }
+
+    #[test]
     fn observing_preparing_receives_local_explanation_without_active_tutor_workflows() {
         let policies = crate::agent_prompt::policy_modules_for_tools(&[]);
         let explanation = &policies.iter().find(|module| module.asset_id == "resident-agent.teaching.explanation").unwrap().text;
@@ -1486,7 +1885,7 @@ mod followup_contract_tests {
         assert!(explanation.contains("只有缺少会改变讲法的信息时才问定位问题"));
         assert!(explanation.contains("不换个措辞重述整张概念图"));
         assert!(explanation.contains("相关或并列也不能画成因果"));
-        for status in ["observing", "reference", "active"] {
+        for status in ["observing", "reference", "practice"] {
             let modules = instruction_modules(&json!({"status":status,"readiness":"preparing",
                 "reason":"BookStructure 缺失","current_design":null,"current_request":"没懂"}), &[], None);
             assert!(!modules.iter().any(|module| module.asset_id == "resident-agent.tutor.explanation"
@@ -1498,7 +1897,7 @@ mod followup_contract_tests {
             assert!(writing.contains("尚未定位或读完必要依据时继续补查"));
             assert!(writing.contains("不能以删掉它代替完成原请求"));
             for workflow in ["design", "select", "continuation"] {
-                assert_eq!(modules.iter().any(|module| module.asset_id == format!("resident-agent.tutor.{workflow}")), status == "active");
+                assert_eq!(modules.iter().any(|module| module.asset_id == format!("resident-agent.tutor.{workflow}")), status == "practice");
             }
         }
     }
@@ -1511,7 +1910,7 @@ mod followup_contract_tests {
     #[test]
     fn practice_hints_pass_the_registered_tool_contract_without_a_legacy_hint() {
         let registry = crate::orchestrator::resident_tool_registry()
-            .with_tutor_context(Some(&json!({"status":"active"})));
+            .with_tutor_context(Some(&json!({"status":"practice"})));
         let registration = registry.registration("tutor.step").unwrap();
         let mut request = input_examples().as_array().unwrap().iter()
             .find(|example| example["operation"] == "select" && example["move"]["kind"] == "question")
@@ -1538,16 +1937,16 @@ mod followup_contract_tests {
 
     #[test]
     fn tutor_model_vocabulary_is_stable_while_execution_rules_follow_state() {
-        let active = json!({"status":"active"});
+        let active = json!({"status":"practice"});
         let declared = serde_json::to_value(model_spec_for_context(&active).unwrap()).unwrap();
-        let mut action = json!({"status":"active","current_design":{"design_ref":"design:current"},
+        let mut action = json!({"status":"practice","current_design":{"design_ref":"design:current"},
             "default_teaching_intent":"guided_inquiry","confirmed_preferences":[{"fact_id":"preference:1"}],
             "current_action":{"action":{"origin":"ui_entry","entry_action":"explain_selection"},
                 "user_supplement":"","accepted_request":"Explain the selected relationship.","source_bindings":[]}});
         for context in [
-            json!({"status":"active","current_design":{"design_ref":"design:current"}}),
-            json!({"status":"active","default_teaching_intent":"direct_explanation"}),
-            json!({"status":"active","confirmed_preferences":[{"fact_id":"preference:1"}]}),
+            json!({"status":"practice","current_design":{"design_ref":"design:current"}}),
+            json!({"status":"practice","default_teaching_intent":"direct_explanation"}),
+            json!({"status":"practice","confirmed_preferences":[{"fact_id":"preference:1"}]}),
             action.clone(),
         ] {
             assert_eq!(serde_json::to_value(model_spec_for_context(&context).unwrap()).unwrap(), declared);
@@ -1583,12 +1982,12 @@ mod followup_contract_tests {
     #[test]
     fn tutor_followup_revision_requires_previous_ref_but_initial_design_does_not() {
         let initial = crate::orchestrator::resident_tool_registry()
-            .with_tutor_context(Some(&json!({"status":"active"})));
+            .with_tutor_context(Some(&json!({"status":"practice"})));
         let mut request = design_request();
         initial.registration("tutor.step").unwrap().validate_arguments(&request.to_string()).unwrap();
 
         let current = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&json!({
-            "status":"active","current_design":{"design_ref":"design:current"}
+            "status":"practice","current_design":{"design_ref":"design:current"}
         })));
         let registration = current.registration("tutor.step").unwrap();
         assert!(registration.validate_arguments(&request.to_string()).is_err(),
@@ -1603,7 +2002,7 @@ mod followup_contract_tests {
 
     #[test]
     fn tutor_followup_contract_stays_stable_across_design_references() {
-        let context = |reference: &str| json!({"status":"active","current_design":{"design_ref":reference}});
+        let context = |reference: &str| json!({"status":"practice","current_design":{"design_ref":reference}});
         let first = spec_for_context(&context("design:earlier")).unwrap();
         let next = spec_for_context(&context("design:later")).unwrap();
         assert_eq!(serde_json::to_value(&first).unwrap(), serde_json::to_value(&next).unwrap(),
@@ -1619,7 +2018,7 @@ mod followup_contract_tests {
     #[test]
     fn tutor_followup_exact_accepted_initial_design_retry_remains_idempotent() {
         let request = design_request();
-        let context = json!({"status":"active","binding":{"turn_id":"turn:current"},
+        let context = json!({"status":"practice","binding":{"turn_id":"turn:current"},
             "current_design":{"design_ref":"design:turn:current:design-speed"}});
         let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
         let registration = registry.registration("tutor.step").unwrap();

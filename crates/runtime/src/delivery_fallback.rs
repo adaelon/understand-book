@@ -273,7 +273,7 @@ pub(super) fn deliver(
         };
         compiled.answer = format!("{status}\n\n{}", compiled.answer);
         compiled.view.parts.insert(0, AgentAnswerPart::Markdown { text:format!("{status}\n\n") });
-        append_presentations(&mut compiled.view, &references);
+        finish_answer_view(&mut compiled.view, None, None, &references);
     }
     diagnostics.fallback = Some(AnswerDeliveryAttemptDiagnostics::default());
     // Replace the fixed failed-delivery placeholder if one was already appended.

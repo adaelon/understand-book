@@ -51,6 +51,13 @@ it("keeps failed coverage distinct from silence, retries only missing recognitio
   expect(manifest.coverage[0].accepted).toEqual(second.chunks.map(c=>({video:imported.video,start_ms:c.start_ms,end_ms:c.end_ms})));
   expect(()=>assembleVideoTranscript(moved,{...second,chunks:second.chunks.slice(1)},imported.source!)).toThrow("plan has gaps");
   expect(JSON.parse(readFileSync(path.join(moved,"transcript_map.json"),"utf8")).segments).toHaveLength(2);
+  const base = JSON.parse(readFileSync(path.join(moved,"base.json"),"utf8"));
+  const transcript = JSON.parse(readFileSync(path.join(moved,"transcript_map.json"),"utf8"));
+  for (const segment of transcript.segments) {
+    const node = base.lid_nodes.find((node: { lid: string }) => node.lid === segment.text_range.lid);
+    expect(node.children).toEqual([]);
+    expect(readFileSync(path.join(moved,"source.txt"),"utf8").slice(node.span.start, node.span.start + segment.text_range.range.end)).toBe(segment.text);
+  }
   expect(JSON.parse(readFileSync(path.join(moved,"transcript/joins.json"),"utf8")).uncertainties).toHaveLength(3);
   expect(readFileSync(path.join(moved,"source.txt"),"utf8")).toContain("Speech. here. Then.");
   await buildVideoTranscript(moved,{recognize}); expect(calls).toHaveLength(4);

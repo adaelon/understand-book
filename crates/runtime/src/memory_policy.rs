@@ -1565,6 +1565,7 @@ mod tests {
             created_at: "now".into(),
             updated_at: "now".into(),
             valid_until: None,
+            observed_at_ms: None,
             supersedes: vec![],
         };
         let error = NeutralMemoryPolicy.validate_extension(&fact).unwrap_err();
@@ -1593,6 +1594,7 @@ mod tests {
             created_at: "now".into(),
             updated_at: "now".into(),
             valid_until: None,
+            observed_at_ms: None,
             supersedes: vec![],
         }
     }
@@ -1648,6 +1650,7 @@ mod tests {
             created_at: "now".into(),
             updated_at: "now".into(),
             valid_until: None,
+            observed_at_ms: None,
             supersedes: vec![],
         }
     }

@@ -8,10 +8,8 @@ const outcome = { answer: '观察一次更新', answer_view: { parts: [{ kind: '
 type Surface = 'inline' | 'workspace' | 'linked';
 
 async function openTools(page: Page) {
-  if ((page.viewportSize()?.width ?? 1280) > 700) return;
   const button = page.getByRole('button', { name: '演示工具', exact: true });
-  await expect(button).toBeVisible();
-  if (await button.getAttribute('aria-expanded') === 'false') await button.click();
+  if (await button.isVisible() && await button.getAttribute('aria-expanded') === 'false') await button.click();
 }
 
 async function mountFeedback(page: Page, surface: Surface = 'inline') {
@@ -103,14 +101,14 @@ for (const [surface, width, height] of [['inline', 960, 720], ['workspace', 1536
     const like = page.getByRole('button', { name: '喜欢', exact: true });
     await like.focus(); await page.keyboard.press('Enter');
     await expect(like).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByText('已附上反馈时的现场', { exact: false })).toBeVisible();
+    await expect(page.getByText('已附上反馈时的演示状态', { exact: false })).toBeVisible();
     expect(records.get(1)?.selection).toEqual({ choice: 'like', reasons: [], comment: '' });
     await page.getByRole('button', { name: '补充原因', exact: true }).click();
     await page.getByRole('checkbox', { name: '交互有用' }).check();
     await page.getByRole('textbox', { name: '补充（选填）' }).fill('拖动后这一步看清楚了');
     await page.getByRole('button', { name: '保存补充', exact: true }).click();
     await expect.poll(() => records.get(1)?.selection?.comment).toBe('拖动后这一步看清楚了');
-    await expect(page.getByText('已附上反馈时的现场', { exact: false })).toBeVisible();
+    await expect(page.getByText('已附上反馈时的演示状态', { exact: false })).toBeVisible();
     await page.screenshot({ path: info.outputPath(`feedback-${surface}.png`) });
     await page.getByRole('button', { name: '带入追问', exact: true }).click();
     await expect(page.getByTestId('feedback-follow-up')).toBeEmpty();
@@ -150,7 +148,7 @@ test('SE5 mobile failure retry, saved feedback survives reopening, versions rema
   await expect(like).toHaveAttribute('aria-pressed', 'false');
   await page.getByRole('button', { name: '重试反馈' }).click();
   await expect(like).toHaveAttribute('aria-pressed', 'true');
-  await expect(page.getByText('已附上反馈时的现场', { exact: false })).toBeVisible();
+  await expect(page.getByText('已附上反馈时的演示状态', { exact: false })).toBeVisible();
   const sets = fixture.requests.filter(r => r.path.endsWith('feedback.set'));
   expect(sets[1].body).toEqual(sets[0].body);
   await page.reload();
@@ -179,10 +177,10 @@ test('SE5 short linked window retries the original scene and sends feedback only
   const fixture = await mountFeedback(page, 'linked');
   fixture.failAttach();
   await page.getByRole('button', { name: '不喜欢', exact: true }).click();
-  await expect(page.getByRole('button', { name: '重试附加原现场' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '重试附上演示状态' })).toBeVisible();
   await page.frameLocator('iframe').locator('#count').press('End');
-  await page.getByRole('button', { name: '重试附加原现场' }).click();
-  await expect(page.getByText('已附上反馈时的现场', { exact: false })).toBeVisible();
+  await page.getByRole('button', { name: '重试附上演示状态' }).click();
+  await expect(page.getByText('已附上反馈时的演示状态', { exact: false })).toBeVisible();
   const attaches = fixture.requests.filter(r => r.path.endsWith('feedback/attach_state'));
   expect(attaches[1].body.saved_state).toEqual(attaches[0].body.saved_state);
   await page.getByRole('button', { name: '补充原因', exact: true }).click();

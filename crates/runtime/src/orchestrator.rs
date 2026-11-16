@@ -189,13 +189,29 @@ pub enum AgentAnswerPart {
     Markdown {
         text: String,
     },
+    SocraticQuestion {
+        text: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        purpose: Option<crate::socratic::SocraticQuestionPurpose>,
+    },
     Sources {
         source_ref_ids: Vec<String>,
     },
+    MusicExample { example: crate::music_example::MusicExample },
     Presentation {
         presentation_id: String,
         revision: u32,
     },
+}
+
+impl AgentAnswerPart {
+    pub fn text(&self) -> Option<&str> {
+        match self {
+            Self::Markdown { text } | Self::SocraticQuestion { text, .. } => Some(text),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, TS, PartialEq, Eq)]
@@ -811,7 +827,7 @@ pub(crate) struct TurnProgressLedger {
 impl TurnProgressLedger {
     fn from_turn(evidence: &TurnEvidenceLedger, locators: &TurnLocatorLedger) -> Self {
         let mut ledger = Self::default();
-        if !locators.entries.is_empty() {
+        if !locators.entries.is_empty() || !evidence.music_discovered.is_empty() {
             ledger.observe(RuntimeProgressEvent::Locator);
         }
         if !evidence.evidence.is_empty() || !evidence.music_observed.is_empty() {
@@ -844,9 +860,37 @@ impl TurnProgressLedger {
     }
 
     fn observe_read(&mut self, tool: &str, arguments: &str, body: &str) {
-        if !matches!(tool, "library.list" | "library.search" | "library.read" | "library.learning" | "board.author" | "workspace.records.read" | "workspace.notes") { return; }
+        if !matches!(tool, "library.list" | "library.search" | "library.read" | "library.learning" | "board.author" | "workspace.records.read" | "workspace.notes" | "tutor.step") { return; }
         let Ok(body) = serde_json::from_str::<serde_json::Value>(body) else { return; };
         if body.get("error_code").is_some() || body.get("projection").is_some() { return; }
+        if tool == "tutor.step" {
+            let args:serde_json::Value = serde_json::from_str(arguments).unwrap_or_default();
+            let mut remember = |identity:serde_json::Value| { self.read_observations.insert((tool.into(),identity.to_string())); };
+            if args["operation"] == "trace" {
+                if body["event_id"].is_string() && body["chunk"].as_str().is_some_and(|chunk| !chunk.is_empty()) {
+                    remember(serde_json::json!({"trace":body["event_id"],"after":args["after"].as_u64().unwrap_or(0),"length":body["chunk"].as_str().unwrap().chars().count()}));
+                }
+                for entry in body["events"].as_array().into_iter().flatten() {
+                    if let Some(reference)=entry["event"]["event_id"].as_str() { remember(serde_json::json!({"trace_event":reference})); }
+                }
+                return;
+            }
+            if args["operation"] != "corrections" { return; }
+            match args["correction_action"].as_str() {
+                Some("search") => for candidate in body["candidates"].as_array().into_iter().flatten() {
+                    if let Some(reference) = candidate["correction_ref"].as_str() { remember(serde_json::json!({"found":reference})); }
+                },
+                Some("read") if body["chunk"].as_str().is_some_and(|chunk|!chunk.is_empty()) && body["correction_ref"].is_string() => {
+                    remember(serde_json::json!({"read":body["correction_ref"],"after":args["after"].as_u64().unwrap_or(0),"next":body["next"]}));
+                },
+                Some("record") if body["correction_ref"].is_string() => remember(serde_json::json!({"recorded":body["correction_ref"]})),
+                Some("use") if body["use_ref"].is_string() && body["correction_ref"].is_string() => {
+                    remember(serde_json::json!({"used":body["correction_ref"],"decision":body["decision"]}));
+                },
+                _ => {},
+            }
+            return;
+        }
         if tool == "workspace.notes" {
             let args = serde_json::from_str(arguments).unwrap_or_default();
             if let Some(identity) = crate::workspace_notes::progress_identity(&args, &body) {
@@ -989,6 +1033,9 @@ struct RuntimeGateError {
 
 const STRUCTURAL_INDEX_CAPABILITY: &str = "structural_index";
 
+#[path = "context_cache.rs"]
+mod context_cache;
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct TurnLocatorLedger {
     entries: BTreeMap<String, BTreeSet<LocatorOrigin>>,
@@ -1077,6 +1124,9 @@ impl TurnLocatorLedger {
             }
             return;
         }
+        if let Ok(body) = serde_json::from_str::<serde_json::Value>(result) {
+            context_cache::observe_locations(self, &body, book);
+        }
         // The bounded projection can deliver source identities without their
         // quote text. These explicit recovery locations authorize reads only.
         let recovery_origin = match tool {
@@ -1093,6 +1143,20 @@ impl TurnLocatorLedger {
             }
         }
         match tool {
+            "video.search" => {
+                if let Ok(value) = serde_json::from_str::<serde_json::Value>(result) {
+                    // A search authorizes a read, never an evidence claim. Foreign
+                    // source locators must remain on their scoped library.read path.
+                    if value["publication"]["book_id"] == book.base.book_id
+                        && value["source_revision"].as_str() == Some(book.source_fingerprint()) {
+                        for candidate in value["discourse"]["candidates"].as_array().into_iter().flatten() {
+                            for read in candidate["text_reads"].as_array().into_iter().flatten() {
+                                self.observe_value_scalar(&read["text_range"], "lid", LocatorOrigin::StructuralIndexResult, book);
+                            }
+                        }
+                    }
+                }
+            }
             "book.text_batch" => {
                 if let Ok(value) = serde_json::from_str::<serde_json::Value>(result) {
                     for item in value["items"].as_array().into_iter().flatten() {
@@ -1258,6 +1322,7 @@ impl TurnLocatorLedger {
                 for hit in result.hits {
                     for lid in [&hit.start_lid, &hit.end_lid] { self.observe_lid(lid, LocatorOrigin::LexicalSearchResult, book); }
                     for range in hit.ranges { self.observe_lid(&range.lid, LocatorOrigin::LexicalSearchResult, book); }
+                    for heading in hit.heading_path { self.observe_lid(&heading.lid, LocatorOrigin::LexicalSearchResult, book); }
                 }
             }
             "book.search_text" => {
@@ -1582,6 +1647,7 @@ pub(crate) struct TurnEvidenceLedger {
     evidence_state: EvidenceState,
     media_presented: Vec<SourceBinding>,
     music_observed: Vec<read_tools::music::MusicSourceSnapshot>,
+    music_discovered: BTreeSet<(base_schema::PublishedBookRef, String)>,
     references: std::collections::BTreeMap<base_schema::PublishedBookRef, ReferenceEvidence>,
 }
 
@@ -2041,6 +2107,80 @@ fn stable_source_ref_id(digest: &str, ordinal: usize, existing: &[PresentedSourc
     }
 }
 
+fn prepare_music_score(
+    selection: &crate::music_example::Selection,
+    ledger: &mut TurnEvidenceLedger,
+    state: &mut impl ResidentStatePort,
+    revision: &str,
+    score_cache: &mut std::collections::BTreeMap<base_schema::PublishedBookRef, base_schema::MusicSourceManifest>,
+) -> Result<(crate::music_example::MusicExample, crate::music_example::FactBlock), ToolError> {
+    use crate::music_example as examples;
+    let examples::Selection { part_id, voice, from_id, through_id } = selection;
+    let observed = ledger.music_observed.iter().find(|source| examples::objects(source).iter().any(|n| &n.source_id == from_id)).cloned()
+        .ok_or_else(|| examples::invalid("Read the from_id with music.read view=score in this turn"))?;
+    let observed_notes = examples::objects(&observed);
+    let from = observed_notes.iter().find(|n| &n.source_id == from_id).unwrap();
+    if &from.part_id != part_id || &from.voice != voice { return Err(examples::invalid("The selected endpoint belongs to a different part or voice")); }
+    let last = through_id.as_ref().map(|id| ledger.music_observed.iter().filter(|s| s.target.publication == observed.target.publication && s.target.score.as_ref().map(|v| &v.score) == observed.target.score.as_ref().map(|v| &v.score)).flat_map(examples::objects).find(|n| &n.source_id == id)
+        .ok_or_else(|| examples::invalid("Read the through_id in this publication first"))).transpose()?;
+    let mut audio = observed.target.audio.clone();
+    if let Some(id) = through_id {
+        for source in ledger.music_observed.iter().filter(|source| source.target.publication == observed.target.publication && examples::objects(source).iter().any(|note| &note.source_id == id)) {
+            audio.start_ms = audio.start_ms.min(source.target.audio.start_ms);
+            audio.end_ms = audio.end_ms.max(source.target.audio.end_ms);
+        }
+    }
+    let reference = &observed.target.publication;
+    if !score_cache.contains_key(reference) { score_cache.insert(reference.clone(), state.music_example_source(reference)?); }
+    let manifest = &score_cache[reference];
+    if observed.target.score.as_ref().map(|s| &s.score) != Some(&manifest.score.source) { return Err(examples::invalid("The observed score revision differs from the loaded publication")); }
+    let part_name = manifest.parts.iter().find(|part| &part.part_id == part_id).map(|part| part.name.as_str()).unwrap_or(part_id);
+    let measures = last.as_ref().filter(|note| note.measure != from.measure).map(|note| format!("{}–{}",from.measure,note.measure)).unwrap_or_else(||from.measure.clone());
+    let title = format!("谱面合成 · {} · 第 {} 小节", part_name, measures);
+    let (mut example, ids) = examples::score(&manifest.score_objects, from, last.as_ref(), title)?;
+    let read = read_tools::music::read_snapshot(manifest, reference, &read_tools::music::MusicRead { view: "score".into(), query: None, location: Some(audio), event_id: None, source_ids: ids.clone(), part_ids: vec![], voices: vec![], offset: 0, limit: 200 })?;
+    let mut snapshot = read.sources.first().ok_or_else(|| examples::invalid("No source snapshot for this example"))?.clone();
+    if let Some(score) = &mut snapshot.target.score { score.source_ids = ids.clone(); }
+    if read.body["next_offset"].is_number() { return Err(examples::invalid("Select a shorter score example with at most 200 objects")); }
+    let target = snapshot.target.clone();
+    ledger.music_observed.push(snapshot);
+    let source = ledger.present_music(&target, revision)?;
+    example.source_ref_id = Some(source.source_ref_id.clone());
+    let facts = examples::score_facts(&manifest.score_objects, &ids, &source.source_ref_id, &example.title);
+    Ok((example, facts))
+}
+
+fn register_music_examples(arguments: &str, ledger: &mut TurnEvidenceLedger, state: &mut impl ResidentStatePort, revision: &str) -> Result<serde_json::Value, ToolError> {
+    use crate::music_example::{self as examples, Item, Selection};
+    let request: examples::Request = serde_json::from_str(arguments).map_err(|e| examples::invalid(e.to_string()))?;
+    let mut results = Vec::new();
+    let mut score_cache = std::collections::BTreeMap::new();
+    for item in request.items {
+        let built = (|| {
+            match &item {
+                Item::Illustration { steps, .. } => examples::illustration(steps).map(|example| examples::result(item.key(), example)),
+                Item::Score { part_id, voice, from_id, through_id, .. } => {
+                    let selection = Selection { part_id:part_id.clone(), voice:voice.clone(), from_id:from_id.clone(), through_id:through_id.clone() };
+                    let (example, facts) = prepare_music_score(&selection, ledger, state, revision, &mut score_cache)?;
+                    let mut result = examples::result(item.key(), example);
+                    result["facts_marker"] = serde_json::json!(facts.marker());
+                    result["facts"] = serde_json::json!(facts);
+                    Ok(result)
+                }
+                Item::Comparison { left, right, .. } => {
+                    let (left_example, left_facts) = prepare_music_score(left, ledger, state, revision, &mut score_cache)?;
+                    let (right_example, right_facts) = prepare_music_score(right, ledger, state, revision, &mut score_cache)?;
+                    let facts = examples::comparison_facts(&left_facts, &right_facts);
+                    Ok(serde_json::json!({"key":item.key(),"facts_marker":facts.marker(),"facts":facts,
+                        "examples":[examples::result("left",left_example),examples::result("right",right_example)]}))
+                }
+            }
+        })();
+        results.push(match built { Ok(result) => result, Err(error) => serde_json::json!({"key":item.key(),"error":error}) });
+    }
+    Ok(serde_json::json!({"items":results}))
+}
+
 fn observe_tool_evidence(
     ledger: &mut TurnEvidenceLedger,
     name: &str,
@@ -2048,16 +2188,23 @@ fn observe_tool_evidence(
     result: &str,
     book: &Book,
 ) {
+    if matches!(name, "book.search" | "book.context") {
+        if let Ok(body) = serde_json::from_str::<serde_json::Value>(result) {
+            context_cache::observe_inline(ledger, &body, book);
+        }
+    }
     match name {
         "music.read" => {
             if let Ok(read) = serde_json::from_str::<read_tools::music::MusicReadResult>(result) {
-                if !read.heard_audio && read.observation_kind == "prepared_music_material" && !read.sources.is_empty() {
+                if !read.heard_audio && read.observation_kind == "prepared_music_material" {
+                    ledger.music_discovered.extend(read.catalog_event_ids().into_iter().map(|id| (read.publication.clone(), id.to_owned())));
+                    let has_sources = !read.sources.is_empty();
                     for source in read.sources {
                         if !ledger.music_observed.iter().any(|existing| crate::music::same_source_target(&existing.target, &source.target)) {
                             ledger.music_observed.push(source);
                         }
                     }
-                    ledger.evidence_state = EvidenceState::KnownLids;
+                    if has_sources { ledger.evidence_state = EvidenceState::KnownLids; }
                 }
             }
         },
@@ -2351,6 +2498,8 @@ struct InternalAnswerProvenance {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct AnswerProvenanceLedger {
+    music_examples: std::collections::BTreeMap<String, crate::music_example::MusicExample>,
+    music_facts: std::collections::BTreeMap<String, crate::music_example::FactBlock>,
     public_texts: Vec<PublicAnswerProvenance>,
     internal_locators: Vec<InternalAnswerProvenance>,
 }
@@ -2366,6 +2515,7 @@ impl AnswerProvenanceLedger {
             match message.role {
                 Role::System => {}
                 Role::User => {
+                    if Some(index) == current_user { ledger.music_examples.clear(); ledger.music_facts.clear(); }
                     if let Some(content) = message.content.as_deref() {
                         let channel = if Some(index) == current_user {
                             AnswerProvenanceChannel::CurrentQuestion
@@ -2628,6 +2778,20 @@ impl AnswerProvenanceLedger {
 
     fn observe_tool_result(&mut self, tool: &str, result: &str) {
         match tool {
+            "music.example" => {
+                if let Ok(body) = serde_json::from_str::<serde_json::Value>(result) {
+                    for item in body["items"].as_array().into_iter().flatten() {
+                        for entry in std::iter::once(item).chain(item["examples"].as_array().into_iter().flatten()) {
+                            if let Ok(example) = serde_json::from_value::<crate::music_example::MusicExample>(entry["example"].clone()) {
+                                self.music_examples.insert(example.ref_id.clone(), example);
+                            }
+                        }
+                        if let Ok(facts) = serde_json::from_value::<crate::music_example::FactBlock>(item["facts"].clone()) {
+                            self.music_facts.insert(facts.ref_id.clone(), facts);
+                        }
+                    }
+                }
+            },
             "library.read" => {
                 let Ok(body) = serde_json::from_str::<serde_json::Value>(result) else { return; };
                 if let Some(operation) = body["operation"].as_str() {
@@ -3125,6 +3289,7 @@ fn source_marker_is_suffix(prefix: &str, suffix: &str) -> bool {
         || suffix.starts_with(['。', '，', '；', '：', '.', ',', ';', ':', '!', '！', '?', '？'])
         || suffix.starts_with("[[source")
         || suffix.starts_with("[source:")
+        || suffix.starts_with("[ [source:")
         || suffix.starts_with("[source_ref_")
 }
 
@@ -3156,23 +3321,23 @@ fn normalize_bound_source_suffixes(raw: &str, bindings: &[SourceBinding]) -> Str
         // A single-bracket source: suffix is an attempted citation, including
         // unknown or malformed IDs. Canonicalize its syntax so the ordinary
         // compiler validates it instead of silently delivering plain text.
-        let mut from = 0;
-        while let Some(index) = normalized[from..].find("[source:").map(|offset| from + offset) {
-            let closing = normalized[index..].find(']').map(|offset| index + offset + 1);
-            let end = closing.unwrap_or(normalized.len());
-            let prefix = &normalized[..index];
-            let suffix = normalized[end..].trim_start();
-            if !prefix.ends_with(['[', '\\']) && !source_suffix_is_literal(prefix)
-                && source_marker_is_suffix(prefix, suffix) {
-                let standard = if closing.is_some() {
-                    format!("[{}]", &normalized[index..end])
+        for (opening, close) in [("[ [source:", "] ]"), ("[source:", "]")] {
+            let mut from = 0;
+            while let Some(index) = normalized[from..].find(opening).map(|offset| from + offset) {
+                let content_start = index + opening.len();
+                let closing = normalized[content_start..].find(close).map(|offset| content_start + offset);
+                let end = closing.map_or(normalized.len(), |at| at + close.len());
+                let prefix = &normalized[..index];
+                let suffix = normalized[end..].trim_start();
+                if !prefix.ends_with(['[', '\\']) && !source_suffix_is_literal(prefix)
+                    && source_marker_is_suffix(prefix, suffix) {
+                    let standard = format!("[[source:{}{}", &normalized[content_start..closing.unwrap_or(end)],
+                        if closing.is_some() { "]]" } else { "" });
+                    normalized.replace_range(index..end, &standard);
+                    from = index + standard.len();
                 } else {
-                    format!("[{}", &normalized[index..end])
-                };
-                normalized.replace_range(index..end, &standard);
-                from = index + standard.len();
-            } else {
-                from = end;
+                    from = end;
+                }
             }
         }
         for binding in bindings {
@@ -3250,7 +3415,7 @@ fn answer_projector(
 }
 
 fn require_sampled_teaching_design(tutor: Option<&serde_json::Value>, sampled: Option<&str>, requested: Option<&str>) -> Result<(), ToolError> {
-    let Some(tutor) = tutor.filter(|t| t["status"] == "active" && t["outside_current_request"] != true) else { return Ok(()); };
+    let Some(tutor) = tutor.filter(|t| t["status"] == "practice" && t["outside_current_request"] != true) else { return Ok(()); };
     if tutor["current_design"]["design"].is_object() && !tutor["current_design"]["design"]["representation"].is_object() {
         return Err(memory::teaching::invalid("当前教学设计尚未选择呈现方式。先修订 design.representation，判断当前困惑需要文字帮助还是可观察的演示关系，再在后续采样中使用该设计。"));
     }
@@ -3263,7 +3428,7 @@ fn require_sampled_teaching_design(tutor: Option<&serde_json::Value>, sampled: O
 }
 
 fn teaching_uses_presentation(tutor: Option<&serde_json::Value>) -> bool {
-    tutor.is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true
+    tutor.is_some_and(|tutor| tutor["status"] == "practice" && tutor["outside_current_request"] != true
         && tutor["current_design"]["design"]["representation"]["kind"] == "presentation")
 }
 
@@ -3571,7 +3736,7 @@ mod tutor_working_fragment_tests {
         let old_work = serde_json::json!({"turn_id":"turn-1","review_ref":"review-1", "agent_work":{"understanding":["UNCHANGED_LONG_UNDERSTANDING"]}});
         let correction = serde_json::json!({"turn_id":"turn-1","review_ref":"correction-1","review_status":"revision_requested","rules":["R3"],"revision":"CORRECTION_BODY",
             "request_resolution":{"reason":"OLD_REQUEST_ACTION"},"follow_up_changes":[{"changes":"OLD_CHANGE_BODY"}]});
-        let mut tutor = serde_json::json!({"status":"active","agent_working_state":{
+        let mut tutor = serde_json::json!({"status":"practice","agent_working_state":{
             "current_work":old_work,"previous_work":[],"corrections":[correction],"meaning":"private work"}});
         refresh_tutor_working_fragments(&mut ledger, &tutor).unwrap();
         let first = sample(&mut ledger, 2);
@@ -3613,7 +3778,7 @@ mod tutor_working_fragment_tests {
         let mut ledger = ContextFragmentLedger::default();
         ledger.upsert(ContextFragment::new("reader.keep", FragmentScope::TurnFrozen, Role::System, "frozen", FragmentSensitivity::Private)).unwrap();
         ledger.upsert(ContextFragment::new("session.keep", FragmentScope::SessionStable, Role::System, "stable", FragmentSensitivity::Private)).unwrap();
-        let mut tutor = serde_json::json!({"status":"active","current_design":{"design_ref":"design:current"},"agent_working_state":{
+        let mut tutor = serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current"},"agent_working_state":{
             "previous_work":(0..5).map(|turn| serde_json::json!({"turn_id":format!("turn-{turn}"),"body":format!("WORK_{turn}")})).collect::<Vec<_>>(),
             "current_work":{"turn_id":"turn-5","body":"WORK_5"},
             "corrections":(0..10).map(|review| serde_json::json!({"review_ref":format!("review-{review}"),"body":format!("CORRECTION_{review}")})).collect::<Vec<_>>()}});
@@ -3721,7 +3886,9 @@ fn compile_agent_answer(
     bindings: &[SourceBinding],
     provenance: &AnswerProvenanceLedger,
 ) -> Result<CompiledAgentAnswer, AnswerCompileError> {
-    let normalized = normalize_bound_source_suffixes(raw, bindings);
+    let (public_raw, mut question_purpose) = crate::socratic::prepare_answer(raw).map_err(|message|
+        answer_compile_error("INVALID_SOCRATIC_QUESTION",message,None,None,None,"invalid_socratic_question"))?;
+    let normalized = normalize_bound_source_suffixes(&public_raw, bindings);
     let raw = normalized.as_str();
     if raw.trim().is_empty() {
         return Err(answer_compile_error(
@@ -3823,7 +3990,71 @@ fn compile_agent_answer(
             "malformed_source_marker",
         ));
     }
-    let provenance_violations = provenance.violations(raw);
+    let mut expanded = Vec::new();
+    let mut provenance_text = raw.to_owned();
+    for part in parts {
+        let AgentAnswerPart::Markdown { text } = part else { expanded.push(part); continue; };
+        let mut offset = 0;
+        while let Some(relative) = text[offset..].find("[[listen:") {
+            let start = offset + relative;
+            let end = text[start..].find("]]").map(|n| start + n + 2).ok_or_else(|| answer_compile_error("INVALID_LISTEN_MARKER", "Complete the returned listen marker", None, None, None, "listen_marker"))?;
+            let id = &text[start + 9..end - 2];
+            let example = provenance.music_examples.get(id).ok_or_else(|| answer_compile_error("UNKNOWN_LISTEN_REF", "Use a marker returned by music.example in this turn", None, None, Some(id), "listen_marker"))?;
+            push_answer_markdown(&mut expanded, &text[offset..start]);
+            provenance_text = provenance_text.replace(&text[start..end], &example.label);
+            expanded.push(AgentAnswerPart::MusicExample { example: example.clone() });
+            if let Some(id) = &example.source_ref_id { if !used_ref_ids.contains(id) { used_ref_ids.push(id.clone()); } }
+            offset = end;
+        }
+        push_answer_markdown(&mut expanded, &text[offset..]);
+    }
+    let mut with_facts = Vec::new();
+    for part in expanded {
+        let AgentAnswerPart::Markdown { text } = part else { with_facts.push(part); continue; };
+        let mut offset = 0;
+        while let Some(relative) = text[offset..].find("[[musicfacts:") {
+            let start = offset + relative;
+            let end = text[start..].find("]]").map(|n| start+n+2).ok_or_else(|| answer_compile_error("INVALID_MUSIC_FACTS_MARKER", "Complete the returned facts marker", None, None, None, "music_facts_marker"))?;
+            let id = &text[start+13..end-2];
+            let facts = provenance.music_facts.get(id).ok_or_else(|| answer_compile_error("UNKNOWN_MUSIC_FACTS_REF", "Use facts returned by music.example in this turn", None, None, Some(id), "music_facts_marker"))?;
+            for source in &facts.source_ref_ids {
+                if !bindings.iter().any(|b| &b.source_ref_id==source) { return Err(answer_compile_error("UNKNOWN_SOURCE_REF", "The music facts require their registered source", None, None, Some(source), "music_facts_marker")); }
+                if !used_ref_ids.contains(source) { used_ref_ids.push(source.clone()); }
+            }
+            push_answer_markdown(&mut with_facts, &text[offset..start]);
+            push_answer_markdown(&mut with_facts, &facts.markdown);
+            with_facts.push(AgentAnswerPart::Sources { source_ref_ids:facts.source_ref_ids.clone() });
+            provenance_text = provenance_text.replace(&text[start..end], &facts.markdown);
+            offset=end;
+        }
+        push_answer_markdown(&mut with_facts, &text[offset..]);
+    }
+    let mut expanded = with_facts;
+    if let Some(AgentAnswerPart::Markdown { text }) = expanded.last_mut() {
+        if let Some(question) = crate::socratic::take_question(text) {
+            if text.trim_end().ends_with(['?', '？']) {
+                return Err(answer_compile_error(
+                    "MULTIPLE_SOCRATIC_QUESTIONS",
+                    "The paragraph immediately before [[socratic]] already ends with a question. Deliver ONE learner question on the marked line. Remove its duplicate or paraphrase from the preceding paragraph, retaining the explanation. Inline math is supported in the marked question.",
+                    None, None, None, "multiple_socratic_questions",
+                ));
+            }
+            if text.is_empty() { expanded.pop(); }
+            expanded.push(AgentAnswerPart::SocraticQuestion { text: question, purpose: question_purpose.take() });
+        }
+    }
+    if question_purpose.is_some() {
+        return Err(answer_compile_error("INVALID_SOCRATIC_QUESTION",
+            "Keep the single question on the final marked line; put source/media markers in the explanation",None,None,None,"invalid_socratic_question"));
+    }
+    let parts = expanded;
+    let answer = parts.iter().filter_map(|part| match part {
+        AgentAnswerPart::Markdown { text } | AgentAnswerPart::SocraticQuestion { text, .. } => Some(text.as_str()),
+        AgentAnswerPart::MusicExample { example } => Some(example.label.as_str()),
+        _ => None,
+    }).collect::<String>();
+    let provenance_violations = provenance.violations(&provenance_text);
+
     if !provenance_violations.is_empty() {
         return Err(AnswerCompileError {
             issues: provenance_violations
@@ -4030,7 +4261,7 @@ fn deliver_agent_answer(
             });
             let repair_messages = vec![
                 Message::system(
-                    "source_answer_repair.v4\nReturn one revised final answer and no tool calls. Change only the listed violations and the minimum surrounding grammar needed. Preserve the candidate's topic, supported claims, task status, and any stated limitation. The final answer must avoid every listed violation, may use only source_ref_id values from allowed_sources, and must not mention validation or create sources. When selecting a source for a claim, place [[source:<source_ref_id>]] after that claim, replacing <source_ref_id> with the exact allowed ID. A bare ID or a source list is not a clickable citation. Preserve the candidate's supported source choices; do not attach unchosen sources.",
+                    "source_answer_repair.v5\nReturn one revised final answer and no tool calls. Change only the listed violations and the minimum surrounding grammar needed. Preserve the candidate's topic, supported claims, task status, and any stated limitation. The final answer must avoid every listed violation, may use only source_ref_id values from allowed_sources, and must not mention validation or create sources. When selecting a source for a claim, place [[source:<source_ref_id>]] after that claim, replacing <source_ref_id> with the exact allowed ID. A bare ID or a source list is not a clickable citation. Preserve the candidate's supported source choices; do not attach unchosen sources. For MULTIPLE_SOCRATIC_QUESTIONS, retain the explanation and exactly one final question prefixed by [[socratic]], removing the preceding duplicate or paraphrase. Inline math is supported in that marked question. Preserve a structured [[socratic]] question/purpose object when present. For INVALID_SOCRATIC_QUESTION repair its JSON shape: question plus purpose with focus, reason, learner_inference, evidence_to_notice and basis_refs; keep these internal fields out of the visible explanation.",
                 ),
                 Message::user(payload.to_string()),
             ];
@@ -4166,6 +4397,7 @@ fn declared_tool_specs() -> Vec<ToolSpec> {
         crate::library::learning_spec(),
         crate::video::spec(),
         crate::music::read_spec(),
+        crate::music_example::spec(),
         crate::music::interact_spec(),
         crate::video::search_spec(),
         crate::video_audio::spec(),
@@ -4730,7 +4962,7 @@ fn dispatch_resident_book_tool(
             }
         }
         (BookToolId::Search, BookToolInput::Search(input)) => {
-            match book.search_ranked(&input.query, input.within_lid.as_deref(), input.limit.unwrap_or(book_tool_contracts::DEFAULT_SEARCH_LIMIT)) {
+            match book.search_for_reading(&input) {
                 Ok(result) => to_json(&result),
                 Err(error) => to_json(&error),
             }
@@ -4749,7 +4981,7 @@ fn dispatch_resident_book_tool(
             }
         }
         (BookToolId::Concept, BookToolInput::Concept(input)) => {
-            match book.concept_candidates(&input.query, input.anchor_lid.as_deref(), input.limit) {
+            match book.concept_for_reading(&input) {
                 Ok(candidates) => to_json(&candidates),
                 Err(error) => to_json(&error),
             }
@@ -5274,6 +5506,7 @@ fn dispatch_state_tool(
         | ToolHandlerId::VideoReadFrames
         | ToolHandlerId::VideoSearch
         | ToolHandlerId::MusicRead
+        | ToolHandlerId::MusicExample
         | ToolHandlerId::MusicInteract
         | ToolHandlerId::VideoReviewAudio
         | ToolHandlerId::WebSearch
@@ -5330,6 +5563,15 @@ fn opaque_tool_result_digest(result: &str) -> String {
         hash = hash.wrapping_mul(0x100000001b3);
     }
     format!("tool-result-fnv1a64-{hash:016x}-bytes-{}", result.len())
+}
+
+// Missing runtime assets cannot be repaired by asking the author to redraw.
+fn non_retryable_environment_failure(result: &str) -> Option<ToolError> {
+    let value: serde_json::Value = serde_json::from_str(result).ok()?;
+    let code = value["error_code"].as_str()?;
+    matches!(code, "BOARD_PREVIEW_UNAVAILABLE")
+        .then(|| ToolError { error_code: code.into(), category: "unavailable".into(),
+            message: value["message"].as_str().unwrap_or("Required execution environment is unavailable").into() })
 }
 
 fn private_artifact_trace_digest(result: &str) -> String {
@@ -5514,6 +5756,7 @@ fn tool_progress_signature(
         "read_observations": progress.read_observations,
         "media_reads": progress.media_reads,
         "music_reads": evidence.music_observed.iter().map(|source| &source.target).collect::<Vec<_>>(),
+        "music_discovered": evidence.music_discovered,
         "music_player": crate::music::interaction_progress(music_interactions),
         "web_observations": progress.web_observations,
         "evidence": evidence.evidence_ranges(),
@@ -5730,7 +5973,18 @@ fn tool_receipt(
     } else {
         HistoricalToolStatus::Ok
     };
-    let accepted_evidence = if status == HistoricalToolStatus::Ok && !matches!(tool, "book.search_text" | "book.search" | "library.search") {
+    let accepted_evidence = if status == HistoricalToolStatus::Ok
+        && parsed.as_ref().is_some_and(|body| body.get("resident_observation").is_some())
+    {
+        let observed = &parsed.as_ref().unwrap()["resident_observation"];
+        if observed["source_id"] == book.base.book_id
+            && observed["source_revision"] == book.source_fingerprint()
+        {
+            serde_json::from_value(observed["read_ranges"].clone()).unwrap_or_default()
+        } else {
+            Vec::new()
+        }
+    } else if status == HistoricalToolStatus::Ok && !matches!(tool, "book.search_text" | "library.search") {
         let mut ledger = TurnEvidenceLedger::default();
         observe_tool_evidence(&mut ledger, tool, arguments, model_result, book);
         ledger.evidence_ranges()
@@ -5972,7 +6226,7 @@ fn focused_teaching_authoring(
 const PRESENTATION_DESIGN_REQUIRED: &str = "For presentation.author, only read/search are available because the current teaching design has no accepted presentation representation. This is an authoring restriction, not a request to change the teaching design. Continue the accepted text design with tutor.step select and a complete delivery_text when the current request asks for a text explanation; an earlier request for a visual does not override that current request. Only if the current request needs presentation authoring, first call tutor.step with operation=design, operation_id, and the complete design with design.representation.kind=presentation. After that design is accepted, consume it in the next sampling before prepare/write/preview/deliver.";
 
 fn presentation_inspection_only(tutor: Option<&serde_json::Value>) -> bool {
-    tutor.is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true
+    tutor.is_some_and(|tutor| tutor["status"] == "practice" && tutor["outside_current_request"] != true
         && tutor["current_design"]["design"]["representation"]["kind"] != "presentation")
 }
 
@@ -6022,12 +6276,15 @@ fn build_sample_request(
     let author_visible = visible_tools.iter().any(|tool| tool.name == "presentation.author");
     let teaching_authoring = focused_teaching_authoring(tutor, authoring);
     let authoring = teaching_authoring.as_ref().or(authoring);
-    let guidance = (author_visible && !inspection_only && !authoring_finished).then(|| {
+    let mut guidance = (author_visible && !inspection_only && !authoring_finished).then(|| {
         authoring.map(|current| current.guidance()).unwrap_or(PresentationGuidance {
             phase: PresentationPhase::Global,
             needs: Vec::new(),
         })
     });
+    if let (Some(guidance), Some((Some(coach), _))) = (&mut guidance, expression_coaches) {
+        guidance.include_scene_needs(&coach["plan"]["methods"]);
+    }
     let instruction_modules = if book.experimental_read_access().is_some() {
         crate::experiment::policy_modules(&visible_tools)
     } else {
@@ -6811,8 +7068,8 @@ fn guided_read_origin<'a>(question: &str, history: &'a [Message]) -> Option<&'a 
 }
 
 /// Recover verified text reads from one already-delimited saved user turn.
-/// Only paired book.text/book.text_batch results count; source listings, search
-/// hits and unrelated tools cannot authorize historical understanding evidence.
+/// Paired text reads and the host's exact Inline delivery receipts count. Search
+/// locators/snippets alone cannot authorize historical understanding evidence.
 pub fn recover_turn_text_read_ranges(book: &Book, messages: &[Message]) -> Vec<EvidenceRange> {
     let mut reads = HashMap::new();
     let mut observed = TurnEvidenceLedger::default();
@@ -6822,7 +7079,7 @@ pub fn recover_turn_text_read_ranges(book: &Book, messages: &[Message]) -> Vec<E
             Role::Assistant => {
                 for call in &message.tool_calls {
                     reads.remove(call.id.as_str());
-                    if matches!(call.name.as_str(), "book.text" | "book.text_batch") {
+                    if matches!(call.name.as_str(), "book.text" | "book.text_batch" | "book.search" | "book.context") {
                         reads.insert(call.id.as_str(), (call.name.as_str(), call.arguments.as_str()));
                     }
                 }
@@ -6832,7 +7089,20 @@ pub fn recover_turn_text_read_ranges(book: &Book, messages: &[Message]) -> Vec<E
                 let Some(result) = message.content.as_deref() else { continue; };
                 let Ok(body) = serde_json::from_str::<serde_json::Value>(result) else { continue; };
                 if body.get("error_code").is_some() || body["status"] == "error" { continue; }
-                observe_tool_evidence(&mut observed, name, arguments, result, book);
+                if let Some(receipt) = body.get("resident_observation") {
+                    // Raw business results can be wider than the delivered page.
+                    // A receipt replaces them; it must not be unioned with them.
+                    if receipt["source_id"] == book.base.book_id
+                        && receipt["source_revision"] == book.source_fingerprint() {
+                        if let Ok(ranges) = serde_json::from_value::<Vec<EvidenceRange>>(receipt["read_ranges"].clone()) {
+                            for range in ranges {
+                                if book.resolve_source(&range, SOURCE_PRESENTATION_LOCALE, None).is_ok() { observed.observe(range); }
+                            }
+                        }
+                    }
+                } else if matches!(name, "book.text" | "book.text_batch") {
+                    observe_tool_evidence(&mut observed, name, arguments, result, book);
+                }
             }
             _ => {}
         }
@@ -6877,13 +7147,32 @@ fn historical_guided_read_locators(
     observed.evidence_ranges()
 }
 
-fn append_presentations(
+fn finish_answer_view(
     view: &mut AgentAnswerView,
-    references: &[crate::presentation::PresentationRef],
+    tutor: Option<&serde_json::Value>,
+    teaching_draft: Option<&serde_json::Value>,
+    saved: &[crate::presentation::PresentationRef],
 ) {
-    view.parts
-        .extend(references.iter().map(|r| AgentAnswerPart::Presentation {
-            presentation_id: r.presentation_id.clone(),
+    if let Some(movement) = final_teaching_draft(teaching_draft)
+        .and_then(|draft| draft["moves"].as_array()).and_then(|moves| moves.last())
+        .filter(|m| m["response_expectation"]["socratic"] == true) {
+        if let Some(question) = movement["response_expectation"]["public_prompt"].as_str() {
+            let purpose=movement["participation"]["learner_inference"].as_str().map(|inference| crate::SocraticQuestionPurpose {
+                focus:movement["target"]["learning_focus"].as_str().unwrap_or(inference).into(),
+                reason:movement["participation"]["reason"].as_str().unwrap_or("").into(),
+                learner_inference:inference.into(),
+                evidence_to_notice:movement["target"]["expected_performance"].as_str().unwrap_or(inference).into(),
+                basis_refs:movement["responds_to"]["fact_refs"].as_array().into_iter().flatten().filter_map(|v|v.as_str().map(str::to_owned)).collect(),
+            });
+            crate::socratic::mark_tutor_question(&mut view.parts, question, purpose);
+        }
+    }
+    let insert_at = if matches!(view.parts.last(), Some(AgentAnswerPart::SocraticQuestion { .. })) {
+        view.parts.len() - 1
+    } else { view.parts.len() };
+    let references = final_presentation_references(tutor, teaching_draft, saved);
+    view.parts.splice(insert_at..insert_at, references.into_iter().map(|r| AgentAnswerPart::Presentation {
+            presentation_id: r.presentation_id,
             revision: r.revision,
         }));
 }
@@ -6891,7 +7180,7 @@ fn append_presentations(
 fn final_presentation_references(
     tutor: Option<&serde_json::Value>, draft: Option<&serde_json::Value>, saved: &[crate::presentation::PresentationRef],
 ) -> Vec<crate::presentation::PresentationRef> {
-    if tutor.is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true) {
+    if tutor.is_some_and(|tutor| tutor["status"] == "practice" && tutor["outside_current_request"] != true) {
         final_teaching_draft(draft).and_then(|draft| teaching_presentation_references(draft).ok()).unwrap_or_default()
     } else { saved.to_vec() }
 }
@@ -6946,7 +7235,7 @@ fn presentation_coach_handoff(coach: &serde_json::Value) -> String {
     let surface_guidance = if coach["authoring_surface"] == "native_board" {
         "Use native board text, shapes and explicit links to show the planned concrete relationship. No HTML method reads or presentation.author calls are required. Prioritize the selected explanation and current user feedback; do not repeat a whole prior lesson. If a brief direct explanation is sufficient, answer it without creating a candidate. Reuse this plan for geometry, font and preview fixes."
     } else {
-        "Before adapting a recommended method, use presentation.author read_method for its exact id/revision: read the card, the full example source, the adaptation guide and listed counterexamples; use each returned continuation.next_call to continue from the actual next_offset without guessing a page size or skipping ranges, until the required full files have entered subsequent sampling. A recommendation is neither a read receipt nor a declaration of use. Declare methods actually used with write/patch method_refs."
+        "Before adapting a recommended method, use presentation.author read_method for its exact id/revision: read the card, the full example source for the chosen scene (its listed file and metadata when scenes are offered), the adaptation guide and listed counterexamples. Other scene alternatives need not be read; use each returned continuation.next_call to continue from the actual next_offset without guessing a page size or skipping ranges, until the required full files have entered subsequent sampling. A recommendation is neither a read receipt nor a declaration of use. Declare methods actually used with write/patch method_refs."
     };
     format!("Private expression coach handoff for this current request. The coach selected an explanation purpose and reading path from the user's request, observed source evidence and the separately labelled author proposal. Follow that purpose while preserving the user's full requested scope. {surface_guidance} Where newly read source facts or the current user request make a recommendation unsuitable, adjust the design with the concrete reason rather than copying the example. Missing source evidence must be read; a coach plan is not source evidence, an accepted teaching design or learner understanding. If status is unavailable, continue ordinary authoring without retrying the coach in this run. Layout/technical prepare changes reuse this surface-specific handoff.\n{marker}\n{coach}")
 }
@@ -7094,10 +7383,10 @@ fn run_context_inner(
             context.tutor.as_mut().unwrap()["agent_working_state"] = working_state;
         }
     }
-    // The host waits for the admitted turn's exact coach dependency before
-    // exposing this result. Never poll for a newer plan during model sampling.
-    let coach_context = if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "active") {
-        state.tutor_coach_context()?
+    // Freeze the available historical observations once. The completed coach
+    // has not seen this new input, so its proposed next lesson is not guidance.
+    let coach_context = if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "practice") {
+        state.tutor_coach_context()?.map(|context| crate::tutor_coach::resident_context(&context))
     } else { None };
     let cfg = context.config;
     let runtime_profile = context.runtime_profile.clone();
@@ -7137,8 +7426,10 @@ fn run_context_inner(
     }) {
         context.tool_exposure_state.activate("presentation.author");
     }
-    if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" || t["status"] == "reference" || t["status"] == "observing") { context.tool_exposure_state.activate_tutor(); }
-    if teaching_uses_presentation(context.tutor.as_ref()) { context.tool_exposure_state.activate("presentation.author"); }
+    if context.tutor.as_ref().is_some_and(|t| matches!(t["status"].as_str(), Some("practice" | "course" | "reference" | "observing"))) { context.tool_exposure_state.activate_tutor(); }
+    // A previous presentation is reading context, not a new authoring task.
+    // Discovery, an unfinished presentation goal, or a design accepted in this
+    // run enables authoring below; ordinary follow-up questions stay lightweight.
     let experimental = book.experimental_read_access().is_some();
     let mut artifact_tools = ArtifactToolSession::new(
         if experimental {
@@ -7242,6 +7533,7 @@ fn run_context_inner(
     context.tool_exposure_state.music_available = music_source.is_some() || state.library_available();
     if let Some(music) = &music_source {
         context.tool_exposure_state.activate("music.read");
+        context.tool_exposure_state.activate("music.example");
         context.tool_exposure_state.activate("music.interact");
         context_fragments.upsert(ContextFragment::new("music.source", FragmentScope::TurnFrozen, Role::System,
             crate::music::instructions(music), FragmentSensitivity::Sensitive)).map_err(context_fragment_error)?;
@@ -7281,6 +7573,15 @@ fn run_context_inner(
     let mut profile_influences = BTreeSet::new();
     context.evidence_ledger =
         TurnEvidenceLedger::from_seed(book, resources.initial_evidence().to_vec())?;
+    let mut inline_cache = context_cache::InlineContextCache::for_turn(
+        context.current_user_message.as_deref().unwrap_or(question), context.tutor.as_ref());
+    let mut cached_locators = TurnLocatorLedger::default();
+    if !experimental {
+        if let Some(fragment) = inline_cache.start_turn(book, messages, context.tutor.as_ref(),
+            &mut cached_locators, &mut context.evidence_ledger) {
+            context_fragments.upsert(fragment).map_err(context_fragment_error)?;
+        }
+    }
     context.evidence_plan_ledger =
         TurnEvidencePlanLedger::from_evidence_state(context.evidence_ledger.evidence_state());
     let guided_origin = guided_read_origin(question, messages).map(str::to_string);
@@ -7438,6 +7739,7 @@ fn run_context_inner(
         resources.initial_evidence(),
         &reader_anchor,
     );
+    context.locator_ledger.merge(cached_locators);
     if let Some(tutor) = &context.tutor {
         context.locator_ledger.observe_teaching_targets(tutor, book);
     }
@@ -7456,7 +7758,12 @@ fn run_context_inner(
             tutor["native_board_candidate_pending"] = serde_json::json!(context.board_candidate_id.is_some());
         }
         context.tool_exposure_state.presentation_unavailable_reason = state.presentation_unavailable_reason();
-        if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !state.tutor_active()? {
+        if context.tutor.as_ref().is_some_and(|t| t["status"] == "course") && !state.tutor_active()? {
+            // Pausing a course stops proactive tutoring, while the accepted
+            // question, course scene and observation tools remain available.
+            context.tutor.as_mut().unwrap()["status"] = serde_json::json!("observing");
+        }
+        if context.tutor.as_ref().is_some_and(|t| t["status"] == "practice") && !state.tutor_active()? {
             context.tutor = Some(serde_json::json!({"status":"paused"}));
             context.teaching_delivery_draft = None;
             context.accepted_teaching_moves.clear();
@@ -7661,7 +7968,7 @@ fn run_context_inner(
         // Discarding only after model completion would already expose it.
         if context.teaching_delivery_draft.is_some() || context.board_delivery_draft.is_some()
             || crate::workspace_goal::exam_goal_active(context.workspace_goal.as_ref(), context.accepted_workspace_goal.as_ref())
-            || (context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved) {
+            || (context.tutor.as_ref().is_some_and(crate::tutor::requires_practice_delivery) && !context.tutor_resolved) {
             projector.discard();
         }
         let mut context_usage = ContextUsageCapture::default();
@@ -7784,7 +8091,7 @@ fn run_context_inner(
             if let Some(error) = unfinished_native_board(context.board_candidate_id.as_deref(), context.board_delivery_draft.as_deref(), last_teaching_error.as_ref()) {
                 return Err(error);
             }
-            if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved {
+            if context.tutor.as_ref().is_some_and(crate::tutor::requires_practice_delivery) && !context.tutor_resolved {
                 if !tutor_selection_retry && !cfg.turn_limit_reached(turns) {
                     tutor_selection_retry = true;
                     goal_completion_retry = Some(if context.delivered_presentations.is_empty() {
@@ -7862,7 +8169,7 @@ fn run_context_inner(
             let answer_view = delivery.as_ref().map(|delivery| {
                 let mut view = delivery.compiled.view.clone();
                 if !delivery.incomplete {
-                    append_presentations(&mut view, &final_presentation_references(context.tutor.as_ref(), context.teaching_delivery_draft.as_ref(), &context.delivered_presentations));
+                    finish_answer_view(&mut view, context.tutor.as_ref(), context.teaching_delivery_draft.as_ref(), &context.delivered_presentations);
                 }
                 view
             });
@@ -7930,7 +8237,7 @@ fn run_context_inner(
         let mut locator_batch_observations = TurnLocatorLedger::default();
         let mut evidence_plan_batch_observations = TurnEvidencePlanLedger::default();
         let mut capability_batch_observations = BTreeSet::new();
-        let locator_count_before = context.locator_ledger.entries.len();
+        let locator_count_before = context.locator_ledger.entries.len() + context.evidence_ledger.music_discovered.len();
         let evidence_count_before = context.evidence_ledger.evidence.len() + context.evidence_ledger.music_observed.len();
         let batch_progress_before = tool_progress_signature(
                 &context.evidence_ledger,
@@ -7977,7 +8284,7 @@ fn run_context_inner(
                 })
                 .map(|registration| registration.handler);
             if matches!(handler, Some(ToolHandlerId::TutorStep))
-                && context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "active") {
+                && context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "practice") {
                 if let Ok(request) = serde_json::from_str::<serde_json::Value>(&tc.arguments) {
                     if request["operation"] == "select" && request["move"]["delivery_text"].is_string() {
                         teaching_revision_draft.clear();
@@ -8198,6 +8505,10 @@ fn run_context_inner(
                 Some(ToolHandlerId::TutorStep) => {
                     let request = serde_json::from_str::<serde_json::Value>(&tc.arguments)
                         .map_err(|e| memory::teaching::invalid(format!("{e}")))
+                        .map(|mut request| {
+                            crate::tutor::bind_context_fields(&mut request, context.tutor.as_ref());
+                            request
+                        })
                         .and_then(|request| {
                             if request["operation"] != "revise" { return Ok(request); }
                             let selection = teaching_revision_draft.prepare_revision(&request)?;
@@ -8248,8 +8559,12 @@ fn run_context_inner(
                                 return Err(ToolError { error_code:"TEACHING_PRESENTATION_REQUIRES_NEXT_SAMPLING".into(), category:"validation".into(),
                                     message:"页面交付与教学选择有先后依赖，不能放在同一批调用。先读取本批 presentation.author deliver 的返回结果；若交付成功，在下一次采样中将返回的具体 reference 填入 move.presentation，再提交 tutor.step select，无需重新生成或重复交付页面。".into() });
                             }
-                            require_sampled_teaching_design(context.tutor.as_ref(), context.sampled_teaching_design_ref.as_deref(), request["move"]["design_ref"].as_str())?;
-                            if !native_board_selection && context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "active") {
+                            // Direct text replies deliberately do not adopt a saved plan.
+                            // Presentations/practice still require one in server validation.
+                            if request["move"]["design_ref"].is_string() {
+                                require_sampled_teaching_design(context.tutor.as_ref(), context.sampled_teaching_design_ref.as_deref(), request["move"]["design_ref"].as_str())?;
+                            }
+                            if !native_board_selection && context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "practice") {
                                 teaching_revision_draft.retain(&original_selection);
                                 if let Some(draft) = teaching_revision_draft.fragment_value() {
                                     retain_teaching_revision_fragment(&mut context_fragments, &draft)?;
@@ -8270,7 +8585,7 @@ fn run_context_inner(
                         if request["operation"] == "select" {
                             // Host-resolved learner facts never become model-authored evidence.
                             if let Some(fields) = request.as_object_mut() { fields.remove("learner_grounding"); }
-                            if let Some(tutor) = context.tutor.as_ref().filter(|tutor| tutor["status"] == "active") {
+                            if let Some(tutor) = context.tutor.as_ref().filter(|tutor| tutor["status"] == "practice") {
                                 let proposed = proposed_teaching_delivery(&request, &context.accepted_teaching_moves, native_board_selection)?;
                                 let presentation_refs = teaching_presentation_references(&proposed)?;
                                 // Resolve the exact saved versions. The author already observed
@@ -8313,6 +8628,12 @@ fn run_context_inner(
                         // The accepted private working copy must not enter tool
                         // receipts, activities or persisted public messages.
                         let draft = value.as_object_mut().and_then(|fields| fields.remove("delivery_draft"));
+                        if operation == "closed_book" {
+                            context.teaching_delivery_draft = draft.clone();
+                            context.tutor_resolved = true;
+                            batch_finish_delivery = true;
+                            refresh_teaching_delivery_fragment(&mut context_fragments, context.teaching_delivery_draft.as_ref())?;
+                        }
                         if matches!(operation.as_str(), "design" | "select" | "outside") {
                             if operation == "select" {
                                 if let Some(draft) = &draft {
@@ -8518,6 +8839,10 @@ fn run_context_inner(
                     };
                     (body, None, None)
                 },
+                Some(ToolHandlerId::MusicExample) => {
+                    let result = register_music_examples(&tc.arguments, &mut context.evidence_ledger, state, book.source_fingerprint());
+                    (match result { Ok(body) => body.to_string(), Err(error) => to_json(&error) }, None, None)
+                },
                 Some(ToolHandlerId::MusicInteract) => {
                     let result = crate::music::MusicInteractRequest::parse(&tc.arguments)
                         .and_then(|request| {
@@ -8637,7 +8962,7 @@ fn run_context_inner(
                             if !inspected {
                                 return Err(crate::board_author::error("BOARD_INSPECTION_REQUIRED", "Inspect this exact board candidate's screenshot in a later sampling before deliver or commit"));
                             }
-                            if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true) {
+                            if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "practice" && tutor["outside_current_request"] != true) {
                                 if context.board_selected_candidate_id.is_none()
                                     || context.board_selected_candidate_id != context.board_candidate_id {
                                     return Err(crate::board_author::error("BOARD_TEACHING_SELECTION_REQUIRED", "The current board diagram has not been selected for delivery. Preview and select this exact candidate before deliver or commit; a matching explanation from an older candidate does not select changed drawings."));
@@ -8682,7 +9007,7 @@ fn run_context_inner(
                                 context.board_delivery_draft = None;
                                 context.board_review_preview = None;
                                 context.board_selected_candidate_id = None;
-                                if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "active" && tutor["outside_current_request"] != true) {
+                                if context.tutor.as_ref().is_some_and(|tutor| tutor["status"] == "practice" && tutor["outside_current_request"] != true) {
                                     context.tutor_resolved = false;
                                 }
                             }
@@ -8718,7 +9043,7 @@ fn run_context_inner(
                                 });
                                 context.inspected_presentations.remove(&id);
                                 context.pending_previews.insert(id);
-                                if context.tutor.as_ref().is_some_and(|t| t["status"] == "active" && t["outside_current_request"] != true) {
+                                if context.tutor.as_ref().is_some_and(|t| t["status"] == "practice" && t["outside_current_request"] != true) {
                                     result.body["next"] = serde_json::json!(format!(
                                         "Inspect this preview in the next sampling. Then call tutor.step select with move.board_candidate_revision={} and the interaction_intent only if the current contract requires that unresolved semantic choice. The host supplies the accepted design and focus, source target and support metadata; do not copy canvas block IDs, design_ref, delivery_text or participation merely to publish ordinary support. An accepted whole-turn selection stages the exact explanation and diagram together; finish=true belongs at the top level if this completes the request. A real learner invitation needs its optional participation/response_expectation and must already be in the previewed blocks. A board_part still needs board.author commit before continuing.", result.body["candidate_revision"]));
                                 }
@@ -8759,7 +9084,7 @@ fn run_context_inner(
                         if prepare_batch && turn.tool_calls.iter().filter(|call| call.name != "agent.progress").count() != 1 {
                             return Err(ToolError { error_code: "PRESENTATION_PREPARE_REQUIRES_NEXT_SAMPLING".into(), category: "validation".into(), message: "Call prepare without other work tools (agent.progress is allowed), then use the selected guidance in the next sampling".into() });
                         }
-                        if let Some(tutor) = context.tutor.as_ref().filter(|t| t["status"] == "active" && t["outside_current_request"] != true) {
+                        if let Some(tutor) = context.tutor.as_ref().filter(|t| t["status"] == "practice" && t["outside_current_request"] != true) {
                             use crate::presentation_author::AuthorRequest;
                             // Patch inherits omitted metadata from its actual saved base.
                             // Validate that binding before editing, just as for an explicit one.
@@ -8800,7 +9125,7 @@ fn run_context_inner(
                         if let crate::presentation_author::AuthorRequest::Prepare { phase, framework, focus, mut needs, teaching_binding } = request {
                             needs.sort();
                             needs.dedup();
-                            let teaching_binding = teaching_binding.or_else(|| context.tutor.as_ref().filter(|t| t["status"] == "active" && t["outside_current_request"] != true).and_then(|t| Some(crate::presentation::PresentationTeachingBinding {
+                            let teaching_binding = teaching_binding.or_else(|| context.tutor.as_ref().filter(|t| t["status"] == "practice" && t["outside_current_request"] != true).and_then(|t| Some(crate::presentation::PresentationTeachingBinding {
                                 design_ref: t["current_design"]["design_ref"].as_str()?.to_owned(),
                                 block_refs: t["current_design"]["design"]["focus_block_refs"].as_array()?.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect(),
                                 regions: Vec::new(),
@@ -8885,7 +9210,7 @@ fn run_context_inner(
                             }
                             context.presentation_images.extend(result.images);
                             if let Some(reference) = result.delivered {
-                                if let Some(tutor) = context.tutor.as_ref().filter(|t| t["status"] == "active" && t["outside_current_request"] != true) {
+                                if let Some(tutor) = context.tutor.as_ref().filter(|t| t["status"] == "practice" && t["outside_current_request"] != true) {
                                     result.body["next"] = serde_json::json!(format!(
                                         "Page version saved. Next call tutor.step with operation select, move.design_ref {}, move.presentation {}, and the public move.delivery_text. Selection checks the teaching delivery before it reaches the learner.",
                                         tutor["current_design"]["design_ref"], serde_json::to_string(&reference).unwrap()));
@@ -9135,6 +9460,10 @@ fn run_context_inner(
             if tc.name == "book.synthesize" && tool_result_error_code(&result).is_none() {
                 batch_synthesis_observed = true;
             }
+            let result = if tc.name == "tutor.step" {
+                let args = serde_json::from_str::<serde_json::Value>(&tc.arguments).unwrap_or_default();
+                crate::tutor::with_recovery(result, teaching_revision_draft.reference(), args["operation"].as_str().unwrap_or_default())
+            } else { result };
             let result = attach_lid_recovery_requirement(result);
             batch_has_error |= tool_result_error_code(&result).is_some();
             phase_progress_guard.observe_error(&tc.name, &result);
@@ -9161,10 +9490,21 @@ fn run_context_inner(
                     .and_then(|r| context.evidence_ledger.references.get(&r)).map(|r| r.source.book.clone())
             } else { None };
             let mut projection = context.active_tool_results.project_result(
-                &tc.name, &tc.arguments, &result, output_policy, reference_book.as_deref().unwrap_or(book),
+                &tc.name, &tc.arguments, &result,
+                if experimental { output_policy } else {
+                    inline_cache.projection_policy(&tc.name, output_policy,
+                        context.active_tool_results.remaining_model_body_bytes(), book)
+                }, reference_book.as_deref().unwrap_or(book),
             );
             if experimental {
                 experimental_body_budget.admit_projection(&tc.name, &mut projection, book);
+            } else {
+                let limit = output_policy.max_model_body_bytes
+                    .min(context.active_tool_results.remaining_model_body_bytes());
+                inline_cache.enrich(&tc.name, &tc.arguments, &mut projection.model_body, book, limit,
+                    &mut context.evidence_ledger);
+                inline_cache.cite_read(&tc.name, &projection.evidence_arguments,
+                    &mut projection.model_body, book, limit, &mut context.evidence_ledger);
             }
             let model_body = projection.model_body_json();
             if tc.name=="notes.read" { if let Ok(page)=serde_json::from_str::<serde_json::Value>(&model_body){crate::personal_notes::observe(&page,&mut context.personal_note_reads);} }
@@ -9208,8 +9548,11 @@ fn run_context_inner(
             let is_artifact_call = registered.is_some_and(|registration| {
                 matches!(registration.handler, ToolHandlerId::Artifact(_))
             });
-            let persisted_tool_content =
-                (is_artifact_call || tc.name == "presentation.author").then(|| to_json(&receipt));
+            let persisted_tool_content = if tc.name.starts_with("book.") && !experimental {
+                context_cache::history_result(&result, &tc.name, &projection.model_body, &receipt, book)
+            } else {
+                (is_artifact_call || tc.name == "presentation.author").then(|| to_json(&receipt))
+            };
             context
                 .active_tool_results
                 .insert_call(tc, projection.into_envelope(receipt));
@@ -9271,6 +9614,7 @@ fn run_context_inner(
             if let Some(e) = effect {
                 effects.push(e);
             }
+            let environment_failure = non_retryable_environment_failure(&result);
             messages.push(Message {
                 provider_continuation: None,
                 role: Role::Tool,
@@ -9283,6 +9627,7 @@ fn run_context_inner(
             }
             checkpoint_sink.persist_effects(&run_effects(effects.clone(), &context.navigation))?;
             checkpoint_sink.persist_progress(messages, &context.events.activities())?;
+            if let Some(error) = environment_failure { return Err(error); }
         }
         if let Ok(anchor) = state.read_live_reader(|reader| reader.state().viewport.anchor_lid) {
             locator_batch_observations.observe_lid(&anchor, LocatorOrigin::ReaderAnchor, book);
@@ -9291,7 +9636,7 @@ fn run_context_inner(
         context
             .evidence_plan_ledger
             .merge(evidence_plan_batch_observations);
-        if context.locator_ledger.entries.len() > locator_count_before {
+        if context.locator_ledger.entries.len() + context.evidence_ledger.music_discovered.len() > locator_count_before {
             context
                 .progress_ledger
                 .observe(RuntimeProgressEvent::Locator);
@@ -9359,8 +9704,7 @@ fn run_context_inner(
             let answer = Some(delivery.compiled.answer.clone());
             let mut answer_view = delivery.compiled.view.clone();
             if !finishing_pending_edit {
-                append_presentations(&mut answer_view, &final_presentation_references(context.tutor.as_ref(),
-                    context.teaching_delivery_draft.as_ref(), &context.delivered_presentations));
+                finish_answer_view(&mut answer_view, context.tutor.as_ref(), context.teaching_delivery_draft.as_ref(), &context.delivered_presentations);
             }
             publish_teaching_delivery(&context.events, &answer_view);
             messages.push(Message { provider_continuation: None, role: Role::Assistant,
@@ -9392,7 +9736,7 @@ fn run_context_inner(
                 .map(|candidate_revision| PreviewDeliveryGrace::Board {
                     candidate_revision,
                     teaching: context.tutor.as_ref().is_some_and(|tutor|
-                        tutor["status"] == "active" && tutor["outside_current_request"] != true),
+                        tutor["status"] == "practice" && tutor["outside_current_request"] != true),
                 });
             let grace = native.or_else(|| context.pending_previews.iter()
                 .filter(|id| context.presentation_candidates.contains(*id)).min().cloned()
@@ -9418,7 +9762,7 @@ fn run_context_inner(
             } else {
                 "AGENT_NO_PROGRESS"
             };
-            if context.tutor.as_ref().is_some_and(|t| t["status"] == "active") && !context.tutor_resolved {
+            if context.tutor.as_ref().is_some_and(crate::tutor::requires_practice_delivery) && !context.tutor_resolved {
                 // The final tool rejection remains in the trace. Keep the actual
                 // host stop reason so recovery and public reporting see why we ended.
                 return Err(ToolError { error_code: stop_reason.into(), category: "loop".into(),
@@ -9651,7 +9995,7 @@ fn run_context_inner(
             let answer = delivery.compiled.answer.clone();
             let mut answer_view = delivery.compiled.view.clone();
             if !delivery.incomplete {
-                append_presentations(&mut answer_view, &final_presentation_references(context.tutor.as_ref(), context.teaching_delivery_draft.as_ref(), &context.delivered_presentations));
+                finish_answer_view(&mut answer_view, context.tutor.as_ref(), context.teaching_delivery_draft.as_ref(), &context.delivered_presentations);
             }
             if context.teaching_delivery_draft.is_some() || context.board_delivery_draft.is_some() || exam_active {
                 publish_teaching_delivery(&context.events, &answer_view);
@@ -9698,6 +10042,36 @@ fn run_context_inner(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn teacher_corrections_count_real_progress_without_crediting_repeated_hits() {
+        let mut progress = TurnProgressLedger::default();
+        let args = |action:&str| serde_json::json!({"operation":"corrections","correction_action":action}).to_string();
+        let found=serde_json::json!({"candidates":[{"correction_ref":"old"}]}).to_string();
+        progress.observe_read("tutor.step",&args("search"),&found);
+        progress.observe_read("tutor.step",r#"{"operation":"corrections","correction_action":"search","queries":["synonym"]}"#,&found);
+        assert_eq!(progress.read_observations.len(),1);
+        progress.observe_read("tutor.step",&args("search"),r#"{"candidates":[]}"#);
+        progress.observe_read("tutor.step",&args("record"),r#"{"error_code":"TEACHING_INVALID"}"#);
+        assert_eq!(progress.read_observations.len(),1);
+        progress.observe_read("tutor.step",&args("record"),r#"{"correction_ref":"new"}"#);
+        progress.observe_read("tutor.step",&args("record"),r#"{"correction_ref":"new"}"#);
+        assert_eq!(progress.read_observations.len(),2);
+        for use_ref in ["use-a","use-b"] {
+            progress.observe_read("tutor.step",&args("use"),&serde_json::json!({"use_ref":use_ref,"correction_ref":"old","decision":"apply"}).to_string());
+        }
+        assert_eq!(progress.read_observations.len(),3);
+        for offset in [0,768] {
+            progress.observe_read("tutor.step",&serde_json::json!({"operation":"corrections","correction_action":"read","after":offset}).to_string(),
+                &serde_json::json!({"correction_ref":"old","chunk":"actual stored text","next":offset+768}).to_string());
+        }
+        assert_eq!(progress.read_observations.len(),5);
+        for offset in [0,0,2700] {
+            progress.observe_read("tutor.step",&serde_json::json!({"operation":"trace","event_id":"actual-delivery","after":offset}).to_string(),
+                r#"{"event_id":"actual-delivery","chunk":"actual earlier teacher text"}"#);
+        }
+        assert_eq!(progress.read_observations.len(),7);
+    }
+
     include!("orchestrator_presentation_coach_tests.rs");
     include!("orchestrator_board_coach_tests.rs");
     mod workspace_goal { include!("workspace_goal_tests.rs"); }
@@ -9706,6 +10080,51 @@ mod tests {
     mod workspace_notes { include!("workspace_notes_tests.rs"); }
     mod delivery_fallback_tests { include!("delivery_fallback_tests.rs"); }
     mod board_author_runtime_tests { include!("board_author_runtime_tests.rs"); }
+
+    #[test]
+    fn socratic_purpose_is_saved_but_never_compiled_as_visible_text() {
+        let purpose=serde_json::json!({"focus":"elapsed time","reason":"learner counted motion only","learner_inference":"include the stop","evidence_to_notice":"a longer stop increases elapsed time; no speed calculation shown","basis_refs":["fact-stop"]});
+        let raw=format!("The trip contains a stop.\n\n[[socratic]] {}",serde_json::json!({"question":"What changes if the stop lasts longer?","purpose":purpose}));
+        let compiled=compile_agent_answer(&raw,&[],&Default::default()).unwrap();
+        assert_eq!(compiled.answer,"The trip contains a stop.\n\nWhat changes if the stop lasts longer?");
+        let saved=serde_json::to_value(&compiled.view).unwrap();
+        assert_eq!(saved["parts"][1]["purpose"],purpose);
+        let restored:AgentAnswerView=serde_json::from_value(saved).unwrap();
+        assert_eq!(restored,compiled.view);
+        let malformed="Explanation.\n\n[[socratic]] {\"question\":\"What changes?\",\"purpose\":{}}";
+        let error=compile_agent_answer(malformed,&[],&Default::default()).unwrap_err();
+        assert_eq!(error.issues[0].error_code,"INVALID_SOCRATIC_QUESTION");
+    }
+
+    #[test]
+    fn socratic_duplicate_question_requires_repair_without_deleting_prose() {
+        let raw="偏移量要乘回宽度。\n\n若 $x_a=90$、宽度 50、比例 0.2，目标中心是多少？\n\n[[socratic]] 锚框中心 90、宽度 50、偏移比例为 0.2，目标中心是多少？";
+        let error=compile_agent_answer(raw,&[],&AnswerProvenanceLedger::default()).unwrap_err();
+        assert_eq!(error.issues[0].error_code,"MULTIPLE_SOCRATIC_QUESTIONS");
+        let fixed="偏移量要乘回宽度。\n\n[[socratic]] 若 $x_a=90$、宽度 50、比例 0.2，目标中心是多少？";
+        let compiled=compile_agent_answer(fixed,&[],&AnswerProvenanceLedger::default()).unwrap();
+        assert_eq!(compiled.answer.matches('？').count(),1);
+        assert!(compiled.answer.starts_with("偏移量要乘回宽度。"));
+    }
+
+    #[test]
+    fn socratic_tutor_delivery_places_the_actual_page_before_its_single_question() {
+        let question = "What changed when you moved the slider?";
+        let text = format!("Compare the two curves on this page.\n\n{question}");
+        let draft = serde_json::json!({"moves":[{
+            "presentation":{"presentation_id":"curves","revision":2},
+            "participation":{"choice":"invite","reason":"compare the observed change","learner_inference":"the curves move closer","support":"the saved page"},
+            "responds_to":{"fact_refs":["fact-curve"],"disposition":"engaged"},
+            "response_expectation":{"socratic":true,"public_prompt":question}
+        }]});
+        let mut view = AgentAnswerView { parts: vec![AgentAnswerPart::Markdown { text }], sources: vec![] };
+        finish_answer_view(&mut view, Some(&serde_json::json!({"status":"practice"})), Some(&draft), &[]);
+        assert!(matches!(view.parts.as_slice(), [
+            AgentAnswerPart::Markdown { text },
+            AgentAnswerPart::Presentation { presentation_id, revision: 2 },
+            AgentAnswerPart::SocraticQuestion { text: prompt, purpose: Some(purpose) }
+        ] if !text.contains(question) && presentation_id == "curves" && prompt == question && purpose.basis_refs == ["fact-curve"]));
+    }
     mod board_recovery_paths_tests { include!("board_recovery_paths_tests.rs"); }
     include!("video_orchestrator_tests.rs");
     include!("music_orchestrator_tests.rs");
@@ -12431,7 +12850,7 @@ user_question=\"explain normalization and create a rich presentation\"";
 
     #[test]
     fn agent_progress_phase_new_source_bindings_are_delivery_progress() {
-        let b = Book::new(book_leaves(4).base, "AAAAAAAAAABBBBBBBBBBCCCCCCCCCCDDDDDDDDDD");
+        let b = Book::new(book_leaves(4).base, "Alpha one.Bravo two.Cedar tri.Delta end.");
         let adapter = FakeAdapter::new(
             vec![
                 turn_calls(
@@ -12448,17 +12867,17 @@ user_question=\"explain normalization and create a rich presentation\"";
                 turn_calls(vec![call(
                     "source1",
                     "source.present",
-                    &quote_args("AAAAAAAAAA"),
+                    &quote_args("Alpha"),
                 )]),
                 turn_calls(vec![call(
                     "source2",
                     "source.present",
-                    &quote_args("BBBBBBBBBB"),
+                    &quote_args("Bravo"),
                 )]),
                 turn_calls(vec![call(
                     "source3",
                     "source.present",
-                    &quote_args("CCCCCCCCCC"),
+                    &quote_args("Cedar"),
                 )]),
                 turn_final("sources prepared"),
             ],
@@ -13529,6 +13948,26 @@ user_question=\"explain normalization and create a rich presentation\"";
         ] {
             assert!(recover_turn_text_read_ranges(&book,&messages).is_empty(),"{messages:?}");
         }
+    }
+
+    #[test]
+    fn recover_inline_receipt_keeps_only_delivered_range_and_exact_source_version() {
+        let book = Book::new(sample_base(), &"X".repeat(100));
+        let range = EvidenceRange {start_lid:"1.1".into(),end_lid:"1.1".into(),ranges:vec![
+            SourceSelectedRange {lid:"1.1".into(),range:SourceTextRange {start:0,end:3}}]};
+        let mut messages = vec![Message {role:Role::Assistant,content:None,provider_continuation:None,
+            tool_call_id:None,tool_calls:vec![call("read","book.search",r#"{"query":"X"}"#)]},
+            Message {role:Role::Tool,content:None,provider_continuation:None,tool_call_id:Some("read".into()),tool_calls:vec![]}];
+        let mut body = serde_json::json!({"lid":"1.1","text":book.text("1.1",None).unwrap(),
+            "resident_observation":{"source_id":book.base.book_id,"source_revision":book.source_fingerprint(),"read_ranges":[range]}});
+        messages[1].content = Some(body.to_string());
+        assert_eq!(recover_turn_text_read_ranges(&book,&messages),vec![range.clone()]);
+        messages[0].tool_calls[0].name = "book.text".into();
+        messages[0].tool_calls[0].arguments = r#"{"lid":"1.1"}"#.into();
+        assert_eq!(recover_turn_text_read_ranges(&book,&messages),vec![range],"raw full result cannot expand the delivered excerpt");
+        body["resident_observation"]["source_revision"] = serde_json::json!("another-revision");
+        messages[1].content = Some(body.to_string());
+        assert!(recover_turn_text_read_ranges(&book,&messages).is_empty());
     }
 
     #[test]
@@ -14799,6 +15238,48 @@ user_question=\"explain normalization and create a rich presentation\"";
     }
 
     #[test]
+    fn cache_search_supports_direct_citation_and_followup_without_another_tool() {
+        struct CachedAnswer { step: Cell<usize> }
+        impl ModelAdapter for CachedAnswer {
+            fn complete(&self, _: CompletionRequest) -> Result<ParsedResponse, AdapterError> { panic!("no extra model task") }
+            fn chat(&self, plan: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
+                let step = self.step.get(); self.step.set(step+1);
+                if step == 0 { return Ok(turn_calls(vec![call("search", "book.search", r#"{"query":"噪声"}"#)])); }
+                let body = if step == 1 {
+                    let message = plan.input.iter().rev().find(|m|m.role == Role::Tool).unwrap();
+                    serde_json::from_str::<serde_json::Value>(message.content.as_deref().unwrap()).unwrap()["model_body"].clone()
+                } else {
+                    let text = plan.input.iter().filter_map(|m|m.content.as_deref())
+                        .find(|s|s.starts_with("context_fragment.v1\nkey=reader.source_cache\n")).expect("follow-up gets the cached source at its first sampling");
+                    let json = text.lines().find(|line|line.starts_with("{\"context_cache\":")).unwrap();
+                    serde_json::from_str(json).unwrap()
+                };
+                let item = &body["context_cache"]["inline"][0];
+                assert!(item["result"]["text"].as_str().is_some_and(|t|t.contains("噪声")));
+                let source = item["source_ref_id"].as_str().unwrap();
+                Ok(turn_final(&format!("这段原文说明了噪声的作用。[[source:{source}]]")))
+            }
+        }
+        let b = quote_book();
+        let adapter = CachedAnswer {step:Cell::new(0)};
+        let mut store = MemoryStore::open(tmp("context-cache-followup")).unwrap();
+        let mut reader = Reader::new(&b,DEFAULT_RADIUS);
+        let mut messages = new_session();
+        let first = run(&b,&mut store,&mut reader,&adapter,&mut messages,"解释噪声的作用","t0",OuterConfig::default()).unwrap();
+        assert!(!first.incomplete);
+        assert_eq!(first.trace.len(),1);
+        assert_eq!(first.trace[0].tool,"book.search");
+        assert_eq!(first.source_bindings.len(),1);
+        // Exercise the persisted business transcript, not an in-memory ledger.
+        messages = serde_json::from_slice(&serde_json::to_vec(&messages).unwrap()).unwrap();
+        let second = run(&b,&mut store,&mut reader,&adapter,&mut messages,"继续解释这句话","t1",OuterConfig::default()).unwrap();
+        assert!(!second.incomplete);
+        assert!(second.trace.is_empty());
+        assert_eq!(second.source_bindings.len(),1);
+        assert_eq!(adapter.step.get(),3);
+    }
+
+    #[test]
     fn ranked_search_locates_but_requires_source_read_before_citing() {
         let book = quote_book();
         let adapter = FakeAdapter::new(vec![], vec![]);
@@ -15134,7 +15615,7 @@ user_question=\"explain normalization and create a rich presentation\"";
     }
 
     #[test]
-    fn source_presentation_rejects_context_route_state_error_and_unobserved_lid() {
+    fn source_presentation_rejects_unread_suffix_after_context_prefetch() {
         let b = book();
         let mut empty_ledger = TurnEvidenceLedger::default();
         let direct_error = empty_ledger
@@ -15152,7 +15633,7 @@ user_question=\"explain normalization and create a rich presentation\"";
                 turn_calls(vec![call(
                     "present-denied",
                     "source.present",
-                    &serde_json::json!({"quote": "X".repeat(100)}).to_string(),
+                    &serde_json::json!({"quote": "尾巴"}).to_string(),
                 )]),
                 turn_final("done"),
             ],
@@ -15180,7 +15661,7 @@ user_question=\"explain normalization and create a rich presentation\"";
             .find(|message| message.tool_call_id.as_deref() == Some("present-denied"))
             .and_then(|message| message.content.as_deref())
             .unwrap();
-        assert!(denied.contains("TOOL_NOT_EXPOSED"));
+        assert!(denied.contains("SOURCE_NOT_OBSERVED"), "{denied}");
     }
 
     #[test]
@@ -17154,7 +17635,7 @@ user_question=\"这段怎么理解？\"",
             assert!(!first_tool_names.contains(&reader_write));
         }
         assert!(first.instruction_assets.iter().any(|asset| {
-            asset.asset_id == "resident-agent.policy.evidence-routing" && asset.revision == "v7"
+            asset.asset_id == "resident-agent.policy.evidence-routing" && asset.revision == "v8"
         }));
         let policy = first.input.iter().filter_map(|m| m.content.as_deref())
             .find(|text| text.starts_with("sampling_guidance.v1\n")).unwrap();
@@ -19365,7 +19846,7 @@ user_question={}",
                 .keys()
                 .map(String::as_str)
                 .collect::<Vec<_>>(),
-            vec!["anchor_lid", "limit", "query"]
+            vec!["anchor_lid", "focus", "limit", "query"]
         );
         assert_eq!(schema["properties"]["limit"]["default"], 12);
         assert_eq!(schema["properties"]["limit"]["minimum"], 1);
@@ -19493,7 +19974,8 @@ user_question={}",
         assert!(policy.contains("Explicit guided reading is not a section summary"));
         assert!(policy
             .contains("For questions about the current passage, prefer book.text, book.context"));
-        assert!(policy.contains("explicit concepts or entities needs new evidence, use book.query"));
+        assert!(policy.contains("book.search or book.concept can take focus"));
+        assert!(policy.contains("unresolved multi-source question for explicit concepts or entities, use book.query"));
 
         let query = tool_specs()
             .into_iter()

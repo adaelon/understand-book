@@ -29,7 +29,7 @@ pub(crate) fn scopes(user: &user_runtime::UserRuntime) -> Vec<Option<String>> {
 /// Only what the problem was posed with: no learner answer, no later facts.
 fn packet(selected: &TeachingEvent) -> Value {
     let movement = &selected.payload["move"];
-    json!({"problem":{"prompt":movement["prompt"],"delivery_text":movement["delivery_text"]},
+    json!({"problem":{"prompt":movement["prompt"],"delivery_text":movement["delivery_text"],"answer_input":movement["answer_input"]},
         "practiced_relationship":{"learning_focus":movement["target"]["learning_focus"],"expected_performance":movement["target"]["expected_performance"]},
         "mode":movement["practice"]["mode"],"committed_solution":movement["explanation"],"answer_contract":movement["assessment"],
         "hints":movement["practice"]["hints"],"frozen_sources":selected.payload["scoring_sources"]})

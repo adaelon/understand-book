@@ -73,6 +73,7 @@ pub(crate) fn assert_checkpoint_log_contract(session: &AgentChatSession) {
             None,
             None,
             None,
+            false,
             "accepted",
         )
         .unwrap();

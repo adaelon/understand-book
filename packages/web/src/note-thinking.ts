@@ -1,9 +1,15 @@
 import { ref } from 'vue';
 import { emptyNoteContext, noteRequest, pendingNoteSource, noteSourceError, type NoteContext, type NoteRef } from './personal-notes';
 import type { TeachingTarget } from './generated/TeachingTarget';
+import { api as sharedApi } from './api';
+import { bindSceneApi } from './network-context';
 
-export interface UnderstandingReference { note_id: string; workspace_id: string | null; evidence_ref: string }
+export interface UnderstandingReference { note_id?: string; workspace_id: string | null; evidence_ref: string }
 export interface UnderstandingSummary {
+  learner_summary?: { headline: string; explanation: string; next_step: string | null } | null;
+  previous?: { evidence_ref: string; learner_quote: string; assistance: string } | null;
+  later_evidence_ref?: string | null;
+  knowledge_links?: import('./generated/KnowledgeLink').KnowledgeLink[];
   focus_ref: string; source_id: string; source_revision: string; workspace_id: string | null;
   label: string; capability: string; target: TeachingTarget | null;
   demonstrated: string[]; difficulties: string[]; unconfirmed: string[];
@@ -28,14 +34,14 @@ export interface NoteThinkingView {
   updates: { job_ref: string; workspace_id: string | null; status: string }[];
 }
 export interface UnderstandingAction {
-  context: NoteContext; note_ref: NoteRef; source_revision: string; target: TeachingTarget;
+  context: NoteContext; note_ref?: NoteRef; source_revision: string; target: TeachingTarget;
   understanding_ref: UnderstandingReference; mode: 'discuss' | 'practice';
 }
 export const pendingUnderstandingAction = ref<UnderstandingAction | null>(null);
-export async function continueUnderstanding(item: UnderstandingSummary, noteId: string, mode: UnderstandingAction['mode']) {
-  const result = await noteRequest<Omit<UnderstandingAction, 'mode'>>('thinking_start', {
-    note_id: noteId, workspace_id: item.workspace_id, evidence_ref: item.evidence_ref,
-  });
+export async function continueUnderstanding(item: UnderstandingSummary, noteId: string | undefined, mode: UnderstandingAction['mode']) {
+  const reference = { ...(noteId ? { note_id: noteId } : {}), workspace_id: item.workspace_id, evidence_ref: item.evidence_ref };
+  const result = noteId ? await noteRequest<Omit<UnderstandingAction, 'mode'>>('thinking_start', reference)
+    : await bindSceneApi(sharedApi).knowledgeResume(reference);
   noteSourceError.value = '';
   const context = { ...emptyNoteContext(), ...result.context };
   pendingUnderstandingAction.value = { ...result, context, mode };

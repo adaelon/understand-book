@@ -250,6 +250,7 @@ pub trait ResidentStatePort {
     }
     fn music_source_context(&mut self) -> Result<Option<serde_json::Value>, read_tools::ToolError> { Ok(None) }
     fn read_music(&mut self, _reference: Option<&base_schema::PublishedBookRef>, _request: read_tools::music::MusicRead) -> Result<read_tools::music::MusicReadResult, read_tools::ToolError> { Err(crate::music::unavailable()) }
+    fn music_example_source(&mut self, _reference: &base_schema::PublishedBookRef) -> Result<base_schema::MusicSourceManifest, read_tools::ToolError> { Err(crate::music::unavailable()) }
     fn interact_music(&mut self, _request: crate::music::MusicInteractRequest, _cancellation: &CancellationToken) -> Result<crate::music::MusicPlaybackReceipt, read_tools::ToolError> { Err(crate::music::unavailable()) }
     fn web_available(&self) -> bool { false }
     fn web_call(&mut self, _name: &str, _arguments: serde_json::Value, _cancellation: &CancellationToken) -> Result<serde_json::Value, read_tools::ToolError> {

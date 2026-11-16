@@ -14,7 +14,7 @@ const number = (node: XmlElement, tag: string, fallback = 0) => Number(value(nod
 export interface ParsedMusicNote extends Omit<MusicScoreObject, 'page_id' | 'svg_element_id'> { measure_index: number; score_beat: number; grace: boolean }
 export const MUSIC_SCORE_MARKS_PROVENANCE_ID = 'musicxml-score-marks';
 // Update these versions when parsing, mapping or the packaged Verovio changes.
-export const MUSIC_SCORE_PARSER_VERSION = 'musicxml-score-parser.v1';
+export const MUSIC_SCORE_PARSER_VERSION = 'musicxml-score-parser.v4';
 export const MUSIC_SCORE_RENDER_PARAMETERS = { processor: 'music-score-render.v1', verovio: '6.3.0',
   options: { inputFrom: 'xml', font: 'Leipzig', pageWidth: 1800, pageHeight: 2200, scale: 45, adjustPageHeight: true,
     breaks: 'auto', svgViewBox: true, svgRemoveXlink: true, xmlIdSeed: 1 } } as const;
@@ -84,7 +84,8 @@ export function parseMusicScore(musicxml: string): ParsedMusicScore {
           const types = children(element, 'direction-type');
           const words = types.flatMap(type => children(type, 'words').map(word => word.textContent?.trim() || '')).filter(Boolean);
           const metronomeElement = types.flatMap(type => children(type, 'metronome')).find(item => child(item, 'per-minute'));
-          const metronome = metronomeElement ? { beat_unit: value(metronomeElement, 'beat-unit'), dots: children(metronomeElement, 'beat-unit-dot').length, per_minute: value(metronomeElement, 'per-minute') } : null;
+          const metronome = metronomeElement && value(metronomeElement, 'beat-unit') ? { beat_unit: value(metronomeElement, 'beat-unit'), dots: children(metronomeElement, 'beat-unit-dot').length, per_minute: value(metronomeElement, 'per-minute') } : null;
+          if (metronomeElement && !metronome) words.push(`原谱节拍器：${value(metronomeElement, 'per-minute')}（未注明拍值）`);
           const sound = element.tagName === 'sound' ? element : child(element, 'sound');
           const tempo = Number(sound?.getAttribute('tempo'));
           const sound_tempo_quarter_bpm = tempo > 0 && Number.isFinite(tempo) ? tempo : null;
@@ -102,14 +103,26 @@ export function parseMusicScore(musicxml: string): ParsedMusicScore {
         const duration = grace ? 0 : number(element, 'duration') / divisions;
         const onset = chord ? lastOnset : cursor;
         if (!chord) { lastOnset = onset; cursor += duration; }
-        const pitch = child(element, 'pitch'), rest = Boolean(child(element, 'rest'));
-        if (!pitch && !rest) throw new Error(`Unsupported unpitched note ${sourceId}; provide a reviewed pitched transcription for this selected score`);
+        const pitch = child(element, 'pitch'), rest = Boolean(child(element, 'rest')), unpitched = Boolean(child(element, 'unpitched'));
+        if (!pitch && !rest && !unpitched) throw new Error(`MusicXML note ${sourceId} has no pitch, rest or unpitched notation`);
         const midiPitch = pitch ? ({ C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }[value(pitch, 'step') as 'C'] + 12 * (number(pitch, 'octave') + 1) + number(pitch, 'alter') + transpose) : null;
         const ties = children(element, 'tie').map(t => t.getAttribute('type'));
         const tie = ties.includes('stop') && ties.includes('start') ? 'continue' : ties.includes('stop') ? 'stop' : ties.includes('start') ? 'start' : 'none';
         const voice = `${value(element, 'staff', '1')}:${value(element, 'voice', '1')}`;
         voices.add(voice);
-        notes.push({ source_id: sourceId, part_id: partId, measure: label, measure_index: measureIndex + 1, beat: onset, score_beat: runningBeat + onset, duration_beats: duration, voice, midi_pitch: midiPitch, rest, tie, grace });
+        const dynamics = element.getAttribute('dynamics');
+        const modification = child(element, 'time-modification');
+        const timeModification = modification ? { actual_notes: number(modification, 'actual-notes'), normal_notes: number(modification, 'normal-notes'),
+          normal_type: value(modification, 'normal-type') || null, normal_dots: children(modification, 'normal-dot').length } : null;
+        if (timeModification && (!Number.isInteger(timeModification.actual_notes) || timeModification.actual_notes <= 0
+          || !Number.isInteger(timeModification.normal_notes) || timeModification.normal_notes <= 0)) throw new Error('MusicXML time-modification requires positive actual-notes and normal-notes');
+        const tremolos = children(element, 'notations').flatMap(n => children(n, 'ornaments')).flatMap(o => children(o, 'tremolo'))
+          .map(t => ({ kind: t.getAttribute('type') || 'single', marks: Number(t.textContent?.trim() || '0') }));
+        const notation = { written_pitch: pitch ? { step: value(pitch, 'step'), alter: number(pitch, 'alter'), octave: number(pitch, 'octave') } : null,
+          note_type: value(element, 'type') || null, dots: children(element, 'dot').length, visible: element.getAttribute('print-object') !== 'no',
+          playback_dynamics: dynamics !== null && dynamics !== '' ? Number(dynamics) : null, chord, grace,
+          rhythm: { time_modification: timeModification, tremolos } };
+        notes.push({ source_id: sourceId, part_id: partId, measure: label, measure_index: measureIndex + 1, beat: onset, score_beat: runningBeat + onset, duration_beats: duration, voice, midi_pitch: midiPitch, rest, tie, grace, notation, ...(unpitched ? { unpitched: true } : {}) });
         measureEnd = Math.max(measureEnd, onset + duration);
       }
       const measureNotes = notes.slice(firstNote);

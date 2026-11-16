@@ -100,10 +100,13 @@ mod course_access;
 mod exam_sprints;
 mod desktop_auth;
 mod selection_translation;
+mod reading_guidance;
+mod voice_input;
 mod pdf_bytes;
 mod charge_admin;
 mod admin_api;
 mod server_monitor;
+mod operations;
 mod beta_invites;
 mod account_mail;
 mod account_registration;
@@ -113,6 +116,8 @@ mod admin_store;
 mod admin_usage;
 mod cost_summary;
 mod workspace_publication;
+mod inquiry_course;
+mod local_course;
 mod workspace_release_instances;
 mod operator_builds;
 pub mod reader_maintenance;
@@ -154,6 +159,7 @@ mod run_admission;
 mod session_event;
 mod session_log;
 mod session_store;
+mod learning_task;
 mod session_runtime;
 mod session_recap;
 mod effect_disposition;
@@ -177,6 +183,7 @@ mod personal_note_retrieval;
 mod board_api;
 mod board_conversation;
 mod board_prebuild;
+mod knowledge_tree;
 #[cfg(test)]
 mod board_prebuild_tests;
 mod board_author;
@@ -1143,6 +1150,22 @@ impl AgentChatSession {
 }
 
 impl AgentChatTurn {
+    /// The delivered question is the mode for the next reply in this chat.
+    fn socratic_question(&self) -> Option<&str> {
+        let outcome = self.outcome.as_ref().filter(|o| self.status == AgentAssistantStatus::Completed && !o.incomplete)?;
+        outcome.answer_view.as_ref()?.parts.iter().rev().find_map(|part| match part {
+            AgentAnswerPart::SocraticQuestion { text, .. } => Some(text.as_str()),
+            _ => None,
+        })
+    }
+
+    fn socratic_purpose(&self) -> Option<&runtime::SocraticQuestionPurpose> {
+        self.outcome.as_ref()?.answer_view.as_ref()?.parts.iter().rev().find_map(|part| match part {
+            AgentAnswerPart::SocraticQuestion { purpose, .. } => purpose.as_ref(),
+            _ => None,
+        })
+    }
+
     /// Profile and learning evidence use authored words, not the history UI label.
     pub(crate) fn user_authored_text(&self) -> &str {
         self.domain.interaction.as_ref().map(|a| a.user_supplement.as_str()).unwrap_or(&self.user)
@@ -1695,6 +1718,7 @@ fn precommit_agent_turn_with_goal(
     video_question: Option<base_schema::VideoQuestionContext>,
     domain: Option<session_event::TurnDomain>,
     music_question: Option<base_schema::MusicQuestionContext>,
+    require_presentation: bool,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
     if state.user.session_store.is_some() {
@@ -1703,7 +1727,7 @@ fn precommit_agent_turn_with_goal(
         let mut session = state.user.agent_history.sessions[index].clone();
         let turn_ref = append_pending_agent_turn(&mut session, user, question_anchor_lid, question_quote,
             presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
-            state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())).or_else(|| music_question.as_ref().map(|q| q.publication.clone())), None, now)?;
+            state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())).or_else(|| music_question.as_ref().map(|q| q.publication.clone())), None, require_presentation, now)?;
         session.turns.last_mut().unwrap().video_question = video_question.clone();
         session.turns.last_mut().unwrap().music_question = music_question.clone();
         session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
@@ -1724,7 +1748,7 @@ fn precommit_agent_turn_with_goal(
     let session = &mut candidate.sessions[session_index];
     let turn_ref = append_pending_agent_turn(session, user, question_anchor_lid, question_quote,
         presentation_follow_up, teaching_ref, requested_goal_id, goal_action,
-        state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())).or_else(|| music_question.as_ref().map(|q| q.publication.clone())), None, now)?;
+        state.workspace.publication.as_ref().map(|p| p.reference.clone()).or_else(|| video_question.as_ref().map(|q| q.publication.clone())).or_else(|| music_question.as_ref().map(|q| q.publication.clone())), None, require_presentation, now)?;
     session.turns.last_mut().unwrap().video_question = video_question.clone();
     session.turns.last_mut().unwrap().music_question = music_question.clone();
     session.turns.last_mut().unwrap().domain.scene = Some(session_event::ReadingScene::capture(&state.workspace));
@@ -1744,7 +1768,7 @@ fn append_pending_agent_turn(
     session: &mut AgentChatSession, user: String, question_anchor_lid: Option<String>,
     question_quote: Option<AskQuote>, presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     teaching_ref: Option<String>, requested_goal_id: Option<&str>, goal_action: Option<&str>,
-    published_book_ref: Option<published_library::PublishedBookRef>, allocated_turn_id: Option<&str>, now: &str,
+    published_book_ref: Option<published_library::PublishedBookRef>, allocated_turn_id: Option<&str>, require_presentation: bool, now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
     let user_turn_ordinal = session
         .turns
@@ -1766,7 +1790,7 @@ fn append_pending_agent_turn(
     if goal_action.is_some() && goal_index.is_none() {
         return Err(ToolError { error_code: "GOAL_NOT_FOUND".into(), category: "validation".into(), message: "goal action needs an open selected Goal".into() });
     }
-    let goal_ref = if let Some(index) = goal_index.filter(|_| goal_action != Some("replace")) {
+    let mut goal_ref = if let Some(index) = goal_index.filter(|_| goal_action != Some("replace")) {
         if session.goals[index].status == runtime::goal::GoalStatus::Completed && goal_action != Some("cancel") {
             let mut new_goal = runtime::goal::ResidentGoal::new(format!("goal_{turn_id}"), turn_id.clone(), user.clone());
             new_goal.related_goal_id = Some(session.goals[index].id.clone());
@@ -1799,6 +1823,13 @@ fn append_pending_agent_turn(
         session.goals.push(goal);
         Some(reference)
     };
+    if require_presentation && goal_action != Some("cancel") {
+        if let Some(reference) = &mut goal_ref {
+            let goal = session.goals.iter_mut().find(|goal| goal.id == reference.id).expect("selected goal");
+            goal.require_presentation(&turn_id);
+            reference.revision = goal.revision;
+        }
+    }
     if session.turns.is_empty() {
         session.title = compact_title(&user);
     }
@@ -1844,7 +1875,7 @@ fn precommit_agent_turn(
     presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     now: &str,
 ) -> Result<AgentTurnRef, ToolError> {
-    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, None, None, None, None, now)
+    precommit_agent_turn_with_goal(state, book_id, user, question_anchor_lid, question_quote, presentation_follow_up, None, None, None, None, None, None, false, now)
 }
 
 fn finalize_agent_turn(
@@ -2864,6 +2895,17 @@ pub fn route(state: &mut AppState, req: Req) -> Reply {
 
 fn route_inner(state: &mut AppState, req: Req) -> Reply {
     let (local_path, _) = parse_query(req.url);
+    if local_path == "/learning-task" {
+        let result = match req.method {
+            "GET" => learning_task::local_list(&state.user, &state.workspace),
+            "POST" => match body_value(req.body) {
+                Ok(input) => learning_task::select(&mut state.user, &state.workspace, &input, req.now),
+                Err(reply) => return reply,
+            },
+            _ => return method_not_allowed(),
+        };
+        return match result { Ok(value) => ok_json(&value), Err(error) => err_reply(&error) };
+    }
     if local_path == "/memory/prepare_note" {
         if req.method != "POST" {return method_not_allowed();}
         let input=match body_value(req.body){Ok(value)=>value,Err(reply)=>return reply};
@@ -2888,6 +2930,12 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
         return tutor_api::dispatch(state, req);
     }
     let (path, q) = parse_query(req.url);
+    if let Some(book_id) = path.strip_prefix("/book/course/") {
+        let input = if req.method == "GET" { Value::Null } else { match body_value(req.body) { Ok(v) => v, Err(r) => return r } };
+        return match local_course::request(&state.user, &state.workspace, book_id, req.method, &q, input, req.now) {
+            Ok(value) => ok_json(&value), Err(error) => err_reply(&error),
+        };
+    }
     if (state.services.reader_only || state.workspace.publication.is_some()) && reader_only_disallows(&path, req.method) {
         return Reply {
             status: 403,
@@ -3088,6 +3136,24 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
             return agent_method_not_allowed();
         }
         return route_agent_source_resolve(state, req.body);
+    }
+    if path == "/agent/source.read" {
+        if req.method != "POST" { return agent_method_not_allowed(); }
+        let input = match body_value(req.body) { Ok(value) => value, Err(reply) => return reply };
+        let request = match parse_agent_source_request(&input["source"].to_string()) {
+            Ok(request) => request, Err(reply) => return reply,
+        };
+        let result = agent_source_binding(state, &request)
+            .and_then(|binding| board_api::workspace_source_window(&state.workspace, &binding, &input));
+        return match result { Ok(value) => ok_json(&value), Err(error) => err_reply(&error) };
+    }
+    if path == "/knowledge/tree" || path == "/knowledge/resume" || path == "/knowledge/retry" {
+        if req.method != "POST" { return agent_method_not_allowed(); }
+        let value = match body_value(req.body) { Ok(v) => v, Err(r) => return r };
+        let result=if path.ends_with("/retry"){knowledge_tree::retry(&state.user,&state.workspace,&value,req.now)}
+            else if path.ends_with("/resume") {knowledge_tree::resume(&state.user,&value)}
+            else {knowledge_tree::view(&state.user,&state.workspace,&value)};
+        return match result {Ok(value)=>ok_json(&value),Err(error)=>err_reply(&error)};
     }
     if let Some(operation) = path.strip_prefix("/notes/") {
         if req.method != "POST" { return agent_method_not_allowed(); }
@@ -3659,7 +3725,7 @@ fn bind_rest_search_text_input(query: &HashMap<String, String>) -> Result<BookTo
 fn route_canonical_readonly_book_tool(book: &Book, id: BookToolId, input: BookToolInput) -> Reply {
     match (id, input) {
         (BookToolId::Search, BookToolInput::Search(input)) => {
-            match book.search_ranked(&input.query, input.within_lid.as_deref(), input.limit.unwrap_or(book_tool_contracts::DEFAULT_SEARCH_LIMIT)) {
+            match book.search_for_reading(&input) {
                 Ok(result) => ok_json(&result),
                 Err(error) => err_reply(&error),
             }
@@ -3692,7 +3758,7 @@ fn route_canonical_readonly_book_tool(book: &Book, id: BookToolId, input: BookTo
             }
         }
         (BookToolId::Concept, BookToolInput::Concept(input)) => {
-            match book.concept_candidates(&input.query, input.anchor_lid.as_deref(), input.limit) {
+            match book.concept_for_reading(&input) {
                 Ok(concept) => ok_json(&concept),
                 Err(error) => err_reply(&error),
             }
@@ -3769,9 +3835,10 @@ fn route_book(
             if !book_dir.join("video_source_manifest.json").is_file() { return ok_json(&Value::Null); }
             let result = (|| -> Result<Value, ToolError> {
                 let (manifest, _) = book.load_video_source(book_dir)?;
-                let time_base = video_frames::presentation_time_base(book_dir, &manifest.source)?;
+                let timeline = video_frames::presentation_timeline(book_dir, &manifest.source)?;
                 let mut view = video_publication::projection(book, book_dir)?;
-                view["time_base"] = json!(time_base); Ok(view)
+                view["time_base"] = json!(timeline.time_base);
+                view["timeline_origin_ms"] = json!(timeline.origin_ms); Ok(view)
             })();
             match result { Ok(v) => ok_json(&v), Err(e) => err_reply(&e) }
         },
@@ -11997,8 +12064,11 @@ fn workspace_source_binding(
         .flat_map(|session| session.turns.iter())
         .find(|turn| turn.turn_id == request.turn_id);
     if let Some(turn) = turn {
+        let current_publication = workspace.publication.as_ref().map(|p| p.reference.clone())
+            .or_else(|| workspace.book_dir.join(music_media::MANIFEST).is_file()
+                .then(|| music_media::reference(&workspace.book_dir).ok()).flatten());
         if workspace.learning_workspace_id.is_none() && !turn.source_bindings.iter().chain(turn.domain.board_commits.iter().flat_map(|part| &part.source_bindings))
-            .any(|b| b.source_ref_id == request.source_ref_id && (b.media.is_some() || b.music.is_some())) && turn.published_book_ref.as_ref() != workspace.publication.as_ref().map(|p| &p.reference) {
+            .any(|b| b.source_ref_id == request.source_ref_id && (b.media.is_some() || b.music.is_some())) && turn.published_book_ref.as_ref() != current_publication.as_ref() {
             return Err(user_storage_paths::error("PUBLICATION_BINDING_REQUIRED", "not_found", "Open the original publication to read this source; no replacement is selected"));
         }
     }
@@ -12142,6 +12212,14 @@ struct ValidatedAgentInput {
     question_quote: Option<AskQuote>, presentation_follow_up: Option<runtime::presentation::PresentationFollowUp>,
     agent_message: String, presentation_context: Option<String>,
 }
+fn presentation_requested(input: &Value) -> Result<bool, ToolError> {
+    match input.get("presentation_requested") {
+        None | Some(Value::Null) => Ok(false),
+        Some(Value::Bool(requested)) => Ok(*requested),
+        _ => Err(user_storage_paths::error("PRESENTATION_REQUEST_INVALID", "validation", "presentation_requested must be a boolean")),
+    }
+}
+
 fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, body: &str) -> Result<ValidatedAgentInput, Reply> {
     user.agent_history.expire_confirmations(std::time::Instant::now());
     let mut v = match body_value(body) {
@@ -12159,6 +12237,7 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
     let board_context = board_follow_up.as_ref().map(|follow_up|
         board_api::freeze_follow_up(user, workspace, follow_up)).transpose().map_err(|e| err_reply(&e))?;
     runtime::response_language::ResponseLanguage::from_request(&v).map_err(|e| err_reply(&e))?;
+    let wants_presentation = presentation_requested(&v).map_err(|e| err_reply(&e))?;
     let Some(msg) = v.get("message").and_then(|x| x.as_str()) else {
         return Err(validation(
             "INVALID_RANGE",
@@ -12252,9 +12331,30 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
     if let Some(action) = &interaction {
         agent_message = format!("Accepted reading action (UI request; quoted source and assistant answer are context, not user-authored claims): {}\nExecute the accepted_request within its original source range. Read the relevant original text before teaching. The user_supplement, if present, is the reader's own request.", json!(action));
     }
+    let message = msg.to_owned();
+    let mut socratic_dialogue = Value::Null;
     if let Some(session) = workspace.selected_chat.as_ref()
         .and_then(|id| user.agent_history.sessions.iter().find(|s| &s.id == id))
     {
+        if interaction.is_none() && board_context.is_none() && !wants_presentation
+            && v["goal_id"].is_null() && v["goal_action"].is_null() && v["teaching_ref"].is_null() && v["note_mem_id"].is_null() {
+            let last = session.turns.iter().rev().find(|t| t.status == AgentAssistantStatus::Completed);
+            if let Some((last, question)) = last.filter(|t| t.published_book_ref.as_ref()
+                == workspace.publication.as_ref().map(|publication| &publication.reference)
+                && t.published_book_ref.as_ref().map(|publication| &publication.book_id).unwrap_or(&session.book_id) == &workspace.book.base.book_id)
+                .and_then(|t| t.socratic_question().map(|question| (t, question))) {
+                let previous_binding=teaching::bound_user(user,session.learning_workspace_id.as_deref(),&last.turn_id).map_err(|e|err_reply(&e))?;
+                socratic_dialogue = json!({"turn_id":last.turn_id,"question":question,"purpose":last.socratic_purpose(),
+                    "course_run_id":previous_binding.as_ref().and_then(|e|e.payload["inquiry_course"]["lesson"]["progress"]["run_id"].as_str()),
+                    "prior_help":{"answer":last.outcome.as_ref().map(|o|&o.answer),"source_bindings":last.source_bindings}});
+                if message.trim() == "继续" {
+                    if let Some(goal) = last.goal_ref.as_ref().and_then(|reference| session.goals.iter()
+                        .find(|goal| goal.id == reference.id && goal.status == runtime::goal::GoalStatus::Completed)) {
+                        v["goal_id"] = json!(goal.id);
+                    }
+                }
+            }
+        }
         let selected = interaction.as_ref().and_then(|a|a.answer_ref.as_ref()).map(|r|r.turn_id.as_str());
         let reference_turns = session.turns.iter().filter(|t|Some(t.turn_id.as_str())==selected)
             .chain(session.turns.iter().rev().filter(|t|Some(t.turn_id.as_str())!=selected).take(4));
@@ -12266,7 +12366,12 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
             .map(|(t,s,r)|json!({"origin_turn_id":t.turn_id,"published_book_ref":r,"source_revision":s.source_revision,
                 "label":s.label_snapshot,"start_lid":s.evidence_range.as_ref().map(|r|&r.start_lid),"end_lid":s.evidence_range.as_ref().map(|r|&r.end_lid),"media_target":s.media.as_ref().map(|m|&m.target),"music_target":s.music.as_ref().map(|m|&m.target)})).collect();
         if !references.is_empty() {
-            agent_message.push_str(&format!("\n\nReference materials from delivered answers (locators only, not newly observed evidence): {}. For a related follow-up, consult library.learning and re-read the exact publication with library.read before citing or updating understanding. Keep the current book and reading task.",json!(references)));
+            agent_message.push_str(&format!("\n\nReference materials from delivered answers (locators only, not newly observed evidence): {}.",json!(references)));
+            if socratic_dialogue.is_null() {
+                agent_message.push_str(" For a related follow-up, consult library.learning and re-read the exact publication with library.read before citing or updating understanding. Keep the current book and reading task.");
+            } else {
+                agent_message.push_str(" Use these locators when a new claim requires original evidence. A reply about the established example can use the conversation directly.");
+            }
         }
         let recent: Vec<_> = session.turns.iter().rev().filter_map(|turn| turn.outcome.as_ref()
             .and_then(|o| o.answer_view.as_ref()).map(|view| (turn, view)))
@@ -12278,6 +12383,9 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
             agent_message.push_str(&format!("\n\nRecent delivered presentations (newest answer first; read exact reference on demand for edits): {}", json!(recent)));
         }
     }
+    // This is a frozen assistant question from this chat and publication.
+    // Never accept client-provided dialogue state as a learner expression.
+    v["socratic_dialogue"] = socratic_dialogue;
     if let Some(reference) = v.get("teaching_ref").and_then(Value::as_str) {
         agent_message.push_str(&teaching::reference_context(&private_book_context::PrivateBookContext { user, learning_workspace_id: workspace.learning_workspace_id.as_deref(), book: &workspace.book, book_dir: &workspace.book_dir, messages: &workspace.messages, selected_chat: workspace.selected_chat.as_deref() }, reference).map_err(|e| err_reply(&e))?);
     }
@@ -12296,7 +12404,11 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
         .and_then(|reference| user.agent_history.sessions.iter()
             .find(|session| Some(session.id.as_str()) == workspace.selected_chat.as_deref())
             .and_then(|session| session.turns.iter().find(|turn| turn.turn_id == reference.turn_id)));
-    let video_question = if let Some(original) = original_turn.filter(|_| v["video_draft_id"].is_null()) {
+    // A validated board owns the discussion context, independently of the
+    // underlying material's player and its unfinished video question.
+    let video_question = if board_context.is_some() {
+        Ok(None)
+    } else if let Some(original) = original_turn.filter(|_| v["video_draft_id"].is_null()) {
         video_draft::for_follow_up(workspace, original)
     } else { video_draft::for_input(workspace, user, &v) }.map_err(|e| err_reply(&e))?;
     let music_question = if let Some(original) = original_turn.filter(|_| v["music_question"].is_null()) {
@@ -12305,52 +12417,37 @@ fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &reader
     if let Some(question) = &music_question {
         agent_message.push_str(&format!("\n\nMusic question at submission (fixed source locator, not audio heard by the model): {}. Keep this exact publication, recording, occurrence and time range even if playback later moves. Read the corresponding prepared source before explaining.", json!(question)));
     }
-    let message = msg.to_string();
-    if interaction.is_none() && board_context.is_none() {
-        let learning = user.learning_store_for_source(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id).map_err(|e| err_reply(&e))?;
-        let view = learning.state().map_err(|e| err_reply(&e))?;
-        if view.control.enabled {
-            let can_start_chapter = view.control.current_tutor_session_id.as_ref().and_then(|id| view.sessions.get(id))
-                .is_none_or(|s| s.status == memory::learning::TutorSessionStatus::Active);
-            if can_start_chapter {
-                let viewport_anchor = workspace.reader.state().viewport.anchor_lid;
-                let admitted_anchor = question_anchor_lid.as_deref().unwrap_or(&viewport_anchor);
-                if let Some(lid) = interaction_input::requested_current_chapter(&workspace.book, &message,
-                    admitted_anchor).map_err(|e| err_reply(&e))? {
-                    v["guide_chapter_lid"] = json!(lid);
-                }
-            }
-            // Completing one teaching question closes its ResidentGoal, while the
-            // chapter or media session remains active. Continue through the existing
-            // completed-goal branch instead of requiring an unfinished request.
-            if message.trim() == "继续" && v["goal_id"].is_null() && v["goal_action"].is_null() {
-                let media = workspace.book_dir.join("video_source_manifest.json").is_file()
-                    || workspace.book_dir.join("music_source_manifest.json").is_file();
-                let active_scope = view.control.current_tutor_session_id.as_ref().and_then(|id| view.sessions.get(id))
-                    .filter(|s| s.status == memory::learning::TutorSessionStatus::Active && s.material_scope.iter().any(|m|
-                        m.source_id == workspace.book.base.book_id && (media || m.scope_refs.iter().any(|lid|
-                            workspace.book.base.lid_nodes.iter().any(|n| n.lid == *lid && n.kind == base_schema::NodeKind::Chapter)))));
-                let chat = user.agent_history.sessions.iter().find(|s| Some(s.id.as_str()) == workspace.selected_chat.as_deref());
-                if let (Some(active_scope), Some(chat)) = (active_scope, chat) {
-                    if !chat.goals.iter().any(|g| g.status == runtime::goal::GoalStatus::Open) {
-                        if let Some((turn, goal)) = chat.turns.last().and_then(|t| t.goal_ref.as_ref()
-                            .and_then(|r| chat.goals.iter().find(|g| g.id == r.id && g.status == runtime::goal::GoalStatus::Completed))
-                            .map(|g| (t,g))) {
-                            let events = learning.teaching_turn_events(&active_scope.id, &turn.turn_id).map_err(|e| err_reply(&e))?;
-                            if events.iter().any(|event| event.event_id == format!("binding:{}", turn.turn_id)) {
-                                v["goal_id"] = json!(goal.id);
-                            }
-                        }
-                    }
+    // A plain continuation reuses the last completed request in this chat.
+    // Learning goals and legacy teaching controls do not change its answer path.
+    if interaction.is_none() && board_context.is_none() && message.trim() == "继续"
+        && v["goal_id"].is_null() && v["goal_action"].is_null() {
+        if let Some(chat) = user.agent_history.sessions.iter().find(|s| Some(s.id.as_str()) == workspace.selected_chat.as_deref()) {
+            if !chat.goals.iter().any(|goal| goal.status == runtime::goal::GoalStatus::Open) {
+                if let Some(goal) = chat.turns.last().and_then(|turn| turn.goal_ref.as_ref())
+                    .and_then(|reference| chat.goals.iter().find(|goal| goal.id == reference.id && goal.status == runtime::goal::GoalStatus::Completed)) {
+                    v["goal_id"] = json!(goal.id);
                 }
             }
         }
+    }
+    if let Some(focus)=v.get("knowledge_focus").filter(|v|!v.is_null()) {
+        v["knowledge_focus"]=knowledge_tree::focus(workspace,focus).map_err(|e|err_reply(&e))?;
     }
     let mut note_input=v.clone();
     if let Some(board)=&board_context {if board.follow_up.note_refs.is_some(){note_input["note_refs"]=json!(board.follow_up.note_refs);}}
     // A note revisit reads the exact saved idea like any explicitly brought-in note.
     if let Some(reference)=interaction.as_ref().and_then(|a|a.note_ref.as_ref()) {note_input["note_refs"]=json!([reference]);}
     let personal_notes=personal_note_context::freeze(user,&note_input,workspace.selected_chat.as_deref()).map_err(|e|err_reply(&e))?;
+    let course_context = inquiry_course::freeze_chat(user, workspace, &v["course_context"]).map_err(|e| err_reply(&e))?;
+    // Replace the client locator with an authorized snapshot before admission freezes it.
+    v["course_context"] = json!(course_context);
+    if v["socratic_dialogue"].is_object() && v["socratic_dialogue"]["course_run_id"].as_str()
+        != v["course_context"]["lesson"]["progress"]["run_id"].as_str() {
+        v["socratic_dialogue"] = Value::Null;
+    }
+    if let Some(course) = course_context {
+        agent_message.push_str(&format!("\n\n[Prepared course at submission]\n{}", course));
+    }
     Ok(ValidatedAgentInput { personal_notes, board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, agent_message, presentation_context })
 }
@@ -12388,6 +12485,7 @@ fn prepare_agent_chat(
         video_question.clone(),
         domain,
         music_question.clone(),
+        presentation_requested(&v).map_err(|e| err_reply(&e))?,
         now,
     ) {
         Ok(turn_ref) => turn_ref,
@@ -13423,6 +13521,8 @@ mod tests {
     mod cloud_course_e2e_tests;
     mod cloud_browser_host;
     mod s2_b1_browser_host;
+    mod inquiry_course_tests;
+    mod inquiry_course_model_trial;
     mod q5_s1_browser_host;
     mod mcp_pack_api_tests;
     mod adm5_tests;
@@ -13430,6 +13530,7 @@ mod tests {
     mod adm7_tests;
     mod adm9_tests;
     mod monitor_tests;
+    mod operations_integration_tests;
     mod mu2_tests;
     mod mu3_tests;
     mod online_publication_tests;
@@ -13439,6 +13540,7 @@ mod tests {
     mod mu6_tests;
     mod cross_book_tests;
     mod session_management_tests;
+    mod presentation_request_tests;
     mod session_runtime_tests;
     mod effect_disposition_tests;
     mod session_recap_tests;
@@ -13560,7 +13662,7 @@ mod tests {
         std::fs::write(s.workspace.book_dir.join("source.txt"), "X".repeat(max_end + 8)).unwrap();
     }
 
-    fn attach_paper_profile(s: &mut AppState) {
+    pub(crate) fn attach_paper_profile(s: &mut AppState) {
         write_current_book_files(s);
         std::fs::write(
             s.workspace.book_dir.join("book_structure.json"),
@@ -13584,7 +13686,7 @@ mod tests {
         s.workspace.reader = Reader::new(&s.workspace.book, DEFAULT_RADIUS);
     }
 
-    fn write_pdf_runtime_artifacts(s: &mut AppState) {
+    pub(crate) fn write_pdf_runtime_artifacts(s: &mut AppState) {
         let coord = serde_json::json!({
             "space": "pdf_user_space",
             "origin": "bottom_left",

@@ -17,6 +17,9 @@ pub(crate) fn route(state: &mut AppState, req: Req) -> Reply {
         if matches!(request.action, memory::learning::TutorAction::SyncWorkspaceGoal { .. }) {
             return Err(read_tools::ToolError { error_code:"TUTOR_ACTION_INVALID".into(), category:"validation".into(), message:"工作区目标由目标栏或明确改向请求修改。".into() });
         }
+        if matches!(request.action, memory::learning::TutorAction::SetEnabled { .. }) {
+            return Err(read_tools::ToolError { error_code:"TUTOR_ACTION_INVALID".into(), category:"validation".into(), message:"连续教学开关已移除；提问、接续和练习直接使用各自入口。".into() });
+        }
         learning.mutate(&request, req.now)
     })();
     match result {
@@ -38,6 +41,12 @@ pub(crate) fn route(state: &mut AppState, req: Req) -> Reply {
 }
 
 pub(crate) fn dispatch(state: &mut AppState, req: Req) -> Reply {
+    if req.method == "POST" && matches!(req.url, "/tutor/ask-step" | "/tutor/grade") {
+        let result = serde_json::from_str(req.body).map_err(|e| memory::teaching::invalid(e.to_string()))
+            .and_then(|input| crate::reading_guidance::GuidanceWork::prepare(&state.private_context(), req.url.trim_start_matches('/'), &input, req.now))
+            .and_then(|work| work.execute(state.services.adapter.as_ref()).and_then(|answer| work.finish(&state.private_context(), answer, req.now)));
+        return match result { Ok(value) => crate::ok_json(&value), Err(error) => crate::err_reply(&error) };
+    }
     if !matches!(req.url, "/tutor/state" | "/tutor/mutate" | "/tutor/readiness") {
         return crate::teaching::route(&state.private_context(), req);
     }
@@ -212,6 +221,8 @@ fn tutor_prerequisites(book: &read_tools::Book, root: &std::path::Path) -> serde
                 json!({"status":"ready","source_id":book.base.book_id,"source_revision":book.source_fingerprint(),
                     "reason":"音乐谱面、事件与整体结构已就绪，可以开始伴听",
                     "required_stages":{"music_prebuild":{"status":"done"}},"coverage":music.coverage}),
+            Ok(music) if music.book_id == book.base.book_id && music.events.is_empty() && !music.structure.is_empty() =>
+                unavailable("music_prebuild", "本章可听原声、看总谱、按段落跳转，尚无精选导听片段"),
             _ => unavailable("music_prebuild", "音乐资料的谱面、事件或整体结构尚未准备完成"),
         };
     }

@@ -299,7 +299,7 @@ impl<'a> McpRead<'a> {
         }
         let mut data = match (id, input) {
             (BookToolId::Search, BookToolInput::Search(input)) => {
-                json!(book.search_ranked(&input.query, input.within_lid.as_deref(), input.limit.unwrap_or(book_tool_contracts::DEFAULT_SEARCH_LIMIT))?)
+                json!(book.search_for_reading(&input)?)
             }
             (BookToolId::SearchText, BookToolInput::SearchText(input)) => {
                 json!(book.search_text(&input)?)
@@ -308,7 +308,7 @@ impl<'a> McpRead<'a> {
                 json!(book.context(&input.lid, input.granularity.map(|v| v.as_str()), input.k)?)
             }
             (BookToolId::Concept, BookToolInput::Concept(input)) => json!(
-                book.concept_candidates(&input.query, input.anchor_lid.as_deref(), input.limit)?
+                book.concept_for_reading(&input)?
             ),
             (BookToolId::Structure, BookToolInput::At(input)) => {
                 json!(book.structure(input.at.as_deref())?)

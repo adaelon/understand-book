@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 const contextBefore = "在心肌组织中，选择性剪接受到多层调控。研究团队在严格控制批次效应后比较了多个样本，并以相同分析流程验证候选事件。";
 const evidence = "剪接调控显著改变了疾病相关转录本的构成。";
+const cohortEvidence = "独立队列复核了这些剪接变化。";
 const contextAfter = "这些变化随后在独立队列中得到复核，同时结合功能实验评估其与疾病通路的关系。连续上下文保留了实验条件、比较对象和结论边界。";
 
 async function installSourceRoutes(page: Page) {
@@ -21,7 +22,7 @@ async function installSourceRoutes(page: Page) {
         source_ref_id: body.source_ref_id,
         label: body.source_ref_id === "source_ref_methods"
           ? "正文 · Materials and Methods"
-          : "正文 · Results",
+          : body.source_ref_id === "source_ref_cohort" ? "正文 · Validation cohort" : "正文 · Results",
         highlighted_quote: evidence,
         context_before: contextBefore,
         context_after: contextAfter,
@@ -30,6 +31,28 @@ async function installSourceRoutes(page: Page) {
         can_open_in_reader: true,
       }),
     });
+  });
+  await page.route("**/api/agent/source.read", async route => {
+    const { source, direction, include_outline } = route.request().postDataJSON();
+    calls.push(direction);
+    const segment = (lid: string, text: string, kind = 'paragraph', highlights: { start: number; end: number }[] = []) => ({ lid, text, kind, highlights });
+    const quote = source.source_ref_id === 'source_ref_cohort' ? cohortEvidence : evidence;
+    const initial = [
+      segment('2.1', '## 实验方法', 'section'), segment('2.2', contextBefore.repeat(6)),
+      segment('2.3', quote, 'paragraph', [{ start: 0, end: quote.length }]),
+      segment('2.4', '| 教学候选 | 选入章节 |\n| --- | --- |\n| 缓存复用已有结果 | 是 |\n| 数据变化后使缓存失效 | 是 |', 'table'),
+      segment('2.5', '![候选进入路线的示意图](images/cache.svg)', 'image'),
+      segment('2.6', contextAfter.repeat(6)), segment('2.7', '- 独立队列\n- 功能实验'),
+      segment('2.8', '$$E=mc^2$$', 'formula'), segment('2.9', '\`\`\`python\ncount = 2\n\`\`\`', 'code'),
+    ];
+    await route.fulfill({ json: {
+      source_ref_id: source.source_ref_id, source_lid: '2.3', focus_lid: '2.3',
+      segments: direction === 'before' ? [segment('1.1', '实验开展前的研究背景。')] :
+        direction === 'after' ? [segment('3.1', '实验结果的后续验证。')] : initial,
+      previous_lid: direction === 'around' ? '2.1' : null,
+      next_lid: direction === 'around' ? '2.9' : null,
+      ...(include_outline ? { outline: [{ lid: '2', title: '实验方法', depth: 0 }] } : {}),
+    } });
   });
   await page.route("**/api/agent/source.open", async (route) => {
     calls.push("open");
@@ -52,7 +75,7 @@ async function expectInsideViewport(page: Page, selector: string, width: number,
   expect(box!.y + box!.height).toBeLessThanOrEqual(height);
 }
 
-test("desktop source stays inline and opens an anchored popup before reader navigation", async ({ page }, testInfo) => {
+test("desktop answer opens a continuous reader at the citation and reads in both directions", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 640 });
   const calls = await installSourceRoutes(page);
   await page.goto("/agent-source-visual.html");
@@ -63,76 +86,74 @@ test("desktop source stays inline and opens an anchored popup before reader navi
   await expect(sourceButtons.nth(1)).toContainText("2 个来源");
   const paragraphBox = await page.locator(".answer-markdown p").first().boundingBox();
   const buttonBox = await sourceButtons.first().boundingBox();
-  expect(paragraphBox).not.toBeNull();
-  expect(buttonBox).not.toBeNull();
   expect(buttonBox!.y).toBeLessThan(paragraphBox!.y + paragraphBox!.height);
 
   await sourceButtons.first().click();
-  const popup = page.getByRole("dialog", { name: "回答来源" });
-  await expect(popup).toBeVisible();
-  await expect(popup.locator("mark")).toHaveText(evidence);
-  await expect(popup.locator('h2')).toHaveText('实验方法');
-  await expect(popup.locator('li')).toHaveCount(2);
-  await expect(popup.locator('.katex')).toHaveCount(1);
-  await expect(popup.locator('.katex-mathml')).toHaveCSS('position', 'absolute');
-  await expect(popup.locator('pre code')).toContainText('count = 2');
-  await expect(popup.locator('table tr')).toHaveCount(3);
-  await expect.poll(() => popup.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(800);
+  const dialog = page.getByRole("dialog", { name: "回答来源" });
+  const citation = dialog.locator("mark");
+  await expect(citation).toHaveText(evidence);
+  await expect(citation).toBeInViewport();
+  const reader = dialog.getByLabel("原文阅读区");
+  expect(await reader.evaluate(node => node.scrollTop)).toBeGreaterThan(0);
+  await expect(dialog.getByRole("navigation", { name: "原文目录" })).toBeVisible();
+  await expect(dialog.locator('li')).toHaveCount(2);
+  await expect(dialog.locator('.katex-mathml')).toHaveCSS('position', 'absolute');
+  await expect(dialog.locator('pre code')).toContainText('count = 2');
+  await expect(dialog.locator('table tr')).toHaveCount(3);
+  await expect.poll(() => dialog.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(800);
   await expect(page.getByTestId("reader-status")).toHaveText("保持当前阅读位置");
-  expect(calls).toEqual(["resolve"]);
+  expect(calls).toEqual(["resolve", "around"]);
   await expectInsideViewport(page, ".agent-source-popup", 1440, 640);
-
-  const popupBox = await popup.boundingBox();
-  expect(popupBox).not.toBeNull();
-  const popupIsBesideButton = (
-    popupBox!.x + popupBox!.width <= buttonBox!.x - 8
-    || popupBox!.x >= buttonBox!.x + buttonBox!.width + 8
-  );
-  expect(popupIsBesideButton).toBe(true);
-
-  const overflow = await popup.evaluate((node) => ({
-    horizontal: node.scrollWidth > node.clientWidth + 1,
-    actions: Array.from(node.querySelectorAll("button")).some((button) => {
-      const rect = button.getBoundingClientRect();
-      return rect.left < 0 || rect.right > window.innerWidth;
-    }),
-  }));
-  expect(overflow).toEqual({ horizontal: false, actions: false });
   await page.screenshot({ path: testInfo.outputPath("agent-source-desktop.png"), fullPage: true });
 
-  await page.getByRole("button", { name: "在正文中查看" }).click();
+  await reader.evaluate(node => { node.scrollTop = 0; });
+  await reader.hover();
+  await page.mouse.wheel(0, -650);
+  await expect(reader).toContainText("实验开展前的研究背景。");
+  await reader.evaluate(node => { node.scrollTop = node.scrollHeight; });
+  await page.mouse.wheel(0, 650);
+  await expect(reader).toContainText("实验结果的后续验证。");
+  expect(calls).toEqual(["resolve", "around", "before", "after"]);
+
+  await dialog.getByRole("button", { name: "回到引用处" }).click();
+  await expect(citation).toBeInViewport();
+  await expect(page.getByTestId("reader-status")).toHaveText("保持当前阅读位置");
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(sourceButtons.first()).toBeFocused();
+
+  await sourceButtons.first().click();
+  await dialog.getByRole("button", { name: "在正文中查看" }).click();
   await expect(page.getByTestId("reader-status")).toHaveText("已在正文中打开来源");
-  expect(calls).toEqual(["resolve", "open"]);
+  expect(calls.at(-1)).toBe("open");
 });
 
-test("mobile source popup is a viewport-bound bottom sheet", async ({ page }, testInfo) => {
+test("mobile answer reader fits the viewport and switches between citations", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const calls = await installSourceRoutes(page);
   await page.goto("/agent-source-visual.html");
-  await page.locator(".agent-source-button").first().click();
+  await page.locator(".agent-source-button").nth(1).click();
 
-  const popup = page.getByRole("dialog", { name: "回答来源" });
-  await expect(popup.locator("mark")).toHaveText(evidence);
-  await expect(popup.locator('table tr')).toHaveCount(3);
-  await expect.poll(() => popup.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(800);
-  await popup.evaluate(el => Promise.all(el.getAnimations().map(animation => animation.finished)));
-  const box = await popup.boundingBox();
-  expect(box).not.toBeNull();
-  expect(Math.round(box!.x)).toBe(0);
-  expect(Math.round(box!.width)).toBe(390);
-  expect(Math.round(box!.y + box!.height)).toBe(844);
+  const dialog = page.getByRole("dialog", { name: "回答来源" });
+  await expect(dialog.locator("mark")).toBeInViewport();
+  await expect(dialog.locator('table tr')).toHaveCount(3);
   await expectInsideViewport(page, ".agent-source-popup", 390, 844);
-  expect(calls).toEqual(["resolve"]);
+  await expect(dialog.getByRole("navigation", { name: "原文目录" })).toBeHidden();
+  await dialog.getByRole("button", { name: "目录", exact: true }).click();
+  await expect(dialog.getByRole("navigation", { name: "原文目录" })).toBeVisible();
+  await dialog.getByRole("navigation", { name: "原文目录" }).getByRole("button", { name: "收起目录" }).click();
+  const tabs = dialog.getByRole('tab');
+  await expect(tabs).toHaveCount(2);
+  await tabs.nth(1).click();
+  await expect(tabs.nth(1)).toHaveAttribute('aria-selected', 'true');
+  await expect(dialog.locator('h2').first()).toContainText('Validation cohort');
+  await expect(dialog.locator('mark')).toHaveText(cohortEvidence);
+  await expect(dialog.locator('mark')).toBeInViewport();
+  expect(calls).toEqual(["resolve", "resolve", "around", "around"]);
 
-  const textOverflow = await popup.locator(".source-popup-head strong, .source-excerpt, .source-open-reader").evaluateAll(
-    (nodes) => nodes.some((node) => node.scrollWidth > node.clientWidth + 1),
-  );
-  expect(textOverflow).toBe(false);
-  const imageBox = (await popup.locator('img').boundingBox())!;
-  expect(imageBox.width).toBeLessThanOrEqual(354);
+  const overflow = await dialog.evaluate(node => node.scrollWidth > node.clientWidth + 1);
+  expect(overflow).toBe(false);
   await page.screenshot({ path: testInfo.outputPath("agent-source-mobile.png"), fullPage: true });
-  await popup.locator('img').scrollIntoViewIfNeeded();
-  await page.screenshot({ path: testInfo.outputPath('agent-source-mobile-image.png'), fullPage: true });
 });
 
 test("desktop fullscreen and mobile conversation fill the viewport without losing the draft or answer", async ({ page }) => {

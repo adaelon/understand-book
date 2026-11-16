@@ -1,4 +1,5 @@
 import { cooperativeSourceEdits } from './markdown-cooperative-alignment';
+import { inlineScriptSourceSyntax } from './md';
 
 export interface SourceTextRange {
   start: number;
@@ -286,14 +287,17 @@ export function createMarkdownDomSourceMap(source: string, root: Node) {
   const projection = projectMarkdownDom(root);
   const renderedHtmlTable = /^\s*<table(?:\s|>)/i.test(source)
     && root instanceof Element && (root.tagName === "TABLE" || root.querySelector("table"));
-  const spans = alignmentSpans(source, projection.text, renderedHtmlTable ? htmlTableSourceSyntax(source) : undefined);
+  const syntax = renderedHtmlTable ? htmlTableSourceSyntax(source)
+    : source !== projection.text ? inlineScriptSourceSyntax(source) : undefined;
+  const spans = alignmentSpans(source, projection.text, syntax);
   return bindMarkdownSourceMap(source, projection, spans);
 }
 
 /** Pure reusable alignment; holds no DOM. Tables are paginated as whole objects. */
 export async function alignMarkdownSource(source: string, semantic: string, checkpoint?: () => Promise<void>): Promise<AlignmentSpan[]> {
-  const edits = await cooperativeSourceEdits(source, semantic, undefined, checkpoint);
-  return alignmentSpans(source, semantic, undefined, edits);
+  const syntax = source !== semantic ? inlineScriptSourceSyntax(source) : undefined;
+  const edits = await cooperativeSourceEdits(source, semantic, syntax, checkpoint);
+  return alignmentSpans(source, semantic, syntax, edits);
 }
 
 export function bindMarkdownSourceMap(source: string, projection: DomProjection, spans: AlignmentSpan[]) {

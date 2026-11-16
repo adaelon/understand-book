@@ -31,6 +31,56 @@ fn invalid() -> ToolError {
 fn capabilities() -> Vec<String> {
     vec!["text".into(), "tutor".into()]
 }
+
+fn read_built_course(directory: &str, reference: &PublishedBookRef, prefix: &str) -> Result<memory::course::InquiryCourse, ToolError> {
+    #[derive(Deserialize)]
+    struct Artifact { version: String, source_id: String, source_revision: String, course: memory::course::InquiryCourse }
+    let bytes = std::fs::read(PathBuf::from(directory).join("inquiry_course.json"))
+        .map_err(|_| error("COURSE_BUILD_INCOMPLETE", "validation", "课程成果尚未完成，不能导入为已就绪"))?;
+    let mut artifact: Artifact = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
+    let book = read_tools::Book::load(directory).map_err(|_| invalid())?;
+    if artifact.version != "course_artifact.v1" || artifact.source_id != reference.book_id || artifact.source_revision != book.source_fingerprint() {
+        return Err(error("COURSE_BUILD_SOURCE_CHANGED", "validation", "课程来源与本次资料版本不一致"));
+    }
+    let report: Value = serde_json::from_slice(&std::fs::read(PathBuf::from(directory).join("course_build_report.json")).map_err(|_| invalid())?).map_err(|_| invalid())?;
+    let reviews = report["lessons"].as_array().ok_or_else(invalid)?;
+    if report["source_id"] != artifact.source_id || report["source_revision"] != artifact.source_revision
+        || reviews.len() != artifact.course.lessons.len()
+        || artifact.course.lessons.iter().any(|lesson| reviews.iter().filter(|r| r["id"] == lesson.summary.id
+            && r["review"]["accepted"] == true && r["review"]["issues"].as_array().is_some_and(Vec::is_empty)).count() != 1) {
+        return Err(error("COURSE_BUILD_INCOMPLETE", "validation", "课程需要逐课完成内容核验后导入"));
+    }
+    for unit in &mut artifact.course.units { unit.id = format!("{prefix}-{}", unit.id); }
+    for route in &mut artifact.course.routes {
+        route.id = format!("{prefix}-{}", route.id);
+        for id in &mut route.lesson_ids { *id = format!("{prefix}-{id}"); }
+    }
+    for lesson in &mut artifact.course.lessons {
+        if lesson.summary.source.source_revision != artifact.source_revision { return Err(invalid()); }
+        let start=book.source_span(&lesson.summary.source.start_lid).ok_or_else(invalid)?.start;
+        let end=book.source_span(&lesson.summary.source.end_lid).ok_or_else(invalid)?.end;
+        if start >= end || lesson.assessment.source_lids.iter().any(|lid| book.source_span(lid).is_none_or(|span| span.start < start || span.end > end)) { return Err(invalid()); }
+        lesson.summary.source.publication = reference.clone();
+        lesson.summary.id = format!("{prefix}-{}", lesson.summary.id);
+        lesson.summary.unit_id = format!("{prefix}-{}", lesson.summary.unit_id);
+    }
+    artifact.course.validate()?;
+    Ok(artifact.course)
+}
+
+fn combined_course(task: &Task, selected: &[crate::workspace_publication::Material]) -> Result<Option<memory::course::InquiryCourse>, ToolError> {
+    let mut combined: Option<memory::course::InquiryCourse> = None;
+    for material in &task.materials {
+        if !selected.iter().any(|s| Some(&s.published_book_ref) == material.input.published_book_ref.as_ref()) { continue; }
+        if material.input.build_course && material.prepared_course.is_none() { return Err(error("COURSE_BUILD_INCOMPLETE", "validation", "所选课程尚未导入")); }
+        if let Some(course) = &material.prepared_course {
+            if let Some(all) = &mut combined { all.units.extend(course.units.clone()); all.routes.extend(course.routes.clone()); all.lessons.extend(course.lessons.clone()); }
+            else { combined = Some(course.clone()); }
+        }
+    }
+    if let Some(course) = &combined { course.validate()?; }
+    Ok(combined)
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct MaterialInput {
@@ -40,6 +90,10 @@ pub(crate) struct MaterialInput {
     pub material_kind: Option<String>,
     #[serde(default)]
     pub build_tutor: bool,
+    #[serde(default)]
+    pub build_course: bool,
+    #[serde(default)]
+    pub course_goal: Option<String>,
     pub published_book_ref: Option<PublishedBookRef>,
     pub target_input: Option<String>,
     pub root_dir: Option<String>,
@@ -68,6 +122,8 @@ pub(crate) struct Material {
     pub invocation_ref: Option<String>,
     pub workspace_dir: Option<String>,
     pub observation: Option<Value>,
+    #[serde(default)]
+    pub prepared_course: Option<memory::course::InquiryCourse>,
 }
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) struct Task {
@@ -131,6 +187,10 @@ impl Mutation {
                     crate::user_storage_paths::validate_user_id(user)?;
                 }
                 for material in &mut input.materials {
+                    material.course_goal = material.course_goal.take().map(|goal| goal.trim().to_owned()).filter(|goal| !goal.is_empty());
+                    if material.course_goal.is_some() && !material.build_course {
+                        return Err(error("COURSE_GOAL_REQUIRES_BUILD", "validation", "填写课程目标时需要选择构建课程"));
+                    }
                     if material.published_book_ref.is_none() && material.pass2.is_none() {
                         material.pass2 = Some("disabled".into());
                     }
@@ -150,7 +210,7 @@ impl Mutation {
                     }
                     if material.material_kind.as_deref() == Some("video") {
                         // Source discourse describes the lecture, not optional Tutor assets.
-                        if material.build_tutor {
+                        if material.build_tutor || material.build_course {
                             return Err(error("OPERATOR_VIDEO_TUTOR_UNSUPPORTED", "validation",
                                 "视频准备包含字幕、画面、知识关系和原讲解结构，尚不生成额外 Tutor 教学材料"));
                         }
@@ -160,7 +220,7 @@ impl Mutation {
                         }
                     }
                     if material.material_kind.as_deref() == Some("music") {
-                        if material.build_tutor {
+                        if material.build_tutor || material.build_course {
                             return Err(error("OPERATOR_MUSIC_TUTOR_UNSUPPORTED", "validation",
                                 "音乐准备接纳精选谱本、录音、对齐与音乐事件；伴听教学由实际互动生成"));
                         }
@@ -285,6 +345,7 @@ impl Mutation {
                             invocation_ref: None,
                             workspace_dir: None,
                             observation: None,
+                            prepared_course: None,
                         })
                         .collect(),
                     visible_to_users: input.visible_to_users.clone(),
@@ -457,6 +518,11 @@ impl Mutation {
                 {
                     return Err(invalid());
                 }
+                let mut release = release.clone();
+                if release.manifest.inquiry_course.is_none() {
+                    release.manifest.inquiry_course = combined_course(&task, &release.manifest.materials)?;
+                }
+                release.normalize()?;
                 let result = release.apply(db, actor, operation, now)?;
                 task.release = Some(
                     json!({"release_id":release.release_id,"version":release.expected_version+1}),
@@ -514,6 +580,10 @@ pub(crate) fn save(db: &Connection, task: &Task) -> Result<(), ToolError> {
 }
 pub(crate) fn view(db: &Connection, task: &Task) -> Result<Value, ToolError> {
     let mut value = json!(task);
+    for (material, saved) in value["materials"].as_array_mut().unwrap().iter_mut().zip(&task.materials) {
+        material.as_object_mut().unwrap().remove("prepared_course");
+        if let Some(course) = &saved.prepared_course { material["course"] = json!(course.overview()); }
+    }
     let exists: bool = db
         .query_row(
             "SELECT EXISTS(SELECT 1 FROM build_task_budgets WHERE task_ref=?)",
@@ -754,6 +824,10 @@ impl AdminStore {
         if m.state == "imported" {
             return self.operator_build(id);
         }
+        let mut prepared_course = if m.input.build_course {
+            let book=read_tools::Book::load(&input.workspace_dir).map_err(|_| invalid())?;
+            Some(read_built_course(&input.workspace_dir, &PublishedBookRef{book_id:book.base.book_id.clone(),publication_id:"build".into()}, &m.input.material_id)?)
+        } else { None };
         // Reuse the existing idempotent importer on its own connection, outside the admin mutex.
         let mut library = PublishedLibrary::new(crate::control_store::ControlStore::open(writer)?);
         let manifest = library.publish_online(&crate::online_publication::PublicationRequest {
@@ -762,6 +836,7 @@ impl AdminStore {
             grant_users: task.visible_to_users.clone(),
         })?;
         let reference = manifest.reference;
+        if let Some(course)=&mut prepared_course { for lesson in &mut course.lessons { lesson.summary.source.publication=reference.clone(); } }
         let mut c = self.control.lock().unwrap();
         let tx = c.connection.transaction().map_err(|_| storage())?;
         let mut task = read(&tx, id)?;
@@ -772,6 +847,7 @@ impl AdminStore {
             .find(|m| m.input.material_id == material)
             .ok_or_else(invalid)?;
         m.input.published_book_ref = Some(reference.clone());
+        m.prepared_course = prepared_course;
         m.state = "imported".into();
         attach_personal(&tx, &task, now)?;
         task.revision += 1;

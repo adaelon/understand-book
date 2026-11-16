@@ -75,6 +75,10 @@ pub struct IntentObservation {
 pub struct ReviewFactCandidate {
     pub candidate_id: String,
     pub fact: CreateProfileFact,
+    #[serde(default)]
+    pub supersedes: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observed_at_ms: Option<u64>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -439,6 +443,7 @@ impl MemoryStore {
         &mut self,
         job_id: &str,
         eligible_turn_ids: &[String],
+        reviewed_facts: &[ProfileFact],
         fact_candidates: &[ReviewFactCandidate],
         intent_candidates: &[IntentObservationCandidate],
         now: &str,
@@ -514,6 +519,11 @@ impl MemoryStore {
                     }
                 _ => {}
             }
+            if let Some(id) = candidate.supersedes.first() {
+                let target = reviewed_facts.iter().find(|old| old.fact_id == *id)
+                    .ok_or_else(|| invalid_review_result("revision target was not offered to this review"))?;
+                fact.payload.reuse_key_from(&target.payload)?;
+            }
             if collection_rules_block(
                 self.collection_rules(),
                 &fact.scope,
@@ -522,7 +532,9 @@ impl MemoryStore {
             ) {
                 continue;
             }
-            facts.push(build_profile_fact(fact, Vec::new(), now)?);
+            let mut fact = build_profile_fact(fact, candidate.supersedes.clone(), now)?;
+            fact.observed_at_ms = candidate.observed_at_ms;
+            facts.push(fact);
         }
         facts.sort_by(|left, right| left.fact_id.cmp(&right.fact_id));
 
@@ -545,16 +557,10 @@ impl MemoryStore {
         }
         observations.sort_by(|left, right| left.observation_id.cmp(&right.observation_id));
 
-        let existing_fact_ids: BTreeSet<_> = self
-            .document
-            .profile_facts
-            .iter()
-            .map(|fact| fact.fact_id.as_str())
-            .collect();
-        let new_facts: Vec<_> = facts
-            .into_iter()
-            .filter(|fact| !existing_fact_ids.contains(fact.fact_id.as_str()))
-            .collect();
+        let mut profile_facts = self.document.profile_facts.clone();
+        let (added_fact_ids, affected_keys) = crate::review_revision::reconcile(
+            &mut profile_facts, facts, reviewed_facts, now,
+        )?;
         let existing_observation_ids: BTreeSet<_> = self
             .document
             .review_state
@@ -569,22 +575,18 @@ impl MemoryStore {
             })
             .collect();
 
-        let mut candidate = if new_facts.is_empty() {
+        let mut candidate = if added_fact_ids.is_empty() {
             self.document_mutation_candidate()?
         } else {
             self.projection_mutation_candidate()?
         };
-        let added_fact_ids: Vec<String> =
-            new_facts.iter().map(|fact| fact.fact_id.clone()).collect();
-        let affected_keys: Vec<String> = new_facts
-            .iter()
-            .map(|fact| fact.payload.semantic_key())
-            .collect();
         let added_observation_ids: Vec<String> = new_observations
             .iter()
             .map(|observation| observation.observation_id.clone())
             .collect();
-        candidate.profile_facts.extend(new_facts);
+        if !added_fact_ids.is_empty() {
+            candidate.profile_facts = profile_facts;
+        }
         candidate
             .review_state
             .intent_observations
@@ -844,9 +846,15 @@ impl IntentObservation {
 }
 
 impl ReviewFactCandidate {
-    pub fn new(mut fact: CreateProfileFact) -> Result<Self, ToolError> {
+    pub fn new(fact: CreateProfileFact) -> Result<Self, ToolError> {
+        Self::revision(fact, Vec::new(), None)
+    }
+
+    pub fn revision(mut fact: CreateProfileFact, mut supersedes: Vec<String>, observed_at_ms: Option<u64>) -> Result<Self, ToolError> {
         fact.evidence.sort();
         fact.evidence.dedup();
+        supersedes.sort();
+        supersedes.dedup();
         if !matches!(
             fact.source,
             FactSource::UserStated | FactSource::AgentInferred
@@ -860,15 +868,17 @@ impl ReviewFactCandidate {
                 "background review may not store sensitive profile facts",
             ));
         }
-        let built = build_profile_fact(fact.clone(), Vec::new(), "candidate")?;
+        let built = build_profile_fact(fact.clone(), supersedes.clone(), "candidate")?;
         Ok(Self {
             candidate_id: built.fact_id.replacen("fact_", "candidate_", 1),
             fact,
+            supersedes,
+            observed_at_ms,
         })
     }
 
     pub(crate) fn validate(&self) -> Result<(), ToolError> {
-        if Self::new(self.fact.clone())? != *self {
+        if Self::revision(self.fact.clone(), self.supersedes.clone(), self.observed_at_ms)? != *self {
             return Err(invalid_review_result(
                 "review candidate_id is not content-addressed",
             ));
@@ -1552,7 +1562,7 @@ mod tests {
             occurred_at: "3".into(),
         }, "3").unwrap();
         let revision = store.document_revision();
-        let error = store.commit_review_result(&job.job_id, &["turn-1".into()], &[], &[], "4").unwrap_err();
+        let error = store.commit_review_result(&job.job_id, &["turn-1".into()], &[], &[], &[], "4").unwrap_err();
         assert_eq!(error.error_code, "REVIEW_JOB_STATE_CONFLICT");
         store.resume_review_jobs(&[], "5").unwrap();
         assert_eq!(store.document_revision(), revision);
@@ -1885,6 +1895,7 @@ mod tests {
             .commit_review_result(
                 &job.job_id,
                 &["turn-1".into(), "turn-2".into()],
+                &[],
                 &[user_stated, global_inference],
                 &[observation],
                 "2026-07-14T00:02:00Z",
@@ -1935,6 +1946,7 @@ mod tests {
                 &["turn-1".into(), "turn-2".into()],
                 &[],
                 &[],
+                &[],
                 "2026-07-14T00:03:00Z",
             )
             .unwrap();
@@ -1977,6 +1989,7 @@ mod tests {
                 &job.job_id,
                 &["turn-1".into()],
                 &[],
+                &[],
                 &[observation],
                 "2026-07-14T00:02:00Z",
             )
@@ -2008,6 +2021,7 @@ mod tests {
             .commit_review_result(
                 &second_job.job_id,
                 &["turn-2".into()],
+                &[],
                 &[],
                 &[repeated_observation],
                 "2026-07-14T00:05:00Z",
@@ -2049,6 +2063,7 @@ mod tests {
             .commit_review_result(
                 &job.job_id,
                 &["turn-1".into()],
+                &[],
                 &[invalid],
                 &[],
                 "2026-07-14T00:02:00Z",
@@ -2102,6 +2117,7 @@ mod tests {
             .commit_review_result(
                 &job.job_id,
                 &["turn-1".into()],
+                &[],
                 &[fact],
                 &[observation],
                 "2026-07-14T00:02:00Z",
@@ -2137,7 +2153,7 @@ mod tests {
         assert_eq!(retried.attempts, 2);
         let candidate = fact_candidate("session-a", "turn-1", FactSource::UserStated,
             ProfileScope::Book { book_id: "book-b".into() });
-        let result = store.commit_review_result(&original.job_id, &["turn-1".into()], &[candidate], &[], "6").unwrap();
+        let result = store.commit_review_result(&original.job_id, &["turn-1".into()], &[], &[candidate], &[], "6").unwrap();
         assert_eq!(result.added_fact_ids.len(), 1);
         assert_eq!(store.profile_facts()[0].scope, ProfileScope::Workspace { learning_workspace_id: "a".into(), book_id: "book-b".into() });
         assert!(store.resolve_profile_facts(&crate::ProfileResolutionContext {

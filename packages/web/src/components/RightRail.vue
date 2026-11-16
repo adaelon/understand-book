@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { applicationOverlayTarget } from "../application-overlay";
 import { captureUserThought, openPersonalNotes } from '../personal-notes';
+import MusicExamplePiano from "./MusicExamplePiano.vue";
+import { playPiano, stopPiano } from "../music-example-player";
 import MessageThoughts from './MessageThoughts.vue';
 import { t as uiText } from '../i18n';
 
@@ -10,9 +12,10 @@ const shareHighlight = inject(shareHighlightKey, null);
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from "vue";
 const thoughtCaptureError=ref('');
 async function rememberUserThought(turnId:string) {try {thoughtCaptureError.value='';await captureUserThought(props.activeChatSessionId,turnId);} catch(error) {thoughtCaptureError.value=(error as Error).message;}}
-import { ArrowRight, ArrowUp, ChevronDown, ChevronLeft, CircleHelp, ExternalLink, Maximize2, Minimize2, Plus, Square, Undo2, X } from "@lucide/vue";
+import { ArrowRight, ArrowUp, ChevronDown, ChevronLeft, CircleHelp, ExternalLink, Link2, Link2Off, Maximize2, Minimize2, Plus, Presentation, SlidersHorizontal, Square, Undo2, X } from "@lucide/vue";
 import MobileLearningSheet from './MobileLearningSheet.vue';
 import QuestionImageInput from './QuestionImageInput.vue';
+import VoiceInput from './VoiceInput.vue';
 import { questionImageUrl } from '../question-image';
 import type { VideoQuestionImage } from '../../../core/src/generated/VideoQuestionImage';
 import YeyeMascot from './YeyeMascot.vue';
@@ -46,15 +49,17 @@ import { answerNoteExcerpt } from "../answer-note-selection";
 import AgentActivities from "./AgentActivities.vue";
 import TutorActivities from "./TutorActivities.vue";
 import TutorContinuation from './TutorContinuation.vue';
-import LearningPurposeEntry from './LearningPurposeEntry.vue';
+import InputSuggestionHint from './InputSuggestionHint.vue';
+import { suggestionTab, useReadingGuidance } from '../reading-guidance';
 import type { LearningPurpose } from '../generated/LearningPurpose';
-import type { LearningScopeKind, LearningScopeOption } from '../learning-purpose';
+import { learningPurposeSetup, type LearningPurposeStart, type LearningScopeKind, type LearningScopeOption } from '../learning-purpose';
 import type { TutorContinuationView } from '../generated/TutorContinuationView';
 import NoteDetail from "./NoteDetail.vue";
 import AgentPresentation from "./AgentPresentation.vue";
 import { sourceChipLabel } from "../source-chip.js";
 import { answerDisplayParts, type AnswerDisplayPart } from "../answer-markdown";
-import SourceExcerpt from './SourceExcerpt.vue';
+import BoardSourcePreview from './BoardSourcePreview.vue';
+import type { SourceWindowLoader } from '../api';
 import PresentationSceneCard from './PresentationSceneCard.vue';
 import { presentationKey, type PresentationWorkspace } from '../presentation-workspace';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
@@ -100,6 +105,7 @@ interface ChatTurn {
   runTrace?: TraceStep[];
   runStatus?: string;
   draft?: import("./../agent-run-state").AnswerDraft | null;
+  submissionUnknown?: boolean;
 }
 interface ChatSessionSummary {
   id: string;
@@ -132,12 +138,14 @@ const props = withDefaults(defineProps<{
   companionVisible?: boolean;
   waitingTurnId?: string | null;
   learningTitle?: string;
+  courseActive?: boolean;
   learningAttention?: string;
   learningScopeOptions?: LearningScopeOption[];
   learningPurposeAvailable?: boolean;
   learningPurposeReason?: string;
   learningPurposeReady?: boolean;
   learningPurposeBusy?: boolean;
+  closedBookReady?: boolean;
   agentInput: string;
   personalNoteReference?: import('../generated/NoteRef').NoteRef;
   sending: boolean;
@@ -184,8 +192,6 @@ const props = withDefaults(defineProps<{
   intentArtifacts?: IntentArtifactOverlayV1 | null;
   preparationAvailable?: boolean;
   continuationEnabled?: boolean;
-  tutorEnabled?: boolean;
-  tutorEnableBusy?: boolean;
   continuationLabel?: string;
   intentArtifactsLoading?: boolean;
   intentArtifactsError?: string | null;
@@ -211,15 +217,18 @@ const emit = defineEmits<{
   (e: "presentation-follow-up", message: string, receipt: import("../generated/PresentationFollowUp").PresentationFollowUp): void;
   (e: "update:agentInput", value: string): void;
   (e: "send-agent"): void;
+  (e: 'edit-failed-question', turn: ChatTurn): void;
+  (e: 'end-socratic-dialogue'): void;
   (e: 'clear-personal-note'): void;
   (e: 'continue-personal-note', turnId: string, reference: import('../generated/NoteRef').NoteRef): void;
   (e: 'continue-answer', turnId: string): void;
+  (e: 'explain-answer', turnId: string): void;
+  (e: 'practice-answer', turnId: string): void;
   (e: 'clarify-answer', turnId: string, excerpt?: string, receipt?: PresentationFollowUp): void;
   (e: 'choose-continuation', view: TutorContinuationView, optionId: string, receipt?: PresentationFollowUp): void;
   (e: 'return-reading'): void;
   (e: 'workspace-menu'): void;
-  (e: 'enable-tutor'): void;
-  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind): void;
+  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind, request?: LearningPurposeStart): void;
   (e: 'resume-learning'): void;
   (e: "retry-history"): void;
   (e: "stop-agent"): void;
@@ -258,6 +267,9 @@ const emit = defineEmits<{
 
 const activeTab = ref<ContextTab>("agent");
 const workspace = defineModel<PresentationWorkspace | null>('presentationWorkspace', { default: null });
+const presentationRequested = defineModel<boolean>('presentationRequested', { default: false });
+const presentationUnavailable = computed(() => network.value.identity?.capabilities?.presentation.authoring === false);
+watch(presentationUnavailable, unavailable => { if (unavailable) presentationRequested.value = false; }, { immediate: true });
 const workspaceVisible = computed(() => !!workspace.value && !workspace.value.suspended);
 const conversationMedia = window.matchMedia('(min-width: 1280px)');
 const mobileConversationMedia = window.matchMedia('(max-width: 1023px)');
@@ -280,11 +292,13 @@ const teachingSidebarHost = ref<HTMLElement | null>(null);
 const sessionSidebarHost = ref<HTMLElement | null>(null);
 const responseSidebarHost = ref<HTMLElement | null>(null);
 const recordsSidebarHost = ref<HTMLElement | null>(null);
-const goalToolsTarget = computed(() => mobileConversation.value ? mobileGoalHost.value : wideConversation.value ? goalSidebarHost.value : null);
-const teachingToolsTarget = computed(() => mobileConversation.value ? mobileTeachingHost.value : wideConversation.value ? teachingSidebarHost.value : null);
+const recordsSheetHost = ref<HTMLElement | null>(null);
+const useLearningSheet = computed(() => !wideConversation.value);
+const goalToolsTarget = computed(() => useLearningSheet.value ? mobileGoalHost.value : wideConversation.value ? goalSidebarHost.value : null);
+const teachingToolsTarget = computed(() => useLearningSheet.value ? mobileTeachingHost.value : wideConversation.value ? teachingSidebarHost.value : null);
 const sessionToolsTarget = computed(() => mobileConversation.value ? mobileSessionHost.value : wideConversation.value ? sessionSidebarHost.value : null);
-const recordsToolsTarget = computed(() => mobileConversation.value ? mobileRecordsHost.value : wideConversation.value ? recordsSidebarHost.value : null);
-watch(mobileConversation, active => { if (!active) mobileToolsOpen.value = false; });
+const recordsToolsTarget = computed(() => mobileConversation.value ? mobileRecordsHost.value : wideConversation.value ? recordsSidebarHost.value : recordsSheetHost.value);
+watch([mobileConversation, workspaceVisible], () => { mobileToolsOpen.value = false; });
 const workspaceKey = computed(() => workspace.value ? presentationKey(workspace.value.turnId, workspace.value.reference) : '');
 const chatHead = computed(() => props.chat.filter(t => t.turnId).at(-1)?.turnId ?? null);
 const latestAnswerTurn = computed(() => {
@@ -292,17 +306,22 @@ const latestAnswerTurn = computed(() => {
   return turn?.turnId && !turn.pending && (!turn.error || turn.spendStop) && deliveredAnswerText(turn) ? turn : null;
 });
 const responseHosts = ref(new Map<string, string>());
+const inSocraticDialogue = computed(() => latestAnswerTurn.value?.outcome?.answer_view?.parts.some(part => part.kind === 'socratic_question') ?? false);
 const responseTurns = computed(() => new Set(responseHosts.value.values()));
 const structuredResponseAvailable = computed(() => !!latestAnswerTurn.value?.turnId && (responseTurns.value.has(latestAnswerTurn.value.turnId) || hasSuggestion(latestAnswerTurn.value.turnId)));
 const mobileComposerVisible = computed(() => !mobileResponseTurn.value);
 const activityInstances = new Map<string, InstanceType<typeof TutorActivities>>();
+const guidanceActivityReady = ref(new Set<string>());
+function activityGuidanceAvailable(turnId: string, available: boolean) {
+  if (available) guidanceActivityReady.value.add(turnId); else guidanceActivityReady.value.delete(turnId);
+}
 function responseAvailable(turnId: string, available: boolean, host = 'plain') {
   const key = `${turnId}:${host}`;
   if (available) responseHosts.value.set(key, turnId); else responseHosts.value.delete(key);
 }
 const learningResponseLabel = computed(() => {
   const turnId = latestAnswerTurn.value?.turnId;
-  if (turnId && responseTurns.value.has(turnId)) return uiText('回答问题');
+  if (turnId && (responseTurns.value.has(turnId) || inSocraticDialogue.value)) return uiText('回答问题');
   if (turnId && hasSuggestion(turnId)) return uiText('查看下一步');
   return uiText('说说我的理解');
 });
@@ -349,7 +368,7 @@ async function keepMobileResponseVisible() {
 const suggestionHosts = ref(new Set<string>());
 function suggestionAvailable(key: string, available: boolean) { if (available) suggestionHosts.value.add(key); else suggestionHosts.value.delete(key); }
 function hasSuggestion(turnId: string) { return [...suggestionHosts.value].some(key => key.startsWith(`${turnId}:`)); }
-watch(() => props.activeChatSessionId, () => { suggestionHosts.value.clear(); responseTurns.value.clear(); activityInstances.clear(); mobileResponseTurn.value = null; mobileToolsOpen.value = false; });
+watch(() => props.activeChatSessionId, () => { suggestionHosts.value.clear(); responseTurns.value.clear(); activityInstances.clear(); guidanceActivityReady.value.clear(); mobileResponseTurn.value = null; mobileToolsOpen.value = false; });
 function editQuestion() {
   closeResponseEditor();
   discussionOpen.value = true;
@@ -385,6 +404,7 @@ function retainedSent(message: string, receipt: PresentationFollowUp) {
   emit('note-follow-up', message, receipt, retainedNote.value.mem_id);
 }
 const sceneBound = ref(true);
+const videoContextHost = ref<HTMLElement | null>(null);
 const discussionOpen = ref(false);
 const split = ref(63);
 const workspaceTools = ref<HTMLElement>();
@@ -432,7 +452,7 @@ function hostedTeachingPresentations(turn: ChatTurn): PresentationRef[] {
     && (!workspaceVisible.value || workspaceKey.value === presentationKey(turn.turnId!, part)));
 }
 function submitMessage() {
-  if (imageLoading.value || props.questionSendBlocked || props.sending || props.canStop || props.stopping || props.historyLoading || props.historyError || (!props.agentInput.trim() && !questionImage.value)) return;
+  if (voiceActive.value || imageLoading.value || props.questionSendBlocked || props.sending || props.canStop || props.stopping || props.historyLoading || props.historyError || (!props.agentInput.trim() && !questionImage.value)) return;
   if (workspaceVisible.value && sceneBound.value) {
     discussionOpen.value = true;
     followTranscript.value = true;
@@ -563,6 +583,8 @@ watch(() => props.noteScopeKey, () => {
 });
 const openNoteDetails = ref(new Set<string>());
 const transcriptRef = ref<HTMLElement | null>(null);
+const transcriptLearningHost = ref<HTMLElement | null>(null);
+const learningDockTarget = computed(() => wideConversation.value ? responseSidebarHost.value : transcriptLearningHost.value);
 const followTranscript = ref(true);
 function trackTranscriptScroll() {
   const el = transcriptRef.value;
@@ -588,7 +610,7 @@ function stopAgent() {
   if (!props.canStop || props.stopping) return;
   emit('stop-agent');
 }
-const showConversationWelcome = computed(() => props.chat.length === 0
+const showConversationWelcome = computed(() => !props.courseActive && props.chat.length === 0
   && !props.historyLoading && !props.historyError && !runActive.value && !workspaceVisible.value);
 const companionActive = computed(() => props.companionVisible !== false && activeTab.value === 'agent'
   && !workspaceVisible.value && !props.historyLoading && !props.historyError);
@@ -630,7 +652,79 @@ function goalStopLabel(reason: string | null | undefined): string {
   return uiText('本次运行未完成');
 }
 const agentInputRef = ref<HTMLTextAreaElement | null>(null);
+const voiceActive = ref(false);
+async function insertVoice(value: string) {
+  const draft = props.agentInput + (props.agentInput && !props.agentInput.endsWith('\n') ? '\n' : '') + value;
+  emit('update:agentInput', draft); composeExpanded.value = true;
+  await nextTick(); agentInputRef.value?.focus(); agentInputRef.value?.setSelectionRange(draft.length, draft.length);
+}
 const composeExpanded = ref(false);
+const inputComposing = ref(false);
+const guidanceTurn = computed(() => {
+  const turn = latestAnswerTurn.value;
+  return turn && !turn.error && !turn.spendStop && !turn.outcome?.incomplete ? turn : null;
+});
+const learningActionBlocked = computed(() => !props.learningPurposeAvailable || !props.learningPurposeReady
+  || !!props.learningPurposeBusy || !!props.questionInputBlocked || !!props.questionSendBlocked
+  || !!props.historyLoading || !!props.historyError || runActive.value);
+const currentLearningScope = computed(() => props.learningScopeOptions?.[0]);
+function startCurrentLearning() {
+  if (learningActionBlocked.value || !currentLearningScope.value || props.courseActive) return;
+  const setup = learningPurposeSetup('understand', props.musicMode, props.videoImagesEnabled);
+  emit('learning-purpose', 'understand', currentLearningScope.value.value, {
+    message: setup!.fallbackMessage, display: uiText('带我学这一部分'),
+  });
+}
+const showAnswerPractice = computed(() => {
+  const turn = guidanceTurn.value;
+  if (!turn?.turnId || !props.learningPurposeAvailable || props.courseActive || inSocraticDialogue.value
+    || responseTurns.value.has(turn.turnId) || hasSuggestion(turn.turnId)) return false;
+  // Teaching activities load separately. Wait for their actual response state before offering a new task.
+  return !(turn.hasTeaching || turn.teachingRef || turn.outcome?.trace.some(step => step.tool === 'tutor.step'))
+    || guidanceActivityReady.value.has(turn.turnId);
+});
+function practiceFromAnswer(kind: 'explain' | 'apply') {
+  const turnId = guidanceTurn.value?.turnId;
+  if (!showAnswerPractice.value || !turnId || learningActionBlocked.value || (kind === 'explain' && !props.closedBookReady)) return;
+  if (kind === 'explain') emit('explain-answer', turnId);
+  else emit('practice-answer', turnId);
+}
+const composerGuidancePurpose = computed(() => {
+  if (props.askDraft) return props.askDraft.status !== 'partial' && props.askDraft.quote.trim() ? 'selection' as const : null;
+  if (showConversationWelcome.value) return 'welcome' as const;
+  return guidanceTurn.value ? 'followup' as const : null;
+});
+const composerGuidanceActive = computed(() => {
+  if (inSocraticDialogue.value || !composerGuidancePurpose.value || activeTab.value !== 'agent'
+    || !props.learningPurposeAvailable || props.questionInputBlocked || props.questionSendBlocked
+    || props.historyLoading || props.historyError || runActive.value || workspaceVisible.value
+    || mobileResponseTurn.value || targetGoal.value || questionImage.value || imageLoading.value) return false;
+  const turn = props.chat.at(-1);
+  if (turn?.pending) return false;
+  if (turn?.turnId && (responseTurns.value.has(turn.turnId) || hasSuggestion(turn.turnId))) return false;
+  if (turn?.turnId && (turn.hasTeaching || turn.teachingRef || turn.outcome?.trace.some(step => step.tool === 'tutor.step'))
+    && !guidanceActivityReady.value.has(turn.turnId)) return false;
+  return true;
+});
+const composerGuidance = useReadingGuidance({
+  purpose: () => composerGuidancePurpose.value,
+  scope: () => composerGuidancePurpose.value === 'selection' ? 'selection'
+    : composerGuidancePurpose.value === 'followup' ? 'material' : props.learningScopeOptions?.[0]?.value,
+  active: () => composerGuidanceActive.value,
+  text: () => props.agentInput,
+  recentTurns: () => props.chat.slice(-2).filter(turn => turn.turnId && !turn.pending && !turn.error && deliveredAnswerText(turn)).map(turn => ({
+    turn_id: turn.turnId!, user: turn.user, assistant: deliveredAnswerText(turn),
+    source_quote: turn.questionQuote?.status === 'resolved' ? turn.questionQuote.quote : '',
+  })),
+});
+const composerSuggestionVisible = computed(() => !!composerGuidance.value && !props.agentInput.length
+  && !inputComposing.value && composerGuidanceActive.value);
+async function acceptComposerSuggestion() {
+  if (!composerSuggestionVisible.value) return;
+  const text = composerGuidance.value!.draft;
+  emit('update:agentInput', text); composeExpanded.value = true;
+  await nextTick(); agentInputRef.value?.focus(); agentInputRef.value?.setSelectionRange(text.length, text.length);
+}
 const composeTall = ref(false);
 let inputResizeObserver: ResizeObserver | undefined;
 let inputWidth = 0;
@@ -640,7 +734,7 @@ function resizeAgentInput() {
   if (!input.clientWidth) return;
   const previousHeight = input.style.height;
   input.style.height = '44px';
-  const height = composeExpanded.value ? Math.min(120, Math.max(44, input.scrollHeight + 2)) : 44;
+  const height = composeExpanded.value || composerSuggestionVisible.value ? Math.min(120, Math.max(44, input.scrollHeight + 2)) : 44;
   input.style.height = `${height}px`;
   composeTall.value = height > 48;
   if (previousHeight !== input.style.height && followTranscript.value) void scrollTranscriptToLatest();
@@ -674,7 +768,7 @@ onMounted(() => {
   if (agentInputRef.value) inputResizeObserver.observe(agentInputRef.value);
   resizeAgentInput();
 });
-watch(() => [props.agentInput, activeTab.value, props.fullscreen, composeExpanded.value, mobileResponseTurn.value], () => resizeAgentInput(), { flush: 'post' });
+watch(() => [props.agentInput, activeTab.value, props.fullscreen, composeExpanded.value, mobileResponseTurn.value, composerSuggestionVisible.value], () => resizeAgentInput(), { flush: 'post' });
 watch(() => props.sending, sending => {
   if (sending && mobileConversation.value) { collapseAgentInput(); closeResponseEditor(); }
 });
@@ -723,7 +817,7 @@ watch(
       last?.activities?.map(a => `${a.step_id}:${a.status}:${a.label}`).join(",") ?? "",
       last?.draft?.message_id ?? -1,
       last?.draft?.revision ?? -1,
-      last?.draft?.view?.parts.reduce((size, part) => size + (part.kind === 'markdown' ? part.text.length : 0), 0) ?? 0,
+      last?.draft?.view?.parts.reduce((size, part) => size + (part.kind === 'markdown' || part.kind === 'socratic_question' ? part.text.length : 0), 0) ?? 0,
       last?.outcome?.answer?.length ?? 0,
       props.askDraft ? 1 : 0,
     ].join(":");
@@ -750,19 +844,11 @@ interface AgentSourcePopupState {
   loading: boolean;
   opening: boolean;
   error: string | null;
-  left: number;
-  top: number;
+  trigger: HTMLElement | null;
 }
 
 const agentSourcePopup = ref<AgentSourcePopupState | null>(null);
-const agentSourcePopupRef = ref<HTMLElement | null>(null);
 let sourceRequestSequence = 0;
-let agentSourceAnchor: HTMLElement | null = null;
-const SOURCE_POPUP_MARGIN = 12;
-const SOURCE_POPUP_GAP = 8;
-const SOURCE_POPUP_WIDTH = 620;
-const SOURCE_POPUP_INITIAL_HEIGHT = 240;
-const SOURCE_POPUP_BOTTOM_SHEET_MAX_WIDTH = 700;
 const activeAgentSource = computed(() => {
   const popup = agentSourcePopup.value;
   return popup?.sources.find((source) => source.source_ref_id === popup.activeSourceRefId) ?? null;
@@ -772,9 +858,10 @@ function sourceTabLabel(source: SourcePopupView) {
   const sources = turn?.outcome?.answer_view?.sources ?? turn?.draft?.view?.sources ?? agentSourcePopup.value?.sources ?? [];
   return sourceChipLabel(sources, source.source_ref_id);
 }
-const agentSourcePopupStyle = computed(() => {
-  const popup = agentSourcePopup.value;
-  return popup ? { left: `${popup.left}px`, top: `${popup.top}px` } : {};
+const readAgentSourceWindow = computed<SourceWindowLoader | undefined>(() => {
+  const popup = agentSourcePopup.value, source = activeAgentSource.value;
+  if (!popup || !source) return;
+  return options => api.agentSourceRead(popup.turnId, source.source_ref_id, options, popup.noteMemId);
 });
 
 function answerParts(outcome: OuterOutcome): AgentAnswerPart[] {
@@ -801,6 +888,10 @@ function incompleteNotice(outcome: OuterOutcome): string | null {
 
 // Each turn tracks its own content dependencies; opening a menu must not parse the transcript.
 const answerRoots = new Map<string, HTMLElement>();
+function socraticTarget(turn: ChatTurn, prompt: string) {
+  if (!turn.turnId || !turn.outcome?.answer_view?.parts.some(part => part.kind === 'socratic_question' && part.text === prompt)) return;
+  return answerRoots.get(turn.turnId)?.querySelector<HTMLElement>('.socratic-question') ?? undefined;
+}
 const answerDisplayCache = new WeakMap<ChatTurn, { answer: ComputedRef<AnswerDisplayPart[]>; draft: ComputedRef<AnswerDisplayPart[]> }>();
 function turnDisplayParts(turn: ChatTurn, draft = false): AnswerDisplayPart[] {
   let cached = answerDisplayCache.get(turn);
@@ -815,9 +906,27 @@ function turnDisplayParts(turn: ChatTurn, draft = false): AnswerDisplayPart[] {
   }
   return (draft ? cached.draft : cached.answer).value;
 }
+const pianoSourceTurn = ref<string | null>(null);
+watch(() => props.activeChatSessionId, () => stopPiano(true));
+watch(() => props.sending, busy => { if (busy) stopPiano(true); });
+watch(activeTab, () => stopPiano(true));
+onBeforeUnmount(() => stopPiano(true));
+function pianoSource(id: string) {
+  const turn = props.chat.find(turn => turn.turnId === pianoSourceTurn.value);
+  if (turn) void openAgentSources(turn, [id], { currentTarget: document.activeElement });
+}
 function onAnswerSourceClick(turn: ChatTurn, parts: AgentAnswerPart[], event: MouseEvent) {
   const target = event.target;
   if (!(target instanceof Element)) return;
+  const listen = target.closest<HTMLButtonElement>('button[data-music-example-index]');
+  if (listen && (event.currentTarget as Element).contains(listen)) {
+    const part = parts[Number(listen.dataset.musicExampleIndex)];
+    if (part?.kind === 'music_example') {
+      pianoSourceTurn.value = turn.turnId;
+      void playPiano(part.example, listen.dataset.musicPitch === undefined ? undefined : Number(listen.dataset.musicPitch));
+    }
+    return;
+  }
   const button = target.closest<HTMLButtonElement>("button[data-answer-source-index]");
   if (!button || !(event.currentTarget as Element).contains(button)) return;
   const part = parts[Number(button.dataset.answerSourceIndex)];
@@ -829,61 +938,8 @@ function onAnswerSourceClick(turn: ChatTurn, parts: AgentAnswerPart[], event: Mo
 function closeAgentSourcePopup() {
   sourceRequestSequence += 1;
   agentSourcePopup.value = null;
-  agentSourceAnchor = null;
 }
 
-function clampToRange(value: number, minimum: number, maximum: number): number {
-  return Math.min(Math.max(value, minimum), Math.max(minimum, maximum));
-}
-
-function positionAgentSourcePopup() {
-  const popup = agentSourcePopup.value;
-  const popupElement = agentSourcePopupRef.value;
-  const anchor = agentSourceAnchor;
-  if (!popup || !popupElement || !anchor || window.innerWidth <= SOURCE_POPUP_BOTTOM_SHEET_MAX_WIDTH) return;
-
-  const anchorRect = anchor.getBoundingClientRect();
-  const popupRect = popupElement.getBoundingClientRect();
-  const popupWidth = popupRect.width || Math.min(SOURCE_POPUP_WIDTH, window.innerWidth - (SOURCE_POPUP_MARGIN * 2));
-  const popupHeight = popupRect.height || SOURCE_POPUP_INITIAL_HEIGHT;
-  const leftCandidate = anchorRect.left - SOURCE_POPUP_GAP - popupWidth;
-  const rightCandidate = anchorRect.right + SOURCE_POPUP_GAP;
-  const leftFits = leftCandidate >= SOURCE_POPUP_MARGIN;
-  const rightFits = rightCandidate + popupWidth <= window.innerWidth - SOURCE_POPUP_MARGIN;
-
-  let left: number;
-  if (leftFits) {
-    left = leftCandidate;
-  } else if (rightFits) {
-    left = rightCandidate;
-  } else {
-    const spaceOnLeft = anchorRect.left - SOURCE_POPUP_GAP - SOURCE_POPUP_MARGIN;
-    const spaceOnRight = window.innerWidth - SOURCE_POPUP_MARGIN - anchorRect.right - SOURCE_POPUP_GAP;
-    left = spaceOnLeft >= spaceOnRight ? leftCandidate : rightCandidate;
-  }
-
-  popup.left = clampToRange(
-    left,
-    SOURCE_POPUP_MARGIN,
-    window.innerWidth - SOURCE_POPUP_MARGIN - popupWidth,
-  );
-  popup.top = clampToRange(
-    anchorRect.top,
-    SOURCE_POPUP_MARGIN,
-    window.innerHeight - SOURCE_POPUP_MARGIN - popupHeight,
-  );
-}
-
-async function refreshAgentSourcePopupPosition() {
-  await nextTick();
-  positionAgentSourcePopup();
-}
-
-function onAgentSourceViewportResize() {
-  void refreshAgentSourcePopupPosition();
-}
-
-window.addEventListener("resize", onAgentSourceViewportResize);
 function onFullscreenKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented) return;
   if (event.key === 'Escape' && mobileToolsOpen.value) { event.preventDefault(); mobileToolsOpen.value = false; return; }
@@ -922,13 +978,11 @@ onBeforeUnmount(() => {
   window.visualViewport?.removeEventListener('resize', positionAnswerSelection);
   window.visualViewport?.removeEventListener('scroll', positionAnswerSelection);
   document.removeEventListener('pointerdown', dismissChatMenu);
-  window.removeEventListener("resize", onAgentSourceViewportResize);
   window.removeEventListener("keydown", onFullscreenKeydown);
 });
 
 async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: string[], event: { currentTarget: EventTarget | null }, fromRecap = false, noteMemId?: string) {
   if (!turn.turnId || sourceRefIds.length === 0) return;
-  agentSourceAnchor = event.currentTarget as HTMLElement | null;
   const requestSequence = ++sourceRequestSequence;
   agentSourcePopup.value = {
     fromRecap, noteMemId,
@@ -939,10 +993,8 @@ async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: st
     loading: true,
     opening: false,
     error: null,
-    left: SOURCE_POPUP_MARGIN,
-    top: SOURCE_POPUP_MARGIN,
+    trigger: event.currentTarget instanceof HTMLElement ? event.currentTarget : null,
   };
-  await refreshAgentSourcePopupPosition();
   try {
     const sources = await Promise.all(
       sourceRefIds.map((sourceRefId) => api.agentSourceResolve(turn.turnId!, sourceRefId, noteMemId)),
@@ -950,20 +1002,24 @@ async function openAgentSources(turn: Pick<ChatTurn, 'turnId'>, sourceRefIds: st
     if (requestSequence !== sourceRequestSequence || !agentSourcePopup.value) return;
     agentSourcePopup.value.sources = sources;
     agentSourcePopup.value.loading = false;
-    await refreshAgentSourcePopupPosition();
   } catch (error) {
     if (requestSequence !== sourceRequestSequence || !agentSourcePopup.value) return;
     agentSourcePopup.value.loading = false;
     agentSourcePopup.value.error = error instanceof Error ? error.message : String(error);
-    await refreshAgentSourcePopupPosition();
   }
 }
 
 function selectAgentSource(sourceRefId: string) {
   if (agentSourcePopup.value?.sources.some((source) => source.source_ref_id === sourceRefId)) {
     agentSourcePopup.value.activeSourceRefId = sourceRefId;
-    void refreshAgentSourcePopupPosition();
   }
+}
+
+function retryAgentSource() {
+  const popup = agentSourcePopup.value;
+  if (!popup) return;
+  if (activeAgentSource.value) void openActiveAgentSourceInReader();
+  else void openAgentSources(popup, popup.sourceRefIds, { currentTarget: popup.trigger }, popup.fromRecap, popup.noteMemId);
 }
 
 async function openActiveAgentSourceInReader() {
@@ -994,7 +1050,10 @@ async function openActiveAgentSourceInReader() {
 }
 
 function onAgentInputKeydown(event: KeyboardEvent) {
-  if (event.isComposing || event.keyCode === 229) return;
+  if (event.isComposing || event.keyCode === 229 || inputComposing.value) return;
+  if (composerSuggestionVisible.value && suggestionTab(event, inputComposing.value)) {
+    event.preventDefault(); event.stopPropagation(); void acceptComposerSuggestion(); return;
+  }
   if (event.key === 'Escape' && composeExpanded.value) {
     event.preventDefault(); event.stopPropagation(); collapseAgentInput(); return;
   }
@@ -1025,7 +1084,14 @@ function focusActivityHelp(deliveryRefs: string[]) {
   node?.scrollIntoView({ block: 'center' });
   node?.querySelector<HTMLButtonElement>('[data-help-action]')?.focus();
 }
-defineExpose({ focusActivityHelp, scrollToTurn, showMemory, replaceMemory, openRecapTarget, openNotePresentation, locateScene, prepareCompletionFeedback });
+function prepareProductTour() {
+  if (mobileResponseTurn.value) return false;
+  if (workspace.value) workspace.value.suspended = true;
+  mobileToolsOpen.value = false; historyOpen.value = false;
+  return true;
+}
+function showCourseFeedback() { if (transcriptRef.value) transcriptRef.value.scrollTop = 0; }
+defineExpose({ showCourseFeedback, focusActivityHelp, scrollToTurn, showMemory, replaceMemory, openRecapTarget, openNotePresentation, locateScene, prepareCompletionFeedback, prepareProductTour });
 
 watch(() => props.activeChatSessionId, () => { closeAgentSourcePopup(); clearAnswerSelection(); });
 watch(activeTab, clearAnswerSelection);
@@ -1115,12 +1181,12 @@ function positionAnswerSelection() {
   }
   const first = rects[0], last = rects[rects.length - 1];
   const popupBounds = popup.getBoundingClientRect();
-  const below = last.bottom + 10 + popupBounds.height <= bottom;
-  const anchor = below ? last : first;
+  const above = first.top - popupBounds.height - 10 >= top + 4;
+  const anchor = above ? first : last;
   const left = viewport?.offsetLeft ?? 0;
   const right = left + (viewport?.width ?? window.innerWidth);
   selected.x = Math.max(left + 8, Math.min(anchor.right - popupBounds.width, right - popupBounds.width - 8));
-  selected.y = Math.max(top + 4, Math.min(below ? last.bottom + 10 : first.top - popupBounds.height - 10, bottom - popupBounds.height - 4));
+  selected.y = Math.max(top + 4, Math.min(above ? first.top - popupBounds.height - 10 : last.bottom + 10, bottom - popupBounds.height - 4));
   answerSelectionPositioned.value = true;
 }
 function saveAnswerSelection(turn: ChatTurn) {
@@ -1272,16 +1338,16 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 </script>
 
 <template>
-  <aside class="right-rail" :class="{ fullscreen: props.fullscreen && !workspaceVisible, 'conversation-wide': wideConversation, 'conversation-mobile': mobileConversation, 'presentation-workspace': workspaceVisible, 'discussion-open': discussionOpen }" :style="{ '--presentation-split': `${split}%`, '--presentation-top': `${workspaceTop}px` }">
+  <aside class="right-rail" :class="{ fullscreen: props.fullscreen && !workspaceVisible, 'conversation-wide': wideConversation, 'conversation-mobile': mobileConversation, 'compact-conversation': useLearningSheet, 'presentation-workspace': workspaceVisible, 'discussion-open': discussionOpen }" :style="{ '--presentation-split': `${split}%`, '--presentation-top': `${workspaceTop}px` }">
     <div v-if="workspaceVisible" ref="workspaceTools" class="workspace-tools">
       <div v-if="$slots['learning-details']" class="workspace-learning-details"><slot name="learning-details" /></div>
       <label class="workspace-split">{{ uiText('演示宽度') }} <input v-model="split" type="range" min="40" max="72" :aria-label="uiText('演示宽度')" /></label>
       <button class="discussion-toggle" type="button" :aria-expanded="discussionOpen" @click="discussionOpen = !discussionOpen"><span class="discussion-indicator" aria-hidden="true"></span>{{ discussionOpen ? uiText('收起讨论') : uiText('展开讨论') }}<ChevronDown :size="14" aria-hidden="true" /></button>
       <button v-if="stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? uiText('正在停止') : uiText('停止') }}</button>
     </div>
-    <div v-if="!workspaceVisible" class="rail-toolbar agent-head">
+    <div v-if="!workspaceVisible" class="rail-toolbar agent-head" data-tour="reader-agent">
       <div v-show="mobileConversation" class="mobile-conversation-header">
-        <button class="mobile-back" type="button" :aria-label="musicMode ? uiText('返回聆听') : uiText('返回阅读')" @click="closeResponseEditor(); collapseAgentInput(); returnReading()"><ChevronLeft :size="21" aria-hidden="true" /></button>
+        <button class="mobile-back" type="button" :aria-label="courseActive ? uiText('返回学习') : musicMode ? uiText('返回聆听') : uiText('返回阅读')" @click="closeResponseEditor(); collapseAgentInput(); returnReading()"><ChevronLeft :size="21" aria-hidden="true" /></button>
         <button ref="mobileLearningButton" class="mobile-learning-title" type="button" :aria-label="uiText('学习与会话')" :aria-expanded="mobileToolsOpen" @click="mobileToolsOpen = true"><span><YeyeMascot ref="mobileCompanion" variant="avatar" :size="24" :active="companionActive && mobileConversation && !mobileToolsOpen" />{{ props.musicMode ? uiText('音乐伴听') : props.videoImagesEnabled ? uiText('视频伴读') : uiText('问这本书') }}<ChevronDown :size="13" aria-hidden="true" /></span><small :class="{ attention: !!props.learningAttention }">{{ props.learningAttention || props.learningTitle || (props.musicMode ? uiText('从声音或谱面问起') : props.videoImagesEnabled ? uiText('一起弄懂正在看的内容') : uiText('围绕这本书聊一聊')) }}</small></button>
         <div ref="mobileRecordsHost" class="mobile-records" />
       </div>
@@ -1340,11 +1406,12 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </div>
     </div>
 
-    <MobileLearningSheet :open="mobileConversation && mobileToolsOpen" :title="uiText('学习与会话')" @close="mobileToolsOpen = false">
+    <MobileLearningSheet :open="useLearningSheet && mobileToolsOpen" :title="mobileConversation ? uiText('学习与会话') : uiText('学习设置')" @close="mobileToolsOpen = false">
       <div ref="mobileGoalHost" @click.capture="leaveMobileGoalTools" />
+      <div v-if="!mobileConversation" class="mobile-tool-section"><p>{{uiText('学习记录')}}</p><div ref="recordsSheetHost" @click.capture="mobileToolsOpen=false"/></div>
       <div class="mobile-tool-section"><p>{{ uiText('学习方式') }}</p><div ref="mobileTeachingHost" /></div>
-      <nav class="mobile-tool-section" :aria-label="uiText('本书会话')"><p>{{ uiText('会话') }}</p><div ref="mobileSessionHost" /></nav>
-      <nav class="mobile-tool-section mobile-tool-links" :aria-label="musicMode ? uiText('伴听工具') : uiText('阅读工具')">
+      <nav v-show="!workspaceVisible" class="mobile-tool-section" :aria-label="uiText('本书会话')"><p>{{ uiText('会话') }}</p><div ref="mobileSessionHost" /></nav>
+      <nav v-if="!workspaceVisible" class="mobile-tool-section mobile-tool-links" :aria-label="musicMode ? uiText('伴听工具') : uiText('阅读工具')">
         <button v-if="openGoals.length" type="button" @click="mobileToolsOpen = false; openTaskDetails($event)">{{ openGoals.length }} {{ uiText('项待办') }}<ArrowRight :size="15" aria-hidden="true" /></button>
         <button v-for="tab in tabs.filter(tab => tab.id !== 'agent')" :key="tab.id" type="button" @click="mobileToolsOpen = false; selectTab(tab.id)">{{ tab.label }}<ArrowRight :size="15" aria-hidden="true" /></button>
         <button type="button" @click="mobileToolsOpen = false; emit('workspace-menu')">{{ uiText('阅读设置') }}<ArrowRight :size="15" aria-hidden="true" /></button>
@@ -1361,11 +1428,16 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       <Teleport :to="goalToolsTarget || 'body'" :disabled="!goalToolsTarget">
       <slot name="learning-goal" />
       </Teleport>
+      <div class="discussion-context" :class="{ 'compact-context': useLearningSheet && !mobileConversation }">
+      <button v-if="useLearningSheet && !mobileConversation && ($slots['learning-goal'] || $slots['tutor-control'])" type="button" class="workspace-settings" :aria-label="uiText('学习设置')" aria-haspopup="dialog" :aria-expanded="mobileToolsOpen" @click="mobileToolsOpen = true">
+        <SlidersHorizontal :size="15" aria-hidden="true" /><span>{{ uiText('学习设置') }}</span><small v-if="learningAttention || learningTitle" :title="learningAttention || learningTitle">{{ learningAttention || learningTitle }}</small>
+      </button>
       <button v-if="openGoals.length" ref="taskSummaryButton" class="task-summary-toggle" type="button" :aria-expanded="taskDetailsOpen" aria-controls="reader-task-details" @click="openTaskDetails">
         <span class="task-summary-status">{{ taskSummary }}</span>
-        <span class="task-summary-title">{{ openGoals.length === 1 ? openGoals[0].interpretation : uiText('查看未完成任务') }}</span>
+        <span v-if="!useLearningSheet" class="task-summary-title">{{ openGoals.length === 1 ? openGoals[0].interpretation : uiText('查看未完成任务') }}</span>
         <span class="task-summary-action">{{ uiText('查看任务') }}</span>
       </button>
+      </div>
       <div v-if="taskDetailsOpen && openGoals.length" class="goal-overlay" @click.self="closeTaskDetails">
         <section id="reader-task-details" class="goal-details" role="dialog" :aria-label="uiText('当前任务详情')">
           <header class="goal-details-head"><strong>{{ uiText('当前任务') }}</strong><button ref="taskCloseButton" type="button" :aria-label="uiText('关闭任务详情')" @click="closeTaskDetails"><X :size="16" aria-hidden="true" /></button></header>
@@ -1373,7 +1445,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <div v-for="goal in openGoals" :key="goal.id" class="goal-card">
               <strong>{{ goal.interpretation }}</strong>
               <p>{{ runActive ? uiText('当前对话正在执行') : goalStopLabel(goal.last_stop_reason) }}<span v-if="goal.result_refs.length"> {{ uiText('· 已有部分结果') }}</span></p>
-              <p v-if="goal.requirements.length" class="goal-requirements">{{ uiText('交付要求：') }}{{ goal.requirements.map(item => item.description).join('；') }}</p>
+              <p v-if="goal.requirements.length" class="goal-requirements">{{ uiText('交付要求：') }}{{ goal.requirements.map(item => item.description === '制作并交付本次问题的演示页' ? uiText('制作并交付本次问题的演示页') : item.description).join('；') }}</p>
               <ul v-if="goal.working.items.length" class="goal-work-items"><li v-for="item in goal.working.items" :key="item.id"><span>{{ { pending: uiText('待做'), in_progress: uiText('进行中'), completed: uiText('已完成') }[item.status] }}</span>{{ item.description }}</li></ul>
               <div class="goal-actions">
                 <button :disabled="runActive" @click="emit('continue-goal', goal.id); closeTaskDetails()">{{ uiText('继续任务') }}</button>
@@ -1403,6 +1475,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         @source="(id, anchor) => openAgentSources({ turnId: recapPresentation!.turnId }, [id], { currentTarget: anchor }, true)"
         @expand="selectPresentation(recapPresentation.turnId, recapPresentation.reference, $event)" />
       <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
+      <slot name="course-feedback" />
         <p v-if="props.historyLoading" role="status">{{ musicMode ? uiText('正在恢复对话，可以先听音乐或查看乐谱。') : uiText('正在恢复对话，可以先阅读正文。') }}</p>
         <div v-else-if="props.historyError" role="alert">
           <p>{{ uiText('对话暂时无法加载：') }}{{ props.historyError }}</p>
@@ -1454,7 +1527,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <p>{{ turn.spendStop.message }}</p>
             <button v-if="network.enabled" type="button" @click="emit('show-allowance')">{{ uiText('查看使用额度') }}</button>
           </div>
-          <p v-else-if="!turn.pending && turn.error" class="incomplete">{{ turn.error }}</p>
+          <div v-else-if="!turn.pending && turn.error" class="failed-question" role="status">
+            <p class="incomplete">{{ turn.error }}</p>
+            <button v-if="!turn.submissionUnknown && !turn.boardFollowUp && !turn.presentationFollowUp && turn.user.trim()" type="button" class="retry-question"
+              :disabled="sending || historyLoading || !!historyError || questionInputBlocked" @click="emit('edit-failed-question', turn)">{{ uiText('编辑后重试') }}</button>
+          </div>
           <div v-if="turn.boardCommits?.length" class="board-committed-parts" :aria-label="uiText('已保存的讲解')">
             <button v-for="(part, index) in mergeBoardDeliveries(turn.boardCommits)" :key="boardDeliveryKey(part)" type="button" class="board-location board-part-link"
               @click="emit('open-board-location', { board_id: part.board_id, item_id: part.item_ids[0], block_id: part.block_ids[0] })"><span>{{ uiText('已保存第{0}部分', [index + 1]) }} · {{ uiText('在画板中查看') }}</span><ArrowRight :size="14" aria-hidden="true" /></button>
@@ -1466,8 +1543,17 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <MessageThoughts :session-id="props.activeChatSessionId" :turn-id="turn.turnId ?? ''" role="assistant" :text="deliveredAnswerText(turn)">
             <div v-if="answerParts(turn.outcome).length" :ref="el => { if (turn.turnId) { if (el) answerRoots.set(turn.turnId, el as HTMLElement); else answerRoots.delete(turn.turnId); } }" class="ans-text md" @pointerdown="startAnswerSelection" @click="onAnswerSourceClick(turn, answerParts(turn.outcome), $event)">
               <template v-for="(part, pi) in turnDisplayParts(turn)" :key="pi">
+                <div v-if="part.kind === 'html' && part.socratic && !turn.outcome.incomplete" class="socratic-question">
+                  <div class="socratic-heading" data-reader-selection-ignore>
+                    <span class="socratic-label">{{ uiText('苏格拉底式问答') }}</span>
+                    <button v-if="turn === latestAnswerTurn" type="button" class="socratic-end"
+                      :disabled="runActive || historyLoading || !!historyError || questionInputBlocked || !!questionSendBlocked"
+                      @click="emit('end-socratic-dialogue')">{{ uiText('先到这里') }}</button>
+                  </div>
+                  <div class="answer-markdown" :data-answer-part="pi" v-html="part.html"></div>
+                </div>
                 <div
-                  v-if="part.kind === 'html'"
+                  v-else-if="part.kind === 'html'"
                   class="answer-markdown"
                   :data-answer-part="pi"
                   v-html="part.html"
@@ -1475,6 +1561,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
                 <template v-else-if="part.kind === 'presentation' && turn.turnId">
                 <button v-if="workspaceVisible" class="presentation-reference" @click="selectPresentation(turn.turnId, part)">{{ uiText('打开演示 · 版本') }} {{ part.revision }}</button>
                 <AgentPresentation v-if="loadedPresentations.has(presentationKey(turn.turnId, part))"
+                  :socratic-target="prompt => socraticTarget(turn, prompt)"
                   :toolbar-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTools : undefined"
                   :teaching-target="workspaceVisible && workspaceKey === presentationKey(turn.turnId, part) ? workspaceTeachingTarget ?? undefined : undefined"
                   v-show="!workspaceVisible || workspaceKey === presentationKey(turn.turnId, part)"
@@ -1500,23 +1587,20 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </MessageThoughts>
             <div v-if="workspaceVisible && workspace?.turnId === turn.turnId" :ref="element => { workspaceTeachingTarget = element as HTMLElement | null; }" class="workspace-teaching" />
             <TutorActivities v-if="turn.turnId && !turn.pending && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))"
+              :socratic-target="prompt => socraticTarget(turn, prompt)"
               :ref="instance => { if (instance) activityInstances.set(turn.turnId!, instance as InstanceType<typeof TutorActivities>); else activityInstances.delete(turn.turnId!); }"
               :session-id="props.activeChatSessionId" :turn-id="turn.turnId" :answer-text="turn.outcome.answer ?? undefined" :answer-target="() => answerRoots.get(turn.turnId!)" :sources="turn.outcome.answer_view?.sources ?? []"
-              :hosted-presentations="hostedTeachingPresentations(turn)" :busy="sending || historyLoading || !!historyError" @locate-presentation="selectPresentation(turn.turnId!, $event)"
+              :hosted-presentations="hostedTeachingPresentations(turn)" :busy="sending || historyLoading || !!historyError || activeTab !== 'agent' || props.companionVisible === false" @locate-presentation="selectPresentation(turn.turnId!, $event)"
               :response-actions-target="mobileConversation ? responseEditingHost : null" @editing-response="responseEditing(turn.turnId!, $event)"
-              @response-available="responseAvailable(turn.turnId!, $event)" @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })"
+              @response-available="responseAvailable(turn.turnId!, $event)" @guidance-available="activityGuidanceAvailable(turn.turnId!, $event)" @source="(id, anchor) => openAgentSources(turn, [id], { currentTarget: anchor })"
               @goto="emit('goto', $event)" />
-            <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)"><CircleHelp :size="16" aria-hidden="true" />{{ uiText('这一步没跟上') }}</button>
+            <button v-if="deliveredAnswerText(turn) && turn.turnId && !workspaceVisible && turn !== latestAnswerTurn" class="clarify-answer" :disabled="sending || historyLoading || !!historyError" @click="emit('clarify-answer', turn.turnId)"><CircleHelp :size="16" aria-hidden="true" />{{ uiText('这一步没跟上') }}</button>
             <TutorContinuation v-if="turn.turnId && deliveredAnswerText(turn) && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step')) && !workspaceVisible"
               :session-id="activeChatSessionId" :turn-id="turn.turnId" :head="chatHead" :enabled="!!continuationEnabled" :busy="sending || historyLoading || !!historyError"
               @available="suggestionAvailable(`${turn.turnId}:plain`, $event)"
               @choose="(view, option, receipt) => emit('choose-continuation', view, option, receipt)" @locate="locateAccepted" @edit="editQuestion" @read="returnReading" />
-            <div v-if="deliveredAnswerText(turn) && turn.turnId && !hasSuggestion(turn.turnId) && !workspaceVisible && (turn.interaction?.source_bindings.length || turn.questionQuote?.status === 'resolved' || turn.outcome.answer_view?.sources.length)" class="reading-continuation">
-              <template v-if="!tutorEnabled">
-                <button :disabled="sending || tutorEnableBusy" @click="emit('enable-tutor')">{{ uiText('开启连续教学') }}</button>
-                <small>{{ uiText('对所有书籍生效；开启后可选择继续理解。') }}</small>
-              </template>
-              <button v-else-if="continuationEnabled" :disabled="sending" @click="emit('continue-answer', turn.turnId)">{{ uiText('继续理解这段') }}</button>
+            <div v-if="deliveredAnswerText(turn) && turn.turnId && !turn.outcome.answer_view?.parts.some(part => part.kind === 'socratic_question') && !hasSuggestion(turn.turnId) && !workspaceVisible && (turn.interaction?.source_bindings.length || turn.questionQuote?.status === 'resolved' || turn.outcome.answer_view?.sources.length)" class="reading-continuation">
+              <button v-if="continuationEnabled" :disabled="sending" @click="emit('continue-answer', turn.turnId)">{{ uiText('继续理解这段') }}</button>
               <small v-else>{{ continuationLabel }}</small>
             </div>
             <button v-if="!turn.pending && turn.boardDelivery && !turn.boardDeliveryError && !turn.boardCommits?.some(part => boardDeliveryKey(part) === boardDeliveryKey(turn.boardDelivery!))" type="button" class="board-location board-delivery-link"
@@ -1594,34 +1678,38 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </div>
         <div v-if="showConversationWelcome" class="empty conversation-welcome">
           <YeyeMascot class="welcome-mascot" :size="mobileConversation ? 128 : 144" motion="idle" :active="companionActive" />
-          <h3>{{ props.musicMode ? uiText('听不懂、看不懂，都可以问。') : props.videoImagesEnabled ? uiText('没听懂的，一起弄懂。') : uiText('这一节，想先弄明白什么？') }}</h3>
-          <p>{{ props.videoImagesEnabled ? uiText('从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。') : props.learningTitle ? uiText('接着上次学习，也可以随时调整目标。') : props.musicMode ? uiText('不认识谱线、音符或符号？在乐谱上框选，或上传、粘贴截图，直接问「这是什么」。') : uiText('选一个目的开始，也可以直接写下你的问题。') }}</p>
-          <button v-if="props.learningTitle" type="button" class="question-example"
-            :disabled="sending || learningPurposeBusy || !learningPurposeReady" @click="emit('resume-learning')">{{ tutorEnabled ? uiText('继续上次学习') : uiText('开启并继续上次学习') }} <span aria-hidden="true">→</span></button>
-          <LearningPurposeEntry v-else :music-mode="props.musicMode" :video-mode="props.videoImagesEnabled" :reason="learningPurposeReason" :available="!!learningPurposeAvailable" :ready="!!learningPurposeReady"
-            :enabled="!!tutorEnabled" :busy="sending || !!learningPurposeBusy" :scope-options="learningScopeOptions"
-            @choose="(purpose, scope) => emit('learning-purpose', purpose, scope)" @custom="agentInputRef?.focus()" />
-          <button v-if="props.videoImagesEnabled && !props.agentInput.trim() && !props.askDraft" type="button" class="question-example video-question-example" :disabled="props.questionInputBlocked" @click="emit('update:agentInput', uiText('请结合当前画面，解释这里在讲什么。')); agentInputRef?.focus()">{{ uiText('讲清当前画面') }} <span aria-hidden="true">↗</span></button>
+          <h3>{{ props.musicMode ? uiText('听不懂、看不懂，都可以问。') : props.videoImagesEnabled ? uiText('没听懂的，一起弄懂。') : uiText('想从哪里开始？') }}</h3>
+          <p>{{ (composerGuidancePurpose === 'welcome' ? composerGuidance?.question : '') || (props.videoImagesEnabled ? uiText('从当前画面问起，也可以框选一处细节。开始输入时，视频会暂停在这一刻。') : props.learningTitle ? uiText('接着上次学习，也可以随时调整目标。') : props.musicMode ? uiText('不认识谱线、音符或符号？在乐谱上框选，或上传、粘贴截图，直接问「这是什么」。') : uiText('输入问题或学习目标…')) }}</p>
+          <div v-if="learningPurposeAvailable" class="welcome-learning-actions">
+            <button type="button" class="start-current-learning" :disabled="learningActionBlocked || !currentLearningScope" :title="learningPurposeReason" @click="startCurrentLearning">{{ uiText('带我学这一部分') }}<ArrowRight :size="16" aria-hidden="true" /></button>
+            <small v-if="currentLearningScope">{{ currentLearningScope.label }}</small>
+          </div>
           <button v-if="historySessions.length" type="button" class="history-button empty-history-button" @click="historyOpen = true">{{ uiText('查看') }}{{ musicMode ? uiText('这首作品') : uiText('本书') }}{{ uiText('的') }} {{ historySessions.length }} {{ uiText('段历史对话') }}</button>
         </div>
+        <div ref="transcriptLearningHost" />
       </div>
 
-      <div class="agent-input" :class="{ composing: composeExpanded, 'mobile-composing': mobileConversation && mobileComposerVisible, 'mobile-answering': mobileConversation && !!mobileResponseTurn }">
+      <MusicExamplePiano v-if="musicMode" @source="pianoSource" />
+      <div class="agent-input" data-tour="reader-input" :class="{ composing: composeExpanded, 'mobile-composing': mobileConversation && mobileComposerVisible, 'mobile-answering': mobileConversation && !!mobileResponseTurn }">
         <p v-if="props.videoError" role="alert">{{ props.videoError }}</p>
         <p v-if="props.questionSendBlocked" role="status">{{ props.questionSendBlocked }}</p>
+        <slot v-if="useLearningSheet" name="practice-offer" />
         <div v-show="mobileConversation && !!mobileResponseTurn" class="mobile-response-toolbar"><div ref="responseEditingHost" /><button type="button" class="mobile-editor-close" :aria-label="uiText('收起作答')" @click="closeResponseEditor"><X :size="18" aria-hidden="true" /></button></div>
-        <Teleport :to="responseSidebarHost || 'body'" :disabled="!wideConversation || !responseSidebarHost">
-        <div v-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" v-show="!mobileConversation || !mobileResponseTurn" class="learning-dock" role="group" :aria-label="uiText('当前回答的学习操作')">
+        <Teleport :to="learningDockTarget || 'body'" :disabled="!learningDockTarget">
+        <div v-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" v-show="!mobileConversation || !mobileResponseTurn" class="learning-dock" :class="{ 'has-practice-actions': showAnswerPractice }" role="group" :aria-label="uiText('当前回答的学习操作')">
           <div class="learning-dock-copy"><span>{{ musicMode ? uiText('听到这里') : uiText('读到这里') }}</span><p>{{ responseTurns.has(latestAnswerTurn.turnId!) ? uiText('试着把理解变成自己的话') : uiText('有疑问，随时停下来聊一聊') }}</p></div>
+          <div v-if="showAnswerPractice" class="answer-practice-actions">
+            <button type="button" class="learning-explain" :disabled="learningActionBlocked || !closedBookReady" aria-describedby="answer-practice-explanation" @click="practiceFromAnswer('explain')">{{ uiText('我来解释一下') }}</button>
+            <button type="button" class="learning-apply" :disabled="learningActionBlocked" @click="practiceFromAnswer('apply')">{{ uiText('给我一道应用题') }}</button>
+            <p id="answer-practice-explanation" class="learning-practice-note">{{ uiText('解释练习会收起资料，按你的回答追问或补讲，可随时暂停。') }}</p>
+          </div>
           <button type="button" class="learning-help" :aria-label="uiText('这一步没跟上')" :disabled="sending" @click="emit('clarify-answer', latestAnswerTurn.turnId!)"><CircleHelp :size="17" aria-hidden="true" />{{ mobileConversation ? uiText('没跟上') : uiText('这一步没跟上') }}</button>
-          <button v-show="!mobileConversation || structuredResponseAvailable" type="button" class="learning-respond" :disabled="sending" @click="focusLearningResponse">{{ learningResponseLabel }}<ArrowRight :size="16" aria-hidden="true" /></button>
+          <button v-if="!showAnswerPractice && !courseActive" v-show="!mobileConversation || structuredResponseAvailable || inSocraticDialogue" type="button" class="learning-respond" :disabled="sending" @click="focusLearningResponse">{{ learningResponseLabel }}<ArrowRight :size="16" aria-hidden="true" /></button>
         </div>
         </Teleport>
-        <div v-if="workspaceVisible || props.runConnection === 'reconnecting' || targetGoal || props.askDraft" v-show="!mobileConversation || mobileComposerVisible || props.runConnection === 'reconnecting'" class="agent-input-context">
-        <div v-if="workspaceVisible" class="scene-binding">
-          <span>{{ sceneBound ? uiText('{0} · 版本 {1}', [noteFollowUp ? uiText('附上记录时的演示状态') : uiText('附上当前演示状态'), workspace?.reference.revision]) : uiText('普通聊天') }}</span>
-          <button @click="sceneBound = !sceneBound">{{ sceneBound ? uiText('不附演示状态') : uiText('附上当前演示') }}</button>
-        </div>
+        <div v-if="props.runConnection === 'reconnecting' || targetGoal || props.askDraft || props.personalNoteReference || (useLearningSheet && (videoQuestion || $slots['note-question']))" v-show="!mobileConversation || mobileComposerVisible || props.runConnection === 'reconnecting'" class="agent-input-context">
+        <slot v-if="useLearningSheet" name="note-question" />
+        <div v-if="useLearningSheet && videoQuestion" ref="videoContextHost" />
         <p v-if="props.runConnection === 'reconnecting'" role="status">{{ uiText('连接中断，正在重新连接；运行仍可继续。') }}</p>
         <div v-if="targetGoal" class="goal-target">
           <span>{{ uiText('补充任务：') }}{{ targetGoal.interpretation }}</span>
@@ -1640,6 +1728,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         </div>
         <div v-if="composeTall && (!mobileConversation || mobileComposerVisible)" class="compose-caption"><span>{{ uiText('草稿会保留') }}</span><button type="button" :aria-label="uiText('收起输入')" @click="collapseAgentInput">{{ uiText('收起') }}</button></div>
         <div v-show="!mobileConversation || mobileComposerVisible" class="agent-compose-row" :class="{ 'video-compose': imagesEnabled }">
+        <p v-if="composerSuggestionVisible && composerGuidancePurpose !== 'welcome'" id="reading-input-invitation" class="reading-input-invitation">{{ composerGuidance!.question }}</p>
         <QuestionImageInput v-if="imagesEnabled" ref="imageInput" :image="questionImage" :disabled="sending || questionInputBlocked" @change="emit('question-image', $event)" @loading="questionImageLoading" />
         <textarea
           ref="agentInputRef"
@@ -1648,25 +1737,45 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :value="props.agentInput"
           rows="1"
           :aria-label="musicMode ? uiText('围绕当前音乐提问') : uiText('围绕当前阅读内容提问')"
-          :placeholder="props.askDraft ? uiText('围绕引用来源提问...') : props.videoImagesEnabled ? uiText('这里为什么这样？问问伴读…') : props.musicMode ? uiText('看不懂的谱线、音符，截图问问…') : !props.chat.length ? uiText('输入问题或学习目标…') : uiText('说说你的想法，或继续提问…')"
+          :placeholder="inputComposing ? '' : inSocraticDialogue ? uiText('说说你的想法…') : composerSuggestionVisible ? composerGuidance!.draft : props.askDraft ? uiText('围绕引用来源提问...') : workspaceVisible && sceneBound ? uiText('围绕这页演示提问…') : props.videoImagesEnabled ? uiText('这里为什么这样？问问伴读…') : props.musicMode ? uiText('看不懂的谱线、音符，截图问问…') : !props.chat.length ? uiText('输入问题或学习目标…') : uiText('说说你的想法，或继续提问…')"
+          :aria-describedby="composerSuggestionVisible ? (composerGuidancePurpose === 'welcome' ? 'reading-input-suggestion' : 'reading-input-invitation reading-input-suggestion') : undefined"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
           @focus="composeExpanded = true"
           @keydown="onAgentInputKeydown"
+          @compositionstart="inputComposing = true" @compositionend="inputComposing = false"
           @paste="imageInput?.paste($event)"
         />
+        <InputSuggestionHint v-if="composerSuggestionVisible" id="reading-input-suggestion" class="reading-input-suggestion" @accept="acceptComposerSuggestion" />
         <div class="composer-controls">
+        <VoiceInput class="composer-voice" :scope="props.activeChatSessionId ?? ''" :disabled="activeTab !== 'agent' || props.companionVisible === false || (mobileConversation && !mobileComposerVisible) || props.questionInputBlocked || sending || canStop || stopping || historyLoading || !!historyError" @insert="insertVoice" @active="voiceActive = $event" />
+        <div v-if="useLearningSheet && workspaceVisible" class="workspace-compose-actions">
+          <button v-if="workspaceVisible" type="button" class="workspace-binding" :aria-pressed="sceneBound" :aria-label="noteFollowUp ? uiText('附上记录时的演示状态') : uiText('附上当前演示状态')" :title="sceneBound ? uiText('不附演示状态') : uiText('附上当前演示')" @click="sceneBound = !sceneBound">
+            <component :is="sceneBound ? Link2 : Link2Off" :size="14" aria-hidden="true" /><span>{{ sceneBound ? uiText('{0} · {1}', [noteFollowUp ? uiText('记录时的演示') : uiText('当前演示'), 'v' + workspace?.reference.revision]) : uiText('普通聊天') }}</span>
+          </button>
+        </div>
+          <button type="button" class="presentation-request" data-tour="presentation" role="switch" :aria-checked="presentationRequested" :aria-label="uiText('演示页')"
+            :title="presentationUnavailable ? uiText('演示制作暂不可用') : uiText('将本次问题制作成可交互的演示页')"
+            :disabled="presentationUnavailable || sending || canStop || stopping || historyLoading || !!historyError || questionInputBlocked"
+            @click="presentationRequested = !presentationRequested">
+            <Presentation :size="16" aria-hidden="true" /><span>{{ uiText('演示页') }}</span><span class="presentation-switch-track" aria-hidden="true"><span /></span>
+          </button>
+          <span v-if="presentationRequested" class="presentation-request-hint" role="status">{{ uiText('本次回答制作演示页') }}</span>
+          <span v-else-if="presentationUnavailable" class="presentation-request-hint">{{ uiText('演示制作暂不可用') }}</span>
           <button v-if="imagesEnabled" type="button" class="attach-image" :aria-label="questionImage ? uiText('替换图片') : uiText('添加图片')" :title="uiText('添加图片，也可直接粘贴')" :disabled="imageLoading || sending || questionInputBlocked" @click="imageInput?.chooseFile()"><Plus :size="20" aria-hidden="true" /></button>
+          <Teleport :to="videoContextHost || 'body'" :disabled="!videoContextHost">
           <div v-if="videoQuestion" class="video-binding" :aria-label="uiText('问题绑定位置')" :title="uiText('问题绑定 {0}{1}', [videoTime(videoQuestion.frame.actual_pts_ms), videoQuestion.region ? uiText(' · 已选区域') : ''])">
             <span>{{ videoQuestion.range ? `${videoTime(videoQuestion.range.start_ms)}–${videoTime(videoQuestion.range.end_ms)}` : videoTime(videoQuestion.frame.actual_pts_ms) }}{{ videoQuestion.region ? uiText(' · 选区') : '' }}</span>
             <button type="button" :aria-label="uiText('取消草稿')" :title="uiText('取消草稿')" :disabled="imageLoading || sending" @click="emit('cancel-video-draft')"><X :size="12" aria-hidden="true" /></button>
           </div>
+          </Teleport>
           <div v-if="$slots['tutor-control'] || $slots['learning-actions']" class="agent-input-tools">
-            <Teleport :to="teachingToolsTarget || 'body'" :disabled="!teachingToolsTarget"><slot name="tutor-control" /></Teleport>
-            <Teleport :to="recordsToolsTarget || 'body'" :disabled="!recordsToolsTarget"><div v-if="$slots['learning-actions']" class="conversation-learning-actions" role="group" :aria-label="uiText('学习记录')"><slot name="learning-actions" /></div></Teleport>
+            <Teleport :to="teachingToolsTarget || 'body'" :disabled="!teachingToolsTarget"><slot name="tutor-control" /><slot v-if="!useLearningSheet" name="practice-offer" /></Teleport>
+            <Teleport :to="recordsToolsTarget || 'body'" :disabled="!recordsToolsTarget"><div v-if="$slots['learning-actions']" class="conversation-learning-actions" role="group" :aria-label="uiText('学习记录')"><slot v-if="!useLearningSheet" name="note-question" /><slot name="learning-actions" /></div></Teleport>
           </div>
         </div>
-        <button v-if="stopAvailable" type="button" class="stop-agent" :aria-label="stopping ? uiText('正在停止') : uiText('停止')" :title="stopping ? uiText('正在停止') : uiText('停止生成')" :disabled="stopping" @click="stopAgent"><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
-        <button v-else type="button" class="send-agent" :aria-label="props.sending ? uiText('发送中') : uiText('发送')" :title="uiText('发送（Ctrl+Enter）')" :disabled="imageLoading || !!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || (!props.agentInput.trim() && !questionImage)" @click="submitMessage">
+        <button v-if="stopAvailable" type="button" class="stop-agent" :aria-label="stopping ? uiText('正在停止') : uiText('停止')" :title="stopping ? uiText('正在停止') : uiText('停止生成')" :disabled="stopping" @click="stopAgent"><span>{{ stopping ? uiText('正在停止') : uiText('停止') }}</span><Square :size="14" fill="currentColor" aria-hidden="true" /></button>
+        <button v-else type="button" class="send-agent" :aria-label="props.sending ? uiText('发送中') : uiText('发送')" :title="uiText('发送（Ctrl+Enter）')" :disabled="voiceActive || imageLoading || !!props.questionSendBlocked || props.sending || props.historyLoading || !!props.historyError || (!props.agentInput.trim() && !questionImage)" @click="submitMessage">
+          <span>{{ props.sending ? uiText('发送中') : uiText('发送') }}</span>
           <ArrowUp :size="20" aria-hidden="true" />
         </button>
         </div>
@@ -1859,77 +1968,44 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </div>
     </Teleport>
 
-    <Teleport :to="applicationOverlayTarget()">
-      <div
-        v-if="agentSourcePopup"
-        class="agent-source-popup-layer"
-        @mousedown.self="closeAgentSourcePopup"
-      >
-        <section
-          ref="agentSourcePopupRef"
-          class="agent-source-popup"
-          :style="agentSourcePopupStyle"
-          role="dialog"
-          :aria-label="uiText('回答来源')"
-        >
-          <header class="source-popup-head">
-            <div>
-              <span class="source-popup-kicker">{{ uiText('回答来源') }}</span>
-              <strong>{{ activeAgentSource?.heading_path?.join(' / ') || activeAgentSource?.label || uiText('正在载入来源') }}</strong>
-            </div>
-            <button type="button" :title="uiText('关闭来源')" :aria-label="uiText('关闭来源')" @click="closeAgentSourcePopup">
-              <X :size="16" aria-hidden="true" />
-            </button>
-          </header>
-
-          <div v-if="agentSourcePopup.sources.length > 1" class="source-tabs" role="tablist" :aria-label="uiText('来源列表')">
-            <button
-              v-for="source in agentSourcePopup.sources"
-              :key="source.source_ref_id"
-              type="button"
-              role="tab"
-              :aria-selected="source.source_ref_id === agentSourcePopup.activeSourceRefId"
-              :class="{ active: source.source_ref_id === agentSourcePopup.activeSourceRefId }"
-              @click="selectAgentSource(source.source_ref_id)"
-            >
-              {{ sourceTabLabel(source) }}
-            </button>
-          </div>
-
-          <div class="source-popup-body">
-            <p v-if="agentSourcePopup.loading" class="source-loading">{{ uiText('正在载入...') }}</p>
-            <p v-else-if="agentSourcePopup.error" class="source-error">{{ agentSourcePopup.error }}</p>
-            <template v-else-if="activeAgentSource">
-              <p v-if="activeAgentSource.stale" class="source-stale">{{ uiText('该来源已失效，以下为回答生成时保存的内容。') }}</p>
-              <SourceExcerpt :source="activeAgentSource" />
-            </template>
-          </div>
-
-          <footer class="source-popup-actions">
-            <a v-if="activeAgentSource?.source_url && !activeAgentSource.stale"
-              class="source-open-reader" :href="activeAgentSource.source_url" target="_blank" rel="noopener noreferrer">
-              <ExternalLink :size="15" aria-hidden="true" />
-              <span>{{ uiText('查看参考书原文') }}</span>
-            </a>
-            <button
-              v-else
-              type="button"
-              class="source-open-reader"
-              :disabled="!activeAgentSource || activeAgentSource.stale || !activeAgentSource.can_open_in_reader || agentSourcePopup.opening"
-              @click="openActiveAgentSourceInReader"
-            >
-              <ExternalLink :size="15" aria-hidden="true" />
-              <span>{{ agentSourcePopup.opening ? uiText('正在打开...') : activeAgentSource?.music ? uiText('回到这段音乐与乐谱') : activeAgentSource?.media ? uiText('进入原视频位置') : uiText('在正文中查看') }}</span>
-            </button>
-          </footer>
-        </section>
-      </div>
-    </Teleport>
+    <BoardSourcePreview v-if="agentSourcePopup" context="answer" :source="activeAgentSource"
+      :trigger="agentSourcePopup.trigger" :read-window="readAgentSourceWindow" :loading="agentSourcePopup.loading"
+      :opening="agentSourcePopup.opening" :error="agentSourcePopup.error ?? undefined" @close="closeAgentSourcePopup" @retry="retryAgentSource">
+      <template #sources>
+        <div v-if="agentSourcePopup.sources.length > 1" class="source-tabs" role="tablist" :aria-label="uiText('来源列表')">
+          <button v-for="source in agentSourcePopup.sources" :key="source.source_ref_id" type="button" role="tab"
+            :aria-selected="source.source_ref_id === agentSourcePopup.activeSourceRefId"
+            :class="{ active: source.source_ref_id === agentSourcePopup.activeSourceRefId }" @click="selectAgentSource(source.source_ref_id)">
+            {{ sourceTabLabel(source) }}
+          </button>
+        </div>
+      </template>
+      <template #actions>
+        <a v-if="activeAgentSource?.source_url && !activeAgentSource.stale" class="source-open-reader"
+          :href="activeAgentSource.source_url" target="_blank" rel="noopener noreferrer">
+          <ExternalLink :size="15" aria-hidden="true" />{{ uiText('查看参考书原文') }}
+        </a>
+        <button v-else type="button" class="source-open-reader"
+          :disabled="!activeAgentSource || activeAgentSource.stale || !activeAgentSource.can_open_in_reader || agentSourcePopup.opening"
+          @click="openActiveAgentSourceInReader">
+          <ExternalLink :size="15" aria-hidden="true" />
+          {{ agentSourcePopup.opening ? uiText('正在打开...') : activeAgentSource?.music ? uiText('回到这段音乐与乐谱') : activeAgentSource?.media ? uiText('进入原视频位置') : uiText('在正文中查看') }}
+        </button>
+      </template>
+    </BoardSourcePreview>
 
   </aside>
 </template>
 
 <style scoped>
+.socratic-question { margin: 1em 0 .4em; padding: .15em 0 .15em .95em; border-inline-start: 2px solid var(--brand-accent); }
+.socratic-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: .35em; }
+.socratic-label { color: var(--brand-accent-deep); font: 600 12px/1.5 var(--sans); }
+.socratic-end { padding: 3px 6px; border: 0; border-radius: 4px; background: transparent; color: var(--steel); font: 12px/1.5 var(--sans); cursor: pointer; }
+.socratic-end:hover, .socratic-end:focus-visible { background: var(--surface-soft); color: var(--ink); }
+.socratic-end:disabled { opacity: .5; cursor: default; }
+@media (pointer: coarse) { .socratic-end { min-height: 44px; } }
+.socratic-question :deep(p) { margin: 0; }
 .turn-note-links{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:12px 0;font-size:11px;color:var(--steel)}.turn-note-links button{font:inherit;color:inherit;background:var(--surface-soft);border:1px solid var(--hairline);border-radius:6px;padding:6px 9px;cursor:pointer}
 .turn-question-image { margin: 8px 0 12px; font-size: 12px; color: var(--steel); }
 .turn-question-image summary { display: flex; align-items: center; gap: 8px; cursor: zoom-in; }
@@ -1976,9 +2052,35 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .workspace-split { font-size: 12px; }
 .workspace-split input { width: 80px; }
 .discussion-toggle { display: none; }
+.discussion-context { display: contents; }
+.compact-context:not(:empty) { display: flex; flex: 0 0 auto; align-items: center; gap: 8px; min-width: 0; padding: 2px 10px; border-bottom: 1px solid var(--hairline-soft); }
+.workspace-settings, .compact-context .task-summary-toggle { display: inline-flex; align-items: center; gap: 6px; min-width: 0; min-height: 36px; padding: 4px 6px; border: 0; border-radius: 6px; background: transparent; font: inherit; font-size: .76rem; text-align: left; }
+.workspace-settings { flex: 1; color: var(--ink); }
+.workspace-settings svg, .workspace-settings span { flex: none; }
+.workspace-settings small { min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--steel); font-size: inherit; }
+.compact-context .task-summary-toggle { width: auto; max-width: 50%; margin-left: auto; }
+.compact-context .task-summary-status { max-width: none; }
+.workspace-settings:hover, .compact-context .task-summary-toggle:hover { background: var(--surface-soft); }
+.right-rail.compact-conversation .conversation-main .agent-input { container: question-field / inline-size; padding: 6px 10px max(8px, env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .right-rail.compact-conversation .rail-toolbar.agent-head { padding: 4px 12px; }
+}
+.compact-conversation .agent-compose-row { grid-template-columns: minmax(0, 1fr) auto; align-items: center; padding: 4px 6px; gap: 2px 6px; }
+.compact-conversation .agent-compose-row textarea { grid-column: 1 / -1; }
+.compact-conversation .agent-compose-row > .send-agent, .compact-conversation .agent-compose-row > .stop-agent { grid-column: 2; min-width: 0; padding-inline: 12px; }
+.compact-conversation .composer-controls { grid-column: 1; }
+.workspace-compose-actions { display: flex; align-items: center; gap: 2px; grid-column: 2; }
+.workspace-binding { display: inline-flex; align-items: center; gap: 5px; min-height: 34px; padding: 4px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--steel); font: inherit; font-size: .73rem; }
+.workspace-binding[aria-pressed="true"] { color: var(--brand-green-deep); }
+.workspace-binding:hover { background: var(--surface); }
+.workspace-settings:focus-visible, .workspace-compose-actions button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 1px; }
+@container question-field (max-width: 400px) {
+  .workspace-binding { width: 32px; justify-content: center; }
+  .workspace-binding span { display: none; }
+}
 .scene-binding { display: flex; flex-wrap: wrap; gap: 8px; padding: 8px; font-size: .82rem; background: var(--surface); }
 .presentation-workspace .agent-head { display: none; }
-@media (max-width: 700px) {
+@media (max-width: 1023px) {
   .workspace-split { display: none; }
   .workspace-tools { inset-inline: 12px; gap: 0 8px; padding-bottom: 5px; border-bottom: 1px solid var(--hairline-soft); }
   .workspace-learning-details { margin-right: auto; }
@@ -1989,8 +2091,11 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   .presentation-workspace .agent-panel { right: 8px; left: 8px; width: auto; bottom: 8px; }
   .presentation-workspace :deep(.agent-presentation.expanded) { inset: var(--presentation-top) 8px max(8px, env(safe-area-inset-bottom)); width: auto; border-radius: 16px; box-shadow: 0 4px 20px #2523200a; }
   .presentation-workspace.discussion-open :deep(.agent-presentation.expanded) { visibility: hidden; }
-  .presentation-workspace:not(.discussion-open) .agent-input { visibility: hidden; }
-  .workspace-tools :deep(.presentation-toolbar) { flex-basis: 100%; padding: 2px 0; }
+  .presentation-workspace:not(.discussion-open) .agent-panel { visibility: hidden; }
+  .presentation-workspace:not(.discussion-open) :deep(.agent-presentation.expanded) { visibility: visible; }
+}
+@media (max-width: 700px) {
+  .workspace-tools :deep(.presentation-toolbar) { flex-basis: 100%; }
 }
 .right-rail.fullscreen {
   position: fixed;
@@ -2096,8 +2201,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .conversation-learning-actions { flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
 .conversation-learning-actions :deep(button) { min-height: 36px; padding: 4px 6px; border: 0; background: transparent; color: var(--brand-green-deep); font: inherit; font-size: .78rem; cursor: pointer; }
 .empty h3 { margin: 0 0 8px; font-size: 1.18rem; font-weight: 500; color: var(--ink); }
-.empty .question-example { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin: 20px 0 12px; padding: 11px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--canvas); color: var(--ink); text-align: left; font: inherit; }
-.question-example span { color: var(--brand-green-deep); }
 .empty .empty-history-button { margin-top: 16px; }
 .conversation-welcome { width: 100%; max-width: 360px; margin: 12px auto 0; text-align: center; }
 .conversation-welcome .welcome-mascot { margin-bottom: 12px; }
@@ -2613,61 +2716,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   min-height: 24px;
   padding: 0;
 }
-.agent-source-popup-layer {
-  position: fixed;
-  inset: 0;
-  z-index: 1250;
-}
-.agent-source-popup {
-  position: fixed;
-  width: min(620px, calc(var(--app-content-width, 100vw) - 24px));
-  max-height: min(760px, calc(var(--app-content-height, 100dvh) - 24px));
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  border: 1px solid var(--hairline);
-  border-radius: 8px;
-  background: var(--canvas);
-  box-shadow: 0 16px 44px rgba(20, 28, 38, 0.22);
-}
-.source-popup-head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 0.75rem;
-  border-bottom: 1px solid var(--hairline-soft);
-  padding: 0.78rem 0.85rem;
-}
-.source-popup-head > div {
-  min-width: 0;
-  display: grid;
-  gap: 0.16rem;
-}
-.source-popup-kicker {
-  color: var(--steel);
-  font-size: 0.7rem;
-  font-weight: 650;
-}
-.source-popup-head strong {
-  overflow-wrap: anywhere;
-  color: var(--ink);
-  font-size: 0.9rem;
-}
-.source-popup-head > button {
-  width: 30px;
-  height: 30px;
-  min-height: 30px;
-  flex: 0 0 30px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  border: 0;
-  background: var(--surface-soft);
-  padding: 0;
-}
 .source-tabs {
   display: flex;
+  flex-shrink: 0;
   gap: 0.35rem;
   overflow-x: auto;
   border-bottom: 1px solid var(--hairline-soft);
@@ -2687,38 +2738,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   background: rgba(33, 112, 214, 0.08);
   color: #1764c0;
 }
-.source-popup-body {
-  min-height: 8rem;
-  min-width: 0;
-  overscroll-behavior: contain;
-  overflow-y: auto;
-  padding: 0.9rem;
-}
-.source-loading,
-.source-error,
-.source-stale {
-  margin: 0;
-  font-size: 0.8rem;
-}
-.source-loading {
-  color: var(--steel);
-}
-.source-error {
-  color: var(--brand-error);
-}
-.source-stale {
-  margin-bottom: 0.65rem;
-  border-left: 3px solid var(--reader-amber);
-  background: rgba(255, 193, 7, 0.1);
-  color: var(--charcoal);
-  padding: 0.48rem 0.58rem;
-}
-.source-popup-actions {
-  display: flex;
-  justify-content: flex-end;
-  border-top: 1px solid var(--hairline-soft);
-  padding: 0.7rem 0.85rem;
-}
 .source-open-reader {
   min-height: 38px;
   display: inline-flex;
@@ -2729,6 +2748,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   background: var(--accent);
   color: #fff;
   padding: 0.48rem 0.72rem;
+  font-size: 12px;
+  text-decoration: none;
   font-weight: 650;
 }
 .source-open-reader:disabled {
@@ -2737,21 +2758,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   color: var(--muted);
 }
 
-@media (max-width: 700px) {
-  .agent-source-popup-layer { background: #25232026; }
-  .agent-source-popup {
-    inset: auto 0 0 !important;
-    width: 100%;
-    max-height: 78dvh;
-    border-radius: 22px 22px 0 0;
-  }
-  .agent-source-popup::before { content: ''; flex: 0 0 4px; width: 32px; margin: 9px auto 0; border-radius: 4px; background: var(--hairline); }
-  .source-popup-head { padding: 12px 18px; align-items: center; }
-  .source-popup-head > button { width: 40px; height: 40px; flex-basis: 40px; }
-  .source-popup-body { padding: 16px 18px; }
-  .source-popup-actions { padding: 12px 18px max(12px, env(safe-area-inset-bottom)); }
-  .source-open-reader { min-height: 44px; font-size: 14px; }
-}
 .ask-draft blockquote {
   margin: 0;
   color: var(--slate);
@@ -2779,6 +2785,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .learning-dock .learning-respond { background: var(--brand-green-deep); border-color: var(--brand-green-deep); color: #fff; box-shadow: 0 2px 4px color-mix(in srgb, var(--brand-accent-deep) 9%, transparent); }
 .learning-dock .learning-respond:hover:not(:disabled) { background: color-mix(in srgb, var(--brand-green-deep) 88%, var(--ink)); }
 .learning-dock button:disabled { opacity: .5; cursor: default; }
+.transcript .learning-dock { justify-content: flex-start; gap: 4px; margin-top: 16px; padding: 8px 0 0; border-top: 1px solid var(--hairline-soft); border-bottom: 0; }
+.transcript .learning-dock button { min-height: 36px; padding: 5px 8px; border: 0; background: transparent; color: var(--steel); box-shadow: none; font-size: .76rem; }
 .agent-input .learning-dock { justify-content: flex-start; gap: 4px; padding: 0; border: 0; }
 .agent-input .learning-dock-copy { display: none; }
 .agent-input .learning-dock button { min-height: 30px; padding: 4px 8px; border: 0; background: transparent; box-shadow: none; color: var(--steel); font-size: .76rem; }
@@ -2845,11 +2853,17 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   box-shadow: none;
 }
 .agent-input textarea:focus { outline: none; }
+.agent-input textarea::placeholder { color: var(--steel); opacity: .8; }
+.reading-input-suggestion { grid-column: 1 / -1; padding: 0 12px 4px; }
+.reading-input-invitation { grid-column: 1 / -1; margin: 0; padding: 4px 12px 0; color: var(--steel); font-size: 12px; line-height: 1.6; }
 .agent-input:not(.composing) textarea { overflow-y: hidden; }
 .agent-compose-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 4px 8px; padding: 8px; border: 1px solid var(--line); border-radius: 18px; background: var(--surface-soft); }
 .agent-compose-row:focus-within { border-color: color-mix(in srgb, var(--brand-accent) 55%, var(--line)); }
 .agent-compose-row > .question-image-input { grid-column: 1 / -1; }
-.agent-compose-row > button { display: grid; place-items: center; width: 34px; height: 34px; min-width: 34px; min-height: 34px; padding: 0; border: 0; border-radius: 50%; }
+.composer-controls > .composer-voice { flex: 0 0 auto; }
+.agent-compose-row > button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 96px; height: 44px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 12px; font-size: 14px; font-weight: 600; line-height: 1; white-space: nowrap; }
+.agent-compose-row > button > svg { flex: 0 0 auto; }
+.agent-compose-row > button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 3px; }
 .agent-compose-row > button:disabled { background: var(--line); color: var(--steel); }
 .agent-compose-row > .send-agent:not(:disabled) { border-color: var(--brand-accent); background: var(--brand-accent); color: var(--brand-on-accent); }
 .agent-compose-row > .send-agent:hover:not(:disabled) { border-color: var(--brand-accent-deep); background: var(--brand-accent-deep); }
@@ -2863,6 +2877,16 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .stop-work-button:disabled { color: var(--steel); cursor: default; }
 .stop-work-button:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 3px; }
 .composer-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; min-width: 0; min-height: 34px; }
+.presentation-request { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 5px 9px; border: 1px solid var(--line); border-radius: 18px; background: var(--canvas); color: var(--steel); font-size: 12px; white-space: nowrap; cursor: pointer; }
+.presentation-request:hover:not(:disabled) { border-color: var(--brand-accent); color: var(--ink); }
+.presentation-request[aria-checked="true"] { border-color: var(--brand-accent); background: color-mix(in srgb, var(--brand-accent) 10%, var(--canvas)); color: var(--brand-accent-deep); }
+.presentation-request:focus-visible { outline: 2px solid var(--brand-accent); outline-offset: 3px; }
+.presentation-request:disabled { opacity: .55; cursor: default; }
+.presentation-switch-track { display: inline-flex; align-items: center; width: 22px; height: 13px; padding: 2px; box-sizing: border-box; border-radius: 10px; background: var(--steel); }
+.presentation-switch-track > span { width: 9px; height: 9px; border-radius: 50%; background: var(--canvas); }
+.presentation-request[aria-checked="true"] .presentation-switch-track { background: var(--brand-accent); }
+.presentation-request[aria-checked="true"] .presentation-switch-track > span { transform: translateX(9px); }
+.presentation-request-hint { color: var(--steel); font-size: 11px; line-height: 1.5; }
 .composer-controls .attach-image { display: grid; place-items: center; flex: 0 0 auto; width: 32px; height: 32px; min-height: 32px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--steel); }
 .composer-controls .attach-image:hover:not(:disabled) { background: var(--line); color: var(--ink); }
 .composer-controls .attach-image:disabled { opacity: .5; }
@@ -2873,9 +2897,6 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .composer-controls :deep(.teaching-hint.routine) { display: none; }
 .composer-controls :deep(.teaching-switch), .composer-controls .conversation-learning-actions :deep(button) { min-height: 32px; font-size: .75rem; }
 .composer-controls .conversation-learning-actions { margin-left: auto; }
-.conversation-wide .agent-compose-row:not(.video-compose) > textarea { grid-column: 1; grid-row: 1; }
-.conversation-wide .agent-compose-row:not(.video-compose) > .composer-controls { display: none; }
-.conversation-wide .agent-compose-row:not(.video-compose) > button { grid-column: 2; grid-row: 1; align-self: center; }
 .agent-input-context { display: grid; gap: 0.5rem; max-height: min(128px, calc(var(--app-input-viewport-height, var(--app-content-height, 100dvh)) * .22)); overflow-y: auto; }
 .compose-caption { display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--steel); font-size: .75rem; }
 .compose-caption button { min-height: 28px; padding: 2px 8px; border: 0; background: transparent; }
@@ -3123,9 +3144,20 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   .conversation-mobile .learning-dock-copy { display: none; }
   .conversation-mobile .learning-dock :is(.learning-help, .learning-respond) { border-color: transparent; background: transparent; color: var(--steel); box-shadow: none; }
   .conversation-mobile .learning-dock :is(.learning-help, .learning-respond):hover:not(:disabled) { background: var(--surface-soft); color: var(--ink); }
-  .conversation-mobile .agent-compose-row > button, .conversation-mobile .composer-controls .attach-image { width: 40px; height: 40px; }
+  .conversation-mobile .composer-controls .attach-image { width: 40px; height: 40px; }
   .conversation-mobile .stop-work-button, .workspace-tools .stop-work-button { min-height: 40px; padding-inline: 12px; }
   .conversation-mobile .compose-caption { margin-bottom: 5px; padding: 0 4px; }
   .conversation-mobile .compose-caption button { min-height: 36px; }
 }
+.welcome-learning-actions { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 18px auto 8px; max-width: 300px; }
+.welcome-learning-actions .start-current-learning { display: inline-flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 44px; padding: 11px 16px; border: 1px solid var(--brand-green-deep); border-radius: 10px; background: var(--brand-green-deep); color: #fff; font: 500 .9rem/1.5 var(--sans); cursor: pointer; }
+.welcome-learning-actions .start-current-learning:disabled { opacity: .5; cursor: default; }
+.welcome-learning-actions small { color: var(--steel); font-size: .76rem; line-height: 1.6; overflow-wrap: anywhere; }
+.learning-dock.has-practice-actions { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
+.answer-practice-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
+.learning-dock .answer-practice-actions button { min-width: 0; min-height: 42px; padding: 9px 10px; white-space: normal; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--ink); font-size: .8rem; line-height: 1.5; }
+.learning-dock .answer-practice-actions .learning-explain { border-color: var(--brand-green-deep); background: var(--brand-green-deep); color: #fff; }
+.learning-dock .answer-practice-actions button:hover:not(:disabled) { filter: brightness(.97); }
+.learning-practice-note { grid-column: 1 / -1; margin: 0; color: var(--steel); font-size: .72rem; line-height: 1.65; overflow-wrap: anywhere; }
+.conversation-response .answer-practice-actions { grid-template-columns: minmax(0, 1fr); }
 </style>

@@ -3,10 +3,10 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import NetworkApp from './NetworkApp.vue';
-import { api } from './api';
+import { api, ApiError } from './api';
 import { discardNoteDraft, emptyNoteContent, keepNoteDraft, notesPanel, readNoteDrafts } from './personal-notes';
 import { installIdentity, installWorkspace, network, type NetworkWorkspace } from './network-context';
-import { workspaceAction } from './network-client';
+import { networkRequest, pendingSubmissions, workspaceAction } from './network-client';
 
 const reads = vi.hoisted(() => Object.fromEntries([
   'videoPlayback', 'videoContext', 'musicContext', 'manifest', 'assetManifest', 'sourceFingerprint', 'sourceManifest', 'profileManifest', 'text',
@@ -77,6 +77,90 @@ async function start() {
   await flushPromises();
 }
 function rail() { return wrapper.getComponent({ name: 'RightRail' }); }
+
+async function recoveredStart() {
+  await start();
+  await vi.waitFor(() => expect(requests.filter(url => url.endsWith('/chat/history'))).toHaveLength(2));
+}
+async function recoverVisibleHistory() {
+  const count = requests.filter(url => url.endsWith('/chat/history')).length;
+  window.dispatchEvent(new Event('workspace-recovered'));
+  await vi.waitFor(() => expect(requests.filter(url => url.endsWith('/chat/history'))).toHaveLength(count + 1));
+  await flushPromises();
+}
+
+it('keeps a rejected question and restores its editable draft after workspace recovery, then accepts another question', async () => {
+  await recoveredStart();
+  reads.agentRunCreate.mockRejectedValueOnce(new ApiError(429, 'RATE_LIMITED', 'capacity', '暂时繁忙'));
+  rail().vm.$emit('update:agentInput', '请解释这段内容，并比较前一章的结论');
+  rail().vm.$emit('send-agent'); await flushPromises();
+  expect(rail().props('agentInput')).toBe('请解释这段内容，并比较前一章的结论');
+  expect(rail().props('chat').at(-1).error).toBeTruthy();
+  await recoverVisibleHistory();
+  expect(rail().props('chat').map((t: { user: string }) => t.user)).toEqual(['原对话', '请解释这段内容，并比较前一章的结论']);
+  expect(rail().props('agentInput')).toBe('请解释这段内容，并比较前一章的结论');
+  rail().vm.$emit('send-agent'); await flushPromises();
+  expect(rail().props('chat').at(-1).outcome.answer).toBe('新回答');
+  expect(rail().props('agentInput')).toBe('');
+  rail().vm.$emit('update:agentInput', '成功之后再问一个问题');
+  rail().vm.$emit('send-agent'); await flushPromises();
+  expect(reads.agentRunCreate).toHaveBeenCalledTimes(3);
+  expect(rail().props('sending')).toBe(false);
+});
+
+it('keeps an in-flight question visible when recovery reads history before admission', async () => {
+  await recoveredStart();
+  let reply!: (value: unknown) => void;
+  reads.agentRunCreate.mockImplementationOnce(() => new Promise(resolve => { reply = resolve; }));
+  rail().vm.$emit('update:agentInput', '移动网络较慢时发送的问题');
+  rail().vm.$emit('send-agent'); await flushPromises();
+  await recoverVisibleHistory();
+  expect(rail().props('chat').at(-1)).toMatchObject({ user: '移动网络较慢时发送的问题', pending: true });
+  reply({ answer: '原问题的结果', effects: [] }); await flushPromises();
+  expect(rail().props('chat').at(-1)).toMatchObject({ user: '移动网络较慢时发送的问题', pending: false, outcome: { answer: '原问题的结果' } });
+  expect(rail().props('sending')).toBe(false);
+});
+
+it('preserves a newer draft on failure and lets the reader explicitly edit the original after clearing it', async () => {
+  await recoveredStart();
+  let reject!: (error: Error) => void;
+  reads.agentRunCreate.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+  rail().vm.$emit('update:agentInput', '原来的问题');
+  rail().vm.$emit('send-agent'); await flushPromises();
+  rail().vm.$emit('update:agentInput', '正在准备的下一题');
+  reject(new ApiError(400, 'SUBMISSION_STORAGE_FAILED', 'validation', 'storage unavailable'));
+  await flushPromises();
+  const turn = rail().props('chat').at(-1);
+  expect(rail().props('agentInput')).toBe('正在准备的下一题');
+  rail().vm.$emit('edit-failed-question', turn); await flushPromises();
+  expect(rail().props('agentInput')).toBe('正在准备的下一题');
+  expect(wrapper.get('.banner').text()).toContain('输入框里已有新草稿');
+  rail().vm.$emit('update:agentInput', '');
+  rail().vm.$emit('edit-failed-question', turn); await flushPromises();
+  expect(rail().props('agentInput')).toBe('原来的问题');
+  expect(reads.agentRunCreate).toHaveBeenCalledOnce();
+});
+
+it('shows a proxy upload rejection and lets the reader send another question', async () => {
+  await start();
+  // Complete the shell's initial workspace-recovered history refresh first.
+  await vi.waitFor(() => expect(requests.filter(url => url.endsWith('/chat/history'))).toHaveLength(2));
+  const original = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation((url, init) => String(url).endsWith('/agent/runs') && init?.method === 'POST'
+    ? Promise.resolve(new Response('<html><h1>413 Request Entity Too Large</h1></html>', { status: 413 }))
+    : original(url, init));
+  reads.agentRunCreate.mockImplementationOnce((message, meta) => networkRequest('POST', '/agent/runs', { message, ...meta }));
+  rail().vm.$emit('update:agentInput', '这里做一个和声分析');
+  rail().vm.$emit('send-agent'); await flushPromises();
+  expect(reads.agentRunCreate).toHaveBeenCalledOnce();
+  await vi.waitFor(() => expect(rail().props('chat').at(-1).error).toBe('图片或附件过大，请缩小后重新发送。'));
+  expect(rail().props('sending')).toBe(false);
+  expect(pendingSubmissions()).toEqual([]);
+  rail().vm.$emit('update:agentInput', '再问另一个问题');
+  rail().vm.$emit('send-agent'); await flushPromises();
+  expect(reads.agentRunCreate).toHaveBeenLastCalledWith('再问另一个问题', expect.anything());
+  expect(rail().props('chat').at(-1).outcome.answer).toBe('新回答');
+});
 
 it.each(['TOOL_ARGUMENTS_INVALID', 'FUTURE_INTERNAL_ERROR'])('restores %s history with a public failure message', async code => {
   restoredFailure = code;

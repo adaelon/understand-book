@@ -22,6 +22,15 @@ function note(memId: string, lid: string, content: string): MemoryRecord {
 }
 
 describe("ReaderPane Note rendering", () => {
+  it('does not change the reading position while the understanding map hides the reader',async()=>{
+    const wrapper=mount(ReaderPane,{props:{segments:[segment('1.1','paragraph')],readerActive:false,viewportAnchor:null,selectedLid:null,
+      renderSeg:(value:Segment)=>value.text,renderMarkdown:(value:string)=>value,markdownHeadingLevel:()=>null,isAsset:()=>false,isHighlighted:()=>false,
+      highlightsOf:()=>[],highlightCardsOf:()=>[],visibleNotes:[],hlExcerpt:()=>'',imageMeta:()=>null,imageAsset:()=>null}});
+    await wrapper.get('.reader-pane').trigger('scroll');
+    expect(wrapper.emitted('current-lid')).toBeUndefined();expect(wrapper.emitted('scroll-edge')).toBeUndefined();
+    await wrapper.setProps({readerActive:true});await wrapper.get('.reader-pane').trigger('scroll');
+    expect(wrapper.emitted('current-lid')?.at(-1)).toEqual(['1.1']);wrapper.unmount();
+  });
   it("keeps a display formula between separate prose paragraphs", async () => {
     const formula: Segment = {
       ...segment("1.2", "formula"),

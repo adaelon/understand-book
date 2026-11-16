@@ -94,7 +94,7 @@ fn native_preview_at_turn_limit_uses_board_delivery_for_non_teaching_states() {
         ], vec![]);
         let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(1), ..Default::default() }, adapter.model_runtime_profile());
         if state != "none" {
-            context.tutor = Some(if state == "outside" { json!({"status":"active","outside_current_request":true}) }
+            context.tutor = Some(if state == "outside" { json!({"status":"practice","outside_current_request":true}) }
                 else { json!({"status":state}) });
             context.tutor_resolved = true;
         }

@@ -200,6 +200,17 @@ fn expect_method(method: &str, expected: &str) -> Result<(), ToolError> {
 fn invalid() -> ToolError {
     crate::user_storage_paths::error("INVALID_REQUEST", "validation", "Invalid request")
 }
+
+fn request_body_limit(url: &str, default: usize) -> usize {
+    let path = url.split('?').next().unwrap_or(url);
+    let action = path.strip_prefix("/api/workspaces/").and_then(|rest| rest.split_once('/')).map(|(_, action)| action);
+    match action {
+        // A supported 4 MiB PNG needs ~5.34 MiB as base64, plus question context.
+        Some("agent/runs" | "reader/video_draft") => default.max(6 * 1024 * 1024),
+        Some("reader/voice-transcribe") => crate::voice_input::REQUEST_BYTES,
+        _ => default,
+    }
+}
 pub(crate) fn now() -> i64 {
     time::OffsetDateTime::now_utc().unix_timestamp()
 }
@@ -381,12 +392,16 @@ pub(crate) fn start_with_access(
                         .collect(),
                 );
                 let mut body = String::new();
-                let limit = access.resources.limits.request_bytes;
+                let limit = request_body_limit(&url, access.resources.limits.request_bytes);
                 let read = request
                     .as_reader()
                     .take(limit as u64 + 1)
                     .read_to_string(&mut body);
-                let reply = if read.is_err() || body.len() > limit {
+                let reply = if body.len() > limit {
+                    let mut reply = HttpReply::json(json!({"error_code":"REQUEST_TOO_LARGE", "category":"validation", "message":"图片或附件过大，请缩小后重新发送。"}));
+                    reply.status = 413;
+                    reply
+                } else if read.is_err() {
                     HttpReply::error(invalid())
                 } else {
                     dispatch(&access, &site, &method, &url, &headers, &body, now())
@@ -411,6 +426,17 @@ pub(crate) fn start_with_access(
                     handles.push(thread::spawn(move || {
                         let reply = match wait {
                             PendingReply::Turn(wait) => wait_for_turn(&access, &wait),
+                            PendingReply::Voice(task) => match task.execute(&access,
+                                runtime::run_context::CancellationToken::with_host_stop(stop)) {
+                                Ok(value) => HttpReply::json(value),
+                                Err(error) => HttpReply::error(error),
+                            },
+                            PendingReply::Guidance(task) => match task.execute(
+                                &access, runtime::run_context::CancellationToken::with_host_stop(stop),
+                            ) {
+                                Ok(value) => HttpReply::json(value),
+                                Err(error) => HttpReply::error(error),
+                            },
                             PendingReply::Translation(task) => match task.execute(
                                 &access,
                                 runtime::run_context::CancellationToken::with_host_stop(stop),
@@ -675,6 +701,10 @@ pub(crate) fn dispatch(
                     serde_json::from_value(input).map_err(|_|invalid())?,now).map(HttpReply::json);
             }
             Capability::WorkspaceInstance(ref workspace,action) => {
+                if action == "course" {
+                    let context = access.context(principal.clone(), now)?;
+                    return crate::inquiry_course::request(access, &context, principal.user_id(), workspace, method, &query, input, now).map(HttpReply::json);
+                }
                 let mut control=access.admin.control.lock().unwrap();
                 let result=match (method,action) {
                     ("GET","") if query.is_empty() => control.workspace_release_instance(principal.user_id(),workspace),
@@ -694,8 +724,10 @@ pub(crate) fn dispatch(
                     if !query.is_empty() { return Err(invalid()); }
                     access.admin.workspace_release(Some(principal.user_id()),id,*version,export)
                 } else {
-                    let (limit,offset) = crate::admin_api::page(&query)?;
-                    access.admin.workspace_releases(Some(principal.user_id()),limit,offset)
+                    let mut pagination = query.clone();
+                    let book_id = pagination.remove("book_id");
+                    let (limit,offset) = crate::admin_api::page(&pagination)?;
+                    access.admin.workspace_releases(Some(principal.user_id()),limit,offset,book_id.as_deref())
                 };
                 return result.map(HttpReply::json);
             }
@@ -718,11 +750,20 @@ pub(crate) fn dispatch(
                     let scope = id.as_deref().ok_or_else(invalid)?;
                     let workspace = access.learning_workspace_metadata(principal.user_id(), scope)?;
                     let operation = path.rsplit('/').next().ok_or_else(invalid)?;
-                    if workspace.archived && !matches!(operation, "list" | "read") {
+                    if workspace.archived && !matches!(operation, "list" | "read" | "source.resolve" | "source.read") {
                         return Err(crate::user_storage_paths::error("LEARNING_WORKSPACE_ARCHIVED", "conflict", "Restore the learning workspace before changing its notes"));
                     }
                     let context = access.context(principal, now)?;
                     let user = context.user.lock().unwrap();
+                    if matches!(operation, "source.resolve" | "source.read") {
+                        let owner = context.user_id();
+                        let binding = crate::workspace_notes_api::scoped_source_binding(&user, Some(scope), &input)?;
+                        return if operation == "source.read" {
+                            crate::cross_book::source_window(&access.library, owner, &binding, &input)
+                        } else {
+                            crate::cross_book::source_view(&access.library, owner, &binding, false)
+                        }.map(HttpReply::json);
+                    }
                     return crate::workspace_notes_api::account(&user, scope, operation, &input, &now.to_string()).map(HttpReply::json);
                 }
                 if action == "preparations" {
@@ -855,6 +896,12 @@ pub(crate) fn dispatch(
                 Ok(HttpReply::json(
                     json!({"books":access.library.lock().unwrap().list(context.user_id())?}),
                 ))
+            }
+            Capability::BoardLibrary => {
+                expect_method(method, "GET")?;
+                if !query.is_empty() || !input.is_null() { return Err(invalid()); }
+                let user = context.user.lock().unwrap();
+                crate::board_api::account_list(&user).map(HttpReply::json)
             }
             Capability::Book(reference, leaf) => {
                 let user = context.user.lock().unwrap();
@@ -989,7 +1036,8 @@ pub(crate) fn dispatch(
             Capability::Workspace(id) => {
                 let prefix = format!("/workspaces/{id}");
                 let action = path.strip_prefix(&prefix).unwrap().trim_start_matches('/');
-                expect_method(method, if action.is_empty() || action == "resumption" { "GET" } else { "POST" })?;
+                let task_read = action == "learning-task" && method == "GET";
+                expect_method(method, if action.is_empty() || action == "resumption" || task_read { "GET" } else { "POST" })?;
                 if matches!(action, "agent/runs" | "agent/chat") {
                     return admit_reply(
                         access,
@@ -999,6 +1047,23 @@ pub(crate) fn dispatch(
                         &now.to_string(),
                         action == "agent/chat",
                     );
+                }
+                if action == "reader/voice-status" {
+                    let user = context.user.lock().unwrap();
+                    access.workspaces.lock().unwrap().check_voice_scene(&context,&user,&access.library,&id,&input)?;
+                    return Ok(HttpReply::json(json!({"result":crate::voice_input::status()})));
+                }
+                if action == "reader/voice-transcribe" {
+                    let task = crate::voice_input::PreparedVoice::prepare(access,context,&id,&input)?;
+                    let mut reply = HttpReply::json(Value::Null);
+                    reply.waiting = Some(PendingReply::Voice(task));
+                    return Ok(reply);
+                }
+                if matches!(action, "reader/guidance" | "tutor/ask-step" | "tutor/grade") {
+                    let task = crate::reading_guidance::PreparedGuidance::prepare(access, context, &id, action, &input)?;
+                    let mut reply = HttpReply::json(Value::Null);
+                    reply.waiting = Some(PendingReply::Guidance(task));
+                    return Ok(reply);
                 }
                 if action == "reader/selection.translate" {
                     let task = crate::selection_translation::PreparedTranslation::prepare(
@@ -1017,7 +1082,7 @@ pub(crate) fn dispatch(
                     &mut user,
                     &access.library,
                     &id,
-                    action,
+                    if task_read { "learning-task/state" } else { action },
                     &input,
                     &now.to_string(),
                 )?;
@@ -1055,6 +1120,13 @@ pub(crate) fn dispatch(
                     .latest_resumption(context.user_id(), &user, &access.library)
                     .map(HttpReply::json)
             }
+            Capability::LearningTasks => {
+                expect_method(method, "GET")?;
+                let user = context.user.lock().unwrap();
+                crate::learning_task::network_list(&user, context.user_id(),
+                    &access.admin.control.lock().unwrap(), &access.library)
+                    .map(HttpReply::json)
+            }
             Capability::NewWorkspace => {
                 expect_method(method, "POST")?;
                 let user = context.user.lock().unwrap();
@@ -1081,6 +1153,9 @@ pub(crate) fn dispatch(
                 }
                 let value = if mutate {
                     let request: memory::learning::TutorMutation = serde_json::from_value(input).map_err(|_| invalid())?;
+                    if matches!(request.action, memory::learning::TutorAction::SetEnabled { .. }) {
+                        return Err(crate::user_storage_paths::error("TUTOR_ACTION_INVALID", "validation", "连续教学开关已移除；提问、接续和练习直接使用各自入口。"));
+                    }
                     if matches!(request.action, memory::learning::TutorAction::SyncWorkspaceGoal { .. }) {
                         return Err(invalid());
                     }
@@ -1274,7 +1349,14 @@ fn admit_reply(
     now: &str,
     wait: bool,
 ) -> Result<HttpReply, ToolError> {
-    let mut accepted = reader_run_view(access, context, access.runs.admit(access, context, workspace, input, now)?)?;
+    let admitted = access.runs.admit(access, context, workspace, input, now).map_err(|error| {
+        if let Err(record_error) = crate::operations::rejection(&access.admin.control.lock().unwrap().connection,
+            context.user_id(), input, &error, now.parse().unwrap_or_else(|_| self::now())) {
+            eprintln!("operations admission write failed: {}", record_error.error_code);
+        }
+        error
+    })?;
+    let mut accepted = reader_run_view(access, context, admitted)?;
     if accepted["kind"] == "activity_help" { return Ok(HttpReply::json(accepted)); }
     if accepted["dispatch_state"] == "admission_failed" {
         accepted["error_code"] = json!("ADMISSION_FAILED");
@@ -1310,6 +1392,8 @@ fn admit_reply(
 }
 enum PendingReply {
     Turn(SyncWait),
+    Guidance(crate::reading_guidance::PreparedGuidance),
+    Voice(crate::voice_input::PreparedVoice),
     Translation(crate::selection_translation::PreparedTranslation),
 }
 struct SyncWait {

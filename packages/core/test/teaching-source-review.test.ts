@@ -1,11 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { newTeachingReviewWork, teachingReviewInput, advanceTeachingReview, reviewSource, type TeachingSample } from "../src/teaching-source-review";
+import { newTeachingReviewWork, teachingReviewInput, advanceTeachingReview, acceptTeachingReview, reviewSource, type TeachingSample } from "../src/teaching-source-review";
+import { automaticBuildFailureDiagnosticFromWriterError, automaticBuildCandidateCorrection, createAutomaticBuildFailureDiagnosticV3 } from "../src/extractor-contract";
 import { teachingSamples } from "../src/teaching-build";
 import { acceptFormalObjects } from "../src/teaching-map";
 import { source, binding, proposal } from "./fixtures/teaching-source";
 import type { CognitiveMaterials } from "../src/cognitive-materials";
 describe("bounded independent teaching source review", () => {
   const sample: TeachingSample = { sample_id: "object:speed:1", content: { meaning: "速率是总路程除以总时间" }, evidence_lids: ["1.1"], evidence_bindings: [binding("1.1")] };
+  it("corrects missing coverage evidence in direct and stepped reviews without overriding the verdict", () => {
+    const multi = { ...sample, evidence_lids: ["1.1", "1.2"], evidence_bindings: [binding("1.1"), binding("1.2")] };
+    const review = { samples: [{ sample_id: sample.sample_id, verdict: "fail", reason: "条件缺失", source_bindings: [binding("1.1")] }] };
+    let work = newTeachingReviewWork(source, multi);
+    for (let range; (range = teachingReviewInput(source, multi, work).next_range);)
+      work = advanceTeachingReview(source, multi, work, { kind: "read", ...range });
+    for (const [path, run] of [
+      ["/samples/0", () => acceptTeachingReview(source, [multi], review)],
+      ["/review/samples/0", () => advanceTeachingReview(source, multi, work, { kind: "finish", review })],
+    ] as const) {
+      let err: unknown;
+      try { run(); } catch (e) { err = e; }
+      expect(automaticBuildCandidateCorrection(automaticBuildFailureDiagnosticFromWriterError(err, { writer_started: true })))
+        .toMatchObject({ json_pointer: path + "/source_bindings", expected: expect.stringContaining("Missing LIDs: 1.2") });
+    }
+    review.samples[0].source_bindings.push(binding("1.2"));
+    expect(acceptTeachingReview(source, [multi], review).samples[0].verdict).toBe("fail");
+    expect(automaticBuildCandidateCorrection(createAutomaticBuildFailureDiagnosticV3({ phase: "artifact_writer", category: "schema",
+      code: "semantic_output_invalid", expected: "teaching review omits sampled source" }))?.expected).toContain("evidence_lids");
+  });
   it("requires all cited ranges before deciding the whole sample and persists a tail contradiction", () => {
     const long = structuredClone(source);
     long.passages[0].text = "重复背景。".repeat(2000) + "末尾更正：这不是速率的定义。";

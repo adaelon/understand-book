@@ -4,6 +4,10 @@ import { resolve } from 'node:path';
 
 const output = resolve('../../docs/performance/personal-notes-20261030/floating');
 test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    for (const owner of ['dock-reader', 'note-preview'])
+      localStorage.setItem(`understand-book.product-tour.v1.${owner}.library`, 'done');
+  });
   const notes = new Map<string, any>();
   await page.route('**/api/**', async route => {
     const path = new URL(route.request().url()).pathname;
@@ -286,6 +290,42 @@ test('the thought entry leaves the send button clickable with long drafts and sh
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await page.screenshot({ path: resolve(evidence, `send-${viewport.width}x${viewport.height}.png`) });
   }
+});
+
+test('the recording entry avoids the running answer stop control while scrolling and resizing', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 918 });
+  await page.evaluate(async () => { const path = '/playwright/fixtures/send-button.ts'; (await import(path)).openConversation(false, true); });
+  const stop = page.locator('.run-progress-footer .stop-work-button');
+  const entry = page.locator('.thought-entry');
+  const evidence = resolve('../../docs/performance/note-launcher-avoidance-20261103');
+  mkdirSync(evidence, { recursive: true });
+  for (const viewport of [{ width: 1280, height: 918 }, { width: 1024, height: 440 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    await page.locator('.transcript').evaluate(el => { el.scrollTop = el.scrollHeight; });
+    await expect(stop).toBeInViewport();
+    await expect(entry).toBeVisible();
+    await expect.poll(async () => {
+      const a = (await entry.boundingBox())!, b = (await stop.boundingBox())!;
+      return a.x < b.x + b.width + 12 && a.x + a.width + 12 > b.x
+        && a.y < b.y + b.height + 12 && a.y + a.height + 12 > b.y;
+    }).toBe(false);
+    await stop.click({ timeout: 3000 });
+    await page.screenshot({ path: resolve(evidence, `running-${viewport.width}x${viewport.height}.png`) });
+  }
+  await expect(page.locator('[data-stops]')).toHaveAttribute('data-stops', '3');
+  // Dropping a remembered position onto a control must still yield after release.
+  const initial = (await entry.boundingBox())!, control = (await stop.boundingBox())!;
+  await page.mouse.move(initial.x + initial.width / 2, initial.y + initial.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(control.x + control.width / 2, control.y + control.height / 2, { steps: 10 });
+  await page.mouse.up();
+  await expect.poll(async () => {
+    const a = (await entry.boundingBox())!, b = (await stop.boundingBox())!;
+    return a.x < b.x + b.width && a.x + a.width > b.x && a.y < b.y + b.height && a.y + a.height > b.y;
+  }).toBe(false);
+  await expect(page.getByRole('region', { name: '我的想法', exact: true })).toBeHidden();
+  await stop.click({ timeout: 3000 });
+  await expect(page.locator('[data-stops]')).toHaveAttribute('data-stops', '4');
 });
 
 test('dragging the recording entry does not open it and its position survives reopening and reload', async ({ page }) => {

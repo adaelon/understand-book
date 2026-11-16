@@ -190,6 +190,12 @@ impl ControlStore {
         for member in &mut members {
             member.readable = crate::course_access::material_allowed(&self.connection,owner,&member.published_book_ref,crate::multi_user_host::now())?;
         }
+        let shared_release = self.connection.query_row(
+            "SELECT release_id,version FROM workspace_release_instances WHERE owner_user_id=? AND learning_workspace_id=?",
+            params![owner, id], |row| Ok(base_schema::WorkspaceReleaseSelection {
+                release_id: row.get(0)?, version: row.get(1)?,
+            }),
+        ).optional().map_err(|_| storage())?;
         Ok(LearningWorkspace {
             learning_workspace_id: id.into(),
             goal,
@@ -198,6 +204,7 @@ impl ControlStore {
             archived,
             created_at,
             updated_at,
+            shared_release,
         })
     }
 

@@ -1,6 +1,6 @@
 # 解释语法模板库
 
-正式目录 revision 5 包含 9 个可组合能力单元、10 个登记版本。首批八单元包含双图同源、图形直接操作与完整讲解；单因素对照的新版本支持同页连续演示、显现帮助和用户接手，原 @2 仍可读取。每个版本保存语法卡、完整可运行作品、适配说明、Author 元数据和具体预期观察。三维联动模板从用户认可的齿轮作品提取，并提供弹簧振子的跨题改写。
+正式目录 revision 6 收录 11 种解释方法、12 个登记版本。每个版本提供方法卡、可运行作品、改写说明、制作元数据和预期观察。新增的两种方法共含五个场景。同一个范数问题可以画等值边界、按步行走或对齐读数。观察内部空间可以拆开装配件，也可以移动截面。
 
 [打开可操作总览](index.html) · [机器目录](catalog.json) · [来源与许可](SOURCES.md) · [制作与验证记录](../../../docs/performance/presentation-method-library-v1/README.md)
 
@@ -17,10 +17,12 @@
 | 这些数字的差异有多大？ | [先建立尺度，再揭示数据](chart-reveal/v2/card.md) | [运行](chart-reveal/v2/example/index.html) |
 | 局部细节在整体的什么位置？ | [保留定位的尺度缩放](scale-zoom/v2/card.md) | [运行](scale-zoom/v2/example/index.html) |
 | 立体结构、运动与公式如何对应？ | [三维结构与图解共用一个模型](spatial-linked-views/v1/card.md) | [齿轮](spatial-linked-views/v1/preview.html?topic=gear) · [弹簧](spatial-linked-views/v1/preview.html?topic=spring) |
+| 对象相同，换规则后为什么读数或排序会变？ | [固定对象，换规则比较结果](compare-rules/v1/card.md) | [边界蓝图](compare-rules/v1/example/index.html) · [像素街区](compare-rules/v1/routes/index.html) · [孔版印痕](compare-rules/v1/prints/index.html) |
+| 哪些部件或截面藏在外表之下？ | [拆开或剖切，辨认被遮挡的关系](inspect-space/v1/card.md) | [相机装配](inspect-space/v1/preview.html?scene=assembly) · [点云剖层](inspect-space/v1/preview.html?scene=section) |
 
 ## 选用和改写
 
-先写清读者卡住的关系，选择零个或多个方法。只需一个定义或小幅措辞修改时，使用文字或静态关系即可。读取所选卡片、完整 HTML、适配说明及 author.json；根据新任务重新建立公式、变量、数据、来源、边界和检查。共用色彩只表达同一身份；相机、强调、描线服务于当前关系。
+先写清读者要解释的关系。对有场景可选的方法，教练在已有的 adaptation 中写出所选文件、如何按新材料重做，以及读者能看见什么。目录的 appearance 描述这个场景的主画面。作者读取该卡、所选完整 HTML、配套 author.json、改写说明和反例，从示范的绘图区开始改写。证明或查阅可以保留连续的正文与公式。
 
 正式路径：Author 暴露短目录 → `read_method` 读取确切版本和文件 → 按新内容改写 → `write` / `patch` 声明 `method_refs` → preview → deliver。完整源码按需读取，未选模板不会自动进入上下文。默认构建读取本目录。
 
@@ -31,6 +33,10 @@ author.json 是示例的内容元数据，HTML 单独读取后填入 write；met
 `spatial-linked-views@1` 将三维渲染、稳定相机取景、指针与键盘旋转、拆解、同源多图更新、时间定位、现场恢复抽成同一份运行核心。改主题时替换公式、部件、图解和文字，保留同步和生命周期机制。完整的 Agent 改写入口见 [适配说明](spatial-linked-views/v1/example/README.md)，实际验证见 [三维模板记录](../../../docs/performance/presentation-spatial-template-v1/README.md)。
 
 本地维护执行 `node scripts/build-spatial-method.mjs` 生成两套自包含 HTML；`node scripts/verify-spatial-method.mjs` 检查真实 WebGL、独立数学和几何、正式状态桥重开、静态导出及无 WebGL 的二维回退。总验证脚本也会调用该专用检查器。
+
+## 场景参照与维护
+
+相机与剖层各有一份场景源码 `scene.html`，只共用轨道相机和取景。修改后运行 `node scripts/build-inspection-scenes.mjs`。总览使用 `node scripts/build-method-gallery.mjs` 从正式目录刷新。二维的三份作品可直接改写各自的 HTML。五个场景、29 个视频时间点和实际验证结果见[场景制作记录](../../../docs/performance/presentation-scenes-20261103/README.md)。
 
 ## 本批采用记录
 
@@ -46,4 +52,4 @@ discrete-update@2 沿用 @1 的 HTML、公式和交互，补充机器可读的 A
 
 ## 已知限制
 
-本库交付的是可改写的制作资产。三维模板已完成齿轮到弹簧的确定性改写验证；Agent 自然选卡、独立迁移的收益及读者学习效果尚无本批结论。线上生效需要后续构建发布。示例只说明其具体关系和支持域，不能替代新书籍内容的核对。
+三维联动模板的齿轮与弹簧，以及新场景的自然请求，分别有各自的验证记录。案例能说明当次制作和操作结果。自然选型的稳定性及读者学习效果仍需更多实例。本批改动已于 2026-11-03 21:03 HKT 随 Reader 发布。[上线记录](../../../docs/performance/presentation-scenes-20261103/deployment/README.md)

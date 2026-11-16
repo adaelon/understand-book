@@ -1,5 +1,6 @@
 //! TB4: frozen content through real authoring, browser state and Tutor storage.
 use super::*;
+use crate::tests::tutor_loop_tests::prepare_activity_chat as prepare_agent_chat;
 use runtime::presentation::PresentationRef;
 
 fn directory() -> PathBuf {
@@ -13,6 +14,24 @@ fn save(path: impl AsRef<Path>, value: &Value) {
     std::fs::write(path, serde_json::to_vec_pretty(value).unwrap()).unwrap();
 }
 
+fn borrowing_practice(path: impl AsRef<Path>) -> Value {
+    let mut output = read(path);
+    let question = output["answer"].clone();
+    let movement = &mut output["select"]["move"];
+    // These historical packets asked an ungraded dialogue question. The fixture
+    // now enters explicit practice, so supply the private contract for that same
+    // unanswered question without changing its visible explanation or support.
+    movement["prompt"] = question;
+    movement["actions"] = json!(["submit", "revise", "request_hint", "reveal", "skip"]);
+    movement["explanation"] = json!("b 的类型是 &Foo，提供共享访问。Foo 实现 Copy 只改变值复制的规则，不会把共享引用变成可变引用，因此 b.0 = 8 不能编译。");
+    movement["assessment"] = json!({"rule":{"kind":"open","items":[{"id":"shared-access",
+        "criterion":"判断 b.0 = 8 不能编译，并说明 Copy 不会改变 &Foo 的共享访问权限。","source_lids":["1.1"]}]},
+        "source_lids":["1.1"],"source_sufficient":true,"feedback":"after_submit"});
+    movement["practice"] = json!({"entry":"warmup","mode":"discriminate","distance":"adjacent",
+        "hints":[{"kind":"structure","text":"分别检查 Foo 的性质与 b 的类型。"}]});
+    output
+}
+
 fn seed() -> (tempfile::TempDir, AppState, Value) {
     let tb3 = directory().join("../tutor-building-blocks-tb3");
     let case = read(tb3.join("scenarios.json"))["cases"].as_array().unwrap().iter()
@@ -21,20 +40,18 @@ fn seed() -> (tempfile::TempDir, AppState, Value) {
     let run = prepare_agent_chat(&mut state, &json!({"message":case["response"]}).to_string(), "tb4-seed").unwrap_or_else(|r|panic!("{}",r.body));
     let current = super::tutor_adaptation_tests::context_packet(&state,&run,&delivery);
     let dir = tb3.join("sol/repair/independent-step");
-    super::tutor_adaptation_tests::replay_turn(&mut state,run,&read(dir.join("input.json")),read(dir.join("output.json")),&current,false);
-    assert_eq!(route_agent_new(&mut state,"tb4-seed-reopen").status,200);
-    let run = prepare_agent_chat(&mut state,&json!({"message":case["reopen_request"]}).to_string(),"tb4-seed-reopen").unwrap_or_else(|r|panic!("{}",r.body));
-    let current = super::tutor_adaptation_tests::context_packet(&state,&run,&delivery);
-    let dir = tb3.join("sol/reopen-repair/independent-step");
-    let replay = super::tutor_adaptation_tests::replay_turn(&mut state,run,&read(dir.join("input.json")),read(dir.join("output.json")),&current,false);
+    let replay = super::tutor_adaptation_tests::replay_turn(&mut state,run,&read(dir.join("input.json")),borrowing_practice(dir.join("output.json")),&current,false);
     let delivery = replay["facts"].as_array().unwrap().iter().find(|f|f["kind"]=="message_delivered").unwrap().clone();
+    // Reopen the unanswered activity by its original delivery instead of
+    // creating a duplicate practice question with a new identity.
+    assert_eq!(route_agent_new(&mut state,"tb4-seed-reopen").status,200);
     (root,state,delivery)
 }
 
 #[test]
 fn tutor_tb4_keeps_tb3_help_and_unanswered_judgment() {
     let (_root,mut state,delivery) = seed();
-    let run = prepare_agent_chat(&mut state,r#"{"message":"让我用操作检验上次的判断，先别给答案。"}"#,"tb4").unwrap_or_else(|r|panic!("{}",r.body));
+    let run = prepare_agent_chat(&mut state,&json!({"message":"让我用操作检验上次的判断，先别给答案。","teaching_ref":delivery["event_id"]}).to_string(),"tb4").unwrap_or_else(|r|panic!("{}",r.body));
     let current = super::tutor_adaptation_tests::context_packet(&state,&run,&delivery);
     let interpretation = &current["context"]["learner_context"]["interpretations"][0];
     assert_eq!(interpretation["evidence_ref"],"interpretation:tb3-independent-copy-condition");
@@ -140,7 +157,7 @@ fn tutor_tb4_author_and_browser_host() {
     let (root,mut state,prior_delivery) = seed();
     let packet = read(directory().join("sol/author/input.json"));
     let output = read(directory().join("artifact.json"));
-    let run = prepare_agent_chat(&mut state,&json!({"message":packet["user_request"]}).to_string(),"tb4-author").unwrap_or_else(|r|panic!("{}",r.body));
+    let run = prepare_agent_chat(&mut state,&json!({"message":packet["user_request"],"teaching_ref":prior_delivery["event_id"]}).to_string(),"tb4-author").unwrap_or_else(|r|panic!("{}",r.body));
     let turn = run.turn_ref.clone();
     let session = run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_string();
     save(directory().join("replay/author-context.json"),&super::tutor_adaptation_tests::context_packet(&state,&run,&prior_delivery));

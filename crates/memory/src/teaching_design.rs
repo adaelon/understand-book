@@ -73,7 +73,13 @@ pub struct TeachingDesign {
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ResponseExpectation {
     pub public_prompt: String,
+    #[serde(default)]
     pub block_refs: Vec<String>,
+    /// Begin or continue a Socratic dialogue with this single, plain-text question.
+    /// Choose it after supplying the requested support and when the reader can offer a view.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    #[ts(as = "Option<bool>", optional)]
+    pub socratic: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, schemars::JsonSchema, ts_rs::TS)]

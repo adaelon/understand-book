@@ -97,7 +97,6 @@ function initialCandidate(unit: Pass1ShadowWorkUnitV1): unknown {
     version: PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION,
     parent_lid: unit.route.parent_lid,
     source_slice_ordinal: slice.ordinal,
-    core_sha256: slice.core_sha256,
     nodes: [node],
     edges: [],
   };

@@ -3,36 +3,36 @@ import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { ArrowLeft, ArrowRight, BookOpen, Check, ChevronRight, FileText, History, Plus, RefreshCw, Route, SlidersHorizontal, X } from '@lucide/vue';
+import { ArrowLeft, ArrowRight, BookOpen, ChevronRight, FileText, History, Plus, RefreshCw, SlidersHorizontal, X } from '@lucide/vue';
 import type { TutorSession } from '../generated/TutorSession';
 import type { TutorState } from '../generated/TutorState';
 import type { TutorAction } from '../generated/TutorAction';
-import type { TutorSessionMode } from '../generated/TutorSessionMode';
-import UnderstandingSpace from './UnderstandingSpace.vue';
 import LearningPurposeEntry from './LearningPurposeEntry.vue';
+import CourseTutorControl from './CourseTutorControl.vue';
+import type { CourseLessonView } from '../generated/CourseLessonView';
 import type { LearningPurpose } from '../generated/LearningPurpose';
-import type { LearningScopeKind, LearningScopeOption } from '../learning-purpose';
+import type { LearningPurposeStart, LearningScopeKind, LearningScopeOption } from '../learning-purpose';
 
-const props = defineProps<{ state: TutorState | null; busy: boolean; error: string; pending: boolean; sourceId?: string; label: string; musicMode?: boolean; videoMode?: boolean;
-  readiness?: { status: string; limitations: string[]; reason: string } | null; readinessError?: string; initialView?: 'current' | 'understanding' | 'history';
+const props = defineProps<{ state: TutorState | null; draft?:string; busy: boolean; error: string; pending: boolean; sourceId?: string; label: string; musicMode?: boolean; videoMode?: boolean;
+  course?: CourseLessonView | null; courseBlocked?: boolean; courseGoalChanged?: boolean; courseError?: string;
+  readiness?: { status: string; limitations: string[]; reason: string } | null; readinessError?: string; initialView?: 'current' | 'understanding' | 'history' | 'knowledge'; currentLid?: string; positionMs?: number;
   learningScopeOptions?: LearningScopeOption[]; learningPurposeAvailable?: boolean; learningPurposeBusy?: boolean; learningPurposeReason?: string }>();
-const emit = defineEmits<{ (e: 'action', action: TutorAction): void; (e: 'retry'): void; (e: 'close'): void; (e: 'refreshReadiness'): void;
-  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind): void }>();
-type View = 'current' | 'understanding' | 'history' | 'new';
-const tabs = [{ id: 'current', label: uiText('当前学习') }, { id: 'understanding', label: uiText('我的理解') }, { id: 'history', label: uiText('历史会话') }] as const;
-const modes: { value: TutorSessionMode | null; label: string; description: string; icon: typeof BookOpen }[] = [
-  { value: null, label: uiText('按需调整'), description: uiText('跟随当前问题'), icon: SlidersHorizontal },
-  { value: 'direct_explanation', label: uiText('直接讲解'), description: uiText('完整说明当前问题'), icon: BookOpen },
-  { value: 'guided_inquiry', label: uiText('引导思考'), description: uiText('尝试、示范与按需帮助'), icon: Route },
-];
+const emit = defineEmits<{ (e: 'action', action: TutorAction): void; (e: 'retry'): void; (e: 'close'): void; (e: 'refreshReadiness'): void; (e:'understanding'):void; (e:'update:draft',value:string):void;
+  (e: 'course-action', action: { kind: 'pause' | 'resume' }): void; (e: 'course-return'): void; (e: 'course-retry'): void;
+  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind, request?: LearningPurposeStart): void }>();
+type View = 'current' | 'understanding' | 'history' | 'new' | 'knowledge';
+const tabs = [{ id: 'current', label: uiText('当前学习') }, { id: 'history', label: uiText('历史会话') }] as const;
 const statusLabels = { active: uiText('进行中'), paused: uiText('已暂停'), ended: uiText('已结束') };
 const sessions = computed(() => Object.values(props.state?.sessions ?? {}).filter((session): session is TutorSession => !!session));
 const currentSession = computed(() => props.state?.sessions[props.state.control.current_tutor_session_id ?? ''] ?? null);
-const selectedId = ref<string | null>(currentSession.value?.id ?? null);
+const selectedId = ref<string | null>(props.course ? null : currentSession.value?.id ?? null);
 const selectedSession = computed(() => props.state?.sessions[selectedId.value ?? ''] ?? currentSession.value);
 const history = computed(() => sessions.value.filter(session => session.id !== currentSession.value?.id || session.status !== 'active'));
-const view = ref<View>(props.initialView ?? (currentSession.value ? 'current' : 'new'));
-const intent = ref('');
+const view = ref<View>(props.initialView && !['understanding','knowledge'].includes(props.initialView) ? props.initialView : (props.course || currentSession.value ? 'current' : 'new'));
+const courseCurrent = computed(() => !!props.course && view.value === 'current' && selectedId.value === null);
+if(props.initialView && ['understanding','knowledge'].includes(props.initialView))emit('understanding');
+const intent = ref(props.draft??'');
+watch(intent,value=>emit('update:draft',value));
 const startRequested = ref<string | null>(null);
 const resumeRequested = ref<string | null>(null);
 const confirmEnd = ref(false);
@@ -46,13 +46,15 @@ const belongsToSource = (session: TutorSession) => !!props.sourceId && session.m
 const canResume = computed(() => !locked.value && !!props.state && ready.value && selectedSession.value && belongsToSource(selectedSession.value));
 const canStart = computed(() => !locked.value && props.state && props.sourceId && intent.value.trim());
 const statusText = computed(() => !props.state ? uiText('正在读取学习状态') : props.readinessError ? uiText('学习状态读取失败')
-  : !props.state.control.enabled ? uiText('学习助手已关闭') : ready.value ? uiText('学习助手已就绪') : uiText('学习基础准备中'));
+  : ready.value ? uiText('学习助手已就绪') : uiText('学习基础准备中'));
 
 function changeView(next: View) { view.value = next; confirmEnd.value = false; }
 function openTab(next: View) {
-  if (next === 'current') selectedId.value = currentSession.value?.id ?? null;
+  if(next==='understanding' || next==='knowledge'){emit('understanding');return;}
+  if (next === 'current') selectedId.value = props.course ? null : currentSession.value?.id ?? null;
   changeView(next);
 }
+defineExpose({ openView: openTab });
 async function requestEnd() {
   confirmEnd.value = true;
   await nextTick();
@@ -60,6 +62,7 @@ async function requestEnd() {
 }
 watch(view, async () => { await nextTick(); if (body.value) body.value.scrollTop = 0; });
 watch(currentSession, (next, previous) => {
+  if (props.course) return;
   if (next?.id !== previous?.id) selectedId.value = next?.id ?? null;
   // Navigate only after the server has confirmed the requested session.
   if (next && next.id !== previous?.id && next.user_intent === startRequested.value) {
@@ -117,33 +120,37 @@ onBeforeUnmount(() => { if (origin?.isConnected) origin.focus({ preventScroll: t
           <span class="tutor-brand"><BookOpen aria-hidden="true" /></span>
           <div><h2>{{ uiText('学习详情') }}</h2><p>{{ uiText('从当前问题出发，按你的节奏学。') }}</p></div>
           <div class="tutor-header-tools">
-            <span class="tutor-status" role="status" :aria-label="label" data-testid="teaching-readiness" :data-ready="ready" :class="{ 'is-ready': ready && state?.control.enabled }"><span class="status-dot" />{{ statusText }}</span>
-            <button class="icon-button refresh-button" :aria-label="uiText('刷新学习状态')" @click="emit('refreshReadiness')"><RefreshCw aria-hidden="true" /></button>
+            <span v-if="!course" class="tutor-status" role="status" :aria-label="label" data-testid="teaching-readiness" :data-ready="ready" :class="{ 'is-ready': ready }"><span class="status-dot" />{{ statusText }}</span>
+            <button v-if="!course" class="icon-button refresh-button" :aria-label="uiText('刷新学习状态')" @click="emit('refreshReadiness')"><RefreshCw aria-hidden="true" /></button>
             <button ref="closeButton" class="icon-button" :aria-label="uiText('关闭')" @click="emit('close')"><X aria-hidden="true" /></button>
           </div>
         </header>
         <nav class="tutor-navigation" :aria-label="uiText('学习会话导航')">
+          <button class="tutor-tab" @click="emit('understanding')">我的理解 ↗</button>
           <div class="tutor-tabs" role="tablist" :aria-label="uiText('学习内容')" @keydown="tabKey">
             <button v-for="tab in tabs" :id="'tutor-tab-' + tab.id" :key="tab.id" class="tutor-tab" role="tab" :aria-selected="view === tab.id" :aria-controls="'tutor-' + tab.id" :tabindex="view === tab.id || (view === 'new' && tab.id === 'current') ? 0 : -1" @click="openTab(tab.id)">{{ tab.label }}</button>
           </div>
-          <button class="new-learning" :aria-pressed="view === 'new'" @click="changeView('new')"><Plus aria-hidden="true" />{{ uiText('新学习') }}</button>
+          <button v-if="!course" class="new-learning" :aria-pressed="view === 'new'" @click="changeView('new')"><Plus aria-hidden="true" />{{ uiText('新学习') }}</button>
         </nav>
         <div ref="body" class="tutor-body">
-          <div v-if="error || readinessError || !ready || readiness?.limitations?.length || (state && !state.control.enabled)" class="tutor-notices">
+          <div v-if="!course && view !== 'knowledge' && view !== 'understanding' && (error || readinessError || !ready || readiness?.limitations?.length)" class="tutor-notices">
             <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="emit('retry')">{{ uiText('重试') }}</button></p>
             <p v-if="readinessError" role="alert">{{ readinessError }} <button @click="emit('refreshReadiness')">{{ uiText('重试学习状态') }}</button></p>
             <p v-else-if="!ready">{{ readiness?.reason || uiText('正在读取学习就绪状态') }}{{ uiText('。等待期间可以先保存学习目标。') }}</p>
-            <p v-if="state && !state.control.enabled">{{ uiText('学习助手已关闭。可以先保存目标，开启后继续学习。') }}</p>
             <ul v-if="readiness?.limitations?.length"><li v-for="limitation in readiness.limitations" :key="limitation">{{ limitation }}</li></ul>
           </div>
           <section v-show="view === 'current'" id="tutor-current" role="tabpanel" aria-labelledby="tutor-tab-current" class="tutor-content">
-            <template v-if="selectedSession">
+            <template v-if="courseCurrent && course">
+              <div class="goal-eyebrow">{{ uiText('当前课程') }}</div>
+              <div class="session-goal"><h3 ref="goalHeading" tabindex="-1">{{ course.summary.question }}</h3><p>{{ course.summary.objective }}</p></div>
+              <CourseTutorControl :lesson="course" :blocked="courseBlocked" :goal-changed="courseGoalChanged" :error="courseError" @action="emit('course-action', $event)" @retry="emit('course-retry')" />
+              <p class="source-note">{{ uiText('讲解会结合你已经说过的话和看过的帮助。需要时直接问，也可以继续当前活动。') }}</p>
+              <button class="primary-action" @click="emit('course-return')">{{ uiText('回到当前课程') }}<ArrowRight aria-hidden="true" /></button>
+            </template>
+            <template v-else-if="selectedSession">
               <div class="goal-eyebrow"><span>{{ selectedSession.id === currentSession?.id ? uiText('当前目标') : uiText('历史目标') }}</span><span class="session-status" :data-status="selectedSession.status"><span class="status-dot" />{{ statusLabels[selectedSession.status] }}</span></div>
               <div class="session-goal"><p class="material-label"><BookOpen aria-hidden="true" />{{ belongsToSource(selectedSession) ? musicMode ? uiText('当前作品') : videoMode ? uiText('当前视频') : uiText('当前书籍') : musicMode || videoMode ? uiText('其他材料') : uiText('其他书籍') }}</p><h3 ref="goalHeading" tabindex="-1">{{ selectedSession.user_intent }}</h3><p>{{ uiText('接着当前问题继续，也可以随时换一种讲法。') }}</p></div>
               <p v-if="!belongsToSource(selectedSession)" class="scope-notice">{{ musicMode ? uiText('请回到本次聆听的作品继续，或为当前作品开始新目标。') : videoMode ? uiText('请回到本次学习的视频继续，或为当前视频开始新目标。') : uiText('请回到本次学习的书籍继续，或为当前书籍开始新目标。') }}</p>
-              <div class="teaching-section"><div class="section-label">{{ uiText('本次学习的默认教法') }}<span>{{ uiText('随时可以调整') }}</span></div><div class="teaching-modes" role="group" :aria-label="uiText('默认教法')">
-                <button v-for="mode in modes" :key="mode.label" class="teaching-mode" :aria-pressed="selectedSession.default_teaching_intent === mode.value" :disabled="locked" @click="emit('action', { kind: 'set_mode', session_id: selectedSession.id, mode: mode.value })"><component :is="mode.icon" class="mode-icon" aria-hidden="true" /><strong>{{ mode.label }}</strong><small>{{ mode.description }}</small><span v-if="selectedSession.default_teaching_intent === mode.value" class="mode-check"><Check aria-hidden="true" /></span></button>
-              </div><p class="teaching-note">{{ uiText('引导思考时，你可以自己尝试，也可以请我示范一小步或补充解释。想先看完整说明，可以在对话中说“这次直接讲解”，只调整本轮。') }}</p></div>
               <p class="source-note"><FileText aria-hidden="true" />{{ musicMode ? uiText('从录音和乐谱出发，结合你的回答继续讲解。') : videoMode ? uiText('从画面和字幕出发，结合你的回答继续讲解。') : uiText('从原文出发，结合你的回答继续讲解。') }}</p>
             </template>
             <div v-else class="tutor-empty"><BookOpen aria-hidden="true" /><h3>{{ uiText('从一个问题，开始新的理解') }}</h3><p>{{ musicMode ? uiText('写下这次想听懂的内容，也可以回到伴听页直接提问。') : uiText('写下这次想弄懂的内容，也可以回到阅读页直接提问。') }}</p><button class="primary-action" @click="changeView('new')">{{ uiText('新建学习目标') }}<ArrowRight aria-hidden="true" /></button></div>
@@ -152,12 +159,11 @@ onBeforeUnmount(() => { if (origin?.isConnected) origin.focus({ preventScroll: t
             <button v-if="currentSession" class="text-button back-button" @click="openTab('current')"><ArrowLeft aria-hidden="true" />{{ uiText('返回当前学习') }}</button>
             <div class="new-heading"><h3>{{ uiText('这次，想弄懂什么？') }}</h3><p>{{ uiText('从一个问题开始，也可以描述你想达到的目标。') }}</p></div>
             <LearningPurposeEntry :music-mode="musicMode" :video-mode="videoMode" :reason="learningPurposeReason" :available="!!learningPurposeAvailable" :ready="ready && !!state && !locked"
-              :enabled="!!state?.control.enabled" :busy="locked || !!learningPurposeBusy" :scope-options="learningScopeOptions" :show-custom="false"
-              @choose="(purpose, scope) => emit('learning-purpose', purpose, scope)" />
+              :busy="locked || !!learningPurposeBusy" :scope-options="learningScopeOptions" :show-custom="false"
+              @choose="(purpose, scope, request) => emit('learning-purpose', purpose, scope, request)" />
             <form id="tutor-start-form" @submit.prevent="start"><label for="tutor-intent">{{ uiText('你的学习目标') }}</label><textarea id="tutor-intent" v-model="intent" rows="4" :disabled="locked" :placeholder="musicMode ? uiText('例如：我想听懂这首作品，重听时能指出主题和声部的变化。') : uiText('例如：我想弄懂这一节，能用自己的话解释，再独立做一个例子。')" /></form>
             <div class="learning-scope"><BookOpen aria-hidden="true" />{{ uiText('学习范围') }}<strong>{{ sourceId ? musicMode ? uiText('当前作品') : videoMode ? uiText('当前视频') : uiText('当前书籍') : musicMode ? uiText('请先打开一首作品') : videoMode ? uiText('请先打开一段视频') : uiText('请先打开一本书') }}</strong></div>
           </section>
-          <section v-show="view === 'understanding'" id="tutor-understanding" role="tabpanel" aria-labelledby="tutor-tab-understanding" class="tutor-content"><UnderstandingSpace :key="sourceId" :visible="view === 'understanding'" /></section>
           <section v-show="view === 'history'" id="tutor-history" role="tabpanel" aria-labelledby="tutor-tab-history" class="tutor-content">
             <div class="new-heading"><h3>{{ uiText('每一次学习，都有来处') }}</h3><p>{{ uiText('回到之前的问题，继续还没结束的思考。') }}</p></div>
             <div v-if="!history.length" class="tutor-empty"><History aria-hidden="true" /><h3>{{ uiText('还没有历史会话') }}</h3><p>{{ uiText('暂停、结束或切换过的学习，会留在这里。') }}</p></div>
@@ -165,8 +171,8 @@ onBeforeUnmount(() => { if (origin?.isConnected) origin.focus({ preventScroll: t
           </section>
           <div v-if="confirmEnd && selectedSession" class="end-confirmation" role="group" :aria-label="uiText('确认结束学习')"><p>{{ uiText('结束这次学习？记录仍会保留。') }}</p><div><button :disabled="locked" @click="confirmEnd = false">{{ uiText('取消') }}</button><button class="primary-action" :disabled="locked" @click="emit('action', { kind: 'end', session_id: selectedSession.id })">{{ uiText('结束学习') }}</button></div></div>
         </div>
-        <footer v-if="view === 'current' && selectedSession" class="tutor-footer"><div class="footer-copy">{{ uiText('随时回来，接着往下学。') }}<button v-if="selectedSession.status !== 'ended'" class="end-session" :disabled="locked" @click="requestEnd">{{ uiText('结束这次学习') }}</button></div><div class="footer-actions"><button v-if="selectedSession.status === 'active'" class="secondary-action" :disabled="locked" @click="emit('action', { kind: 'pause', session_id: selectedSession.id })">{{ uiText('暂停') }}</button><button class="primary-action" :disabled="!canResume" @click="resume">{{ state?.control.enabled ? uiText('继续学习') : uiText('开启并继续学习') }}<ArrowRight aria-hidden="true" /></button></div></footer>
-        <footer v-else-if="view === 'new'" class="tutor-footer"><span class="footer-copy">{{ uiText('学习中可以随时调整讲法。') }}</span><button class="primary-action" form="tutor-start-form" type="submit" :disabled="!canStart">{{ ready && state?.control.enabled ? uiText('开始学习') : uiText('保存学习意图') }}<ArrowRight aria-hidden="true" /></button></footer>
+        <footer v-if="!course && view === 'current' && selectedSession" class="tutor-footer"><div class="footer-copy">{{ uiText('随时回来，接着往下学。') }}<button v-if="selectedSession.status !== 'ended'" class="end-session" :disabled="locked" @click="requestEnd">{{ uiText('结束这次学习') }}</button></div><div class="footer-actions"><button v-if="selectedSession.status === 'active'" class="secondary-action" :disabled="locked" @click="emit('action', { kind: 'pause', session_id: selectedSession.id })">{{ uiText('暂停') }}</button><button class="primary-action" :disabled="!canResume" @click="resume">{{ uiText('继续学习') }}<ArrowRight aria-hidden="true" /></button></div></footer>
+        <footer v-else-if="view === 'new'" class="tutor-footer"><span class="footer-copy">{{ uiText('学习中可以随时调整讲法。') }}</span><button class="primary-action" form="tutor-start-form" type="submit" :disabled="!canStart">{{ ready ? uiText('开始学习') : uiText('保存学习意图') }}<ArrowRight aria-hidden="true" /></button></footer>
       </section>
     </div>
   </Teleport>

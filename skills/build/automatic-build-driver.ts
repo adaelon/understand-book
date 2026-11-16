@@ -10,6 +10,8 @@ import {
 import { createAutomaticBuildRefillTimingObserver } from "../../packages/core/src/automatic-build-dispatch-timing";
 import { projectAutomaticBuildProgress, type AutomaticBuildProgressV1 } from "../../packages/core/src/automatic-build-progress";
 import { routeIncrementalAutomaticBuildSnapshot } from "../../packages/core/src/automatic-build-incremental";
+import { parseAutomaticBuildRecoveryEnvelope, type AutomaticBuildRecoveryPhase,
+  type AutomaticBuildRecoveryAction } from "../../packages/core/src/automatic-build-recovery";
 import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
 import { configuredBuildRetrievalRuntime, buildRetrievalReview, configureBuildRetrieval, reviseBuildRetrieval, buildRetrievalScope } from "../../packages/core/src/build-retrieval-config";
 import { transitionBuildPlan } from "../../packages/core/src/build-intent";
@@ -71,6 +73,7 @@ import {
 import { validateBuildIntentAny } from "../../packages/core/src/build-intent-v2";
 import {
   resolveAutomaticBuildTarget,
+  AutomaticBuildSourceConflictError,
   prepareAutomaticBuildSnapshot,
   prepareProfileDiscourseInputs,
   prepareBookStructureInputs,
@@ -169,7 +172,7 @@ const STAGES = new Set<AutomaticBuildStage>([
   "profile_sidecar",
   "pass2",
   "book_structure",
-  "formal_objects", "cognitive_materials", "teaching_publish",
+  "formal_objects", "cognitive_materials", "teaching_publish", "course",
   "paper_reading_guide",
 ]);
 const USER_DECISION_REASONS = new Set<AutomaticBuildUserDecisionReasonV1>([
@@ -181,6 +184,8 @@ const USER_DECISION_REASONS = new Set<AutomaticBuildUserDecisionReasonV1>([
   "wall_budget_exceeded",
   "executor_unavailable",
   "foundation_required",
+  "routing_blocked",
+  "source_conflict",
   "legacy_migration_required",
   "quality_gate_failed",
   "structure_execution_budget_exceeded",
@@ -206,6 +211,8 @@ export type AutomaticBuildUserDecisionReasonV1 =
   | "wall_budget_exceeded"
   | "executor_unavailable"
   | "foundation_required"
+  | "routing_blocked"
+  | "source_conflict"
   | "legacy_migration_required"
   | "quality_gate_failed"
   | "structure_execution_budget_exceeded"
@@ -220,10 +227,12 @@ export type AutomaticBuildUserDecisionReasonV1 =
 export interface AutomaticBuildUserDecisionProjectionV1 {
   category: AutomaticBuildUserDecisionReasonV1 | AutomaticBuildFailureCategory;
   code?: string;
-  phase?: AutomaticBuildFailurePhase;
+  phase?: AutomaticBuildFailurePhase | AutomaticBuildRecoveryPhase;
   stage?: AutomaticBuildStage;
   work_unit_count?: number;
   required_recovery?: AutomaticBuildRequiredRecovery;
+  recovery_actions?: AutomaticBuildRecoveryAction[];
+  retryable?: boolean;
   violations?: Array<{ code: string; actual: number; limit: number }>;
   confidence?: "high" | "medium" | "low";
   gate_status?: string;
@@ -989,7 +998,7 @@ function loadDriverState(
   if (invocationExecutionProfile(input).harness_kind === "deepseek_harness" && (plan.private_artifacts.length || plan.intent_id)) throw new Error("DSH private plans are unsupported");
   const routed = routeIncrementalAutomaticBuildSnapshot(target, {
     quality_profile: input.quality_profile, execution_profile: invocationExecutionProfile(input),
-    public_stage_closure: plan.public_stage_closure, reuse: plan.reuse, retrieval: plan.retrieval?.selection,
+    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, reuse: plan.reuse, retrieval: plan.retrieval?.selection,
   }, undefined, invocation.invocation_ref);
   const planResult = automaticBuildPlan(input.target_input, input.root_dir, {
     execution_profile: invocationExecutionProfile(input),
@@ -1050,6 +1059,7 @@ function authorizePlan(
 
 function externalReason(internalReason: string): AutomaticBuildUserDecisionReasonV1 {
   switch (internalReason) {
+    case "automatic_build_routing_blocked": return "routing_blocked";
     case "retrieval_provider_failed": return "retrieval_unavailable";
     case "retrieval_cancelled": return "retrieval_cancelled";
     case "build_plan_required":
@@ -1095,6 +1105,8 @@ function externalReason(internalReason: string): AutomaticBuildUserDecisionReaso
 
 function userMessage(reason: AutomaticBuildUserDecisionReasonV1): string {
   switch (reason) {
+    case "routing_blocked": return "Build routing is blocked. See the diagnostic code, phase, and recovery actions before continuing.";
+    case "source_conflict": return "The requested file belongs to a different source than the existing book workspace. Use a distinct --book-id, or explicitly select the intended workspace to resume.";
     case "retrieval_unavailable": return "The configured embedding provider is unavailable. Restore its local configuration, then resume; accepted model actions are retained.";
     case "retrieval_cancelled": return "Retrieval preparation was cancelled. Resume to prepare the missing page; accepted model actions are retained.";
     case "plan_confirmation_required": return "Confirm the current build plan before model work starts.";
@@ -1246,6 +1258,15 @@ function projectionFor(
   reason: AutomaticBuildUserDecisionReasonV1,
   action: Record<string, unknown>,
 ): AutomaticBuildUserDecisionProjectionV1 {
+  if (action.recovery !== undefined) {
+    const recovery = parseAutomaticBuildRecoveryEnvelope(action.recovery);
+    return {
+      category: reason, code: recovery.code, phase: recovery.phase,
+      ...(recovery.stage ? { stage: recovery.stage } : {}),
+      work_unit_count: recovery.affected_work_units.length + (recovery.omitted_affected_work_units?.count ?? 0),
+      recovery_actions: recovery.recovery_actions, retryable: recovery.retryable,
+    };
+  }
   const stage = safeStage(action.stage);
   const failure = failureProjectionFor(reason, action);
   const violations = Array.isArray(action.violations)
@@ -2483,7 +2504,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     if (preparation?.policy_set) {
       const preparationOptions = { quality_profile: invocation.input.quality_profile,
         execution_profile: invocationExecutionProfile(invocation.input),
-        public_stage_closure: current.plan.public_stage_closure, reuse: current.plan.reuse,
+        public_stage_closure: current.plan.public_stage_closure, course_goal: current.plan.course_goal, reuse: current.plan.reuse,
         retrieval: current.plan.retrieval?.selection };
       const prepared = preparation.policy_set.stage === "profile_sidecar"
         ? routeIncrementalAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparationOptions, "profile_sidecar", invocation.invocation_ref)
@@ -2872,7 +2893,9 @@ export async function claimNextAutomaticBuildWorkerAssignment(rootRef: string, c
 }
 
 function validateDshPreparation(value: Record<string, unknown>): { workers: number; pass2: "enabled" | "disabled"; target: string; root: string } {
-  exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor"]);
+  exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor", "build_course", "course_goal"]);
+  if (value.course_goal !== undefined && (typeof value.course_goal !== "string" || !value.course_goal.trim() || value.build_course !== true)) throw new Error("course_goal requires course construction");
+  if (value.build_course !== undefined && typeof value.build_course !== "boolean") throw new Error("build_course must be boolean");
   if (value.build_tutor !== undefined && typeof value.build_tutor !== "boolean") throw new Error("build_tutor must be boolean");
   const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
   if (workers < 1 || workers > 3) throw new Error("DSH max_parallel must be 1..3");
@@ -2965,7 +2988,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
   if (value.version === "dsh_build_prepare.v1" || value.version === "dsh_build_prepare.v2") {
     const { workers, pass2 } = validateDshPreparation(value);
     let prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
-      boundedString(value.root_dir, "root_dir"), { pass2, build_tutor:value.build_tutor === true,
+      boundedString(value.root_dir, "root_dir"), { pass2, build_tutor:value.build_tutor === true, build_course:value.build_course === true, course_goal:value.course_goal as string | undefined,
         budget: value.budget as BuildPlanV1["budget"], execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1 });
     if (value.retrieval !== undefined) {
       if (!isRecord(value.retrieval)) throw new Error("invalid retrieval configuration");
@@ -2980,10 +3003,11 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     const plan = prepared.plan;
     const stageNames: Record<string, string> = { pass1: "基础语义抽取", profile_sidecar: "阅读线索与公式", pass2: "跨段关系复核",
       book_structure: "全书结构", paper_metadata: "论文元信息", paper_lexicon: "论文术语", paper_reading_guide: "论文阅读指南",
-      formal_objects: "正式学习对象与关系", cognitive_materials: "重点认知素材", teaching_publish: "来源审阅与教学发布" };
+      course: "课程编排、制作与核验", formal_objects: "正式学习对象与关系", cognitive_materials: "重点认知素材", teaching_publish: "来源审阅与教学发布" };
     const stageLabel = (stage: string) => stageNames[stage.replace(/^public\./u, "")] ?? stage;
     const review = ["# 本次构建计划", `Pass2：${value.pass2 === "enabled" ? "启用" : "关闭"}`,
-      `Tutor 教学材料：${value.build_tutor === true ? '构建' : '不预构建；阅读时仍可提问'}`,
+      `构建课程：${value.build_course === true ? '编排、逐课制作、独立解题与来源核验' : '不构建；阅读时仍可提问'}`,
+      ...(plan.course_goal ? [`课程目标与范围：${plan.course_goal}`] : []),
       `构建目标：${path.resolve(value.target_input as string)}`,
       `工作根目录：${path.resolve(value.root_dir as string)}`,
       `材料类型：${plan.content_profile.id === "paper" ? "论文" : "技术书籍"}`,
@@ -3016,6 +3040,12 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
 
 /** Keep raw errors in the local driver registry, outside the root's semantic boundary. */
 export function automaticBuildDriverFailureResponse(error: unknown): AutomaticBuildStepResponseV1 | AutomaticBuildRequestErrorV1 {
+  if (error instanceof AutomaticBuildSourceConflictError) {
+    return finalizeResponse({ version: "automatic_build_step.v1", action: {
+      kind: "NEEDS_USER", request_id: `abreq1_${randomBytes(32).toString("hex")}`, reason: "source_conflict", choices: [],
+      message: userMessage("source_conflict"), projection: { category: "source_conflict", code: error.code },
+    } });
+  }
   if (error instanceof Error && "code" in error && error.code === "document_preparation_unavailable") {
     return finalizeResponse({ version: "automatic_build_step.v1", action: {
       kind: "NEEDS_USER", request_id: `abreq1_${randomBytes(32).toString("hex")}`, reason: "build_engine_failed", choices: [],

@@ -1,4 +1,4 @@
-import { computed, onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch, type CSSProperties, type Ref } from 'vue';
 import type { NoteWindowViewport } from './note-window';
 import { WORKSPACE_LIMITS } from './workspace-layout';
 
@@ -9,22 +9,52 @@ const clamp = (value: number, low: number, high: number) => Math.max(low, Math.m
 const overlaps = (a: LauncherRect, b: LauncherRect) => a.x < b.x + b.width + gap && a.x + a.width + gap > b.x
   && a.y < b.y + b.height + gap && a.y + a.height + gap > b.y;
 
-/** Prefer the edge above the composer; a temporary keyboard never changes the saved point. */
-export function placeNoteLauncher(viewport: NoteWindowViewport, size: { width: number; height: number }, avoid: LauncherRect[], preferred?: LauncherPoint | null): LauncherPoint {
+/** Find the nearest free space; temporary avoidance never changes the saved point. */
+export function placeNoteLauncher(viewport: NoteWindowViewport, size: { width: number; height: number }, avoid: LauncherRect[], preferred?: LauncherPoint | null): LauncherPoint | null {
   const left = viewport.x + edge, top = viewport.y + edge;
   const right = Math.max(left, viewport.x + viewport.width - size.width - edge);
   const bottom = Math.max(top, viewport.y + viewport.height - size.height - edge);
   const fit = (point: LauncherPoint) => ({ x: clamp(point.x, left, right), y: clamp(point.y, top, bottom) });
   const wanted = fit(preferred ?? { x: right, y: bottom });
-  // Each composer contributes its four free edges. Choose the nearest usable position.
-  const candidates = [wanted, ...avoid.flatMap(rect => [
-    fit({ x: wanted.x, y: rect.y - size.height - gap }),
-    fit({ x: wanted.x, y: rect.y + rect.height + gap }),
-    fit({ x: rect.x - size.width - gap, y: wanted.y }),
-    fit({ x: rect.x + rect.width + gap, y: wanted.y }),
-  ])];
-  return candidates.filter(point => !avoid.some(rect => overlaps({ ...point, ...size }, rect)))
-    .sort((a, b) => Math.hypot(a.x - wanted.x, a.y - wanted.y) - Math.hypot(b.x - wanted.x, b.y - wanted.y))[0] ?? wanted;
+  if (!avoid.some(rect => overlaps({ ...wanted, ...size }, rect))) return wanted;
+  // At each free horizontal edge, merge blocked x intervals and find the closest
+  // free x. This also finds diagonal gaps between adjacent controls and composers.
+  const rows = new Set([wanted.y, top, bottom, ...avoid.flatMap(rect => [
+    clamp(rect.y - size.height - gap, top, bottom), clamp(rect.y + rect.height + gap, top, bottom),
+  ])]);
+  let best: LauncherPoint | null = null, distance = Infinity;
+  for (const y of rows) {
+    const intervals = avoid.filter(rect => y < rect.y + rect.height + gap && y + size.height + gap > rect.y)
+      .map(rect => [rect.x - size.width - gap, rect.x + rect.width + gap])
+      .sort((a, b) => a[0] - b[0]);
+    const merged: number[][] = [];
+    for (const interval of intervals) {
+      const previous = merged.at(-1);
+      if (previous && interval[0] < previous[1]) previous[1] = Math.max(previous[1], interval[1]);
+      else merged.push(interval);
+    }
+    const blocked = merged.find(([start, end]) => wanted.x > start && wanted.x < end);
+    for (const x of blocked ?? [wanted.x]) {
+      if (x < left || x > right) continue;
+      const delta = (x - wanted.x) ** 2 + (y - wanted.y) ** 2;
+      if (delta < distance) { best = { x, y }; distance = delta; }
+    }
+  }
+  return best;
+}
+
+// Playback cursors and fixed clock labels do not change control geometry. Their
+// frame-by-frame mutations must not trigger SVG hit testing for the notes button.
+// ResizeObserver still handles size changes; section/control changes remain observed.
+export function noteLauncherLayoutMutation(record: MutationRecord): boolean {
+  const target = record.target instanceof Element ? record.target : record.target.parentElement;
+  if (!target || target.closest('[data-personal-notes]')) return false;
+  if (record.type === 'attributes' && record.attributeName === 'style'
+    && target.matches('.map-cursor, .map-overview-track > i, .music-progress > input, .music-score-page .note, .music-note-overlay, .music-note-overlay *')) return false;
+  if ((record.type === 'characterData' || (record.type === 'childList'
+    && [...record.addedNodes, ...record.removedNodes].every(node => node.nodeType === Node.TEXT_NODE)))
+    && target.closest('.map-clock, .music-progress > span')) return false;
+  return true;
 }
 
 export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => string | null, visible: () => boolean) {
@@ -36,8 +66,9 @@ export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => s
   const viewport = ref(measureViewport()), size = ref({ width: 104, height: 44 });
   const keyboardOpen = ref(false);
   const avoid = ref<LauncherRect[]>([]), preferred = ref<LauncherPoint | null>(null), dragging = ref(false);
-  const position = computed(() => placeNoteLauncher(viewport.value, size.value, dragging.value ? [] : avoid.value, preferred.value));
-  const style = computed(() => ({ left: `${position.value.x}px`, top: `${position.value.y}px` }));
+  const placement = computed(() => placeNoteLauncher(viewport.value, size.value, dragging.value ? [] : avoid.value, preferred.value));
+  const position = computed(() => placement.value ?? placeNoteLauncher(viewport.value, size.value, [], preferred.value)!);
+  const style = computed<CSSProperties>(() => ({ left: `${position.value.x}px`, top: `${position.value.y}px`, visibility: placement.value ? undefined : 'hidden' }));
   let frame = 0, observer: MutationObserver | undefined, resize: ResizeObserver | undefined;
   let targets: Element[] = [], suppressClick = false;
   let gesture: { id: number; x: number; y: number; start: LauncherPoint; prior: LauncherPoint | null; target: HTMLElement } | null = null;
@@ -58,7 +89,10 @@ export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => s
       const rect = element.value.getBoundingClientRect();
       if (rect.width && rect.height) size.value = { width: rect.width, height: rect.height };
     }
-    const found = Array.from(document.querySelectorAll('.agent-input, .board-conversation, .personal-chat-composer, .workspace-mobile-nav'));
+    const regions = '.agent-input, .board-conversation, .personal-chat-composer, .workspace-mobile-nav, .music-example-piano';
+    const controls = 'button, a[href], input, textarea, select, summary, [role="button"], [role="tab"], [contenteditable="true"]';
+    const found = Array.from(document.querySelectorAll(`${regions}, ${controls}`)).filter(target =>
+      !target.closest('[data-personal-notes]') && !target.parentElement?.closest(regions));
     if (found.length !== targets.length || found.some((target, i) => target !== targets[i])) {
       targets.forEach(target => resize?.unobserve(target));
       targets = found; targets.forEach(target => resize?.observe(target));
@@ -68,7 +102,7 @@ export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => s
       const rect = target.getBoundingClientRect();
       if (!rect.width || !rect.height || getComputedStyle(target).visibility === 'hidden'
         || rect.bottom <= view.y || rect.top >= view.y + view.height) return [];
-      // Ignore a still-mounted reader behind the active board or another full-page surface.
+      // Ignore controls behind another surface or clipped out of a scrolling pane.
       const hit = document.elementsFromPoint(clamp(rect.x + rect.width / 2, view.x, view.x + view.width - 1),
         clamp(rect.y + rect.height / 2, view.y, view.y + view.height - 1))
         .find(node => !node.closest('[data-personal-notes]'));
@@ -131,9 +165,9 @@ export function useNoteLauncher(element: Ref<HTMLElement | null>, owner: () => s
     const content = document.querySelector('.application-content');
     if (content) resize.observe(content);
     observer = new MutationObserver(records => {
-      if (records.some(record => !(record.target as Element).closest?.('[data-personal-notes]'))) schedule();
+      if (records.some(noteLauncherLayoutMutation)) schedule();
     });
-    observer.observe(content ?? document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ['class', 'style', 'hidden'] });
+    observer.observe(content ?? document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['class', 'style', 'hidden', 'open'] });
     window.addEventListener('resize', schedule);
     window.visualViewport?.addEventListener('resize', schedule);
     window.visualViewport?.addEventListener('scroll', schedule);

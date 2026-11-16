@@ -448,7 +448,9 @@ impl LearningStore {
         next.corrected_at=Some(std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(storage)?.as_secs().to_string());
         next.status = if next.nature == EvidenceNature::Hypothesis { AssessmentStatus::Unassessed } else { AssessmentStatus::Uncertain };
         next.interpretation = "原解释已被用户纠正，等待新的表现依据".into();
-        next.understanding = Default::default();
+        next.understanding = crate::understanding::UnderstandingObservation {
+            knowledge_links: next.understanding.knowledge_links.clone(), ..Default::default()
+        };
         next.teaching_implication = format!("采用用户纠正重新确定讲解起点：{text}");
         next.interpreter_version = "learner.correction.v1".into();
         self.append_evidence(&next)

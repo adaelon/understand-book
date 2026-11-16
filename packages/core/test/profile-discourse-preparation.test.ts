@@ -59,7 +59,7 @@ function connection(root: string, index: number) {
       generation_input_ref: batch.batch.generation_input_ref, confirmed_through_ordinal: batch.batch.last_ordinal,
     });
     if (started.kind !== "GENERATE") throw new Error(`start: ${started.kind}`);
-    return started;
+    return { ...started, generation_input_ref: batch.batch.generation_input_ref };
   };
   return { call, start, close: async () => { await client?.close(); } };
 }
@@ -117,7 +117,7 @@ function candidateForTask(target: ReturnType<typeof resolveAutomaticBuildTarget>
   const slice = task.descriptor.input_basis.slices[0];
   return {
     version: "profile_sidecar_discourse_observation.v1", parent_lid: task.route.parent_lid,
-    source_slice_ordinal: slice.ordinal, core_sha256: slice.core_sha256,
+    source_slice_ordinal: slice.ordinal,
     mode_candidates: [{ value: "informative", confidence: 0.9 }],
     local_function_candidates: [{ value: "explanation", confidence: 0.8 }],
     rhetorical_move_candidates: [{ value: "concept_elaboration", confidence: 0.8 }],
@@ -203,7 +203,14 @@ describe("profile discourse preparation and refill", () => {
           candidate_sink_ref: current.started.candidate_sink_ref, candidate,
         });
         const submitted = performance.now();
-        expect(committed).toMatchObject({ kind: "DONE", status: "committed" });
+        // A continuous executor can deliver its next task before this child exits.
+        if (committed.kind === "DELIVER_INPUT") {
+          expect(committed.input_manifest.generation_input_ref).not.toBe(current.started.generation_input_ref);
+        } else {
+          expect(committed).toMatchObject({ kind: "DONE", status: "committed" });
+        }
+        expect(readAutomaticBuildAttemptSnapshot(target).stages.profile_sidecar?.[unit.work_unit_id])
+          .toMatchObject({ semantic_attempt: 1, failures: 0, submit_revision: 1 });
         const refill = driverCommand({ version: "automatic_build_refill_request.v1",
           invocation_ref: invocation.invocation_ref, capacity_limit: 3, live_by_slot: live,
           completed_refs: [], terminal_children: ["child-2"] }) as AutomaticBuildRefillResponseV1;
@@ -215,8 +222,6 @@ describe("profile discourse preparation and refill", () => {
         connections.push(next);
         await next.start(refill.ready_executors[0].opaque_handoff_ref);
         const started = performance.now();
-        const receipt = readAutomaticBuildAttemptSnapshot(target).stages.profile_sidecar?.[unit.work_unit_id];
-        expect(receipt).toMatchObject({ semantic_attempt: 1, failures: 0, submit_revision: 1 });
         const after = buildAutomaticBuildSnapshot(target).stages.find(s => s.stage === "profile_sidecar")!;
         expect(after.pending_tasks).not.toContain(unit.work_unit_id);
         expect(after.generation_tasks).toEqual(before);

@@ -7,15 +7,16 @@ import { network, type LearningWorkspace, type PublishedBookRef } from '../netwo
 import { sharedWorkspaces } from '../network-client';
 import { sharedBookKey, sharedBookLabel, type SharedBook, type SharedInstance, type SharedUpdatePreview } from '../shared-workspaces';
 import SharedWorkspaceManifest from './SharedWorkspaceManifest.vue';
+import InquiryCoursePlayer from './InquiryCoursePlayer.vue';
 
 const props = defineProps<{ workspace: LearningWorkspace; books: SharedBook[] }>();
-const emit = defineEmits<{ updated: [workspace: LearningWorkspace] }>();
+const emit = defineEmits<{ updated: [workspace: LearningWorkspace]; understanding: [publication: PublishedBookRef]; launch: [target: { publication: PublishedBookRef; lessonId: string; runId?: string }] }>();
 const instance = ref<SharedInstance | null>(null), preview = ref<SharedUpdatePreview | null>(null);
 const loading = ref(false), busy = ref(false), error = ref(''), notice = ref('');
 let request = 0, operationId = '';
 const label = (reference: PublishedBookRef) => sharedBookLabel(reference, props.books, preview.value?.release.manifest.materials ?? instance.value?.release.manifest.materials ?? []);
 function fail(failure: unknown, ticket: number) {
-  if (ticket === request && !(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) error.value = failure instanceof Error ? failure.message : uiText('共享工作区信息暂时无法读取');
+  if (ticket === request && !(failure instanceof ApiError && failure.errorCode === 'CLIENT_CONTEXT_STALE')) error.value = failure instanceof Error ? failure.message : uiText('课程与学习路线暂时无法读取');
 }
 async function load() {
   const ticket = ++request; loading.value = true; preview.value = null; error.value = ''; notice.value = '';
@@ -35,7 +36,7 @@ async function update() {
   const ticket = request; busy.value = true; error.value = '';
   try {
     const value = await sharedWorkspaces.update(props.workspace.learning_workspace_id, operationId, instance.value.version, preview.value.release.version);
-    if (ticket === request) { instance.value = value.instance; preview.value = null; notice.value = uiText('已更新共享资料与路线。你的学习目标、私人追加资料和已有记录已保留。'); emit('updated', value.workspace); }
+    if (ticket === request) { instance.value = value.instance; preview.value = null; notice.value = uiText('已更新资料与学习路线。你的学习目标、追加资料和已有记录已保留。'); emit('updated', value.workspace); }
   } catch (failure) { fail(failure, ticket); }
   finally { if (ticket === request) busy.value = false; }
 }
@@ -44,12 +45,13 @@ onBeforeUnmount(() => { request++; });
 </script>
 
 <template>
-  <section v-if="instance || error" class="shared-instance" :aria-label="uiText('共享工作区个人实例')" :aria-busy="loading || busy">
-    <p v-if="error" role="alert">{{ error }} <button :disabled="busy || loading" @click="load">{{ uiText('重新读取共享信息') }}</button></p>
+  <section v-if="instance || error" class="shared-instance" :aria-label="uiText('我的课程与学习路线')" :aria-busy="loading || busy">
+    <p v-if="error" role="alert">{{ error }} <button :disabled="busy || loading" @click="load">{{ uiText('重新读取学习路线') }}</button></p>
     <template v-if="instance">
-      <div class="heading"><div><span class="eyebrow">{{ uiText('共享工作区 · 我的个人实例') }}</span><h3>{{ instance.release.manifest.name }}</h3><p>{{ uiText('当前使用第') }} {{ instance.version }} {{ uiText('版') }}<span v-if="instance.latest_version > instance.version"> {{ uiText('· 有第') }} {{ instance.latest_version }} {{ uiText('版可选') }}</span></p></div><button :disabled="loading || busy" @click="load">{{ uiText('检查共享版本') }}</button></div>
-      <p v-if="instance.release.archived" class="hint">{{ uiText('共享入口已归档，你已建立的工作区继续保留，资料按现有访问权限使用。') }}</p>
+      <div class="heading"><div><span class="eyebrow">{{ instance.release.manifest.inquiry_course?.lessons.length ? uiText('我的课程') : uiText('我的学习路线') }}</span><h3>{{ instance.release.manifest.name }}</h3><p>{{ uiText('当前使用第') }} {{ instance.version }} {{ uiText('版') }}<span v-if="instance.latest_version > instance.version"> {{ uiText('· 有第') }} {{ instance.latest_version }} {{ uiText('版可选') }}</span></p></div><button :disabled="loading || busy" @click="load">{{ uiText('检查版本') }}</button></div>
+      <p v-if="instance.release.archived" class="hint">{{ uiText('此课程或资料已归档，已有记录和可访问的资料仍然保留。') }}</p>
       <p v-if="notice" role="status">{{ notice }}</p>
+      <InquiryCoursePlayer catalog-only @launch="target => emit('launch', target)" @understanding="publication => emit('understanding', publication)" :workspace="workspace" :release-version="instance.version" />
       <details class="original-route"><summary>{{ uiText('查看所选版本的公开目标与路线') }}</summary><SharedWorkspaceManifest :release="instance.release" :books="books" /></details>
       <button v-if="instance.latest_version > instance.version && !preview" :disabled="busy || loading || workspace.archived" @click="showPreview">{{ uiText('查看新版变化') }}</button>
       <section v-if="preview" class="shared-update" :aria-label="uiText('共享工作区更新预览')">
@@ -57,7 +59,7 @@ onBeforeUnmount(() => { request++; });
         <ul class="change-list">
           <li v-for="reference in preview.changes.added_materials" :key="sharedBookKey(reference)">{{ uiText('新增资料：') }}{{ label(reference) }}</li>
           <li v-for="reference in preview.changes.removed_materials" :key="sharedBookKey(reference)">{{ uiText('移出公共资料：') }}{{ label(reference) }}</li>
-          <li v-if="preview.changes.public_goal_changed">{{ uiText('公开学习目标已调整。') }}</li><li v-if="preview.changes.composition_changed">{{ uiText('主题联系或建议路线已调整。') }}</li>
+          <li v-if="preview.changes.public_goal_changed">{{ uiText('公开学习目标已调整。') }}</li><li v-if="preview.changes.composition_changed">{{ uiText('课程内容或学习路线已调整。') }}</li>
           <li v-if="preview.changes.required_capabilities_changed">{{ uiText('资料清单或所需能力已调整。') }}</li><li v-if="preview.changes.description_changed">{{ uiText('名称、适用范围或建议基础已调整。') }}</li>
           <li v-if="!preview.changes.added_materials.length && !preview.changes.removed_materials.length && !preview.changes.public_goal_changed && !preview.changes.composition_changed && !preview.changes.required_capabilities_changed && !preview.changes.description_changed">{{ uiText('公共说明有所更新，资料版本与路线保持。') }}</li>
         </ul>

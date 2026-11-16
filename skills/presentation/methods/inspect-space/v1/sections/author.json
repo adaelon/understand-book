@@ -1,0 +1,24 @@
+{
+  "title": "三把尺的三维等距面",
+  "initial_state": {
+    "metric": "l2",
+    "height": 0,
+    "yaw": 0.68,
+    "pitch": 0.55
+  },
+  "state_contract": {
+    "metric": "单位球范数：l1、l2 或 linf",
+    "height": "数学 z 轴截面高度；0 到 0.9",
+    "yaw": "绕数学 z 轴的方位角，弧度",
+    "pitch": "相机仰角，弧度，-1.15 到 1.15"
+  },
+  "readable_content": "移动 z=h 平面并观察三维单位球的截线：L1 菱形最大 x=1−h，L2 圆半径 √(1−h²)，L∞ 正方形半边长 1。观察角度不改变结果。",
+  "assumptions": [
+    "三维单位球，水平截面 0 ≤ h ≤ 0.9；数学表面采样，不是实物扫描。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [
+    "three"
+  ],
+  "asset_refs": []
+}

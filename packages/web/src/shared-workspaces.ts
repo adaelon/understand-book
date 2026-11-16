@@ -5,6 +5,7 @@ import { bookTitle } from './book-title';
 export interface SharedMaterial { published_book_ref: PublishedBookRef; required_capabilities: string[] }
 export interface SharedPart { title: string; description: string; materials: PublishedBookRef[] }
 export interface SharedManifest {
+  inquiry_course?: import('./generated/CourseOverview').CourseOverview;
   name: string; publisher: string; public_goal: string; applicability: string; prerequisites: string;
   materials: SharedMaterial[]; topic_links: SharedPart[]; suggested_route: SharedPart[];
   external_resources?: { title: string; url: string; description: string }[];

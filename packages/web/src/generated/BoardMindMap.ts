@@ -3,7 +3,7 @@ import type { BoardMindMapLayout } from "./BoardMindMapLayout";
 import type { BoardPosition } from "./BoardPosition";
 import type { BoardTopicSide } from "./BoardTopicSide";
 
-export type BoardMindMap = { map_id: string, root_item_id: string, layout: BoardMindMapLayout,
+export type BoardMindMap = { map_id: string, root_item_id: string, layout: BoardMindMapLayout, 
 /**
  * Top-left of the root topic, in the existing board's world coordinates.
  */

@@ -25,6 +25,8 @@ svg { flex-shrink: 0; }
 .home-brand-symbol { display: grid; place-items: center; width: 37px; height: 37px; flex: none; }
 .home-nav-links, .home-nav-actions { display: flex; align-items: center; gap: 22px; font-size: 13px; }
 .home-nav-links { color: #5a6155; }
+.home-primary-entry { font-weight: 500; white-space: nowrap; }
+.home-board-entry { color: var(--brand-accent-deep); }
 .home-nav a { transition: color .16s, background .16s; }
 .home-nav-links a:hover, .home-login:hover { color: var(--brand-accent-deep); }
 .home-nav-actions { gap: 24px; }
@@ -287,7 +289,7 @@ body:has(.home-image-dialog[open], .home-info-dialog[open]) { overflow: hidden; 
   .home-nav-actions { gap: 16px; }
   .home-workspace { gap: 35px; }
   .home-workspace-copy h2 { font-size: 29px; }
-  :lang(en) .home-nav-links { display: none; }
+  :lang(en) .home-section-entry { display: none; }
 }
 @media (max-width: 1000px) {
   .home-hero-workspace { width: min(660px, 100%); margin-inline: auto; }
@@ -335,7 +337,11 @@ body:has(.home-image-dialog[open], .home-info-dialog[open]) { overflow: hidden; 
   .home-hero { grid-template-columns: 1fr; gap: 40px; padding-top: 48px; }
 }
 @media (max-width: 850px) {
-  .home-nav-links { display: none; }
+  .home-nav { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding-block: 20px 0; gap: 12px; }
+  .home-nav-actions { grid-column: 2; grid-row: 1; }
+  .home-nav-links { grid-column: 1 / -1; grid-row: 2; display: flex; gap: 28px; font-size: 14px; }
+  .home-primary-entry { display: inline-flex; align-items: center; min-height: 44px; }
+  .home-section-entry { display: none; }
   .home-hero h1 { font-size: 39px; }
   .home-hero-description { font-size: 14px; }
   .home-hero-actions { gap: 10px; }
@@ -380,7 +386,7 @@ body:has(.home-image-dialog[open], .home-info-dialog[open]) { overflow: hidden; 
   html { scroll-padding-top: 20px; }
   .home-width { width: calc(100% - 40px); }
   .home-nav { min-height: 76px; gap: 12px; }
-  .home-brand { font-size: 18px; gap: 8px; }
+  .home-brand { font-size: 18px; gap: 8px; min-width: 0; white-space: normal; }
   .home-brand-symbol { width: 30px; height: 30px; }
   .home-nav-actions { gap: 15px; font-size: 11px; }
   .home-nav-join { padding: 8px 10px; gap: 5px; }

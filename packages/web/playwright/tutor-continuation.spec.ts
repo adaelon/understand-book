@@ -2,10 +2,13 @@ import { expect, test } from '@playwright/test';
 import { scenario, setup, selectSource } from './fixtures/tutor-continuation';
 
 for (const surface of ['markdown','pdf'] as const) for (const ready of [true,false]) {
-  test(`continuation_baseline_${surface}_${ready ? 'ready' : 'missing_foundation'}_manual_prompt`, async ({page}) => {
+  test(`continuation_baseline_${surface}_${ready ? 'ready' : 'missing_foundation'}_manual_prompt`, async ({page}, testInfo) => {
     const f = await setup(page,surface,ready);
     await selectSource(page,surface);
+    await expect(page.locator('.hl-popover').getByRole('button',{name:'帮我弄懂这段',exact:true})).toHaveCount(0);
+    await page.screenshot({path:testInfo.outputPath('selection-toolbar.png')});
     await page.locator('.hl-popover').getByRole('button',{name:'问 AI',exact:true}).click();
+    await expect(page.locator('.ask-draft')).toContainText(scenario.quote);
     const input=page.locator('.agent-input textarea');
     await expect(input).toHaveValue('');
     expect(f.requests).toHaveLength(0);
@@ -17,17 +20,6 @@ for (const surface of ['markdown','pdf'] as const) for (const ready of [true,fal
     expect(f.errors).toEqual([]);
   });
 
-  test(`continuation_tc2_${surface}_${ready ? 'ready' : 'missing_foundation'}_direct_help`, async ({page}) => {
-    const f = await setup(page,surface,ready);
-    await page.locator('.agent-input textarea').fill(scenario.draft);
-    await selectSource(page,surface);
-    const action=page.locator('.hl-popover').getByRole('button',{name:'帮我弄懂这段',exact:true});
-    await expect(action,'TC2 direct-help entry is missing; existing 问 AI needs a prompt').toBeVisible({timeout:1500});
-    await action.click();
-    await expect.poll(()=>f.requests.length).toBe(1);
-    expect(f.requests[0]).toMatchObject({message:'',entry_action:'explain_selection',question_quote:{quote:scenario.quote}});
-    await expect(page.locator('.agent-input textarea')).toHaveValue(scenario.draft);
-  });
 }
 
 test('continuation_tc5_answer_excerpt_is_sent_from_the_original_answer',async({page})=>{
@@ -103,16 +95,17 @@ test('continuation_tc5_local_refresh_queries_unknown_action_before_retry', async
   expect(f.requests).toHaveLength(0);
 });
 
-test('continuation_tc2_first_help_enable_and_continue_preserves_draft', async ({page}) => {
+test('continuation_tc2_first_help_enable_and_continue_preserves_draft', async ({page}, testInfo) => {
   const f = await setup(page,'markdown',true);
-  await page.locator('.agent-input textarea').fill(scenario.draft);
   await selectSource(page,'markdown');
-  await page.getByRole('button',{name:'帮我弄懂这段',exact:true}).click();
+  await page.locator('.hl-popover').getByRole('button',{name:'问 AI',exact:true}).click();
+  await page.locator('.agent-input textarea').fill('Explain this selection');
+  await page.locator('.agent-input').getByRole('button',{name:'发送',exact:true}).click();
   await expect(page.locator('.reading-continuation').getByRole('button',{name:'开启连续教学',exact:true})).toBeVisible();
   expect(f.requests).toHaveLength(1);
-  expect(f.requests[0]).toMatchObject({message:'',entry_action:'explain_selection',source_id:scenario.book_id,
-    source_revision:'tc0-source',session_id:'tc0-chat',expected_chat_head:null});
-  await page.screenshot({path:'../../docs/performance/tutor-continuation-tc2/first-help.png'});
+  expect(f.requests[0]).toMatchObject({message:'Explain this selection',question_quote:{quote:scenario.quote}});
+  await page.locator('.agent-input textarea').fill(scenario.draft);
+  await page.screenshot({path:testInfo.outputPath('first-help.png')});
   await page.locator('.reading-continuation').getByRole('button',{name:'开启连续教学',exact:true}).click();
   const next = page.getByRole('button',{name:'继续理解这段',exact:true});
   await expect(next).toBeVisible();
@@ -125,7 +118,7 @@ test('continuation_tc2_first_help_enable_and_continue_preserves_draft', async ({
   expect(f.requests[1].teaching_ref).toBeUndefined();
   await expect(page.locator('.agent-input textarea')).toHaveValue(scenario.draft);
   await expect(page.locator('.ans-text')).toHaveCount(2);
-  await page.screenshot({path:'../../docs/performance/tutor-continuation-tc2/continue-answer.png'});
+  await page.screenshot({path:testInfo.outputPath('continue-answer.png')});
   expect(f.errors).toEqual([]);
 });
 
@@ -139,19 +132,18 @@ test('continuation_tc2_enable_failure_never_sends_answer_request', async ({page}
 });
 
 test('continuation_tc2_activity_help_does_not_leave_a_phantom_chat_turn', async ({page}) => {
-  await setup(page,'markdown',true);
+  await setup(page,'markdown',true,true);
   await page.route('**/api/agent/runs', route => route.fulfill({json:{kind:'activity_help',delivery_refs:['original-question']}}));
   await page.locator('.agent-input textarea').fill(scenario.draft);
-  await selectSource(page,'markdown');
-  await page.getByRole('button',{name:'帮我弄懂这段',exact:true}).click();
+  await page.locator('.turn').getByRole('button',{name:'这一步没跟上',exact:true}).click();
   await expect(page.getByText('这段内容属于当前待答题', {exact:false})).toBeVisible();
-  await expect(page.getByText('操作：帮我弄懂这段',{exact:true})).toHaveCount(0);
+  await expect(page.locator('.turn')).toHaveCount(1);
   await expect(page.locator('.agent-input textarea')).toHaveValue(scenario.draft);
 });
 
 
 test('continuation_tc2_original_question_navigation_preserves_unsent_draft', async ({page}) => {
-  await setup(page,'markdown',true);
+  await setup(page,'markdown',true,true);
   await page.route('**/api/agent/runs', route => route.fulfill({json:{kind:'activity_help',delivery_refs:['original-question'],
     activity:{session_id:'original-chat',turn_id:'original-turn'}}}));
   let selected = '';
@@ -161,8 +153,7 @@ test('continuation_tc2_original_question_navigation_preserves_unsent_draft', asy
       current:{id:'original-chat',book_id:scenario.book_id,turns:[],goals:[]}}});
   });
   await page.locator('.agent-input textarea').fill(scenario.draft);
-  await selectSource(page,'markdown');
-  await page.getByRole('button',{name:'帮我弄懂这段',exact:true}).click();
+  await page.locator('.turn').getByRole('button',{name:'这一步没跟上',exact:true}).click();
   await page.getByRole('button',{name:'前往原题帮助',exact:true}).click();
   await expect.poll(()=>selected).toBe('original-chat');
   await expect(page.locator('.agent-input textarea')).toHaveValue(scenario.draft);

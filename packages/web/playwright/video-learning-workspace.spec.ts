@@ -41,7 +41,7 @@ test('mixed shared workspace plays video, keeps question context, and only adopt
   };
   const publicationPath = (reference: { book_id: string; publication_id: string }, leaf: string) => `/api/books/${encodeURIComponent(reference.book_id)}/publications/${encodeURIComponent(reference.publication_id)}/${leaf}`;
   const manage = async (target: Page) => {
-    await target.getByRole('button', { name: '工作区与资料', exact: true }).click();
+    await target.getByRole('button', { name: '学习资料', exact: true }).click();
     await expect(target.getByRole('region', { name: '当前工作区', exact: true })).toBeVisible();
   };
   const use = async (target: Page, goal: string) => {
@@ -51,7 +51,7 @@ test('mixed shared workspace plays video, keeps question context, and only adopt
     const detail = target.getByRole('article', { name: '共享工作区详情', exact: true });
     await detail.getByRole('textbox', { name: '确认你的学习目标', exact: true }).fill(goal);
     await detail.getByRole('button', { name: '确认目标并开始学习', exact: true }).click();
-    await expect(target.locator('.workspace-goal-bar')).toContainText(goal);
+    await expect.poll(async () => (await scene(target))?.learning_workspace_goal?.text).toBe(goal);
     return scene(target);
   };
   for (const target of [page, other]) target.on('pageerror', error => failures.push(error.message));
@@ -120,7 +120,7 @@ test('mixed shared workspace plays video, keeps question context, and only adopt
   await expect(instance).toContainText('当前使用第 2 版');
   await page.locator('.learning-member').nth(1).getByRole('button', { name: '继续阅读', exact: true }).click();
   await expect(video).toBeVisible();
-  await expect(page.locator('.workspace-goal-bar')).toContainText('结合书与视频复习课程');
+  await expect.poll(async () => (await scene(page))?.learning_workspace_goal?.text).toBe('结合书与视频复习课程');
   expect((await scene(other)).published_book_ref).toEqual(fixture.book);
   expect((await read(`/api/learning-workspaces/${second.learning_workspace_id}/shared-release`, fixture.admin_cookie)).instance.version).toBe(1);
   expect(await read(publicationPath(fixture.video1, 'video_context'))).toEqual(initialVideo);

@@ -33,7 +33,7 @@ const isSavedPart = computed(() => props.item?.target.kind === 'answer' && props
 const icons = { personal_note: UserRound, note: NotebookPen, prebuild: BookOpen, artifact: BookOpen, answer: MessageSquareText, presentation: Shapes, understanding: UserRound, drawing: Shapes, topic: Shapes };
 function readableParts(parts: unknown[]) {
   return parts.filter((part): part is AgentAnswerPart => !!part && typeof part === 'object' && 'kind' in part
-    && ((part.kind === 'markdown' && 'text' in part && typeof part.text === 'string')
+    && (((part.kind === 'markdown' || part.kind === 'socratic_question') && 'text' in part && typeof part.text === 'string')
       || (part.kind === 'sources' && 'source_ref_ids' in part && Array.isArray(part.source_ref_ids))
       || (part.kind === 'presentation' && 'presentation_id' in part && typeof part.presentation_id === 'string' && 'revision' in part && typeof part.revision === 'number')));
 }
@@ -132,7 +132,7 @@ defineExpose({ flush, captureFollowUp: flush, locate, locateAnchor });
           <button v-if="section.id && mappedBlockIds?.includes(section.id)" type="button" class="board-block-locate" @click="activateBlock(section.id)"><Shapes :size="13" aria-hidden="true" />{{ uiText('在画板中定位') }}</button>
           <div v-if="section.parts.length" class="board-prose">
             <template v-for="(part, index) in section.parts" :key="index">
-              <div v-if="part.kind === 'markdown'" v-html="renderMarkdown(part.text)"></div>
+              <div v-if="part.kind === 'markdown' || part.kind === 'socratic_question'" v-html="renderMarkdown(part.text)"></div>
               <div v-else-if="part.kind === 'sources'" class="board-inline-sources"><button v-for="id in part.source_ref_ids" :key="id" type="button" @click="openSource(id, $event)"><BookOpen :size="12" aria-hidden="true" />{{ sourceLabel(id) }}</button></div>
               <button v-else-if="part.kind === 'presentation' && relatedPresentation(part)" class="board-answer-presentation" type="button" @click="openPresentation(part)"><Shapes :size="17" aria-hidden="true" /><span><strong>{{ relatedPresentation(part)!.title }}</strong><small>{{ uiText('打开回答中的演示') }}</small></span><span aria-hidden="true">↗</span></button>
               <p v-else-if="part.kind === 'presentation'" class="board-missing-presentation">{{ uiText('这段回答中的演示未保留在当前画板。') }}</p>

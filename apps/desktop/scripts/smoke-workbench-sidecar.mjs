@@ -391,7 +391,6 @@ try {
     || metricsSummary.status_counts?.committed !== 1
     || metricsSummary.usage?.unavailable_attempts !== 2
     || metricsSummary.usage?.known_usage_coverage !== 0
-    || !metricsSummary.digest
   ) {
     throw new Error(`automatic build metrics summary was not reproducible: ${metricsResult.stdout}`);
   }

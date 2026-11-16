@@ -1,0 +1,33 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>三把尺的三维等距面</title><style>
+*{box-sizing:border-box}body{margin:0;padding:clamp(8px,2vw,24px);background:#08131c;color:#d5e7e9;font:15px/1.5 system-ui,sans-serif}main{max-width:920px;margin:auto}header{border-bottom:1px solid #365662}h1{margin:0;font-size:clamp(22px,4vw,32px)}p{margin:6px 0}canvas,#fallback{width:100%;height:clamp(160px,49vh,425px);display:block;touch-action:none}#fallback[hidden],canvas[hidden]{display:none}.controls{display:flex;align-items:center;flex-wrap:wrap;gap:6px}input{height:44px;min-width:70px;max-width:190px;flex:1;accent-color:#79d8c3}button{min-height:44px;padding:5px 10px;background:#112632;border:1px solid #466373;color:#d9ebef;border-radius:2px;font:inherit;cursor:pointer}button[aria-pressed=true]{color:#9affe2;border-color:#87cbbd}output{font:15px monospace}#readout{color:#b3e4d7;font-weight:600}
+</style></head><body><main><header><h1>三把尺的三维等距面</h1><p>点到原点的距离都是 1。水平切一刀，观察哪种截口会随高度收窄。</p></header><canvas id="cloud" tabindex="0" aria-label="可旋转的三维点云与水平剖面，用方向键或拖动改变视角"></canvas><svg id="fallback" hidden viewBox="-120 -120 240 240" aria-label="截口的正投影视图"></svg>
+<div class="controls" aria-label="选择等距面"><button id="l1">L1 八面体</button><button id="l2">L2 球</button><button id="linf">L∞ 立方体</button><button id="angle">换视角</button></div><div class="controls"><label for="slice">剖面高度 z</label><input id="slice" type="range" min="0" max=".9" step=".05" value="0"><output id="hval"></output></div><p id="readout" aria-live="polite"></p></main>
+<script data-presentation-library="three" src="libraries/three-0.180.0.min.js"></script><script>(()=>{/* INSPECTION_STAGE */
+const $=id=>document.getElementById(id),host=window.presentation,defaults={metric:'l2',height:0,yaw:.68,pitch:.55},s={...defaults},names={l1:'八面体',l2:'球',linf:'立方体'};
+let stage,groups={},plane,cut,bounds,previousKey='';
+function sample(m){const a=[];for(let i=0;i<3000;i++){const z=1-2*(i+.5)/3000,phi=i*2.39996323,r=Math.sqrt(1-z*z),x=r*Math.cos(phi),y=r*Math.sin(phi);
+ const norm=m==='l1'?Math.abs(x)+Math.abs(y)+Math.abs(z):m==='linf'?Math.max(Math.abs(x),Math.abs(y),Math.abs(z)):1;a.push(x/norm,y/norm,z/norm)}return a}
+function model(){const T=THREE,scene=stage.scene;scene.background=new T.Color(0x08131c);
+ for(const m of Object.keys(names)){const g=new T.Group(),base=m==='l1'?new T.OctahedronGeometry(1):m==='linf'?new T.BoxGeometry(2,2,2):new T.SphereGeometry(1,28,16);
+ const frame=m==='l2'?new T.WireframeGeometry(base):new T.EdgesGeometry(base);g.add(new T.LineSegments(frame,new T.LineBasicMaterial({color:0x678497,transparent:true,opacity:m==='l2'?.18:.7})));base.dispose();
+ const coords=sample(m),geo=new T.BufferGeometry(),attr=new T.Float32BufferAttribute(coords.length,3);geo.setAttribute('position',attr);geo.boundingSphere=new T.Sphere(new T.Vector3(),1.74);
+ const pts=new T.Points(geo,new T.PointsMaterial({size:.016,color:0x85dcca}));g.add(pts);scene.add(g);groups[m]={g,coords,geo,attr}}
+ plane=new T.Mesh(new T.PlaneGeometry(2.45,2.45),new T.MeshBasicMaterial({color:0x7bd7e1,transparent:true,opacity:.12,side:T.DoubleSide,depthWrite:false}));scene.add(plane);
+ cut=new T.LineLoop(new T.BufferGeometry(),new T.LineBasicMaterial({color:0xffc672}));scene.add(cut);
+ bounds=new T.Box3(new T.Vector3(-1.23,-1.23,-1),new T.Vector3(1.23,1.23,1));}
+function section(){const h=s.height;return s.metric==='l1'?{r:1-h,shape:'菱形'}:s.metric==='l2'?{r:Math.sqrt(1-h*h),shape:'圆'}:{r:1,shape:'正方形'}}
+function outline(m,r){if(m==='l1')return [[r,0],[0,r],[-r,0],[0,-r]];if(m==='linf')return [[r,r],[-r,r],[-r,-r],[r,-r]];return Array.from({length:96},(_,i)=>{const a=i*Math.PI/48;return [r*Math.cos(a),r*Math.sin(a)]})}
+function draw(){const m=s.metric,h=s.height,{r,shape}=section(),key=m+':'+h;
+ if(key!==previousKey){$('slice').value=h;$('hval').value=h.toFixed(2);for(const k of Object.keys(names))$(k).setAttribute('aria-pressed',String(k===m));
+ $('readout').textContent=names[m]+' · z = '+h.toFixed(2)+'：截口为'+shape+'，最大 x = '+r.toFixed(3)+'。';const edge=outline(m,r);
+ if(stage){for(const [k,v] of Object.entries(groups))v.g.visible=k===m;const {coords,geo,attr}=groups[m];let count=0;
+ for(let i=0;i<coords.length;i+=3){if(coords[i+2]<=h+.00001)attr.setXYZ(count++,coords[i],coords[i+1],coords[i+2])}attr.needsUpdate=true;geo.setDrawRange(0,count);
+ const old=cut.geometry;cut.geometry=new THREE.BufferGeometry().setFromPoints(edge.map(([x,y])=>new THREE.Vector3(x,y,h)));old.dispose();plane.position.z=h;}
+ else{$('cloud').hidden=true;$('angle').hidden=true;const f=$('fallback');f.removeAttribute('hidden');f.innerHTML='<path d="M-110 0H110M0 -110V110" stroke="#527889"/><polygon points="'+edge.map(([x,y])=>x*92+','+(-y*92)).join(' ')+'" fill="#1d4951" stroke="#ffc672" stroke-width="2"/>'}previousKey=key}
+ if(stage)stage.draw(bounds)}
+function restore(v={}){s.metric=Object.hasOwn(names,v.metric)?v.metric:defaults.metric;s.height=Math.min(.9,Math.max(0,Math.round(20*(Number(v.height)||0))/20));s.yaw=Number.isFinite(v.yaw)?v.yaw:defaults.yaw;s.pitch=Number.isFinite(v.pitch)?Math.max(-1.15,Math.min(1.15,v.pitch)):defaults.pitch;draw()}
+stage=inspectionStage($('cloud'),s,'z',draw,()=>host?.commitState());if(stage)model();restore(host?.initialState);
+for(const k of Object.keys(names))$(k).onclick=()=>{s.metric=k;draw()};$('slice').oninput=e=>{s.height=+e.target.value;draw()};$('angle').onclick=()=>{s.yaw+=Math.PI/3;draw()};
+host?.registerStateReader(()=>{draw();return{values:{...s},visible_step:names[s.metric],observation:{summary:$('readout').textContent,state:{metric:s.metric,height:s.height}}}});
+host?.registerStateRestorer(saved=>restore(saved.values.page));
+})();</script></body></html>

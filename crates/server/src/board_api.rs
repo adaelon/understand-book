@@ -150,6 +150,27 @@ pub(crate) fn scoped_store(
     BoardStore::open(root, learning_workspace_id, true)
 }
 
+/// The account's board library is available before opening a reading scene.
+/// Read only the small board heads; full content is loaded when a board is opened.
+pub(crate) fn account_list(user: &user_runtime::UserRuntime) -> Result<Value, ToolError> {
+    let mut items = scoped_store(user, None)?.list()?;
+    let root = user.history_path.as_ref().and_then(|path| path.parent())
+        .ok_or_else(|| invalid("Private persistent storage is required"))?;
+    match std::fs::read_dir(root.join("boards").join("workspaces")) {
+        Ok(entries) => for entry in entries {
+            let entry = entry.map_err(|error| invalid(error.to_string()))?;
+            if entry.file_type().map_err(|error| invalid(error.to_string()))?.is_dir() {
+                let scope = entry.file_name().to_string_lossy().into_owned();
+                items.extend(scoped_store(user, Some(&scope))?.list()?);
+            }
+        },
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {},
+        Err(error) => return Err(invalid(error.to_string())),
+    }
+    items.sort_by(|left, right| right.updated_at.cmp(&left.updated_at).then(left.board_id.cmp(&right.board_id)));
+    Ok(json!({"items": items}))
+}
+
 fn notebook(
     user: &user_runtime::UserRuntime,
     learning_workspace_id: Option<&str>,
@@ -257,7 +278,8 @@ fn answer_readable(parts: &[AgentAnswerPart]) -> String {
     let text = parts
         .iter()
         .filter_map(|part| match part {
-            AgentAnswerPart::Markdown { text } => Some(text.as_str()),
+            AgentAnswerPart::Markdown { text } | AgentAnswerPart::SocraticQuestion { text, .. } => Some(text.as_str()),
+            AgentAnswerPart::MusicExample { example } => Some(example.label.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()
@@ -1373,6 +1395,16 @@ pub(crate) fn source_window(
     validate_source_publication(book, binding, publication)?;
     let range = binding.evidence_range.as_ref().ok_or_else(authorization::missing)?;
     book.resolve_source(range, "zh-CN", Some(&binding.evidence_text_digest))?;
+    text_source_window(book, &binding.source_ref_id, range, publication, input)
+}
+
+pub(crate) fn text_source_window(
+    book: &Book,
+    source_ref_id: &str,
+    range: &EvidenceRange,
+    publication: Option<&base_schema::PublishedBookRef>,
+    input: &Value,
+) -> Result<Value, ToolError> {
     let mut leaves: Vec<_> = book.base.lid_nodes.iter().filter(|node| node.children.is_empty()).collect();
     leaves.sort_by(|a, b| a.span.start.cmp(&b.span.start)
         .then_with(|| a.span.end.cmp(&b.span.end)).then_with(|| a.path.cmp(&b.path)));
@@ -1411,7 +1443,7 @@ pub(crate) fn source_window(
         Ok(json!({"lid":leaf.lid,"kind":leaf.kind,"text":book.text(&leaf.lid, None)?,"highlights":highlights}))
     }).collect::<Result<Vec<_>, ToolError>>()?;
     let mut result = json!({
-        "source_ref_id":binding.source_ref_id,"source_lid":source_leaf.lid,"focus_lid":leaves[focus].lid,
+        "source_ref_id":source_ref_id,"source_lid":source_leaf.lid,"focus_lid":leaves[focus].lid,
         "segments":segments,
         "previous_lid":if start > 0 && start < end { Some(&leaves[start].lid) } else { None },
         "next_lid":if end < leaves.len() && start < end { Some(&leaves[end - 1].lid) } else { None },
@@ -1458,7 +1490,13 @@ fn read_source(
     user: &user_runtime::UserRuntime, workspace: &reader_workspace::ReaderWorkspace, input: &Value,
 ) -> Result<Value, ToolError> {
     let binding = source_binding(user, workspace, input)?;
-    let mut window = source_window(&workspace.book, &binding, workspace.publication.as_ref().map(|p| &p.reference), input)?;
+    workspace_source_window(workspace, &binding, input)
+}
+
+pub(crate) fn workspace_source_window(
+    workspace: &reader_workspace::ReaderWorkspace, binding: &SourceBinding, input: &Value,
+) -> Result<Value, ToolError> {
+    let mut window = source_window(&workspace.book, binding, workspace.publication.as_ref().map(|p| &p.reference), input)?;
     // Local assets use /book/asset_manifest; exact publication asset routes are
     // only exposed by the network host.
     if workspace.id == "local" { window.as_object_mut().unwrap().remove("published_book_ref"); }
@@ -1507,7 +1545,8 @@ pub(crate) fn route(
             let mut hits=boards.search(&workspace.book.base.book_id,publication,query,limit)?;
             // Note card bodies are resolved from the canonical notes, never indexed as copies.
             hits.retain(|hit|hit.kind!=memory::boards::BoardSearchKind::PersonalNote);
-            for note in user.store.search_personal_notes(query,None,100)? {
+            let note_ids = boards.personal_note_ids(&workspace.book.base.book_id, publication)?;
+            for note in user.store.search_personal_notes_in(query, &note_ids, limit.max(1))? {
                 for mut hit in boards.find_related(&workspace.book.base.book_id,publication,&BoardLookupTarget::PersonalNote{note_id:note.reference.note_id.clone()})? {
                     hit.title=note.title.clone().unwrap_or_else(||note.excerpt.chars().take(60).collect());hit.snippet=note.excerpt.clone();
                     if !hits.iter().any(|old|old.board_id==hit.board_id&&old.item_id==hit.item_id){hits.push(hit);}

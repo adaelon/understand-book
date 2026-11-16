@@ -1,0 +1,14 @@
+[Unit]
+Description=Understand Book independent business availability and email checks
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/opt/understand-book/multi-reader.env
+EnvironmentFile=/opt/understand-book/operations/alerts.env
+ExecStart=/usr/bin/python3 /opt/understand-book/operations/operations-watchdog.py --status /opt/understand-book/data/production-20261031/operations-watchdog-status.json
+TimeoutStartSec=150
+UMask=0077
+StandardOutput=journal
+StandardError=journal

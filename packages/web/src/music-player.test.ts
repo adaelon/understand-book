@@ -31,6 +31,51 @@ function mockMediaPlayback(onPlay?: (audio: HTMLMediaElement) => void) {
 function accept(receipt: MusicPlaybackReceipt) { registered.value!.accepted({ ...receipt, receipt_id: 'server-receipt' }); }
 afterEach(() => { vi.restoreAllMocks(); localStorage.clear(); });
 describe('mounted music player receipts', () => {
+  it('preserves the exact position and rate when recovering the original recording', async () => {
+    mockMediaPlayback();
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'performance'] });
+    const load = vi.spyOn(HTMLMediaElement.prototype, 'load');
+    const wrapper = mount(MusicReaderPane, { props: { context, owner: 'test' } });
+    try {
+      wrapper.vm.seek(2840);
+      await wrapper.get('[aria-label="播放速度"]').setValue('0.75');
+      const result = await wrapper.vm.execute(command('observe'));
+      accept(result);
+      await wrapper.vm.execute(command('resume', { kind: 'play' }));
+      localStorage.setItem('music-position:test:take:r1', JSON.stringify({ ms: 1000, rate: 1 }));
+      vi.advanceTimersByTime(8000); await nextTick();
+      expect(load).toHaveBeenCalledOnce();
+      await wrapper.get('audio').trigger('loadedmetadata');
+      const audio = wrapper.get<HTMLAudioElement>('audio').element;
+      expect(audio.currentTime).toBe(2.84); expect(audio.playbackRate).toBe(.75);
+      expect(wrapper.get('audio').attributes('preload')).toBe('auto');
+    } finally { wrapper.unmount(); vi.useRealTimers(); }
+  });
+  it('opens and closes the guide from the dock without moving it into the score layout', async () => {
+    mockMediaPlayback();
+    const wrapper = mount(MusicReaderPane, { props: { context, owner: 'test' } });
+    try {
+      const button = wrapper.get('.dock-guide');
+      await button.trigger('pointerdown'); await button.trigger('click');
+      expect(wrapper.find('.music-guide').exists()).toBe(true);
+      expect(button.attributes('aria-expanded')).toBe('true');
+      await button.trigger('pointerdown'); await button.trigger('click');
+      expect(wrapper.find('.music-guide').exists()).toBe(false);
+      expect(button.attributes('aria-expanded')).toBe('false');
+    } finally { wrapper.unmount(); }
+  });
+  it.each([500, 2000, 3500])('updates the loop when the listener seeks to %d ms', async target => {
+    mockMediaPlayback();
+    const wrapper = mount(MusicReaderPane, { props: { context, owner: 'test' } });
+    try {
+      accept(await wrapper.vm.execute(command('observe')));
+      await wrapper.vm.execute(command('loop', { kind: 'loop', start_ms: 1000, end_ms: 3000 }));
+      await wrapper.get('[aria-label="音乐播放位置"]').setValue(String(target));
+      const observed = await wrapper.vm.execute(command('after-seek'));
+      expect(observed.current_ms).toBe(target);
+      expect(observed.loop).toEqual(target === 2000 ? { start_ms: 1000, end_ms: 3000 } : null);
+    } finally { wrapper.unmount(); }
+  });
   it('captures a notation question before audio metadata is available', () => {
     vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockReturnValue(0);
     const wrapper = mount(MusicReaderPane, { props: { context, owner: 'test' } });
@@ -48,6 +93,16 @@ describe('mounted music player receipts', () => {
     wrapper.vm.seek(5500); wrapper.unmount();
     wrapper = mount(MusicReaderPane, { props: { context: excerpt, owner: 'test' } });
     await wrapper.get('audio').trigger('loadedmetadata'); expect(wrapper.get('audio').element.currentTime).toBe(5.5);
+    wrapper.unmount();
+  });
+  it('starts a complete movement at the beginning even when its selected analysis begins later', async () => {
+    vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockReturnValue(2);
+    const full: MusicContext = { ...context, manifest: { ...context.manifest,
+      occurrences: [{ occurrence_id: 'opening', order: 0, measure: '1', start_ms: 500, end_ms: 1000, score_object_ids: [] }],
+      structure: [{ section_id: 'analysis', parent_id: null, title: '展开部', start_ms: 3000, end_ms: 8000, coverage: 'detailed', event_ids: [], description: '' }] } };
+    const wrapper = mount(MusicReaderPane, { props: { context: full, owner: 'test' } });
+    await wrapper.get('audio').trigger('loadedmetadata');
+    expect(wrapper.get('audio').element.currentTime).toBe(0);
     wrapper.unmount();
   });
   it('awaits the actual play promise and reports its rejection', async () => {
@@ -98,6 +153,28 @@ describe('mounted music player receipts', () => {
     pause.mockClear(); wrapper.get('audio').element.currentTime = 3.1; await wrapper.get('audio').trigger('timeupdate');
     expect(wrapper.get('audio').element.currentTime).toBe(1); expect(pause).not.toHaveBeenCalled();
     wrapper.unmount();
+  });
+  it('restarts a loop ending at the recording duration after the media naturally pauses and ends', async () => {
+    const { play } = mockMediaPlayback();
+    const wrapper = mount(MusicReaderPane, { props: { context, owner: 'test' } });
+    try {
+      accept(await wrapper.vm.execute(command('observe')));
+      accept(await wrapper.vm.execute(command('loop', { kind: 'loop', start_ms: 8000, end_ms: 10000 })));
+      await wrapper.vm.execute(command('play', { kind: 'play' }));
+      const audio = wrapper.get<HTMLAudioElement>('audio').element;
+      audio.currentTime = 10; audio.pause();
+      await wrapper.get('audio').trigger('timeupdate');
+      await wrapper.get('audio').trigger('pause');
+      await wrapper.get('audio').trigger('ended');
+      await vi.waitFor(() => expect(audio.paused).toBe(false));
+      expect(audio.currentTime).toBe(8);
+      expect(play).toHaveBeenCalledTimes(2);
+      expect(await wrapper.vm.execute(command('after-end'))).toMatchObject({ current_ms: 8000, loop: { start_ms: 8000, end_ms: 10000 }, paused: false });
+      await wrapper.get('[aria-label="暂停音乐"]').trigger('click');
+      await wrapper.get('audio').trigger('pause');
+      expect(audio.paused).toBe(true);
+      expect(play).toHaveBeenCalledTimes(2);
+    } finally { wrapper.unmount(); }
   });
   it('clears an existing loop for an explicit single-play range and pauses at its end', async () => {
     vi.spyOn(HTMLMediaElement.prototype, 'readyState', 'get').mockReturnValue(2);
@@ -217,8 +294,8 @@ describe('mounted music player receipts', () => {
       const observed = await wrapper.vm.execute(command('observe-cue'));
       expect(observed.displayed_cue).toEqual(receipt.displayed_cue);
       await wrapper.get('[aria-label="播放速度"]').setValue('0.75');
-      expect(wrapper.find('.music-play-cue').exists()).toBe(false);
-      expect(await wrapper.vm.execute(command('observe-after-listener-control'))).not.toHaveProperty('displayed_cue');
+      expect(wrapper.find('.music-play-cue').exists()).toBe(true);
+      expect((await wrapper.vm.execute(command('observe-after-listener-control'))).displayed_cue).toEqual(receipt.displayed_cue);
     } finally { wrapper.unmount(); }
   });
   it.each([

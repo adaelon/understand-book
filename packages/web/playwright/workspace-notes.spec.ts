@@ -22,6 +22,10 @@ function boardUrl(seed: Fixture, id: string) {
 
 test('workspace notes survive home and reader navigation and remain shared across two real boards', async ({ page, context, request }, info) => {
   page.setDefaultTimeout(20_000);
+  await page.addInitScript(() => {
+    if (window.top !== window) return;
+    for (const scene of ['library', 'reader', 'board', 'boards']) localStorage.setItem(`understand-book.product-tour.v1.A.${scene}`, 'done');
+  });
   const fixture = await request.get(`${control}/fixture`);
   expect(fixture.ok()).toBe(true);
   const seed = await fixture.json() as Fixture;
@@ -29,6 +33,7 @@ test('workspace notes survive home and reader navigation and remain shared acros
   page.on('pageerror', error => errors.push(error.message));
   await context.route(/\/api\/|\/books\//, async route => {
     const incoming = route.request(), url = new URL(incoming.url());
+    if (url.pathname.endsWith('/reader/guidance')) return route.fulfill({ json: null });
     const response = await route.fetch({ url: `${backend}${url.pathname}${url.search}`,
       headers: { ...await incoming.allHeaders(), host: 'reader.example', origin: 'https://reader.example', cookie: seed.cookie } });
     if (!response.ok() && !(response.status() === 404 && url.pathname.endsWith('/source_manifest'))) {
@@ -138,6 +143,7 @@ test('workspace notes survive home and reader navigation and remain shared acros
 
   await test.step('a saved note brings its title into the Agent composer', async () => {
     await board.getByRole('button', { name: '关闭画板，回到阅读', exact: true }).click();
+    await page.getByRole('button', { name: '更多阅读工具', exact: true }).click();
     await page.getByRole('button', { name: '空间笔记', exact: true }).click();
     await notes.locator('.notes-list-item').filter({ hasText: revisedTitle }).click();
     await notes.getByRole('button', { name: /和 Agent 继续想/ }).click();
@@ -162,17 +168,18 @@ test('workspace notes survive home and reader navigation and remain shared acros
     await notes.locator('.notes-source-link').first().click();
     const source = page.getByRole('dialog', { name: '笔记原文', exact: true });
     await expect(source).toBeVisible();
-    await expect(source).toContainText(imported.source_bindings[0].label_snapshot);
+    await expect(source.locator('mark').first()).toBeInViewport();
     await page.screenshot({ path: info.outputPath('answer-note-source.png') });
     await source.getByRole('button', { name: '打开原资料', exact: true }).click();
     await expect(source).not.toBeVisible();
     await expect(notes).not.toBeVisible();
     await expect(page.locator('article.prose')).toContainText('平均速度是总路程除以总时间');
-    await page.getByRole('button', { name: '工作区与资料', exact: true }).click();
+    await page.getByRole('button', { name: '学习资料', exact: true }).click();
     await page.getByRole('button', { name: '空间笔记', exact: true }).click();
     await notes.locator('.notes-list-item').filter({ hasText: imported.title }).click();
     await notes.locator('.notes-source-link').first().click();
-    await expect(source).toContainText('这是保存笔记时保留的来源摘录。');
+    await expect(source.locator('mark').first()).toBeInViewport();
+    await expect(source.getByRole('button', { name: '回到引用处', exact: true })).toBeVisible();
     await source.getByRole('button', { name: '打开原资料', exact: true }).click();
     await expect(source).not.toBeVisible();
     await expect(notes).not.toBeVisible();

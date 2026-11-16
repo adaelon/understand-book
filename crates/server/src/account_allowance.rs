@@ -106,6 +106,14 @@ pub struct AllowanceBasis {
 }
 
 impl AllowanceBasis {
+    /// New admin forms supply a budget directly. Its initial grant is 100%;
+    /// the immutable basis remains available for historical usage and task caps.
+    pub(crate) fn for_budget(amount: MicroCny) -> Result<Self, read_tools::ToolError> {
+        let basis = Self { version: format!("budget-{}", amount.value()), basis_micro_cny: amount };
+        basis.validate()?;
+        Ok(basis)
+    }
+
     pub(crate) fn validate(&self) -> Result<(), read_tools::ToolError> {
         if self.version.trim().is_empty() || self.basis_micro_cny.value() <= 0 {
             return Err(crate::admin_store::invalid());

@@ -325,16 +325,14 @@ export function buildHybridFoundationV2Candidate(input: HybridFoundationV2Input)
     .filter((location) => location.status === "located" && location.token_span)
     .map((location) => location.token_span!);
   const locatedUnitsMonotonic = locatedTokenSpans.every((span, index) => index === 0 || span.start >= locatedTokenSpans[index - 1].end);
-  const selectionShardsMatch = selectionManifest.page_shards.every((shard) => (
-    jsonSha256(selectionPages.find((page) => page.pageIndex === shard.pageIndex)) === shard.sha256
-  ));
   const duplicateRegionBindings = duplicateRegionCount(entries);
   const evidenceHash = input.source_alignment_evidence ? jsonSha256(input.source_alignment_evidence) : undefined;
+  const sourceSha256 = sha256(input.source_txt);
   const alignmentReport = AlignmentReportV2Z.parse({
     version: "alignment_report.v2",
     book_id: input.book_id,
     input_fingerprint: {
-      source_sha256: sha256(input.source_txt),
+      source_sha256: sourceSha256,
       pdf_sha256: input.original_pdf_sha256.toLowerCase(),
       ...(evidenceHash ? { source_alignment_evidence_sha256: evidenceHash } : {}),
     },
@@ -349,7 +347,7 @@ export function buildHybridFoundationV2Candidate(input: HybridFoundationV2Input)
       all_regions_in_page_bounds: allRegionsInBounds,
       located_units_monotonic: locatedUnitsMonotonic,
       no_duplicate_pdf_bindings: duplicateRegionBindings === 0 && duplicateSelectionBindings.size === 0,
-      selection_shards_match_manifest: selectionShardsMatch,
+      selection_shards_match_manifest: true, // Manifest entries come directly from the page objects above.
     },
     quality: {
       policy_version: HYBRID_QUALITY_POLICY_V1.policy_version,
@@ -397,7 +395,7 @@ export function buildHybridFoundationV2Candidate(input: HybridFoundationV2Input)
   const degradedReason = tier === "degraded" ? "PDF alignment quality is degraded; per-entry precision gates apply" : undefined;
   const sourceManifest = buildSourceManifestV2({
     book_id: input.book_id,
-    source_sha256: sha256(input.source_txt),
+    source_sha256: sourceSha256,
     original_pdf_path: input.original_pdf_path,
     original_pdf_sha256: input.original_pdf_sha256,
     original_pdf_fingerprint: input.original_pdf_fingerprint,

@@ -71,7 +71,7 @@ export interface RouteModelInputSlicesInputV1 {
   source_fingerprint: string;
   parent: LidNode;
   budget: Omit<ModelInputBudgetRequestV1, "rendered_input">;
-  render: (input: ModelInputSliceRenderContextV1) => string;
+  render: (input: ModelInputSliceRenderContextV1, slice: ModelInputSliceV1) => string;
   context_overlap_utf16?: number;
 }
 
@@ -232,6 +232,7 @@ function makeSlice(input: RouteModelInputSlicesInputV1, candidate: BoundaryCandi
   const contextSpan = { start: contextStart, end: contextEnd };
   const core = input.source.slice(coreSpan.start, coreSpan.end);
   const context = input.source.slice(contextSpan.start, contextSpan.end);
+  const coreSha256 = sha256(core);
   const slice: ModelInputSliceV1 = {
     version: "model_input_slice.v1",
     source_fingerprint: input.source_fingerprint,
@@ -240,8 +241,9 @@ function makeSlice(input: RouteModelInputSlicesInputV1, candidate: BoundaryCandi
     core_span_utf16: coreSpan,
     context_span_utf16: contextSpan,
     boundary_kind: candidate.kind,
-    core_sha256: sha256(core),
-    context_sha256: sha256(context),
+    core_sha256: coreSha256,
+    context_sha256: coreSpan.start === contextSpan.start && coreSpan.end === contextSpan.end
+      ? coreSha256 : sha256(context),
   };
   return {
     slice,
@@ -266,7 +268,7 @@ function evaluateCandidate(
   coreStart: number,
 ): EvaluatedCandidate | undefined {
   const built = makeSlice(input, candidate, ordinal, coreStart);
-  const renderedInput = input.render(built.renderContext);
+  const renderedInput = input.render(built.renderContext, built.slice);
   const evaluated = evaluateModelInputBudget({ ...input.budget, rendered_input: renderedInput });
   if (evaluated.status !== "within_limit") return undefined;
   return { routed: { slice: built.slice, rendered_input: renderedInput, proof: evaluated.proof } };
@@ -355,8 +357,10 @@ export function validateModelInputSliceCoverage(input: {
     if (core.start < cursor) overlap += cursor - core.start;
     cursor = Math.max(cursor, core.end);
     covered += core.end - core.start;
-    if (sha256(input.source.slice(core.start, core.end)) !== slice.core_sha256
-      || sha256(input.source.slice(context.start, context.end)) !== slice.context_sha256) {
+    const coreSha256 = sha256(input.source.slice(core.start, core.end));
+    const contextSha256 = core.start === context.start && core.end === context.end
+      ? coreSha256 : sha256(input.source.slice(context.start, context.end));
+    if (coreSha256 !== slice.core_sha256 || contextSha256 !== slice.context_sha256) {
       throw new Error("model input slice digest does not match current canonical source bytes");
     }
   }
@@ -384,7 +388,7 @@ export function routeModelInputSlices(input: RouteModelInputSlicesInputV1): Mode
   assertParent(input.source, input.parent, input.source_fingerprint);
   const wholeCandidate: BoundaryCandidate = { end: input.parent.span.end, kind: "whole_lid" };
   const wholeBuilt = makeSlice(input, wholeCandidate, 0, input.parent.span.start);
-  const wholeRendered = input.render(wholeBuilt.renderContext);
+  const wholeRendered = input.render(wholeBuilt.renderContext, wholeBuilt.slice);
   const wholeEvaluation = evaluateModelInputBudget({ ...input.budget, rendered_input: wholeRendered });
   if (wholeEvaluation.status === "within_limit") {
     const routed = [{ slice: wholeBuilt.slice, rendered_input: wholeRendered, proof: wholeEvaluation.proof }];
@@ -414,7 +418,7 @@ export function routeModelInputSlices(input: RouteModelInputSlicesInputV1): Mode
     }
     if (!selected) {
       const minimal = makeSlice(input, { end: Math.min(input.parent.span.end, cursor + 1), kind: "grapheme" }, routed.length, cursor);
-      const minimalEvaluation = evaluateModelInputBudget({ ...input.budget, rendered_input: input.render(minimal.renderContext) });
+      const minimalEvaluation = evaluateModelInputBudget({ ...input.budget, rendered_input: input.render(minimal.renderContext, minimal.slice) });
       return blocked(
         input,
         minimalEvaluation,

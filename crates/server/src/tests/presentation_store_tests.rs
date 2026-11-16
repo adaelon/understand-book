@@ -158,6 +158,33 @@ fn rn1_answer_admission_preserves_original_turn_sources_and_publication() {
 }
 
 #[test]
+fn rn1_answer_excerpt_crosses_inline_sources_but_not_separate_surfaces() {
+    let (_root, mut state, turn) = fixture();
+    let sources = content(&state, "source").source_bindings;
+    let stored = &mut state.user.agent_history.sessions[0].turns[0];
+    stored.status = AgentAssistantStatus::Completed;
+    let mut answer = outcome(&PresentationRef { presentation_id: "unused".into(), revision: 1 });
+    answer.answer_view = Some(AgentAnswerView { parts: vec![
+        AgentAnswerPart::Markdown { text: "低音以 A 为底，".into() },
+        AgentAnswerPart::Sources { source_ref_ids: vec![sources[0].source_ref_id.clone()] },
+        AgentAnswerPart::Markdown { text: "三音取 **C 还原**的音响。".into() },
+        AgentAnswerPart::SocraticQuestion { text: "你听到了什么？".into(), purpose: None },
+        AgentAnswerPart::Presentation { presentation_id: "unused".into(), revision: 1 },
+        AgentAnswerPart::Markdown { text: "另一段回答。".into() },
+    ], sources: vec![] });
+    stored.outcome = Some(answer); stored.source_bindings = sources.clone();
+    let request = |text: &str| json!({"type":"note","content":"","note":{"association":{"kind":"answer","session_id":turn.session_id,"turn_id":turn.turn_id},"retained_excerpt":text}});
+    for text in ["低音以 A 为底，三音取 **C 还原**的音响。", "以 A 为底，三音取 **C", "你听到了什么？"] {
+        let saved = workspace_client::memory(&mut state.user, &state.workspace, "memory/save", &request(text), "created").unwrap();
+        assert_eq!(saved["record"]["note"]["retained_excerpt"], json!({"kind":"assistant","text":text}));
+        assert_eq!(saved["record"]["note"]["source_bindings"], json!(sources));
+    }
+    for text in ["音响。你听到了什么？", "你听到了什么？另一段回答。", "伪造的解释"] {
+        assert!(workspace_client::memory(&mut state.user, &state.workspace, "memory/save", &request(text), "invalid").is_err());
+    }
+}
+
+#[test]
 fn rn1_original_selection_and_body_placement_keep_distinct_content_identity() {
     let (_root, mut state, _) = fixture();
     let selection = json!({"status":"resolved","raw_quote":"XX","resolved_quote":"XX","ranges":[{"lid":"1.1","range":{"start":0,"end":2}}]});

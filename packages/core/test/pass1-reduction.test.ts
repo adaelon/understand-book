@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
+import * as fs from "node:fs";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   createAutomaticBuildStagePolicySet,
   freezeAutomaticBuildStagePolicySet,
@@ -37,6 +38,7 @@ import {
   pass1LidStitchPolicy,
   pass1ModelSlicePolicyMembers,
   pass1ShadowTaskPrivateDirectory,
+  pass1ShadowTaskPath,
   pass1SourceFragmentPolicy,
   routePass1ShadowWorkUnits,
   routePass1StitchLevel,
@@ -65,6 +67,11 @@ import {
 } from "../src/stage-work-unit";
 import { estimateTokens, type Window } from "../src/window";
 import { createSyntheticRoutabilityFixture } from "./helpers/model-input-routability-fixture";
+
+vi.mock("node:fs", async importOriginal => {
+  const actual = await importOriginal<typeof import("node:fs")>();
+  return { ...actual, writeFileSync: vi.fn(actual.writeFileSync) };
+});
 
 function sha256(value: string | Buffer): string {
   return createHash("sha256").update(value).digest("hex");
@@ -242,7 +249,6 @@ function preparedFragmentUnits(count: number): {
       content_profile_id: profile.id,
       parent_lid: parent.lid,
       ordinal,
-      core_sha256: sha256(core),
       boundary_kind: "grapheme",
       core_span_utf16: { start: ordinal, end: ordinal + 1 },
       context_span_utf16: { start: ordinal, end: ordinal + 1 },
@@ -333,6 +339,39 @@ function replayTree(
 }
 
 describe("Pass1 dormant fragment/stitch routing", () => {
+  it.each([0, 127])("removes a first freeze interrupted after %i bytes and allows retry", async partialBytes => {
+    const actualFs = await vi.importActual<typeof import("node:fs")>("node:fs");
+    const prepared = preparedFragmentUnits(1);
+    const unit = prepared.units[0];
+    const targetRef = unit.descriptor.target;
+    const target: AutomaticBuildTarget = {
+      kind: "source_file", profile_id: targetRef.profile_id, book_id: targetRef.book_id,
+      root_dir: path.dirname(path.dirname(targetRef.workspace_dir)),
+      workspace_dir: targetRef.workspace_dir,
+      source_path: path.join(path.dirname(targetRef.workspace_dir), "synthetic.md"),
+      target_ref: targetRef,
+    };
+    const task = createPass1ShadowTask({
+      work_unit: unit, source_fingerprint: sha256(prepared.source),
+      policy_generation_id: policyGenerationIdFor(unit), source_unit_count: 1,
+    });
+    const file = pass1ShadowTaskPath(target, task.policy_generation_id, task.descriptor.work_unit_id);
+    const diskFull = Object.assign(new Error("disk full"), { code: "ENOSPC", syscall: "write" });
+    vi.mocked(fs.writeFileSync).mockImplementationOnce((destination, _data, options) => {
+      actualFs.writeFileSync(destination, Buffer.alloc(partialBytes), options);
+      throw diskFull;
+    });
+    expect(() => freezePass1ShadowTask(target, task)).toThrow(diskFull);
+    expect(existsSync(file)).toBe(false);
+    expect(freezePass1ShadowTask(target, task)).toBe(file);
+    const complete = readFileSync(file, "utf8");
+    expect(JSON.parse(complete)).toEqual(task);
+    expect(freezePass1ShadowTask(target, task)).toBe(file);
+    expect(() => freezePass1ShadowTask(target, { ...task, source_fingerprint: "a".repeat(64) }))
+      .toThrow(/policy_generation_conflict/);
+    expect(readFileSync(file, "utf8")).toBe(complete);
+  });
+
   it("keeps a fitting whole window byte-identical and eligible for exact v2 artifact adoption", () => {
     const fixture = createSyntheticRoutabilityFixture(32);
     const profile = resolveContentProfile("technical_learning");
@@ -486,12 +525,10 @@ describe("Pass1 dormant fragment/stitch routing", () => {
   });
 
   it("enforces closed fragment/stitch schemas and original-LID/node closure", () => {
-    const coreHash = sha256("core");
     const fragment = {
       version: PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION,
       parent_lid: "1.1",
       source_slice_ordinal: 0,
-      core_sha256: coreHash,
       nodes: [
         { id: "concept:a", type: "concept" as const, name: "A", occurrences: ["1.1"], source_lid: null },
         { id: "concept:b", type: "concept" as const, name: "B", occurrences: ["1.1"], source_lid: null },
@@ -501,12 +538,13 @@ describe("Pass1 dormant fragment/stitch routing", () => {
     expect(parsePass1SourceFragmentCandidate(fragment, {
       parent_lid: "1.1",
       source_slice_ordinal: 0,
-      core_sha256: coreHash,
     })).toEqual(fragment);
+    expect(() => parsePass1SourceFragmentCandidate({ ...fragment, source_slice_ordinal: 1 }, {
+      parent_lid: "1.1", source_slice_ordinal: 0,
+    })).toThrow(/identity/i);
     expect(() => parsePass1SourceFragmentCandidate({ ...fragment, raw_source: "forbidden" }, {
       parent_lid: "1.1",
       source_slice_ordinal: 0,
-      core_sha256: coreHash,
     })).toThrow(/schema_invalid/i);
     expect(() => parsePass1SourceFragmentCandidate({
       ...fragment,
@@ -515,7 +553,6 @@ describe("Pass1 dormant fragment/stitch routing", () => {
     }, {
       parent_lid: "1.1",
       source_slice_ordinal: 0,
-      core_sha256: coreHash,
     })).toThrow(/evidence/i);
     expect(() => parsePass1SourceFragmentCandidate({
       ...fragment,
@@ -523,7 +560,6 @@ describe("Pass1 dormant fragment/stitch routing", () => {
     }, {
       parent_lid: "1.1",
       source_slice_ordinal: 0,
-      core_sha256: coreHash,
     })).toThrow(/schema_invalid/i);
 
     const stitch = {
@@ -817,7 +853,6 @@ describe("Pass1 dormant fragment/stitch routing", () => {
         version: PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION,
         parent_lid: fragmentRoute.parent_lid,
         source_slice_ordinal: slice.ordinal,
-        core_sha256: slice.core_sha256,
         nodes: [sharedNode(fragmentRoute.parent_lid)],
         edges: [localEdge("concept:shared-pass1-node", "concept:missing")],
       },
@@ -873,7 +908,6 @@ describe("Pass1 dormant fragment/stitch routing", () => {
           version: PASS1_SOURCE_FRAGMENT_SCHEMA_VERSION,
           parent_lid: unit.route.parent_lid,
           source_slice_ordinal: slice.ordinal,
-          core_sha256: slice.core_sha256,
           nodes: [sharedNode(unit.route.parent_lid)],
           edges: [],
         },

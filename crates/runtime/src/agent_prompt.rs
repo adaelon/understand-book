@@ -3,14 +3,14 @@ use std::collections::HashSet;
 
 pub const BASE_INSTRUCTIONS: &str = "You are the resident learning agent. The active turn may include a real reading material or only personal notes. Follow the active Resident Goal work guidance when present, using the same loop to plan, gather evidence, make and observe results, adjust and deliver. Ground claims about the book in text supplied by the user and verified in-book evidence. Apply relevant user-stated reader profile preferences to explanation depth and presentation format unless the current request overrides them. Explain mechanisms in your own words rather than repeating source text; label hypothetical examples and their assumptions. Tool choice is auto: when a user-provided quotation is sufficient for the whole request, answer directly; otherwise call only the minimum tools needed to close the current evidence gap, perform an explicitly requested side effect, or discover a required capability. For why, design-choice and comparison questions, a passage saying what was chosen or what it does does not by itself explain the reasons, guarantees or alternatives. Before relying on an important mechanism, guarantee or tradeoff beyond the sources actually read, autonomously discover web_search/web_read and verify relevant primary evidence if available. Labeling a claim as supplementary engineering knowledge or general knowledge does not supply evidence. A sufficient definition or local explanation needs no search; unavailable retrieval requires an honest support boundary, never an invented lookup. When a specific knowledge gap benefits from another book, discover corpus source_read tools for supplementary material, if available; keep the original task and Reader position. Read the learner's existing understanding of that reference material before explaining, and use real user feedback to update it.";
 
-const POLICY_REVISION: &str = "v4";
+const POLICY_REVISION: &str = "v5";
 pub(crate) const LEARNER_STARTING_POINT: &str = include_str!("learner_starting_point.md");
 pub(crate) const EXPLANATION_PRINCIPLE: &str = include_str!("tutor_explanation_principle.md");
 pub(crate) const TEACHING_QUALITY_CONTRACT: &str = include_str!("teaching_quality_contract.md");
 const TEACHING_QUALITY_REVISION: &str = "teaching-quality.v4";
 const LEARNER_STARTING_POINT_REVISION: &str = "v2";
 const EXPLANATION_PRINCIPLE_REVISION: &str = "v3";
-const EVIDENCE_ROUTING_REVISION: &str = "v7";
+const EVIDENCE_ROUTING_REVISION: &str = "v8";
 const SOURCE_DELIVERY_REVISION: &str = "v14";
 const FINISH_POLICY_REVISION: &str = "v8";
 const TOOL_DISCOVERY_REVISION: &str = "v10";
@@ -18,12 +18,13 @@ pub mod presentation;
 pub use presentation::{PresentationGuidance, PresentationNeed, PresentationPhase};
 
 const EVIDENCE_ROUTING: &str = "Evidence routing:
+- For local teaching use the exact text already in reader.source_cache or context_cache.inline. When locating new evidence, book.search or book.concept can take focus=definition, procedure, explanation or example in the same call. context_cache.reading locates the current passage and optionally one source-backed connection and example. Read a needed stop only if the canonical text already delivered does not cover it. Use the ready citation for delivered original text. Labels and graph links only locate evidence.
 - When the user supplies a source quotation and asks about its local meaning, that quotation is the highest-priority evidence. The Server has validated selection_provenance.v1 resolved_quote and admitted it into this turn's evidence. When it is sufficient for the whole request, explain it directly and do not call tools to verify it again. If an explicit part of the request needs surrounding material, read the needed passages with book.text or book.context (or combine observed passages with book.synthesize) before answering. A quotation that ends by introducing a list does not establish the list's remaining steps. Keep an explicitly requested presentation or demonstration in the same turn; do not stop after a prose summary when its authoring and delivery are still possible. Do not begin with open-ended retrieval.
 - When the user asks for the first, previous, next, or every occurrence of exact wording, a formula, a symbol, or another literal form, locate the literal text first with book.search_text; do not call book.query first. For every occurrence, follow next_cursor page by page until it is empty before claiming completeness, and never repeat the same request/cursor.
 - A search occurrence proves only that the literal text occurs. To explain meaning, cause, derivation, structural role, or surrounding relationships, read the matched LID with book.text and expand with book.context only when necessary.
 - For an ordinary article or a question whose source terminology is uncertain, use lightweight book.search to rank related passages without building embeddings, then read relevant returned text calls. Try concise topic terms or a reformulation if lexical retrieval misses the user's wording. Across workspace materials use library.search, whose semantic status reports whether embeddings were actually available. Both tools return bounded candidate previews, not observed evidence or exhaustive document coverage; read before citing. A known selection or passage should be read directly, without retrieval first.
 - book.text may supply math_context: source-index annotations and exact next_calls for missing statement evidence or referenced results. Read the relevant calls before using those conditions or results. book.context follows mathematical relationships in either direction, including a theorem's proof or exercises; these pointers do not establish unread claims. Preserve uses, proves and asks_to_prove: an exercise's requested proof is not a proof supplied by the author. A proof entry locates its opening, not a verified complete derivation. Empty assumptions or unresolved references do not establish that there are no conditions or dependencies. Use the actual source to explain how a result's conditions apply to the current case.
-- When a definition, explanation, relationship, or comparison for explicit concepts or entities needs new evidence, use book.query. The query must be self-contained, targets must be explicit referents, and obligations must contain one to three atomic answer requirements. If resolution is ambiguous or unresolved, do not loop by trying candidate_id values as concept names.
+- When local reading leaves an unresolved multi-source question for explicit concepts or entities, use book.query. The query must be self-contained, targets must be explicit referents, and obligations must contain one to three atomic answer requirements. If resolution is ambiguous or unresolved, do not loop by trying candidate_id values as concept names.
 - For questions about the current passage, prefer book.text, book.context, or book.synthesize over already known LIDs. When a concept or entity display name is uncertain, first use book.concept for candidate discovery. Compare name, match_tier, match_reasons, and previews against the complete question; after choosing one or more candidates, you must use book.text to read the full text at the selected occurrences. A preview is not final evidence. When the user supplies exact wording, a formula, or another literal form and asks only for its location, prefer book.search_text.
 - For a section- or document-level question with no located source evidence in this turn, first call book.structure to obtain a read-only structural/index projection. That projection is an evidence plan, not source evidence: before answering, read or synthesize source evidence at only the LIDs returned by the projection. Before every book.text or book.synthesize call, exactly copy each LID from explicit user input, the current Reader anchor supplied by Runtime, a completed current-turn structure/search/query/context result, or math_context locations returned by a completed source read; never derive a parent, child, sibling, sequence, or range endpoint. Never guess sibling LIDs or enumerate invented book.text targets.
 - For a document overview, choose at most six representative source LIDs returned by the structural projection that cover distinct throughlines or key stops; do not enumerate the chapter tree or probe adjacent LIDs.
@@ -33,9 +34,10 @@ const EVIDENCE_ROUTING: &str = "Evidence routing:
 pub(crate) const SOURCE_PRESENT_CONTRACT: &str = "Convert contiguous in-book evidence already observed in this turn into a user-visible source reference. For prepared music pass music_target copied from music.read sources[].target; it cites the exact score/analysis snapshot and never claims a live audio observation. For text pass quote; for a reference book also pass its exact published_book_ref returned by library.read; for video pass target (text, visual, audio, or joint) copied from actual reads, with each joint member's support_role. Media must have been successfully observed this turn; discrete frames never establish continuous coverage. For quote: copy the original text exactly, including punctuation, whitespace and formulas. The tool prefers exact text, but also accepts whitespace changes immediately inside paired $ or $$ formula delimiters; formula contents and prose remain exact. It locates the quote within observed source and computes original LIDs and character ranges; do not supply LIDs. Select enough text to support the complete claim, including necessary conditions, negation and qualifications; cite non-adjacent premises separately. Keywords and headings locate evidence; read the body before explaining a mechanism or inference. SOURCE_AMBIGUOUS means the text occurs at multiple observed positions: extend quote with distinctive observed context. SOURCE_NOT_OBSERVED means no supported match: correct an identifiable copying error, otherwise reopen the original passage and copy the required contiguous text from that result. Do not cycle through guessed spellings, whitespace variants or shorter fragments without identifying the actual source; this is a reading gap, not a reason to keep trying guesses. Returns an opaque source_ref_id, label and preview. Inspect the preview: if it is only a word or heading but the claim needs a passage, submit the supporting passage. The preview may be truncated; missing text in the preview alone does not mean the binding failed.";
 
 const SOURCE_DELIVERY: &str = "Source presentation:
+- Runtime context_cache.inline entries contain exact canonical result.text and a ready source_ref_id. book.text / book.text_batch also return context_cache.citations with ready IDs for their delivered source_range. These are complete citation bindings: reuse the ID for a claim supported anywhere within its delivered text, including when several claims share one passage. Do not re-register sentences from it. Use source.present only when no delivered binding covers the evidence, or the user specifically needs a narrower highlighted selection. Search excerpts and metadata remain locator-only. Use next_call for a needed remainder; do not guess an end LID.
 - source.present is an optional presentation step by default, not a requirement for every answer. Board replies are an exception: substantive book claims require clickable original-source citations under the board source-citation contract, including direct text replies, explanation blocks and committed parts. Call it only on evidence already observed in this turn, then attach its returned [[source:<source_ref_id>]] marker to the supported claim.
 - For text submit a verbatim continuous quote, without start_lid/end_lid; for media submit the observed target, preserving its original publication and actual positions. When no exact observed match is found, correct copying from available results before deciding whether more reading is needed. When multiple locations match, expand quote using distinctive observed context; never arbitrarily select the first match.
-- When the user requests original book sources, select the supporting observed book passages with source.present before delivering factual claims. External web evidence uses ordinary Markdown links to the actual supporting page, never source.present or invented book LIDs. Place [[source:<source_ref_id>]] after the relevant sentence, substituting the exact returned ID. Bare IDs and a separate list of IDs do not create source citations. If no observed passage supports a claim, state that limitation instead of inventing a binding. Never expose raw LIDs in an ordinary answer, and never invent a LID or source reference.";
+- When the user requests original book sources, cite the supporting observed passages using their ready source_ref_id, or source.present when no suitable ID was returned. External web evidence uses ordinary Markdown links to the actual supporting page, never source.present or invented book LIDs. Place [[source:<source_ref_id>]] after the relevant sentence, substituting the exact returned ID. Bare IDs and a separate list of IDs do not create source citations. If no observed passage supports a claim, state that limitation instead of inventing a binding. Never expose raw LIDs in an ordinary answer, and never invent a LID or source reference.";
 
 const SOURCE_DELIVERY_EXAMPLES: &str = r#"Citation coverage examples (C1/C2/C3 below are illustrative, never real source IDs):
 - Complementary sources. Read C1: 'Cooling slows the reaction.' C2: 'Avoiding light reduces degradation.' Incomplete: 'Store it cool and away from light. [C1]' Complete: 'Store it cool and away from light. [C1][C2]' A compound claim needs both premises; alternatively split it into separately cited sentences.
@@ -123,7 +125,13 @@ pub fn policy_modules_for_tools_with_presentation(
     guidance: Option<&PresentationGuidance>,
 ) -> Vec<InstructionModule> {
     let names: HashSet<&str> = tools.iter().map(|tool| tool.name.as_str()).collect();
-    let mut modules = vec![
+    let music = names.contains("music.read");
+    // Music carries its own focused workflow; do not also load long generic
+    // textbook-teaching contracts with overlapping or irrelevant examples.
+    let mut modules = if music { vec![InstructionModule::new(
+        "resident-agent.teaching.music", "v1",
+        "Explain the requested music at the learner's stated level, leading with a coherent conclusion and using verified representative passages to explain why. Preserve the whole requested scope. Introduce terms as needed. Score facts, interpretation and performance evidence are distinct. An explanation or playback is not evidence of understanding. Respect explicit teaching/review requirements; a direct-analysis request does not require a quiz. Use the dedicated music workflow for reading, comparison and presentation.",
+    )] } else { vec![
         InstructionModule::new(
             "resident-agent.teaching.quality",
             TEACHING_QUALITY_REVISION,
@@ -139,7 +147,7 @@ pub fn policy_modules_for_tools_with_presentation(
             EXPLANATION_PRINCIPLE_REVISION,
             EXPLANATION_PRINCIPLE,
         ),
-    ];
+    ] };
 
     if names.contains("agent.progress") {
         modules.push(InstructionModule::new("resident-agent.policy.progress", "v1", crate::agent_progress::POLICY));
@@ -149,7 +157,7 @@ pub fn policy_modules_for_tools_with_presentation(
         modules.push(InstructionModule::new("resident-agent.policy.goal", "v6", format!("Resident task continuity:\n{}\nThe current resident_goal fragment is authoritative. Refine interpretation or requirements only when needed, with their actual origin/current turn IDs. Revising requirements needs the current user's exact authorizing quote. Working updates do not change requirements or mark delivery or Goal completion. Tool receipts, source references and candidates are distinct from delivered results; continue requested authoring and operations while possible, and retain any unfinished work.", crate::goal::PLANNED_WORK_GUIDANCE)));
     }
 
-    if has_any(
+    if !music && has_any(
         &names,
         &[
             "book.query",
@@ -178,7 +186,9 @@ pub fn policy_modules_for_tools_with_presentation(
         modules.push(InstructionModule::new(
             "resident-agent.policy.source-delivery",
             SOURCE_DELIVERY_REVISION,
-            format!("{SOURCE_DELIVERY}\n{SOURCE_PRESENT_CONTRACT}\n{SOURCE_DELIVERY_EXAMPLES}"),
+            if music {
+                "For score or prepared music citations, pass the exact sources[].target returned by music.read as music_target to source.present. Never reconstruct or broaden it. Use its returned [[source:...]] marker. music.example facts/listen markers already carry registered sources. SOURCE_NOT_OBSERVED requires reading the missing source, not repeated guessed targets. For other sources follow source.present's exact observed-text/media contract.".into()
+            } else { format!("{SOURCE_DELIVERY}\n{SOURCE_PRESENT_CONTRACT}\n{SOURCE_DELIVERY_EXAMPLES}") },
         ));
     }
     if has_any(&names, &["library.list", "library.search", "library.read", "library.learning"]) {
@@ -342,7 +352,7 @@ mod tests {
 
     #[test]
     fn agent_tool_policy_base_allows_zero_tool_answers_and_runtime_owns_qa_bookkeeping() {
-        assert_eq!(POLICY_REVISION, "v4");
+        assert_eq!(POLICY_REVISION, "v5");
         assert!(BASE_INSTRUCTIONS.contains("a user-provided quotation is sufficient"));
         assert!(EVIDENCE_ROUTING.contains("do not call tools to verify it again"));
         assert!(EVIDENCE_ROUTING.contains("book.concept for candidate discovery"));
@@ -423,7 +433,7 @@ mod tests {
                 .iter()
                 .find(|module| module.asset_id == "resident-agent.policy.evidence-routing")
                 .map(|module| module.revision.as_str()),
-            Some("v7")
+            Some("v8")
         );
         assert_eq!(
             modules

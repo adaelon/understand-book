@@ -15,7 +15,7 @@ fn video_playback_head_and_segments_require_current_publication_access() {
     assert!(!cache.exists());
     assert_eq!(std::fs::read(input.join("media/original.mp4")).unwrap(), original);
     std::fs::create_dir_all(&cache).unwrap();
-    std::fs::write(cache.join("info.json"), r#"{"time_base":[1,16000]}"#).unwrap();
+    std::fs::write(cache.join("info.json"), r#"{"time_base":[1,16000],"timeline":{"time_base":[1,16000],"origin_ms":0,"video_start_ms":0,"audio_start_ms":null},"timeline_aligned":true}"#).unwrap();
     std::fs::write(cache.join("index.m3u8"), "#EXTM3U\n#EXT-X-ENDLIST").unwrap();
     std::fs::write(cache.join("media.mp4"), b"0123456789").unwrap();
     let reused = crate::video_playback::prepare(f.root.path(), &input).unwrap().unwrap();

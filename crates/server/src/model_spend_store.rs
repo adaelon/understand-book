@@ -27,14 +27,18 @@ pub(crate) fn api_storage<T>(_: T) -> read_tools::ToolError {
 pub(crate) struct ModelSpendStore {
     pub(crate) control: Mutex<ControlStore>,
     pub(crate) rates: Result<ModelRates, SpendStop>,
+    rate_load_error: Option<&'static str>,
     ready: AtomicBool,
 }
 impl ModelSpendStore {
     pub(crate) fn new(control: ControlStore) -> Self {
-        let rates = ModelRates::load(&control.writer.root().join("model-rates.json"));
+        let loaded = ModelRates::load_diagnostic(&control.writer.root().join("model-rates.json"));
+        let rate_load_error = loaded.as_ref().err().copied();
+        let rates = loaded.map_err(|_| SpendStop::RateUnavailable);
         let store = Self {
             control: Mutex::new(control),
             rates,
+            rate_load_error,
             ready: AtomicBool::new(false),
         };
         if let Err(e) = store.recover() {
@@ -48,6 +52,10 @@ impl ModelSpendStore {
             .map_err(|e| *e)?
             .select(provider, model, crate::multi_user_host::now())
             .map(|_| ())
+    }
+    pub(crate) fn operational_health(&self, binding: Option<(&str, &str)>, now: i64) -> Value {
+        crate::operations::model_health(self.rates.as_ref().ok(), self.rate_load_error,
+            self.ready.load(Ordering::Acquire), binding, now)
     }
     /// Called before workers start, never as a repair while requests are in flight.
     pub(crate) fn recover(&self) -> Result<(), SpendStop> {

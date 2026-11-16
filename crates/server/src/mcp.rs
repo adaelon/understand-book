@@ -248,7 +248,7 @@ pub fn dispatch_mcp_tool(state: &mut AppState, name: &str, arguments: Value, now
         (BookToolId::Manifest, BookToolInput::Empty(_)) => ok_json(&state.workspace.book.manifest()),
         (BookToolId::Text, BookToolInput::Text(input)) => route_book_text(state, input),
         (BookToolId::Search, BookToolInput::Search(input)) => {
-            match state.workspace.book.search_ranked(&input.query, input.within_lid.as_deref(), input.limit.unwrap_or(book_tool_contracts::DEFAULT_SEARCH_LIMIT)) {
+            match state.workspace.book.search_for_reading(&input) {
                 Ok(result) => candidate_reply(id, json!(result)),
                 Err(error) => err_reply(&error),
             }
@@ -391,7 +391,7 @@ fn route_book_context(state: &AppState, input: book_tool_contracts::ContextInput
 
 fn route_book_concept(state: &AppState, input: book_tool_contracts::ConceptInput) -> Reply {
     match state.workspace.book
-        .concept_candidates(&input.query, input.anchor_lid.as_deref(), input.limit)
+        .concept_for_reading(&input)
     {
         Ok(concept) => candidate_reply(BookToolId::Concept, json!(concept)),
         Err(e) => err_reply(&e),
@@ -1154,7 +1154,7 @@ mod tests {
                 .keys()
                 .map(String::as_str)
                 .collect::<Vec<_>>(),
-            vec!["anchor_lid", "limit", "query"]
+            vec!["anchor_lid", "focus", "limit", "query"]
         );
         assert_eq!(schema("book_concept")["properties"]["limit"]["default"], 12);
         assert_eq!(schema("book_concept")["properties"]["limit"]["minimum"], 1);

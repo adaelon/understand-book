@@ -67,6 +67,12 @@ fn s2_two_users_confirm_private_goals_reuse_public_results_and_keep_chat_memory_
         b["workspace"]["learning_workspace_id"]
     );
     assert_eq!(a["workspace"]["goal"]["text"], "我只复习速度和变化");
+    let workspaces = f.ok(&f.a, "GET", "/api/learning-workspaces", Value::Null);
+    let listed = workspaces["workspaces"].as_array().unwrap().iter().find(|workspace|
+        workspace["learning_workspace_id"] == a["workspace"]["learning_workspace_id"]).unwrap();
+    assert_eq!(listed["shared_release"], json!({"release_id":"exam-course","version":1}));
+    assert!(!workspaces["workspaces"].as_array().unwrap().iter().any(|workspace|
+        workspace["learning_workspace_id"] == b["workspace"]["learning_workspace_id"]));
     assert_eq!(
         a["instance"]["release"]["manifest"],
         b["instance"]["release"]["manifest"]

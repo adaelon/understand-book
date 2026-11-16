@@ -1,5 +1,6 @@
 //! TB3 scripted learner fixtures, real tools/storage, and frozen model delivery.
 use super::*;
+use crate::tests::tutor_loop_tests::prepare_activity_chat as prepare_agent_chat;
 use memory::teaching::TeachingFact;
 
 fn directory() -> PathBuf {
@@ -21,6 +22,7 @@ struct Replay {
     source_references: RefCell<Vec<(String,String)>>,
     references: Vec<(String, String)>,
     previous_design_ref: Option<String>,
+    requires_capability: bool,
     stage: std::cell::Cell<usize>,
 }
 impl Replay {
@@ -49,7 +51,14 @@ impl ModelAdapter for Replay {
     }
     fn chat(&self, plan: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         let stage = self.stage.get(); self.stage.set(stage+1);
-        let call = |id: &str, name: &str, arguments: Value| ToolCall { id:id.into(), name:name.into(), arguments:arguments.to_string() };
+        let call = |id: &str, name: &str, arguments: Value| {
+            let capability = arguments["move"]["capability"].clone();
+            let mut input = super::tutor_loop_tests::fixture_model_input(arguments);
+            if input["operation"] == "select" && self.requires_capability {
+                input["move"]["capability"] = capability;
+            }
+            ToolCall { id:id.into(), name:name.into(), arguments:input.to_string() }
+        };
         let has_evidence = self.output["evidence"].is_object();
         let (text, tool_calls) = match stage {
             0 => (None, vec![call("read", "book.text", json!({"lid":"1.1","end_lid":"1.1"}))]),
@@ -98,6 +107,7 @@ pub(super) fn seed(case: &Value) -> (tempfile::TempDir, AppState, Value, Value) 
     let turn = run.turn_ref.clone();
     let tutor_session = run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_string();
     let adapter = Replay {output:output.clone(),sources:packet["presented_sources"].as_array().unwrap().clone(),source_references:Default::default(),references:vec![],
+        requires_capability:!run.tutor.as_ref().unwrap()["current_action"].is_object(),
         previous_design_ref:run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned),stage:Default::default()};
     let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
     assert_eq!(result.reply.status,200,"{}",result.reply.body);
@@ -197,6 +207,7 @@ fn tutor_tb3_referenced_chat_keeps_displayed_help_on_usage_hypothesis() {
     let run=prepare_agent_chat(&mut state,&json!({"message":packet["user_request"]}).to_string(),"tb3").unwrap_or_else(|r|panic!("{}",r.body));
     let turn=run.turn_ref.clone();
     let adapter=Replay {output:output.clone(),sources:packet["presented_sources"].as_array().unwrap().clone(),source_references:Default::default(),references:vec![],
+        requires_capability:!run.tutor.as_ref().unwrap()["current_action"].is_object(),
         previous_design_ref:run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned),stage:Default::default()};
     let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,run,Default::default());
     assert_eq!(result.reply.status,200);
@@ -221,7 +232,7 @@ fn tutor_tb3_referenced_chat_keeps_displayed_help_on_usage_hypothesis() {
     assert_eq!(evidence.learner_quote,message);
     assert_eq!(evidence.assistance_refs,vec!["seen:help:tb3-hint"]);
     let stored_fact=store.teaching_event(&fact).unwrap();
-    assert_ne!(stored_fact.binding.session_revision,delivery.binding.session_revision,"mode changes do not erase earlier help");
+    assert_eq!(stored_fact.binding.session_revision,delivery.binding.session_revision,"legacy mode changes do not rebind a practice response or erase its help");
     assert_eq!(store.teaching_event(&evidence.assistance_refs[0]).unwrap().payload["text"],output["select"]["move"]["hint"]);
     assert!(store.learner_projection(&state.workspace.book.base.book_id).unwrap().0.unwrap().rows.is_empty());
 }
@@ -286,7 +297,7 @@ fn references(old: &Value, current: &Value) -> Vec<(String,String)> {
     // learner expressions/deliveries, never model interpretation text.
     for old_fact in old["read_facts"].as_array().unwrap() {
         if let Some(new_fact)=current["read_facts"].as_array().unwrap().iter().find(|new_fact|
-            new_fact["kind"]==old_fact["kind"] && new_fact["content"]["usage"]==old_fact["content"]["usage"]
+            new_fact["kind"]==old_fact["kind"]
             && new_fact["content"]["response"]==old_fact["content"]["response"]
             && new_fact["content"]["answer"]==old_fact["content"]["answer"])
         {
@@ -310,13 +321,14 @@ pub(super) fn replay_turn(state: &mut AppState, run: agent_run::PreparedAgentCha
         fact_refs.retain(|reference| {
             let original=reference.as_str().unwrap();
             let actual=references.iter().find(|(old,_)|old==original).map(|(_,new)|new.as_str()).unwrap_or(original);
-            store.teaching_event(actual).unwrap().learner_expression().is_some()
+            store.teaching_event(actual).unwrap_or_else(|error| panic!("unmapped frozen fact {original}: {error:?}; references={references:?}")).learner_expression().is_some()
         });
         assert!(!fact_refs.is_empty(),"a frozen hypothesis still needs actual learner words");
     }
     let samples=Arc::new(std::sync::Mutex::new(Vec::new()));
     let adapter=super::tutor_continuation_tests::TutorRequestRecorder {samples:samples.clone(),directory:None,
         inner:Box::new(Replay {output,sources:packet["presented_sources"].as_array().unwrap().clone(),source_references:Default::default(),references,
+            requires_capability:!run.tutor.as_ref().unwrap()["current_action"].is_object(),
             previous_design_ref:run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned),stage:Default::default()})};
     let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(state)),&adapter,run,Default::default());
     if capture_failure {

@@ -58,6 +58,11 @@ type Candidate = z.infer<typeof candidateSchema>;
 export class VideoVisualCandidateError extends Error {}
 const planFile = (analysis: string) => `${root(analysis)}/plan.json`;
 const acceptedFile = (analysis: string, task: string) => `${root(analysis)}/accepted/${task}.json`;
+function currentTimeline(workspace: string, cached: { timeline?: string }): boolean {
+  if (cached.timeline === 'relative.v1') return true;
+  const probe = path.join(workspace, 'media/probe.json');
+  return !existsSync(probe) || Number(read<{ format: { start_time?: string } }>(probe).format.start_time ?? 0) === 0;
+}
 
 export function readVideoVisualPlan(workspace: string, analysis: string): VideoVisualPlan {
   const plan = read<VideoVisualPlan>(path.join(workspace, planFile(analysis)));
@@ -65,6 +70,7 @@ export function readVideoVisualPlan(workspace: string, analysis: string): VideoV
   const transcript = read<TranscriptMap>(path.join(workspace, manifest.transcript_map_path));
   if (plan.version !== 'video_visual_plan.v1' || plan.analysis_id !== analysis || !isDeepStrictEqual(plan.manifest.material, manifest.material)
     || !isDeepStrictEqual(plan.manifest.source, manifest.source) || !isDeepStrictEqual(plan.transcript, transcript)) throw new Error('Visual analysis input changed');
+  if (!currentTimeline(workspace, plan.scan)) throw new Error('Visual analysis contains absolute timestamps; prepare a new analysis ID to rebuild it on the relative timeline');
   return plan;
 }
 /** Scan all frames cheaply first; semantic ranges may be completed progressively.
@@ -84,24 +90,26 @@ export async function prepareVideoVisualUnits(workspace: string, analysis: strin
   if (!ranges.length) throw new Error('Visual analysis needs a range');
   ranges.forEach((r, i) => { validateMediaLocation(r, manifest.source); if (i && r.start_ms < ranges![i - 1].end_ms) throw new Error('Overlapping visual ranges'); });
   const media = path.join(workspace, manifest.source.imported_path), scanFile = path.join(workspace, root(analysis), 'scan.json');
-  let scan: VisualScan;
+  let scan: VisualScan | undefined;
   if (existsSync(scanFile)) {
     const cached = read<{ source: VideoSourceManifest['source']; scan: VisualScan }>(scanFile);
     if (!isDeepStrictEqual(cached.source, manifest.source) || !isDeepStrictEqual(cached.scan.options, options)) throw new Error('Visual scan input changed');
-    scan = cached.scan;
-  } else { scan = await scanVideoVisualCandidates(media, options, undefined, { ...control, duration_ms: manifest.source.duration_ms }); save(scanFile, { source: manifest.source, scan }); }
+    if (currentTimeline(workspace, cached.scan)) scan = cached.scan;
+  }
+  if (!scan) { scan = await scanVideoVisualCandidates(media, options, undefined, { ...control, duration_ms: manifest.source.duration_ms }); save(scanFile, { source: manifest.source, scan }); }
   const times=[...new Set(ranges.flatMap(range=>[range.start_ms,...scan.candidate_indices.map(i=>scan.samples[i].pts_ms)
     .filter(t=>t>=range.start_ms&&t<range.end_ms)]))].sort((a,b)=>a-b);
   const preparedFile=path.join(workspace,root(analysis),'frames.json');
-  let prepared:VisualFrame[];
+  let prepared:VisualFrame[] | undefined;
   if(existsSync(preparedFile)){
-    const cached=read<{source:VideoSourceManifest['source'];options:VisualScanOptions;ranges:MediaLocation[];frames:VisualFrame[]}>(preparedFile);
+    const cached=read<{timeline?:string;source:VideoSourceManifest['source'];options:VisualScanOptions;ranges:MediaLocation[];frames:VisualFrame[]}>(preparedFile);
     if(!isDeepStrictEqual(cached.source,manifest.source)||!isDeepStrictEqual(cached.options,options)||!isDeepStrictEqual(cached.ranges,ranges))throw new Error('Prepared frame input changed');
-    prepared=cached.frames;
-  }else{
+    if(currentTimeline(workspace,cached)) prepared=cached.frames;
+  }
+  if(!prepared){
     prepared=(await extractVisualFrames(media,manifest.source,times,path.join(workspace,root(analysis),'frames'),options.content_rect,control))
       .map(f=>({...f,path:path.relative(workspace,f.path).split(path.sep).join('/')}));
-    save(preparedFile,{source:manifest.source,options,ranges,frames:prepared});
+    save(preparedFile,{timeline:'relative.v1',source:manifest.source,options,ranges,frames:prepared});
   }
   const frames: VisualFrame[] = [], tasks: VisualTask[] = [];
   for (const range of ranges) {

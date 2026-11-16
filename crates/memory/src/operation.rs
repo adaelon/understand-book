@@ -143,11 +143,12 @@ impl MemoryStore {
             EvidenceRef::MemoryRecord { mem_id } => mem_id.clone(),
             _ => unreachable!("explicit evidence always uses MemoryRecord"),
         };
-        let profile_fact = build_profile_fact(
+        let mut profile_fact = build_profile_fact(
             create_fact_input(fact, vec![evidence.clone()]),
             Vec::new(),
             now,
         )?;
+        profile_fact.observed_at_ms = crate::profile_timestamp_ms(now);
         reject_excluded_evidence(&self.document.exclusions, &profile_fact.evidence)?;
         if let Some(existing) = self
             .document
@@ -213,11 +214,12 @@ impl MemoryStore {
             EvidenceRef::MemoryRecord { mem_id } => mem_id.clone(),
             _ => unreachable!("explicit evidence always uses MemoryRecord"),
         };
-        let corrected = build_profile_fact(
+        let mut corrected = build_profile_fact(
             create_fact_input(replacement, vec![evidence]),
             vec![fact_id.clone()],
             now,
         )?;
+        corrected.observed_at_ms = crate::profile_timestamp_ms(now);
         reject_excluded_evidence(&self.document.exclusions, &corrected.evidence)?;
         if let Some(existing) = self
             .document

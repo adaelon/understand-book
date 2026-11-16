@@ -1,5 +1,7 @@
 # Understand Book Windows: local library and cloud learning
 
+For the independent Windows developer application with an in-process local Reader/AI runtime, see [Local Debug](../local-debug/README.md). Build it with `node apps/local-debug/package.mjs` from the repository root.
+
 Current release: **0.3.8** (2026-10-26). [Download](https://understandbook.top/downloads/UnderstandBookSetup.exe?v=0.3.8). Includes native menu language switching and language continuity between the bundled local reader and cloud learning, with freshly built local reading assets. The hosted Reader includes the latest knowledge-board, formula, Harness and LangSmith updates. The installer is publicly available; the existing local installation remains 0.3.7. Build, 7 native tests, 8 web tests and both public download checks passed; installation and WebView2 startup verification were blocked. See [release evidence and limitations](../../docs/performance/windows-release-038-20261026/README.md).
 
 Windows starts with a bundled local library. Import copies files into the application's local-data

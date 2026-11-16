@@ -8,6 +8,7 @@ import {
 } from "./executor-prompt";
 
 export const AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES = [
+  "course-builder.md",
   "formal-objects-extractor.md", "cognitive-materials-extractor.md", "teaching-source-reviewer.md",
   "pass1-local-extractor.md",
   "paper-metadata-extractor.md",
@@ -20,6 +21,7 @@ export const AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES = [
   "pass2-longrange-linker.md",
   "book-structure-outline.md", "book-structure-chapter.md", "book-structure-chapter-selection.md", "book-structure-themes.md",
   "book-structure-outline-chapters.md", "book-structure-outline-themes.md",
+  "book-structure-outline-theme-page.md",
   "book-structure-extractor.md",
   "book-structure-v2-extractor.md",
   "book-structure-fragment-extractor.md",

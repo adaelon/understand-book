@@ -95,7 +95,7 @@ server {
         gzip_vary on;
         gzip_min_length 1024;
         gzip_comp_level 5;
-        gzip_types application/json;
+        gzip_types application/json image/svg+xml;
         proxy_pass http://127.0.0.1:8788;
         proxy_http_version 1.1;
         proxy_set_header Host reader.example;
@@ -109,6 +109,17 @@ server {
         proxy_read_timeout 600s;
         proxy_buffering off;
         proxy_cache off;
+        # A 4 MiB question image expands to ~5.34 MiB in JSON base64.
+        # Match multi_user_host::request_body_limit; other requests keep 64 KiB.
+        location ~ ^/api/workspaces/[^/]+/(?:agent/runs|reader/video_draft)$ {
+            client_max_body_size 6m;
+            proxy_pass http://127.0.0.1:8788;
+        }
+        # A short dictation uses at most 2 MiB of audio plus JSON base64.
+        location ~ ^/api/workspaces/[^/]+/reader/voice-transcribe$ {
+            client_max_body_size 3m;
+            proxy_pass http://127.0.0.1:8788;
+        }
         # PDF ranges retain upstream authorization and no-store, like all API responses.
         location /api/books/ {
             proxy_pass http://127.0.0.1:8788;

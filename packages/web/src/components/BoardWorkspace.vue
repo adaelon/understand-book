@@ -5,6 +5,7 @@ import { api as sharedApi, type BoardCandidateRequest, type BoardCatalogItem, ty
 import { bindSceneApi, readerKey } from '../network-context';
 import { requestWorkspaceRecovery } from '../network-client';
 import { t as uiText } from '../i18n';
+import type { ProductTourStep } from '../product-tour';
 import { boardDeliveryKey, mergeBoardDeliveries, boardDate, boardKindDescriptions, boardKindLabels, boardKinds, boardTextPreview, boardVisualKey, projectBoardRoute, defaultBoardView, type BoardKind, type BoardSourceRequest, type BoardQuestionRequest, type BoardRunView, type BoardLocation } from '../board-workspace';
 import type { BoardSearchHit } from '../generated/BoardSearchHit';
 import type { BoardDelivery } from '../generated/BoardDelivery';
@@ -1022,7 +1023,14 @@ document.addEventListener('fullscreenchange', fullscreenChanged);
 document.addEventListener('keydown', fullscreenKeydown);
 void refreshList();
 onBeforeUnmount(() => { disposed = true; pausePlayback(); loadSequence++; catalogSequence++; searchSequence++; conversationSequence++; clearTimeout(timer); clearTimeout(searchTimer); clearTimeout(conversationTimer); clearTimeout(mapHighlightTimer); window.removeEventListener('beforeunload', beforeUnload); window.removeEventListener('workspace-recovered', recoverBoardReads); document.removeEventListener('fullscreenchange', fullscreenChanged); document.removeEventListener('keydown', fullscreenKeydown); void exitCanvasFullscreen(); });
-defineExpose({ flush });
+async function prepareProductTour(step: ProductTourStep) {
+  if (!board.value || galleryOpen.value || addOpen.value || mapDialog.value) return false;
+  if (canvasFullscreen.value) await exitCanvasFullscreen();
+  if (step.id === 'board-canvas') mobileTab.value = 'canvas';
+  if (step.id === 'board-agent' || step.id === 'board-input') await showPanel('discussion');
+  return true;
+}
+defineExpose({ flush, prepareProductTour, productTourReady: computed(() => !!board.value && !loading.value && !galleryOpen.value && !addOpen.value && !mapDialog.value) });
 </script>
 
 <template>
@@ -1068,12 +1076,12 @@ defineExpose({ flush });
     </div>
     <div v-if="mappingChoices.length" class="board-mapping-choices" role="group" :aria-label="uiText('这个图元的相关解释')"><span>{{ uiText('选择要阅读的解释') }}</span><button v-for="choice in mappingChoices" :key="`${choice.item_id}:${choice.block_id}`" type="button" @click="readContent(choice, true)">{{ contentTitle(choice) }}</button></div>
     <div v-if="board" class="board-body" :class="[`mobile-${mobileTab}`, { 'has-selection': activeItem, 'board-rail-collapsed': railCollapsed }]">
-      <div class="board-map-area">
+      <div class="board-map-area" data-tour="board-canvas">
       <BoardCanvas v-show="!view.mind_map_outline" ref="canvas" :items="board.items" :mind-maps="mindMaps" :selected-ids="selectedIds" :folded-ids="view.folded_topic_ids ?? []" :editing-id="editingId" :draft-title="draftTitle" :links="board.links ?? []" :view="view" :disabled="busy" :fullscreen="canvasFullscreen" :visible-item-ids="routeProjection?.visibleItemIds" :visible-link-ids="routeProjection?.visibleLinkIds" :highlight-targets="highlightedTargets" :progress="graphicProgress" :transition="routeProjection?.step?.transition ?? 'instant'" @view="updateCanvasView" @move="move" @select="select" @activate-target="activateVisual" @user-control="userControl" @add="openAdd" @ask="suggestQuestion('')" @toggle-fullscreen="toggleCanvasFullscreen" @topic-select="selectTopic" @topic-edit="mapEditor.startEdit" @topic-draft="draftTitle = $event" @topic-commit="mapEditor.commitEdit()" @topic-cancel="mapEditor.cancelEdit" @topic-keydown="topicKey" @topic-drop="moveTopic" @topic-root-move="moveMap" @topic-fold="foldTopic" @topic-box-select="updateView({ ...view, selected_item_ids: $event, selected_item_id: $event.at(-1) ?? null, selected_block_id: null })" />
       <MindMapOutline v-if="view.mind_map_outline" :items="board.items" :mind-maps="mindMaps" :selected-ids="selectedIds" :folded-ids="view.folded_topic_ids ?? []" :editing-id="editingId" :draft-title="draftTitle" :disabled="busy" @select="selectTopic" @fold="foldTopic" @edit="mapEditor.startEdit" @draft="draftTitle = $event" @commit="mapEditor.commitEdit()" @cancel="mapEditor.cancelEdit" @keydown="topicKey" @drop="moveTopic" @locate="locateTopic" />
       </div>
       <button v-if="railCollapsed && !canvasFullscreen" type="button" class="board-expand-rail" :aria-label="uiText('展开讲解与讨论')" @click="showPanel(railTab)"><PanelRightOpen :size="16" aria-hidden="true" /><span>{{ uiText('讲解与讨论') }}</span></button>
-      <aside v-show="!railCollapsed" class="board-side-rail" :aria-label="uiText('讲解与讨论')">
+      <aside v-show="!railCollapsed" class="board-side-rail" data-tour="board-agent" :aria-label="uiText('讲解与讨论')">
         <div class="board-rail-header"><div class="board-rail-tabs" role="tablist" :aria-label="uiText('讲解与讨论')"><button type="button" role="tab" :aria-selected="railTab === 'reading'" @click="showPanel('reading')"><BookOpen :size="15" />{{ uiText('讲解') }}</button><button type="button" role="tab" :aria-selected="railTab === 'discussion'" @click="showPanel('discussion')"><MessageSquareText :size="15" />{{ uiText('讨论') }}<span v-if="discussionTurns.length">{{ discussionTurns.length }}</span><i v-if="runOnBoard?.pending" class="board-discussion-live-dot"></i></button></div><button type="button" class="board-collapse-rail" :aria-label="uiText('收起讲解与讨论')" :title="uiText('收起讲解与讨论')" @click="collapseRail"><PanelRightClose :size="17" aria-hidden="true" /></button></div>
       <div v-show="railTab === 'reading'" class="board-reader-stack" :class="{ 'has-region': focusedPresentationId && focusedPresentationId !== readingItem?.item_id }">
         <BoardReadingPane v-if="!readingItem" :board-id="board.board_id" :item="null" />
@@ -1096,7 +1104,7 @@ defineExpose({ flush });
           </div>
           <p v-else-if="props.run?.pending" class="board-question-hint" role="status">{{ uiText('另一张画板的追问仍在进行，可以先继续浏览。') }}</p>
           <p v-if="questionError" class="board-question-error" role="alert">{{ questionError }}</p>
-          <form class="board-question-form" @submit.prevent="askQuestion">
+          <form class="board-question-form" data-tour="board-input" @submit.prevent="askQuestion">
             <div class="board-question-target"><CornerDownRight :size="14" aria-hidden="true" /><span>{{ questionItem?.target.kind === 'topic' ? `针对：${questionItem.title}及其子主题` : questionItem ? uiText('继续理解：{0}', [questionItem.title]) : uiText('全画板 · 从任何问题开始') }}<template v-if="view.selected_block_id"> · {{ uiText('所选解释段落') }}</template></span><button v-if="questionItem" type="button" class="board-whole-context" @click="wholeBoard">{{ uiText('全画板') }}</button></div>
             <div v-if="questionItem?.target.kind === 'topic'" class="map-ai-actions" aria-label="针对选中分支提问"><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('explain')">解释这一项</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('example')">补一个例子</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('expand')">展开这一支</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('simplify')">简化</button><button type="button" :disabled="questionBusy || busy" @click="askTopicAction('reorganize')">重新组织</button></div>
             <div class="board-question-row"><textarea v-model="question" :aria-label="uiText('在画板上提问')" :placeholder="questionItem ? uiText('哪里还不明白？也可以描述你的理解…') : uiText('想理解什么？可以请我梳理主题、画出关系，或继续讲解…')" rows="2" @focus="userControl" @keydown.ctrl.enter.prevent="askQuestion" @keydown.meta.enter.prevent="askQuestion"></textarea><button class="board-question-send" type="submit" :disabled="!question.trim() || busy || questionBusy" :aria-label="uiText('发送画板追问')"><LoaderCircle v-if="preparingQuestion || awaitingAcceptance" :size="17" class="board-spinner" aria-hidden="true" /><ArrowUp v-else :size="18" aria-hidden="true" /></button></div>

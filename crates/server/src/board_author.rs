@@ -374,6 +374,7 @@ fn readable(parts: &[AgentAnswerPart]) -> String {
         .iter()
         .filter_map(|part| match part {
             AgentAnswerPart::Markdown { text } => Some(text.as_str()),
+            AgentAnswerPart::MusicExample { example } => Some(example.label.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()

@@ -101,3 +101,6 @@ playwright-report/
 /evals/music/assets/*.flac
 /evals/music/assets/*.mp3
 /evals/music/assets/*.wav
+/.cache/voice-small/
+/.cache/local-debug-animation/
+/.cache/pip/

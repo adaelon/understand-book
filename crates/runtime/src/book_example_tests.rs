@@ -62,8 +62,12 @@ fn advertised_book_examples_dispatch_and_bind_only_observed_source() {
         }
     }
     assert_eq!(count, 9);
-    ledger.present(&book, &source.to_string()).unwrap();
-    let binding = &ledger.bindings()[0];
+    // The Resident read now registers its complete delivered range first.
+    let read_range = ledger.teaching_source_ranges()[0].clone();
+    let resolved = book.resolve_source(&read_range, SOURCE_PRESENTATION_LOCALE, None).unwrap();
+    ledger.present_prepared(&book, read_range, resolved).unwrap();
+    let selected = ledger.present(&book, &source.to_string()).unwrap();
+    let binding = ledger.bindings().into_iter().find(|binding| binding.source_ref_id == selected.source_ref_id).unwrap();
     assert_eq!(binding.evidence_range.as_ref().unwrap().start_lid, "1.1");
     assert_eq!(book.resolve_source(binding.evidence_range.as_ref().unwrap(), SOURCE_PRESENTATION_LOCALE, None).unwrap().highlighted_quote, source["quote"]);
     let text_input = &specs.iter().find(|s| s.name == "book.text").unwrap().parameters["examples"][0];

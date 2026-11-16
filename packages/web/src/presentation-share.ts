@@ -113,7 +113,7 @@ export async function presentationShareSource(view: PresentationView, scene: Sta
   return {
     parts: [
       { id: 'body', label: uiText('图解现场'), format: 'plain', text: [scene.state.visible_step && uiText('步骤：{0}', [scene.state.visible_step]), parameters && uiText('参数：\n{0}', [parameters]), scene.state.observed_result].filter(Boolean).join('\n') },
-      { id: 'excerpt', label: uiText('助手说明'), format: 'markdown', text: [...view.readable_view.parts.flatMap(part => part.kind === 'markdown' ? [part.text] : []), ...view.assumptions].join('\n\n') },
+      { id: 'excerpt', label: uiText('助手说明'), format: 'markdown', text: [...view.readable_view.parts.flatMap(part => part.kind === 'markdown' || part.kind === 'socratic_question' ? [part.text] : []), ...view.assumptions].join('\n\n') },
     ].filter(part => part.text.trim()) as ShareSource['parts'],
     sources: sources.length ? sources : [uiText('无已记录出处')],
     association: uiText('{0} · 版本 {1} · 图解与说明由助手提供', [retained ? uiText('记录时的图解') : uiText('当前图解'), view.reference.revision]),

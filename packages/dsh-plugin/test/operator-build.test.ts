@@ -73,7 +73,7 @@ test('B1 operator queue prepares without models, resumes the existing Engine and
     if(route.endsWith('/finish')){task.state=body.state;task.error=body.error;return Response.json(task);}
     return Response.json(task);
   };
-  const config={executable:process.env.UNDERSTAND_BOOK_TEST_NODE!,prefixArgs:['--import','tsx',fileURLToPath(new URL('engine-source-cli.ts',import.meta.url))],driverRoot:path.join(root,'registry'),maxOutputTokens:4096,safetyMarginTokens:4096,handoffsPerCall:24};
+  const config={executable:process.env.UNDERSTAND_BOOK_TEST_NODE!,prefixArgs:['--import','tsx',fileURLToPath(new URL('engine-source-cli.ts',import.meta.url))],driverRoot:path.join(root,'registry'),maxOutputTokens:4096,safetyMarginTokens:4096,handoffsPerCall:1};
   let host=createOperatorBuildHost(h.ctx,config,'understand-book-executor',{connection:costs.config.connection,rootSessionId:h.parent.id},fetcher);
   try{
     assert.equal(await host.processNext(),true);assert.equal(task.state,'awaiting_confirmation');assert.equal(h.model.requests.length,0);assert.equal(costs.admissions().length,0);
@@ -92,6 +92,11 @@ test('B1 operator queue prepares without models, resumes the existing Engine and
     assert.ok(costs.calls.filter(c=>c.path.endsWith('/admit')).every(c=>c.path.includes('/operator-two-books/')));
     assert.equal(costs.admissions().length,costs.receipts().length);assert.ok(costs.receipts().every(r=>r.status==='partial'));
     assert.equal(events.filter(e=>e.url.endsWith('/progress')&&e.body.state==='planned').length,1);
+    const yields=events.filter(e=>e.url.endsWith('/progress')&&e.body.observation?.yielded);
+    assert.ok(yields.length>1,'one background run must continue across multiple handoff limits');
+    assert.ok(yields.every(e=>e.body.state==='running'&&e.body.invocation_ref===invocation));
+    assert.deepEqual(events.filter(e=>e.url.endsWith('/finish')).map(e=>e.body.state),
+      ['awaiting_confirmation','interrupted','interrupted','ready']);
     console.log(JSON.stringify({root,pass1Generations:h.pass1Generations(),actualExecutions:costs.admissions().length,materials:2,reused:1,imports,final:task.state}));
   }finally{await host.dispose();await h.dispose();await costs.close();}
 });

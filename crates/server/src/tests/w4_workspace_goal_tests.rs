@@ -136,13 +136,12 @@ fn w4_goal_replays_chain_rule_exam_temporary_question_and_explicit_redirection()
 }
 
 #[test]
-fn w4_goal_edit_stops_old_continuation_and_next_question_starts_new_stage() {
+fn w4_goal_edit_stops_old_continuation_and_next_question_uses_new_goal_without_a_stage() {
     let f = Fixture::new();
     let (id, scene) = learning_scene(&f,"学习深度学习",vec![]);
     configure(&f,&Probe::default());
     let path = format!("/api/tutor/mutate?learning_workspace_id={id}");
-    f.ok(&f.a,"POST",&path,json!({"operation_id":"enable","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
-    let stage = f.ok(&f.a,"POST",&path,json!({"operation_id":"old-stage","expected_revision":1,"action":{"kind":"start","user_intent":"补链式法则","explicit_constraints":[],"material_scope":[{"source_id":f.x.book_id,"scope_refs":[],"role":"primary"}],"default_teaching_intent":null}}));
+    let stage = f.ok(&f.a,"POST",&path,json!({"operation_id":"old-stage","expected_revision":0,"action":{"kind":"start","user_intent":"补链式法则","explicit_constraints":[],"material_scope":[{"source_id":f.x.book_id,"scope_refs":[],"role":"primary"}],"default_teaching_intent":null}}));
     let old_id = stage["control"]["current_tutor_session_id"].as_str().unwrap();
     assert_eq!(stage["sessions"][old_id]["workspace_goal_revision"],1);
     let first = send(&f,&scene,"before-change","继续解释链式法则");
@@ -169,17 +168,18 @@ fn w4_goal_edit_stops_old_continuation_and_next_question_starts_new_stage() {
     assert!(!teaching::turn_active(&crate::PrivateBookContext {user:&user,learning_workspace_id:Some(&id),book:&publication.book,
         book_dir:publication.directory(),messages:&[],selected_chat:None},&original.turn_id).unwrap());
     let state = learning.state().unwrap();
-    let current_id = state.control.current_tutor_session_id.as_ref().unwrap();
-    assert_ne!(current_id,old_id);
-    assert_eq!(state.sessions[current_id].workspace_goal_revision,Some(2));
+    assert!(state.control.current_tutor_session_id.is_none());
     let bound = learning.teaching_event(&format!("binding:{}",current.turn_id)).unwrap();
     assert_eq!(bound.payload["workspace_goal_revision"],2);
     assert_eq!(bound.binding.turn_id,current.turn_id);
     let continuity=&bound.payload["learner_context"]["learning_opportunity"]["continuity"];
     assert_eq!(continuity["scope"]["workspace_goal_revision"],2);
-    assert_eq!(continuity["scope"]["tutor_session_id"],*current_id);
+    assert_eq!(continuity["scope"]["tutor_session_id"],bound.binding.tutor_session_id);
+    assert_eq!(bound.payload["status"],"observing");
     assert!(continuity["previous_work"].as_array().unwrap().iter()
-        .all(|row|row["binding"]["turn_id"]==current.turn_id),"a changed goal does not rebind old-stage work");
+        .any(|row|row["binding"]["turn_id"]==original.turn_id),"the new goal retains the actual earlier learning record");
+    let original_bound=learning.teaching_event(&format!("binding:{}",original.turn_id)).unwrap();
+    assert_eq!(original_bound.payload["workspace_goal_revision"],1,"historical work keeps its accepted goal revision");
     assert!(continuity["scope"]["design_ref"].is_null());
 }
 
@@ -188,8 +188,7 @@ fn w4_goal_commit_failure_stops_planning_and_next_turn_uses_committed_revision()
     let f = Fixture::new();
     let (id, scene) = learning_scene(&f,"学习深度学习",vec![]);
     let path = format!("/api/tutor/mutate?learning_workspace_id={id}");
-    f.ok(&f.a,"POST",&path,json!({"operation_id":"enable","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
-    let old = f.ok(&f.a,"POST",&path,json!({"operation_id":"initial-stage","expected_revision":1,"action":{"kind":"start","user_intent":"补链式法则","explicit_constraints":[],"material_scope":[{"source_id":f.x.book_id,"scope_refs":[],"role":"primary"}],"default_teaching_intent":null}}));
+    let old = f.ok(&f.a,"POST",&path,json!({"operation_id":"initial-stage","expected_revision":0,"action":{"kind":"start","user_intent":"补链式法则","explicit_constraints":[],"material_scope":[{"source_id":f.x.book_id,"scope_refs":[],"role":"primary"}],"default_teaching_intent":null}}));
     let old_stage = old["control"]["current_tutor_session_id"].as_str().unwrap().to_owned();
     let message = "把工作区目标改为机器学习期末考试冲刺，考试只剩三天。";
     let probe = GoalProbe {calls:Default::default(),requests:Default::default(),update:Some(json!({"basis_quote":message,"expected_revision":1,
@@ -228,7 +227,6 @@ fn w4_goal_commit_failure_stops_planning_and_next_turn_uses_committed_revision()
     let input = &user.session_store.as_ref().unwrap().logs[&session.id].projection.inputs[next["turn_id"].as_str().unwrap()];
     assert_eq!(input.learning_workspace_goal.as_ref().unwrap().revision,2);
     let state = user.learning_store_for_workspace(Some(&id)).unwrap().state().unwrap();
-    let new_stage = state.control.current_tutor_session_id.as_ref().unwrap();
-    assert_ne!(new_stage,&old_stage);
-    assert_eq!(state.sessions[new_stage].workspace_goal_revision,Some(2));
+    assert!(state.control.current_tutor_session_id.is_none());
+    assert_eq!(state.workspace_goal_revision,Some(2));
 }

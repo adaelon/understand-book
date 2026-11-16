@@ -17,11 +17,13 @@ use unicode_normalization::char::{canonical_combining_class, compose, decompose_
 
 mod video;
 pub mod music;
+pub mod knowledge;
 pub mod video_search;
 mod video_discourse;
 pub mod video_graph;
 pub mod math_structure;
 mod ranked_search;
+pub mod reading_support;
 pub use ranked_search::{LexicalTextIndex, RankedSearchHit, RankedSearchResult};
 
 /// Versioned normalized-search semantics. Dependency or Unicode-data upgrades must change this
@@ -49,6 +51,8 @@ pub struct Book {
     paper_minimap_artifacts: PaperMinimapArtifacts,
     experimental_read_access: Option<ExperimentalReadAccess>,
     ranked_search_index: std::sync::OnceLock<Result<ranked_search::Index, ranked_search::IndexError>>,
+    knowledge_index: std::sync::OnceLock<knowledge::Index>,
+    knowledge_asset_bytes: u64,
 }
 
 struct SourcePassage<'a> {
@@ -1949,6 +1953,9 @@ pub struct ConceptCandidate {
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq, TS, schemars::JsonSchema)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct ConceptCandidateSet {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub reading: Option<reading_support::ReadingSupport>,
     pub version: String,
     pub query: String,
     /// Graph candidates matched by this query's recall rules before limit, not all
@@ -3406,6 +3413,7 @@ impl Book {
             .with_paper_lexicon(paper_lexicon)
             .with_paper_minimap_artifacts(paper_minimap_artifacts);
         book.video_discourse = video_discourse;
+        book.knowledge_asset_bytes = knowledge::asset_bytes(std::path::Path::new(dir));
         book.math_structure = math_structure::load(std::path::Path::new(dir), &book.base)
             .map_err(|e| format!("读取 math_structure.json 失败: {e}"))?;
         if std::path::Path::new(dir).join("video_source_manifest.json").exists() {
@@ -3445,6 +3453,8 @@ impl Book {
             paper_minimap_artifacts: PaperMinimapArtifacts::default(),
             experimental_read_access: None,
             ranked_search_index: std::sync::OnceLock::new(),
+            knowledge_index: std::sync::OnceLock::new(),
+            knowledge_asset_bytes: 0,
         }
     }
 
@@ -3507,6 +3517,7 @@ impl Book {
             .saturating_add((self.source_u16.capacity() * 2 + indexes) as u64)
             .saturating_add(parsed.saturating_add(minimap).saturating_mul(8))
             .saturating_add(ranked_search::reserved_bytes(self))
+            .saturating_add(knowledge::reserved_bytes(self))
     }
 
     pub fn with_formula_semantics(mut self, formula_semantics: Vec<FormulaSemantics>) -> Book {
@@ -3769,6 +3780,7 @@ impl Book {
             .collect::<Vec<_>>();
         let returned_count = candidates.len();
         Ok(ConceptCandidateSet {
+            reading: None,
             version: BOOK_CONCEPT_V2_VERSION.into(),
             query: query.into(),
             matched_count,
@@ -5829,6 +5841,10 @@ impl Book {
             abstract_aid,
             warnings,
         })
+    }
+
+    pub fn source_span(&self, lid: &str) -> Option<&Span> {
+        self.lid_idx.get(lid).map(|&i| &self.base.lid_nodes[i].span)
     }
 
     fn node(&self, lid: &str) -> Result<&LidNode, ToolError> {

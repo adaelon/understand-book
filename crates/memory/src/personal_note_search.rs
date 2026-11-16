@@ -94,6 +94,26 @@ impl MemoryStore {
         book_id: Option<&str>,
         limit: usize,
     ) -> Result<Vec<NoteSearchHit>, ToolError> {
+        self.search_personal_notes_matching(query, book_id, None, limit)
+    }
+
+    /// Restrict candidates before ranking and limiting, for views such as boards.
+    pub fn search_personal_notes_in(
+        &self,
+        query: &str,
+        note_ids: &BTreeSet<String>,
+        limit: usize,
+    ) -> Result<Vec<NoteSearchHit>, ToolError> {
+        self.search_personal_notes_matching(query, None, Some(note_ids), limit)
+    }
+
+    fn search_personal_notes_matching(
+        &self,
+        query: &str,
+        book_id: Option<&str>,
+        note_ids: Option<&BTreeSet<String>>,
+        limit: usize,
+    ) -> Result<Vec<NoteSearchHit>, ToolError> {
         self.ensure_storage_available()?;
         if query.trim().is_empty() || query.chars().count() > 4096 || !(1..=100).contains(&limit) {
             return Err(crate::personal_notes::note_error(
@@ -155,6 +175,7 @@ impl MemoryStore {
         let mut seen = BTreeSet::new();
         let ranked = cached.index.search(query, cached.chunks.len(), |index| {
             book_id.is_none_or(|id| cached.chunks[index].book_id.as_deref() == Some(id))
+                && note_ids.is_none_or(|ids| ids.contains(&cached.chunks[index].note_id))
         });
         let mut hits = Vec::new();
         for (index, score) in ranked {

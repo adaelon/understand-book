@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AutomaticBuildDispatchSettledError } from "../src/automatic-build-dispatch-runtime";
 import { automaticBuildDriverFailureResponse, runAutomaticBuildDriverCommand } from "../../../skills/build/automatic-build-driver";
 import { resolveAutomaticBuildExecutorRegistryRoot } from "../src/automatic-build-executor-session";
+import { AutomaticBuildSourceConflictError } from "../src/build-orchestrator";
 
 vi.mock("node:os", async importOriginal => {
   const actual = await importOriginal<typeof import("node:os")>();
@@ -27,6 +28,13 @@ vi.mock("node:crypto", async importOriginal => {
 afterEach(() => { vi.unstubAllEnvs(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("build driver failure boundary", () => {
+  it("reports source conflicts with a specific actionable boundary", () => {
+    const response = automaticBuildDriverFailureResponse(new AutomaticBuildSourceConflictError());
+    expect(response).toMatchObject({ action: { kind: "NEEDS_USER", reason: "source_conflict", choices: [],
+      projection: { category: "source_conflict", code: "source_workspace_conflict" } } });
+    expect(JSON.stringify(response)).toContain("--book-id");
+  });
+
   it.each([0, 17])("cleans a failed create after %i bytes and permits the identical retry", async partialBytes => {
     const actualFs = await vi.importActual<typeof import("node:fs")>("node:fs");
     const root = mkdtempSync(path.join(tmpdir(), "build-driver-write-interrupted-"));

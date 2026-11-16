@@ -1,5 +1,14 @@
 import { expect, it } from 'vitest';
-import { allowancePercent, allowanceTime, offerPercentage, paymentAmount, spendNotice, usageOccupation, type AccountUsage } from './account-allowance';
+import { allowancePercent, allowanceTime, offerPercentage, paymentAmount, remainingPercentages, spendNotice, usageOccupation, type AccountUsage, type AllowancePeriod } from './account-allowance';
+
+it('recomputes remaining share after top-ups, subtracts occupations, and handles empty or overdrawn budgets', () => {
+  const balance: AllowancePeriod['balance'] = { granted_micro_cny: 10000000, debited_micro_cny: 5000000, active_reserved_micro_cny: 1000000, pending_micro_cny: 0, available_micro_cny: 4000000, allowance_basis: null, percentages: null };
+  expect(remainingPercentages(balance).available.value).toBe('40');
+  expect(remainingPercentages({ ...balance, granted_micro_cny: 20000000, available_micro_cny: 14000000 }).available.value).toBe('70');
+  expect(remainingPercentages({ ...balance, available_micro_cny: -1 }).available.value).toBe('0');
+  expect(remainingPercentages({ ...balance, available_micro_cny: 1 }).available.below_tenth).toBe(true);
+  expect(remainingPercentages({ ...balance, granted_micro_cny: 0, available_micro_cny: 0 }).available.value).toBe('0');
+});
 
 it('preserves server percentages, nonzero tiny usage and unknown basis without a local currency conversion', () => {
   expect(allowancePercent({ value: '120.7', nonzero: true, below_tenth: false })).toBe('120.7%');

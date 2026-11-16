@@ -105,7 +105,7 @@ describe("prepared profile discourse inputs", () => {
         provenance: { executor: "test", attempt: 1, generated_at: "2026-10-20T03:00:00.000Z" },
         candidate: {
           version: "profile_sidecar_discourse_observation.v1", parent_lid: task.route.parent_lid,
-          source_slice_ordinal: slice.ordinal, core_sha256: slice.core_sha256,
+          source_slice_ordinal: slice.ordinal,
           mode_candidates: [{ value: "informative", confidence: 0.9 }],
           local_function_candidates: [], rhetorical_move_candidates: [],
           summary_fragments: [`Evidence from fragment ${index + 1}.`], relation_candidates: [],

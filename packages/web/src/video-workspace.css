@@ -1,8 +1,4 @@
 /* Video uses the same mounted player and companion in every workspace projection. */
-.video-topbar { background: #fffefa; backdrop-filter: none; }
-.video-topbar .breadcrumb { padding-left: 14px; border-left: 1px solid var(--hairline); font-size: 12px; }
-.video-topbar .ghost-pill { border-radius: 7px; border-color: transparent; background: transparent; font-size: 12px; }
-.video-topbar .topbar-focus { border-color: var(--hairline); background: #f8f7f4; }
 .video-workspace { background: #f8f7f4; }
 .video-workspace[data-mode="wide"] .workspace-grid { grid-template-columns: minmax(0, 1fr) 5px clamp(320px, var(--right-rail-width, 384px), 40vw); grid-template-areas: "reader divider assistant"; min-width: 0; }
 .video-workspace :is(.video-reader, .music-reader) { grid-area: reader; }

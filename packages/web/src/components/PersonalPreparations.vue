@@ -58,7 +58,8 @@ async function upload(file:File){
   await transmit();
 }
 async function transmit(){
-  const session=uploadSession.value,file=pendingFile.value;if(!session||!file||blocked.value)return;
+  const session=uploadSession.value,file=pendingFile.value;if(!alive||!session||!file||blocked.value)return;
+  session.cancelled=false;
   busy.value=true;error.value='';uploadProgress.value=Math.round(session.received/file.size*100);
   activeUpload=(async()=>{
     try{

@@ -62,7 +62,7 @@ it.each([{ musicMode: true, label: '为这首作品设定目标', purpose: '带�
   await w.get('form').trigger('submit');
   expect(w.emitted('goal')).toEqual([['能解释当前材料的重点']]);
   await w.setProps({ session: { id: 'media-goal', user_intent: '能解释当前材料的重点', status: 'active' } as TutorSession, ready: true });
-  expect(w.get('.goal-resume button').text()).toContain('开启并开始这次学习');
+  expect(w.get('.goal-resume button').text()).toContain('开始这次学习');
   await w.get('.goal-resume button').trigger('click');
   expect(w.emitted('resume')).toHaveLength(1);
   w.unmount();
@@ -83,7 +83,7 @@ it.each(['paused','ended'] as const)('requires an explicit resume for %s and res
   const session = { id:'learning',user_intent:'理解注意力',status } as TutorSession;
   const w = mount(ConversationLearningGoal,{ props:{ ...defaults,session,enabled:false } });
   const resume = w.get('.goal-resume button');
-  expect(resume.text()).toContain('开启并继续');
+  expect(resume.text()).toContain('继续');
   expect(w.emitted('resume')).toBeUndefined();
   await resume.trigger('click');
   expect(w.emitted('resume')).toHaveLength(1);

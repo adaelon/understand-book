@@ -57,12 +57,14 @@ test('cloud subscription, personal course sprint, storage limits and desktop con
   };
   const pay = async (owner: string, title: string) => {
     await admin.goto(`http://127.0.0.1:4205/admin/users/${owner}`);
-    await admin.getByText('套餐商品与开通（所有账号共用商品配置）', { exact: true }).click();
-    await admin.getByRole('article').filter({ has: admin.getByRole('heading', { name: new RegExp(`^${title}`) }) }).getByRole('button', { name: '核款并开通', exact: true }).click();
-    const dialog = admin.getByRole('dialog', { name: '核款并开通套餐', exact: true });
+    await admin.getByRole('button', { name: '额度与套餐', exact: true }).click();
+    await admin.getByRole('button', { name: '开通 / 续费套餐', exact: true }).click();
+    const dialog = admin.getByRole('dialog', { name: '开通 / 续费套餐', exact: true });
+    const option = dialog.locator('option').filter({ hasText: title });
+    await dialog.locator('[name="product_id"]').selectOption(await option.getAttribute('value') ?? '');
     await dialog.locator('[name="channel"]').fill('浏览器验收无真实付款');
     await dialog.locator('[name="note"]').fill('隔离临时数据库验收');
-    await dialog.getByRole('button', { name: '确认提交', exact: true }).click();
+    await dialog.locator('button[type=submit]').click();
     await expect(dialog).not.toBeVisible();
     await expect(admin.getByText(`已开通 ${title}`, { exact: false })).toBeVisible();
   };
@@ -113,14 +115,15 @@ test('cloud subscription, personal course sprint, storage limits and desktop con
   await detail.getByLabel('每天可用分钟数（选填）', { exact: true }).fill('45');
   await detail.getByLabel('直接提问，跳过诊断', { exact: true }).check();
   await detail.getByRole('button', { name: '确认目标并开始学习', exact: true }).click();
-  await expect(page.locator('.workspace-goal-bar')).toContainText('我的三天引用与视频冲刺');
+  await expect(page.locator('.topbar')).toBeVisible();
   const workspaces = (await api('/learning-workspaces')).workspaces;
   const workspace = workspaces.find((item: any) => item.goal.text === '我的三天引用与视频冲刺');
   expect(workspace.members).toHaveLength(2);
   const workspaceId = workspace.learning_workspace_id;
   expect((await api(`/learning-workspaces/${workspaceId}/exam-sprint`)).sprint.settings.exam_date).toBe(examDate);
   expect((await api('/account/storage')).total_bytes).toBe(0);
-  await page.getByRole('button', { name: '工作区与资料', exact: true }).click();
+  await page.getByRole('button', { name: '学习资料', exact: true }).click();
+  await expect(page.locator('.learning-goal-heading')).toContainText('我的三天引用与视频冲刺');
   const current = page.getByRole('region', { name: '当前工作区', exact: true });
   const sprint = current.getByRole('region', { name: '考试冲刺安排', exact: true });
   await expect(sprint).toContainText(examDate); await expect(sprint).toContainText('每天 45 分钟');

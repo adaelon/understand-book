@@ -44,6 +44,29 @@ pub(crate) fn bindings(values: &[SourceBinding]) -> Vec<NoteSourceBinding> {
         .collect()
 }
 
+// Match the reader's continuous text blocks: inline sources are transparent,
+// while a presentation or a separate question ends the current selection.
+pub(crate) fn answer_text_blocks(outcome: &OuterOutcome) -> Vec<String> {
+    let Some(view) = &outcome.answer_view else {
+        return outcome.answer.clone().into_iter().collect();
+    };
+    let mut texts = Vec::new();
+    let mut current = String::new();
+    for part in &view.parts {
+        match part {
+            AgentAnswerPart::Markdown { text } => current.push_str(text),
+            AgentAnswerPart::MusicExample { example } => current.push_str(&example.label),
+            AgentAnswerPart::Sources { .. } => {},
+            AgentAnswerPart::Presentation { .. } | AgentAnswerPart::SocraticQuestion { .. } => {
+                if !current.is_empty() { texts.push(std::mem::take(&mut current)); }
+                if let AgentAnswerPart::SocraticQuestion { text, .. } = part { texts.push(text.clone()); }
+            }
+        }
+    }
+    if !current.is_empty() { texts.push(current); }
+    texts
+}
+
 pub(crate) fn resolve(
     user: &user_runtime::UserRuntime,
     workspace: &reader_workspace::ReaderWorkspace,
@@ -106,22 +129,7 @@ pub(crate) fn resolve(
                 .as_ref()
                 .filter(|_| turn.status == AgentAssistantStatus::Completed)
                 .ok_or_else(|| invalid("Only delivered answers may be recorded"))?;
-            let texts: Vec<&str> = outcome
-                .answer_view
-                .as_ref()
-                .map(|v| {
-                    v.parts
-                        .iter()
-                        .filter_map(|p| {
-                            if let AgentAnswerPart::Markdown { text } = p {
-                                Some(text.as_str())
-                            } else {
-                                None
-                            }
-                        })
-                        .collect()
-                })
-                .unwrap_or_else(|| outcome.answer.as_deref().into_iter().collect());
+            let texts = answer_text_blocks(outcome);
             if texts.iter().all(|s| s.trim().is_empty())
                 || excerpt
                     .as_ref()

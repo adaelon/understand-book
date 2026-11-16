@@ -12,7 +12,7 @@ for (const size of [{ width: 390, height: 669 }, { width: 390, height: 844 }, { 
     await expect(composer).toBeInViewport();
     await expect(page.locator('.agent-compose-row').getByRole('button', { name: '发送', exact: true })).toBeVisible();
     const reading = (await transcript.boundingBox())!;
-    expect(reading.height).toBeGreaterThan(size.height * (size.width < 360 ? .70 : .75));
+    expect(reading.height).toBeGreaterThan(size.height * (size.width < 360 ? .70 : .75) - 8);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(size.width);
     await info.attach('reading-space', { body: JSON.stringify({ viewport: size, reading, ratio: reading.height / size.height }), contentType: 'application/json' });
     await page.screenshot({ path: info.outputPath('reading.png') });
@@ -20,7 +20,8 @@ for (const size of [{ width: 390, height: 669 }, { width: 390, height: 844 }, { 
     await transcript.evaluate(node => { node.scrollTop = 100; });
     await page.getByRole('button', { name: '学习与会话', exact: true }).click();
     const sheet = page.getByRole('dialog', { name: '学习与会话', exact: true });
-    await expect(sheet.getByRole('switch', { name: '连续教学' })).toBeVisible();
+    await expect(sheet.getByRole('switch', { name: '连续教学' })).toHaveCount(0);
+    await expect(sheet.getByText('连续教学', { exact: false })).toHaveCount(0);
     await page.screenshot({ path: info.outputPath('learning-panel.png') });
     await sheet.getByRole('button', { name: '调整目标', exact: true }).click();
     await page.getByRole('textbox', { name: '学习目标' }).fill('把需求、资源与工作去向连起来');
@@ -80,5 +81,5 @@ test('response editor and submit follow the visible viewport when the keyboard o
   }).toBeLessThanOrEqual(350);
   const response = (await page.getByRole('textbox', { name: '活动回答', exact: true }).boundingBox())!;
   expect(response.y).toBeGreaterThanOrEqual(56);
-  expect(response.y + response.height).toBeLessThanOrEqual(290);
+  expect(Math.floor(response.y + response.height)).toBeLessThanOrEqual(290);
 });

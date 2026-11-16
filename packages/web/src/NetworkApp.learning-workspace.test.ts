@@ -1,16 +1,30 @@
 // @vitest-environment happy-dom
 import { mount, flushPromises } from '@vue/test-utils';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { installIdentity, installWorkspace, network, type LearningWorkspace, type NetworkWorkspace } from './network-context';
 import { api } from './api';
 import { learningDraftKey, readLearningDraft, saveLearningDraft } from './learning-workspace-state';
-vi.mock('./App.vue', () => ({ default: { name: 'App', props: ['chatDraft'], emits: ['update:chatDraft', 'show-library'],
+vi.mock('./App.vue', () => ({ default: { name: 'App', props: ['chatDraft', 'learningWorkspace'], emits: ['update:chatDraft', 'show-library'],
   methods: { beforeNoteLeave: async () => true },
-  template: `<div class="test-reader"><textarea aria-label="问题草稿" :value="chatDraft?.message" @input="$emit('update:chatDraft', { message: $event.target.value, quote: null, goalId: null })" /><button @click="$emit('show-library')">资料</button></div>`,
+  template: `<div class="test-reader"><slot name="navigation" /><textarea aria-label="问题草稿" :value="chatDraft?.message" @input="$emit('update:chatDraft', { message: $event.target.value, quote: null, goalId: null })" /><button @click="$emit('show-library')">资料</button></div>`,
 } }));
 import NetworkApp from './NetworkApp.vue';
 
-afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); localStorage.clear(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; });
+let unexpected: string[];
+beforeEach(() => { unexpected = []; history.replaceState({}, '', '/?view=materials'); });
+afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear(); localStorage.clear(); network.value = { ...network.value, enabled: false, identity: null, workspace: null }; expect(unexpected).toEqual([]); });
+function auxiliaryRead(url: string): Response | undefined {
+  if (url === '/api/account/presence') return Response.json({ ok: true });
+  if (url === '/api/me/learning-tasks') return Response.json({ tasks: [] });
+  if (url.startsWith('/api/workspace-releases?')) return Response.json({ items: [], total: 0, limit: 12, offset: 0 });
+  if (url.endsWith('/shared-release')) return Response.json({ instance: null });
+  if (url.endsWith('/shared-release/course')) return Response.json({ course: null, progress: [], release_version: 0 });
+  if (url.endsWith('/exam-sprint')) return Response.json({ sprint: null });
+  if (url.endsWith('/preparations')) return Response.json({ items: [] });
+  if (url === '/api/account/storage') return Response.json({ items: [], can_upload: false, available_bytes: 0, used_bytes: 0,
+    reserved_bytes: 0, total_bytes: 0, limit_bytes: null, max_file_bytes: null, over_limit: false, expires_at: null, retained_until: null });
+}
+function unexpectedRequest(url: string): never { unexpected.push(url); throw new Error(url); }
 
 it('shows published video metadata in workspace cards and shared routes without duplicating the video on the shelf', async () => {
   installIdentity({ user_id: 'reader', csrf_token: 'csrf' });
@@ -18,12 +32,13 @@ it('shows published video metadata in workspace cards and shared routes without 
   const value: LearningWorkspace = { learning_workspace_id: 'course', goal: { text: '学习张量运算', constraints: [], revision: 1, created_at: 1 },
     goal_history: [], members: [{ published_book_ref: reference, readable: true, added_at: 1 }], archived: false, created_at: 1, updated_at: 1 };
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    const auxiliary = auxiliaryRead(url); if (auxiliary) return auxiliary;
     if (url === '/api/auth/me') return Response.json(network.value.identity);
     if (url === '/api/library') return Response.json({ books: [{ published_book_ref: reference, title: null, cover: { kind: 'image', url: '/api/course-frame.png' } }] });
     if (url === '/api/videos') return Response.json({ videos: [{ video: { media_id: 'course-video', media_revision: '1' }, title: 'CS336 第 2 讲 · PyTorch', publication: reference, english_ready: true }] });
     if (url === '/api/learning-workspaces') return Response.json({ workspaces: [value] });
     if (url.endsWith('/reading-resumption')) return Response.json(null);
-    throw new Error(url);
+    return unexpectedRequest(url);
   }));
   const wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true, PersonalMaterials: true, ExamSprintPanel: true, SharedWorkspaceInstance: true } } });
   try {
@@ -46,6 +61,7 @@ it('creates empty goal workspaces, manages exact materials and restores each wor
   const requests: { url: string; body: any }[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
     const body = init.body ? JSON.parse(String(init.body)) : null; requests.push({ url, body });
+    const auxiliary = auxiliaryRead(url); if (auxiliary) return auxiliary;
     if (url === '/api/auth/me') return Response.json(network.value.identity);
     if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/me/reading-resumption') return Response.json(null);
@@ -74,46 +90,50 @@ it('creates empty goal workspaces, manages exact materials and restores each wor
     }
     if (url.endsWith('/resumption')) return Response.json({ ...scene, last_question: null });
     if (url.startsWith('/api/workspaces/')) return Response.json(scene);
-    throw new Error(url);
+    return unexpectedRequest(url);
   }));
   let wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } });
   const flush = () => flushPromises();
   const clickText = async (selector: string, text: string) => {
     const button = wrapper.findAll(selector).find(item => item.text() === text || (item.find('.member-read-action').exists() && item.get('.member-read-action').text() === text)); expect(button).toBeTruthy(); await button!.trigger('click'); await flush();
   };
+  const manageWorkspace = async () => { await wrapper.get('.test-reader [aria-label="学习资料"]').trigger('click'); await flush(); };
   try {
     await flush();
+    await wrapper.get('.create-workspace-toggle').trigger('click');
     await wrapper.get('.learning-create input').setValue('学习深度学习'); await wrapper.get('.learning-create').trigger('submit'); await flush();
     expect(wrapper.get('.learning-empty').text()).toContain('工作区已创建'); expect(scene).toBeNull();
     await clickText('.learning-add-book button', '加入工作区'); await clickText('.learning-add-book button', '加入工作区');
     expect(wrapper.findAll('.learning-member')).toHaveLength(2);
     await clickText('.learning-member button', '开始阅读');
-    expect(wrapper.get('[aria-label="工作区大目标"]').text()).toContain('学习深度学习');
+    expect(wrapper.find('.workspace-goal-bar').exists()).toBe(false);
+    expect(wrapper.getComponent({ name: 'App' }).props('learningWorkspace').goal.text).toBe('学习深度学习');
     const originalGoal = spaces[0].goal;
     spaces[0].goal = { ...originalGoal, revision: 2, text: '深度学习与链式法则' };
     window.dispatchEvent(new CustomEvent('learning-workspace-goal-changed', { detail: { learning_workspace_id: 'scope-other' } })); await flush();
-    expect(wrapper.get('[aria-label="工作区大目标"]').text()).toContain('学习深度学习');
+    expect(wrapper.getComponent({ name: 'App' }).props('learningWorkspace').goal.text).toBe('学习深度学习');
     window.dispatchEvent(new CustomEvent('learning-workspace-goal-changed', { detail: { learning_workspace_id: 'scope-0' } })); await flush();
-    expect(wrapper.get('[aria-label="工作区大目标"]').text()).toContain('深度学习与链式法则');
+    expect(wrapper.getComponent({ name: 'App' }).props('learningWorkspace').goal.text).toBe('深度学习与链式法则');
     await wrapper.get('.test-reader textarea').setValue('空间 A 的问题');
-    await clickText('.workspace-goal-bar button', '工作区与资料');
+    await manageWorkspace();
     await clickText('.learning-member button', '开始阅读');
     expect(network.value.workspace?.selected_chat).toBe('chat-scope-0'); expect(network.value.workspace?.published_book_ref).toEqual(references[1]);
     expect((wrapper.get('.test-reader textarea').element as HTMLTextAreaElement).value).toBe('空间 A 的问题');
-    await clickText('.workspace-goal-bar button', '工作区与资料');
+    await manageWorkspace();
+    await wrapper.get('.create-workspace-toggle').trigger('click');
     await wrapper.get('.learning-create input').setValue('期末考试冲刺'); await wrapper.get('.learning-create').trigger('submit'); await flush();
     await clickText('.learning-add-book button', '加入工作区'); await clickText('.learning-member button', '开始阅读');
     await wrapper.get('.test-reader textarea').setValue('空间 B 的问题');
-    await clickText('.workspace-goal-bar button', '工作区与资料');
+    await manageWorkspace();
     const a = wrapper.findAll('.learning-space-card').find(card => card.text().includes('深度学习与链式法则'))!;
     await a.findAll('button').find(button => button.text() === '打开工作区')!.trigger('click'); await flush();
     expect(network.value.workspace?.published_book_ref).toEqual(references[1]);
-    await clickText('.workspace-goal-bar button', '工作区与资料'); await clickText('.learning-member button', '开始阅读');
+    await manageWorkspace(); await clickText('.learning-member button', '开始阅读');
     expect((wrapper.get('.test-reader textarea').element as HTMLTextAreaElement).value).toBe('空间 A 的问题');
     wrapper.unmount(); network.value = { ...network.value, workspace: null }; wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } }); await flush();
     expect(wrapper.find('.network-library').exists()).toBe(false);
     expect((wrapper.get('.test-reader textarea').element as HTMLTextAreaElement).value).toBe('空间 A 的问题');
-    await clickText('.workspace-goal-bar button', '工作区与资料');
+    await manageWorkspace();
     await clickText('.learning-details button', '修改大目标'); await wrapper.get('.learning-goal-edit textarea').setValue('三天内复习深度学习'); await wrapper.get('.learning-goal-edit').trigger('submit'); await flush();
     expect(wrapper.get('.learning-details').text()).toContain('第 3 版'); expect(spaces[1].goal.text).toBe('期末考试冲刺');
     await clickText('.learning-member button', '移出资料'); expect(wrapper.findAll('.learning-member')).toHaveLength(1);
@@ -160,6 +180,7 @@ it('moves the current reader to the selected shared material version after updat
   const opens: any[] = [];
   vi.stubGlobal('fetch', vi.fn(async (url: string, init: RequestInit) => {
     const body = init.body ? JSON.parse(String(init.body)) : null;
+    const auxiliary = auxiliaryRead(url); if (auxiliary) return auxiliary;
     if (url === '/api/auth/me') return Response.json(network.value.identity);
     if (url === '/api/videos') return Response.json({ videos: [] });
     if (url === '/api/me/reading-resumption') return Response.json(null);
@@ -170,14 +191,14 @@ it('moves the current reader to the selected shared material version after updat
     }
     if (url.endsWith('/resumption')) return Response.json({ ...scene, last_question: null });
     if (url.startsWith('/api/workspaces/')) return Response.json(scene);
-    throw new Error(url);
+    return unexpectedRequest(url);
   }));
   const wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true, SharedWorkspaceInstance: { props: ['workspace', 'books'], emits: ['updated'], data: () => ({ updated }), template: '<button class="apply-shared-update" @click="$emit(\'updated\', updated)">选择更新到此版本</button>' } } } });
   try {
     await flushPromises(); await wrapper.get('.learning-space-card button').trigger('click'); await flushPromises();
     await wrapper.get('.learning-member button').trigger('click'); await flushPromises();
     expect(network.value.workspace?.published_book_ref).toEqual(old);
-    await wrapper.get('.workspace-goal-bar button').trigger('click'); await flushPromises();
+    await wrapper.get('.test-reader [aria-label="学习资料"]').trigger('click'); await flushPromises();
     await wrapper.get('.apply-shared-update').trigger('click'); await flushPromises();
     expect(network.value.workspace?.published_book_ref).toEqual(next); expect(network.value.workspace?.selected_chat).toBe('private-chat');
     expect(opens.at(-1)).toMatchObject({ published_book_ref: next, learning_workspace_id: value.learning_workspace_id });

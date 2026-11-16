@@ -5,7 +5,6 @@ import { renderMarkdown } from "./md";
 import "./style.css";
 import { useAgentRun } from "./useAgentRun";
 import { api } from "./api";
-import TutorControl from './components/TutorControl.vue';
 import TutorPanel from './components/TutorPanel.vue';
 import { useTutorControl } from './useTutorControl';
 import type { PresentationWorkspace } from './presentation-workspace';
@@ -44,9 +43,6 @@ createApp(defineComponent({ setup() {
     window.dispatchEvent(new Event('tutor-state-changed'));
   };
   if (showTutor) void tutor.load();
-  const control = () => showTutor ? h(TutorControl, { enabled: !!tutor.state.value?.control.enabled, label: tutor.label.value,
-    busy: tutor.busy.value, unavailable: !tutor.state.value || !!tutor.pending.value, error: tutor.error.value,
-    onToggle: () => tutorAction({ kind: 'set_enabled', enabled: !tutor.state.value?.control.enabled }), onRetry: tutor.retry }) : null;
   const chat = ref<any[]>([{ teachingRef: fixture.teaching_ref, turnId: fixture.turn_id, user: fixture.user_request ?? "解释证据召回率", outcome: fixture.outcome, pending: false,
     questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] }]);
   return () => h("main", { style: "max-width:760px;margin:24px auto;padding:8px" }, [
@@ -105,9 +101,9 @@ createApp(defineComponent({ setup() {
           presentationFollowUp: receipt, questionAnchorLid: null, questionQuote: null, questionSelection: null, effectLabels: [] });
         followUp.value = "追问已完成";
       },
-    }, { 'tutor-control': control, 'learning-actions': () => showTutor ? [
-      h('button', {onClick:()=>openPanel('understanding')}, '我的理解'),
-      h('button', {onClick:()=>openPanel('current')}, '学习详情'),
-    ] : null }),
+    }, { 
+      'learning-actions': () => showTutor ? h('button', {onClick:()=>openPanel('understanding')}, '我的理解') : null,
+      'learning-details': () => showTutor ? h('button', {onClick:()=>openPanel('current')}, '学习详情') : null,
+    }),
   ]);
 } })).mount("#app");

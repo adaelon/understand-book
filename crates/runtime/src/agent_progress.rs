@@ -5,7 +5,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 pub(crate) const POLICY: &str = "Public work updates:
-- At the start of substantial work and after meaningful progress or a change of direction, call agent.progress with a brief user-facing update in the user's language. Explain what you will do next, what actually completed, or why the approach changed in one to three sentences.
+- The host already publishes tool activity. Ordinary explanations, local follow-ups and routine reads need no progress call. For substantial work, use agent.progress only when a change of direction, a real blocker or a completed milestone needs explanation with a brief user-facing update in the user's language. Explain what you will do next, what actually completed, or why the approach changed in one to three sentences.
 - Include it in the same tool_calls batch as the actual work. Do not request a separate model turn just to report progress, narrate every tool, repeat generic waiting messages, or follow a fixed reporting interval. A short direct answer needs no update.
 - These updates are immediately public. Do not include private reasoning, tool arguments, internal IDs or LIDs, source/presentation markers, teaching content, or an unreviewed answer. Report observed work without claiming success before its result. Progress reporting is not evidence, a deliverable, or substantive task progress. Ordinary answers still follow all source compilation and Tutor review requirements.";
 

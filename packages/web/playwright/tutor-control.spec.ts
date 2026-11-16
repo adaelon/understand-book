@@ -1,61 +1,29 @@
 import { expect, test } from '@playwright/test';
+import { setup } from './fixtures/tutor-continuation';
 
-test('global control persists, shares the presentation surface, and preserves draft and scene across source visits', async ({ page }, info) => {
-  await page.request.post('http://127.0.0.1:4175/reset-tutor');
-  await page.request.post('http://127.0.0.1:4175/reset-scene');
-  await page.route('**/api/**', async route => {
-    const response = await route.fetch({ url: route.request().url().replace(/^.*\/api/, 'http://127.0.0.1:4175') });
-    await route.fulfill({ response });
-  });
-  await page.goto('/agent-presentation-visual.html?tutor');
-  const toggle = page.getByRole('switch').first();
-  await expect(toggle).toHaveAttribute('aria-checked', 'false');
-  await toggle.click();
-  await expect(toggle).toHaveAttribute('aria-checked', 'true');
-  await page.getByRole('button', { name: '问答操作' }).click();
-  await page.getByRole('button', { name: '学习详情' }).click();
-  const panel = page.getByRole('dialog', { name: '学习详情', exact: true });
-  await panel.getByRole('button', { name: '新学习', exact: true }).click();
-  await panel.getByRole('textbox').fill('理解证据召回率');
-  await panel.getByRole('button', { name: '保存学习意图' }).click();
-  await expect(panel.getByRole('heading', { name: '理解证据召回率', exact: true })).toBeVisible();
-  await panel.getByRole('button', { name: '关闭', exact: true }).click();
-  await page.getByRole('button', { name: '展开', exact: true }).click();
-  const workspaceToggle = page.locator('.agent-input').getByRole('switch');
-  await expect(workspaceToggle).toHaveAttribute('aria-checked', 'true');
-  await page.locator('.agent-input textarea').fill('未发送的后续问题');
-  const frame = page.frameLocator('.agent-presentation iframe');
-  await frame.locator('#evidence-count').evaluate((node: HTMLInputElement) => {
-    node.value = '1'; node.dispatchEvent(new Event('input', { bubbles: true }));
-  });
-  await frame.locator('[data-source-ref]').first().click();
-  await expect(page.getByRole('dialog', { name: '回答来源' })).toBeVisible();
-  await page.getByRole('button', { name: '在正文中查看' }).click();
-  await page.getByRole('button', { name: '返回演示', exact: true }).click();
-  await expect(frame.locator('#result')).toHaveText('1/3');
-  await expect(page.locator('.agent-presentation iframe')).toHaveAttribute('data-load-count', '1');
-  await expect(page.locator('.agent-input textarea')).toHaveValue('未发送的后续问题');
-  await page.setViewportSize({ width: 390, height: 700 });
-  await page.getByRole('button', { name: '展开讨论', exact: true }).click();
-  await expect(page.locator('.agent-input textarea')).toBeVisible();
-  await expect(workspaceToggle).toBeVisible();
-  const controlBox = await workspaceToggle.boundingBox();
-  expect(controlBox!.x + controlBox!.width).toBeLessThanOrEqual(390);
-  await page.screenshot({ path: info.outputPath('tutor-narrow-workspace.png') });
-  // A failed save must not optimistically flip the visible switch.
-  await page.route('**/api/tutor/mutate', route => route.fulfill({ status: 503, json: { error_code: 'LEARNING_STORAGE_UNAVAILABLE', category: 'unavailable', message: '写入失败' } }), { times: 1 });
-  await workspaceToggle.click();
-  await expect(workspaceToggle).toHaveAttribute('aria-checked', 'true');
-  await page.locator('.workspace-learning-details').getByRole('button', { name: '学习详情' }).click();
-  await expect(panel.getByRole('alert')).toContainText('未确认保存');
-  await panel.getByRole('button', { name: '重试', exact: true }).click();
-  await expect(panel.getByRole('status').filter({ hasText: /^学习助手已关闭$/ })).toBeVisible();
-  await expect(panel.getByText('已暂停', { exact: true })).toBeVisible();
-  await page.request.post('http://127.0.0.1:4175/reopen');
-  await page.reload();
-  await expect(toggle).toHaveAttribute('aria-checked', 'false');
-  await page.getByRole('button', { name: '问答操作' }).click();
-  await page.getByRole('button', { name: '学习详情' }).click();
-  await expect(panel.getByRole('heading', { name: '理解证据召回率', exact: true })).toBeVisible();
-  await expect(panel.getByText('已暂停', { exact: true })).toBeVisible();
+for (const width of [1440, 390]) test(`ordinary continuation needs no teaching switch at ${width}px`, async ({ page }) => {
+  const fixture = await setup(page, 'markdown', true, true);
+  await page.setViewportSize({ width, height: 900 });
+  if (width < 1024) await page.locator('.workspace-mobile-nav').getByRole('button', { name: '问答', exact: true }).click();
+  await expect(page.getByRole('switch', { name: '连续教学' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '开启连续教学' })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: '继续理解这段', exact: true })).toBeVisible();
+  await page.screenshot({ path: `../../tmp/tutor-quality-20261115/unified-${width}.png` });
+  await page.getByRole('button', { name: '继续理解这段', exact: true }).click();
+  await expect.poll(() => fixture.requests.length).toBe(1);
+  expect(fixture.requests[0]).toMatchObject({ entry_action: 'continue_answer', answer_ref: { turn_id: 'tc0-answer' } });
+  expect(fixture.mutations).toEqual([]);
+  expect(fixture.errors).toEqual([]);
+});
+
+test('explicit practice submits directly with the legacy control disabled', async ({ page }) => {
+  const fixture = await setup(page, 'markdown', true, true);
+  await page.getByRole('button', { name: '学习设置', exact: true }).click();
+  await page.getByRole('button', { name: '为这本书设定目标', exact: true }).click();
+  await page.locator('[data-purpose="practice"]').click();
+  await page.locator('.purpose-setup textarea').fill('用总路程与总时间出一道练习题');
+  await page.locator('.purpose-submit').click();
+  await expect.poll(() => fixture.requests.length).toBe(1);
+  expect(fixture.requests[0]).toMatchObject({ entry_action: 'learn_with_purpose', learning_purpose: 'practice' });
+  expect(fixture.mutations).toEqual([]);
 });

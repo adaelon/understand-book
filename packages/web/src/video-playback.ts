@@ -5,15 +5,19 @@ export function preloadVideoPlayback() { return import('hls.js'); }
 
 /** Owns one media attachment, including cancellation during the module import. */
 export function attachVideoPlayback(video: HTMLVideoElement, source: string, playlist: string | null,
-  startPosition: number, fail: (message: string) => void): () => void {
+  startPosition: number, fail: (message: string) => void, timeline?: (original: boolean) => void): () => void {
   let disposed = false, hls: Hls | undefined;
-  if (!playlist) video.src = source;
+  if (!playlist) { timeline?.(true); video.src = source; }
   else {
     void preloadVideoPlayback().then(({ default: Hls }) => {
       if (disposed) return;
       // Some Chromium versions advertise native HLS but fetch a single-file
       // playlist's entire MP4. Prefer explicit MSE byte ranges where supported.
-      if (!Hls.isSupported()) { video.src = video.canPlayType('application/vnd.apple.mpegurl') ? playlist : source; return; }
+      if (!Hls.isSupported()) {
+        const native = !!video.canPlayType('application/vnd.apple.mpegurl');
+        timeline?.(!native); video.src = native ? playlist : source; return;
+      }
+      timeline?.(false);
       hls = new Hls({ startPosition, maxBufferLength: 15, maxMaxBufferLength: 30, maxBufferSize: 6 * 1024 * 1024, backBufferLength: 30 });
       hls.on(Hls.Events.ERROR, (_event, data) => {
         if (!disposed && data.fatal) {

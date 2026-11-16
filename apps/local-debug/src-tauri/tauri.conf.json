@@ -1,0 +1,9 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "Understand Book Local Debug",
+  "version": "0.3.8",
+  "identifier": "app.understandbook.local-debug",
+  "build": { "frontendDist": "../bootstrap" },
+  "app": { "windows": [], "security": { "csp": null } },
+  "bundle": { "active": false, "icon": ["../../desktop/src-tauri/icons/icon.ico"] }
+}

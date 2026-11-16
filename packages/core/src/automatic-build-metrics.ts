@@ -151,7 +151,6 @@ export interface AutomaticBuildPerformanceSampleV1 {
 
 export interface AutomaticBuildPerformanceHistoryV1 {
   version: "automatic_build_performance_history.v1";
-  revision_digest?: string;
   samples: AutomaticBuildPerformanceSampleV1[];
   lease_count: number;
   semantic_attempt_count: number;
@@ -238,7 +237,6 @@ export interface AutomaticBuildStageMetricsSummaryV1 {
     harness_release: ProvenanceDimensionSummaryV1;
   };
   performance_history: AutomaticBuildPerformanceHistoryV1;
-  digest: string;
 }
 
 export interface AutomaticBuildTerminalMetricsInput {
@@ -892,10 +890,6 @@ function lifecycleEventsFromAttempts(
     || (left.submit_revision ?? 0) - (right.submit_revision ?? 0));
 }
 
-function digest(value: unknown): string {
-  return createHash("sha256").update(JSON.stringify(value)).digest("hex");
-}
-
 function observedPercentiles(values: number[], attemptCount: number): ObservedPercentilesV1 {
   return {
     ...percentiles(values),
@@ -950,7 +944,7 @@ function buildPerformanceHistory(
     lease_count: attempts.filter((attempt) => attempt.lease).length,
     semantic_attempt_count: semanticAttempts,
   };
-  return { ...identity, revision_digest: digest(identity) };
+  return identity;
 }
 
 export function buildAutomaticBuildStageMetricsSummary(
@@ -1157,7 +1151,7 @@ export function buildAutomaticBuildStageMetricsSummary(
     },
     performance_history: buildPerformanceHistory(target, attempts, options.work_units ?? []),
   };
-  return { ...core, digest: digest(core) };
+  return core;
 }
 
 export function writeAutomaticBuildStageMetricsSummary(

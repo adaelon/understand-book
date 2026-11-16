@@ -49,8 +49,10 @@ export interface AllowanceBasis { version: string; basis_micro_cny: number }
 export interface AllowancePercentages {
   granted: Percentage; debited: Percentage; active_reserved: Percentage; pending: Percentage; available: Percentage; deficit: Percentage;
 }
-export interface AllowanceOffer { offer_id: string; title: string; amount_fen: number; delta_milli_percent: number; basis_version: string; instructions: string; enabled: boolean }
+export interface AllowanceOffer { offer_id: string; title: string; amount_fen: number; budget_micro_cny: number; delta_milli_percent: number; basis_version: string; instructions: string; enabled: boolean }
 export interface Period {
+  is_plan?: boolean;
+  closed_at?: number | null;
   period_id: string;
   starts_at: number;
   expires_at: number;

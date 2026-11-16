@@ -12,11 +12,67 @@ class Source extends EventTarget {
   onopen?: () => void;
   onerror?: () => void;
   closed = false;
+  readyState = 0;
   constructor(public url: string) { super(); Source.instances.push(this); }
-  close() { this.closed = true; }
+  close() { this.closed = true; this.readyState = 2; }
   emit(type: string, seq: number, payload: unknown) { this.dispatchEvent(new MessageEvent(type, { data: JSON.stringify({ type, turn_id: "turn", seq, elapsed_ms: seq, payload }) })); }
 }
-afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); Source.instances = []; network.value = { ...network.value, enabled: false }; });
+afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); vi.useRealTimers(); Source.instances = []; network.value = { ...network.value, enabled: false }; });
+
+it('replaces a permanently closed stream for the same run and keeps its received answer', async () => {
+  vi.useFakeTimers();
+  network.value = { ...network.value, enabled: true };
+  vi.stubGlobal('EventSource', Source);
+  const descriptor = { turn_id: 'turn', book_id: 'book', session_id: 'session' };
+  const read = vi.spyOn(api, 'agentRun').mockResolvedValue(initialRun(descriptor));
+  const create = vi.spyOn(api, 'agentRunCreate');
+  const complete = vi.fn();
+  let run!: ReturnType<typeof useAgentRun>;
+  const wrapper = mount(defineComponent({ setup() { run = useAgentRun(complete); return () => null; } }));
+  run.observe(descriptor); await run.reconcile();
+  const first = Source.instances[0];
+  first.readyState = 1; first.onopen?.();
+  const draft = { message_id: 1, revision: 0, operation: 'replace', view: { parts: [{ kind: 'markdown' as const, text: '已经收到的解释' }], sources: [] } };
+  first.dispatchEvent(new MessageEvent('run.snapshot', { lastEventId: '7', data: JSON.stringify({ type: 'run.snapshot', turn_id: 'turn', seq: 7, payload: { ...initialRun(descriptor), last_seq: 7, draft } }) }));
+  first.readyState = 2; first.onerror?.();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(first.closed).toBe(true);
+  expect(Source.instances).toHaveLength(2);
+  expect(Source.instances[1].url).toContain('/turn/events?after=7');
+  expect(run.snapshot.value?.draft).toEqual(draft);
+  expect(create).not.toHaveBeenCalled();
+  Source.instances[1].emit('run.completed', 8, { ...initialRun(descriptor), last_seq: 8, execution_state: 'completed', persistence_state: 'saved', draft });
+  expect(run.active.value).toBe(false);
+  expect(complete).toHaveBeenCalledOnce();
+  const readsAtCompletion = read.mock.calls.length;
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(read).toHaveBeenCalledTimes(readsAtCompletion);
+  wrapper.unmount();
+});
+
+it('retries a failed recovery read without another visibility event and stops when unmounted', async () => {
+  vi.useFakeTimers();
+  network.value = { ...network.value, enabled: true };
+  vi.stubGlobal('EventSource', Source);
+  const descriptor = { turn_id: 'turn', book_id: 'book', session_id: 'session' };
+  const read = vi.spyOn(api, 'agentRun').mockResolvedValueOnce(initialRun(descriptor))
+    .mockRejectedValueOnce(new ApiError(503, 'UNAVAILABLE', 'unavailable', 'temporary outage'))
+    .mockResolvedValue(initialRun(descriptor));
+  let run!: ReturnType<typeof useAgentRun>;
+  const wrapper = mount(defineComponent({ setup() { run = useAgentRun(vi.fn()); return () => null; } }));
+  run.observe(descriptor); await run.reconcile();
+  const first = Source.instances[0]; first.readyState = 1; first.onopen?.();
+  first.readyState = 2; first.onerror?.();
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(read).toHaveBeenCalledTimes(2);
+  expect(run.connection.value).toBe('reconnecting');
+  await vi.advanceTimersByTimeAsync(1000);
+  expect(read).toHaveBeenCalledTimes(3);
+  expect(Source.instances).toHaveLength(2);
+  wrapper.unmount();
+  await vi.advanceTimersByTimeAsync(30_000);
+  expect(read).toHaveBeenCalledTimes(3);
+});
 it("keeps the observed work when a network cancellation returns only a durable snapshot", async () => {
   network.value = { ...network.value, enabled: true };
   vi.stubGlobal("EventSource", Source);

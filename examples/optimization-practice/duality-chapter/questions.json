@@ -1,0 +1,208 @@
+[
+  {
+    "id": "lecture16-example1",
+    "entry": "reading_margin",
+    "section": "1.11.7.17",
+    "focus": "课件例 1：求 Lagrange 对偶问题",
+    "source": {
+      "path": "D:/xwechat_files/wxid_1fyvzipu7fan22_0ee8/msg/file/2026-10/Lecture 16- 对偶理论.pptx",
+      "slides": [
+        6,
+        7
+      ],
+      "label": "例 1",
+      "kind": "example"
+    },
+    "prompt": "求如下优化问题的 Lagrange 对偶问题：$$\\begin{aligned}\\min\\quad &x_1^2+x_2^2\\\\ \\text{s.t.}\\quad &x_1+x_2-4\\geq0,\\quad x_1,x_2\\geq0.\\end{aligned}$$（出处：第 16 讲，第 6 页，例 1。）",
+    "answer_input": {
+      "kind": "worked_solution"
+    },
+    "rule": {
+      "kind": "open",
+      "items": [
+        {
+          "id": "lagrangian",
+          "criterion": "按课件保留 D=R_+^2，建立 L=x1²+x2²−w(x1+x2−4)，w≥0。也接受将全部约束写入 L 后得到的等价对偶推导，不要求使用完全相同的字母。",
+          "retry_prompt": "原问题有哪些约束？哪些保留在 D 中，哪些写入 L？",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        },
+        {
+          "id": "infimum",
+          "criterion": "在 w≥0 时得到两个分量的极小点均为 w/2、θ(w)=−w²/2+4w。接受配方、分离变量、正定二次函数求导或等价推导。",
+          "retry_prompt": "固定 w 后，对哪一个变量求下确界？你得到的极小点是否满足保留的非负约束？",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        },
+        {
+          "id": "dual",
+          "criterion": "明确写出最大化 −w²/2+4w，约束 w≥0。若给出引入两个非负乘子的等价未消元形式，也应接受。原题仅要求对偶问题，无须另求原、对偶最优解。",
+          "retry_prompt": "对偶函数已经求得。对偶问题的优化变量、优化方向和乘子范围分别是什么？",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        }
+      ]
+    },
+    "hint": "先把 x1、x2 非负保留在 D 中，对和约束引入一个非负乘子。固定乘子以后，先算只含 x1 的二次式的最小值。",
+    "solution": "先取 $D=\\mathbb R_+^2$，写出 $L=x_1^2+x_2^2-w(x_1+x_2-4)$，其中 $w\\geq0$。\n\n固定 w，分别配方：$x_i^2-wx_i=(x_i-w/2)^2-w^2/4$。因为 w≥0，$x_i=w/2$ 满足非负约束，两个平方项可以同时为零。\n\n所以 $\\theta(w)=-w^2/4-w^2/4+4w=-w^2/2+4w$。再对 w 求最大值，得到对偶问题 $\\max_{w\\geq0}(-w^2/2+4w)$。"
+  },
+  {
+    "id": "lecture16-exercise1",
+    "entry": "exam_daily",
+    "section": "1.11.7.17",
+    "focus": "课件习题 1：二次约束下的线性目标",
+    "source": {
+      "path": "D:/xwechat_files/wxid_1fyvzipu7fan22_0ee8/msg/file/2026-10/Lecture 16- 对偶理论.pptx",
+      "slides": [
+        8
+      ],
+      "label": "习题 1",
+      "kind": "exercise"
+    },
+    "prompt": "求如下优化问题的 Lagrange 对偶问题：$$\\begin{aligned}\\max\\quad &b^{\\mathsf T}x\\\\ \\text{s.t.}\\quad &x^{\\mathsf T}Qx\\leq1.\\end{aligned}$$其中 $b\\in\\mathbb R^n\\setminus\\{0\\}$，$Q\\in\\mathbb R^{n\\times n}$ 为对称正定矩阵。（出处：第 16 讲，第 8 页，习题 1。）",
+    "answer_input": {
+      "kind": "worked_solution"
+    },
+    "rule": {
+      "kind": "open",
+      "items": [
+        {
+          "id": "maximization_sign",
+          "criterion": "直接处理最大化时，使用 L=bᵀx−w(xᵀQx−1)，w≥0，并关于 x 取上确界。也接受先将原题改成 min −bᵀx，再按最小化问题求对偶，符号须一致。",
+          "retry_prompt": "原题是最大化还是最小化？你写出的 L 在可行点处给出目标值的上界还是下界？",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        },
+        {
+          "id": "extremum",
+          "criterion": "当 w>0 时，求出 x=Q⁻¹b/(2w)，代入得到上确界 φ(w)=bᵀQ⁻¹b/(4w)+w；若采用 min −bᵀx，则对应下确界为上述函数的相反数。接受配方等价推导。",
+          "retry_prompt": "固定正的 w，对 x 求导；Q 对称正定怎样帮助你判断该驻点的极值性质？",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        },
+        {
+          "id": "multiplier_domain",
+          "criterion": "说明 w=0 时 bᵀx 因 b≠0 而无上界，故有限对偶目标的乘子范围是 w>0；若写 w≥0 并明确定义 φ(0)=+∞，亦接受。",
+          "retry_prompt": "你的表达式含有 1/w。回到未经除法的 L，检查 w=0 时关于 x 的上确界。",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        },
+        {
+          "id": "dual",
+          "criterion": "写出课件形式 min_{w>0}(bᵀQ⁻¹b/(4w)+w)。也接受先求 min −bᵀx 的对偶并明确取相反数恢复原题的完整等价推导。原题不要求再求最优乘子或原最优解。",
+          "retry_prompt": "已经得到每个乘子对应的上界。对这些上界取最大值还是最小值？",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        }
+      ]
+    },
+    "hint": "原题是最大化。写出 L 后，先比较它与原目标的大小，再确定关于 x 应求上确界还是下确界。",
+    "solution": "取 $L=b^{\\mathsf T}x-w(x^{\\mathsf T}Qx-1)$，$w\\geq0$。对原问题可行点，减去的括号不大于零，所以 $L\\geq b^{\\mathsf T}x$。对 L 取上确界，会给出原最优值的上界；对偶问题要让这个上界尽可能小。\n\n固定 $w>0$，令 $b-2wQx=0$，得 $x=Q^{-1}b/(2w)$。代回，得到上确界 $b^{\\mathsf T}Q^{-1}b/(4w)+w$。\n\n当 w=0 时，L=bᵀx，因 b≠0 可任意增大，所以上确界为 +∞。因此答案为 $\\min_{w>0}(b^{\\mathsf T}Q^{-1}b/(4w)+w)$。"
+  },
+  {
+    "id": "lecture16-advertising",
+    "entry": "reading_margin",
+    "section": "1.11.9.24",
+    "focus": "课件例题：广告费的分配",
+    "source": {
+      "path": "D:/xwechat_files/wxid_1fyvzipu7fan22_0ee8/msg/file/2026-10/Lecture 16- 对偶理论.pptx",
+      "slides": [
+        18,
+        19
+      ],
+      "label": "例：广告费的分配",
+      "kind": "example"
+    },
+    "prompt": "某企业预算以 2 千元作为广告费，根据以往的经验，若以 $x_1$ 千元作广播广告，$x_2$ 千元作报纸广告，则销售金额为 $-2x_1^2-10x_2^2-8x_1x_2+18x_1+34x_2$（千元）。试问：（1）如何分配 2 千元的广告费？（2）广告费预算作微小改变后的影响如何？（出处：第 16 讲，第 18—19 页。）",
+    "answer_input": {
+      "kind": "worked_solution"
+    },
+    "rule": {
+      "kind": "open",
+      "items": [
+        {
+          "id": "allocation",
+          "criterion": "得到 x1=x2=1，即广播和报纸广告各分配 1 千元。用原题的销售最大化模型或 f=−销售金额 的最小化模型论证最优性；接受代入等式消元的一元二次函数推导或 KKT 加凸性。",
+          "retry_prompt": "先用总预算条件表示两个分量的关系。你的候选分配是否满足非负约束，怎样判断它取得最大销售金额？",
+          "source_lids": [
+            "1.11.9.24"
+          ]
+        },
+        {
+          "id": "perturbation",
+          "criterion": "在预算改为 2+e 千元且 e 接近 0 时，得到 x1=1+3e/2、x2=1−e/2；或直接推导出最优销售金额 32+6e−e²。若写 min f，则对应 V(e)=e²−6e−32。接受数学等价推导。",
+          "retry_prompt": "将预算保留为 2+e，再求一次最优分配或最优销售金额。先不要把 e 设为零。",
+          "source_lids": [
+            "1.11.9.24"
+          ]
+        },
+        {
+          "id": "economic_effect",
+          "criterion": "说明广告费增加微小量 e 千元时，销售金额增量约为 6e 千元，即一阶变化率为 6。若用 min f 的乘子 v*=−6，须将 f 的导数与销售金额 −f 的导数区分。只报告 −6 而未解释销售变化不足以满足第（2）问。",
+          "retry_prompt": "你刚求的是 f 的变化，还是销售金额 −f 的变化？题目最后要求解释哪一个？",
+          "source_lids": [
+            "1.11.9.24"
+          ]
+        }
+      ]
+    },
+    "hint": "先写出总预算条件。按课件求两个分量都为正的候选解时，由乘积 w1x1=w2x2=0，能确定哪些乘子？",
+    "solution": "把销售金额取相反数作为最小化目标 f。先求 x1、x2 都为正的情况，这时互补松弛给出 w1=w2=0。两条驻点方程相减，得到 x1+3x2=4；再与 x1+x2=2 联立，得 x1=x2=1，v=−6。\n\n用预算等式代入可得 $f(x_1,2-x_1)=4(x_1-1)^2-32$，所以这个可行点确实使 f 最小。两种广告各用 1 千元，最大销售金额为 32 千元。\n\n预算变成 2+e 后，得到 $x_1=1+3e/2$、$x_2=1-e/2$，在 $-2/3<e<2$ 内都为正。最小化目标值为 $V(e)=e^2-6e-32$，销售金额为 $-V(e)=32+6e-e^2$。因此，小幅增加 e 千元广告费，销售金额约增加 6e 千元。"
+  },
+  {
+    "id": "lecture16-homework1",
+    "entry": "exam_daily",
+    "section": "1.11.7.17",
+    "focus": "作业题 1：线性规划的对偶问题",
+    "source": {
+      "path": "D:/xwechat_files/wxid_1fyvzipu7fan22_0ee8/msg/file/2026-10/Lecture 16- 对偶理论.pptx",
+      "slides": [
+        21
+      ],
+      "label": "作业题 1",
+      "kind": "homework"
+    },
+    "prompt": "写出如下问题的对偶问题：$$\\begin{aligned}\\min_{x\\in\\mathbb R^n}\\quad &\\langle c,x\\rangle\\\\ \\text{s.t.}\\quad &Ax=b,\\\\ &x\\geq0.\\end{aligned}$$其中 $A\\in\\mathbb R^{m\\times n}$，$b\\in\\mathbb R^m$。（出处：第 16 讲，第 21 页，作业题 1。）",
+    "answer_input": {
+      "kind": "worked_solution"
+    },
+    "rule": {
+      "kind": "open",
+      "items": [
+        {
+          "id": "lagrangian",
+          "criterion": "将非负约束保留在 D 时，写出 L=cᵀx−vᵀ(Ax−b)=(c−Aᵀv)ᵀx+bᵀv，v 为自由变量；也接受等式乘子反号的等价约定，或将 x≥0 也引入非负乘子。",
+          "retry_prompt": "Ax=b 是等式约束，它的乘子是否需要非负？把 L 中关于 x 的项合并。",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        },
+        {
+          "id": "finite_infimum",
+          "criterion": "固定 v 后，在 x≥0 上取下确界。若 c−Aᵀv≥0，则下确界为 bᵀv；若某个系数负，则沿该坐标正方向函数值趋向 −∞。也接受全部约束引入乘子后在 R^n 上令线性系数为零的推导。",
+          "retry_prompt": "若某个 x 分量前的系数为负，且该分量可以任意增大，下确界会怎样？",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        },
+        {
+          "id": "dual",
+          "criterion": "写出 max bᵀv，约束 Aᵀv≤c，v∈R^m 自由。接受 ν=−v 后 max −bᵀν、Aᵀν≥−c 的等价形式。不要求求出具体最优解或证明额外的强对偶结论。",
+          "retry_prompt": "将下确界有限的条件写成乘子的约束，再写出应最大化的对偶目标。",
+          "source_lids": [
+            "1.11.7.17"
+          ]
+        }
+      ]
+    },
+    "hint": "把 x≥0 保留在变量范围中，对等式引入自由乘子。合并含 x 的项后，看每个分量前面的系数能否为负。",
+    "solution": "先写 $L=c^{\\mathsf T}x-v^{\\mathsf T}(Ax-b)=(c-A^{\\mathsf T}v)^{\\mathsf T}x+b^{\\mathsf T}v$，v 是自由变量。\n\n固定 v 后，bᵀv 是常数。如果 x 前面的系数都非负，取 x=0 就能使含 x 的部分最小，得到 θ(v)=bᵀv。若有一个系数为负，只让对应的非负变量不断增大，L 就会趋向 −∞。\n\n所以，下确界有限必须满足 $c-A^{\\mathsf T}v\\geq0$，即 $A^{\\mathsf T}v\\leq c$。对偶问题为 $\\max_{v\\in\\mathbb R^m}b^{\\mathsf T}v$，约束 $A^{\\mathsf T}v\\leq c$。"
+  }
+]

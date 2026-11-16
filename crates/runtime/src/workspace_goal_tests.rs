@@ -156,7 +156,7 @@ fn w4_explicit_redirection_updates_effective_goal_but_keeps_run_provenance() {
             call("old-stage","tutor.step",r#"{"operation":"outside"}"#)]),
         plan("按新目标准备期末冲刺","先确认考纲和实际薄弱点，再在三天内选择阶段"),
         turn_final("接下来只准备三天后的期末考试。旧阶段已停止，下一步按考纲和薄弱点安排。"),
-    ],json!({"status":"active","workspace_goal_revision":3,"binding":{"tutor_session_id":"stage:old"},
+    ],json!({"status":"practice","workspace_goal_revision":3,"binding":{"tutor_session_id":"stage:old"},
         "user_intent":"逐章学习深度学习","learner_context":{},"current_design":null}));
     assert!(!out.incomplete);
     assert_eq!(updates.len(),1);

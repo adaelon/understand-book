@@ -15,6 +15,19 @@ fn account(f:&Fixture)->Value { f.ok(&f.a,"GET","/api/account/allowance",Value::
 fn post(f:&Fixture,action:&str,body:Value)->Value { f.ok(&f.b,"POST",&format!("/api/admin/users/A/{action}"),body) }
 
 #[test]
+fn budget_admin_addons_preserve_exact_budget_across_period_bases() {
+    let (f,p) = fixture();
+    let body = json!({"operation_id":"money-offer","offer_id":"budget-addon","title":"加购","amount_fen":500,"budget_micro_cny":3_333_333,"instructions":"联系运营","enabled":true});
+    f.ok(&f.b, "POST", "/api/admin/allowance-offers", body.clone());
+    f.ok(&f.b, "POST", "/api/admin/allowance-offers", body);
+    let offer = account(&f)["replenishment"]["offers"][0].clone();
+    assert_eq!(offer["budget_micro_cny"], 3_333_333);
+    assert_eq!(account(&f)["current_allowance"]["balance"]["available_micro_cny"], 0);
+    post(&f, "receipts", json!({"operation_id":"budget-addon-paid","period_id":p,"revision":0,"amount_fen":500,"delta_micro_cny":offer["budget_micro_cny"],"paid_at":crate::multi_user_host::now(),"channel":"test","note":""}));
+    assert_eq!(account(&f)["current_allowance"]["balance"]["available_micro_cny"], 3_333_333);
+}
+
+#[test]
 fn q4_offers_require_explicit_basis_and_do_not_grant_before_manual_receipt() {
     let (f,p) = fixture();
     let original = account(&f)["current_allowance"].clone();

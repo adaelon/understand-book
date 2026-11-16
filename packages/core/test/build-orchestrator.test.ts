@@ -63,10 +63,40 @@ import { claimAutomaticBuildTask, readAutomaticBuildLease } from "../src/automat
 import { structureProductionResponse } from "./helpers/book-structure-production";
 import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
 import { readAcceptedBookStructureClose, readAcceptedPass1Close } from "../src/automatic-build-close";
+import { createAutomaticBuildInvocation, automaticBuildStep } from '../../../skills/build/automatic-build-driver';
+import { createBuildExecutorMcpSession } from '../../../skills/build/build-executor-mcp';
+import { BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3 } from '../src/build-executor-connection-capability';
+import { resolveAutomaticBuildExecutorRegistryRoot } from '../src/automatic-build-executor-session';
 
 // These fixtures run synchronous batch processes. Let the test worker deliver
 // its pending completion messages between cases instead of starving RPC replies.
 afterEach(async () => { await yieldToRunner(); });
+
+it('dispatches a selected course goal through the real executor session after reusing BookStructure',async()=>{
+  const root=tempDir(),{workspace}=writeTechnicalLearningWorkspace(root,'course-executor');
+  const target=resolveAutomaticBuildTarget(workspace,root);closeV3Pass1(target);closeV3ProfileSidecar(target);
+  for(let round=0;round<24;round++){
+    const state=buildAutomaticBuildSnapshot(target).stages.find(s=>s.stage==='book_structure')!;
+    if(!state.pending_tasks.length)break;
+    for(const id of state.pending_tasks){const generation=state.generation_tasks![id];if(generation.kind!=='book_structure')throw Error('expected structure');
+      freezeBookStructureGenerationTask(target,generation.task);writeBookStructureGenerationCandidate({target,task:generation.task,candidate:structureProductionResponse(generation.task),provenance:{executor:'fixture',attempt:1,generated_at:'2026-11-12T00:00:00Z'}});
+    }
+  }
+  runAutomaticBuildCloseStage(workspace,root,'book_structure');
+  const selected=prepareExplicitLegacyBuildPlan(workspace,root,{build_course:true,course_goal:'围绕材料中的定义与条件编排课程'});
+  expect(selected.plan.course_goal).toBe('围绕材料中的定义与条件编排课程');
+  expect(selected.plan.public_stage_closure).toContain('course');expect(selected.plan.public_stage_closure).not.toContain('formal_objects');
+  vi.stubEnv('UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT',path.join(root,'registry'));
+  try{
+    const invocation=await createAutomaticBuildInvocation({version:'automatic_build_invocation_create.v1',target_input:workspace,root_dir:root,build_plan_path:selected.build_plan_path,quality_profile:'full',max_parallel:1,created_at:new Date().toISOString()});
+    const result=await automaticBuildStep({version:'automatic_build_step_request.v1',invocation_ref:invocation.invocation_ref,available_agent_slots:1});
+    if(result.action.kind!=='SPAWN_EXECUTORS')throw Error(JSON.stringify(result));
+    const session=createBuildExecutorMcpSession({bootstrap_version:BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version,protocol_generation:BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.session_protocol,session_private_root:resolveAutomaticBuildExecutorRegistryRoot()});
+    const rpc=await session.handle_message({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'executor.open',arguments:{version:'automatic_build_executor_open_request.v3',opaque_handoff_ref:result.action.executors[0].opaque_handoff_ref}}}) as {result:{isError:boolean;content:{text:string}[]}};
+    expect(rpc.result.isError,JSON.stringify(rpc)).toBe(false);
+    expect(JSON.parse(rpc.result.content[0].text).action.kind).toBe('DELIVER_INPUT');
+  }finally{vi.unstubAllEnvs();}
+},60000);
 
 it("keeps a confirmed reused Pass1 publication after its producer generation changes", () => {
   const root = tempDir();
@@ -142,7 +172,7 @@ it("reuses an accepted BookStructure publication for Tutor after its generation 
   fs.renameSync(closeFile, path.join(closeDirectory, transaction + ".json"));
   const artifacts = path.join(workspace, ".build/automatic-build/v3/artifacts/book_structure");
   fs.renameSync(artifacts, artifacts + "-previous");
-  const prepared = prepareExplicitLegacyBuildPlan(workspace, root, { pass2: "disabled" });
+  const prepared = prepareExplicitLegacyBuildPlan(workspace, root, { pass2: "disabled", build_tutor: true });
   expect(prepared.plan.reuse.map(item => item.artifact)).toContain("public.book_structure");
   expect(prepared.plan.create).toEqual(["public.formal_objects", "public.cognitive_materials", "public.teaching_publish"]);
   const planned = automaticBuildPlan(workspace, root, { build_plan: prepared.plan });
@@ -727,6 +757,9 @@ describe("automatic build orchestrator", () => {
       "structure_chapter_selection",
       "structure_fragment",
       "structure_outline",
+      "structure_outline_chapters",
+      "structure_outline_theme_page",
+      "structure_outline_themes",
       "structure_reduce",
       "structure_relation_delta",
       "structure_relation_select",

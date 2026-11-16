@@ -98,6 +98,7 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                     ("revise", &["draft_ref", "edits"], &["move_changes"]),
                     ("outside", &[], &[]),
                     ("assess", &["action_ref"], &[]),
+                    ("corrections", &["correction_action"], &["queries","after","operation_id","correction","correction_ref","decision","reason"]),
                     (
                         "understanding",
                         &[],
@@ -119,6 +120,14 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
                 ],
             );
             schema["anyOf"].as_array_mut().unwrap().last_mut().unwrap()["properties"]["nature"] = json!({"enum":["hypothesis"]});
+            let correction = schema["anyOf"].as_array_mut().unwrap().iter_mut()
+                .find(|branch| branch["properties"]["operation"]["enum"][0] == "corrections").unwrap();
+            correction["oneOf"] = json!([
+                {"properties":{"correction_action":{"enum":["search"]}},"required":["queries"],"not":{"anyOf":[{"required":["correction"]},{"required":["correction_ref"]}]}},
+                {"properties":{"correction_action":{"enum":["read"]}},"required":["correction_ref"]},
+                {"properties":{"correction_action":{"enum":["record"]}},"required":["operation_id","correction"]},
+                {"properties":{"correction_action":{"enum":["use"]}},"required":["operation_id","correction_ref","decision","reason"]}
+            ]);
             let movement = &mut schema["properties"]["move"];
             let description = movement["properties"]["assessment"]["description"].clone();
             movement["properties"]["assessment"] =
@@ -140,11 +149,13 @@ pub(crate) fn complete_spec(mut tool: ToolSpec) -> ToolSpec {
             }
             // Practice releases its own ordered hints; ordinary activities use
             // the single hint stored on the move.
-            movement["allOf"] = json!([
+            let mut conditions = movement["allOf"].as_array().cloned().unwrap_or_default();
+            conditions.extend(json!([
                 {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["request_hint"]}}},"not":{"required":["practice"],"properties":{"practice":{"type":"object"}}}},"then":{"required":["hint"],"properties":{"hint":{"type":"string","minLength":1}}}},
                 {"if":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["reveal"]}}}},"then":{"required":["explanation"],"properties":{"explanation":{"type":"string","minLength":1}}}},
                 {"if":{"required":["assessment"],"properties":{"assessment":{"type":"object"}}},"then":{"required":["actions"],"properties":{"actions":{"contains":{"enum":["submit"]}}}}}
-            ]);
+            ]).as_array().unwrap().iter().cloned());
+            movement["allOf"] = json!(conditions);
         }
         "presentation.interact" => {
             operations(schema, "operation", &[("observe", &["reference"], &["board_target"]), ("act", &["reference", "based_on", "action"], &["board_target"])]);

@@ -10,6 +10,7 @@ fn source_marker_single_bracket_colon_adjacent_mixed_groups_keep_every_source_on
     for answer in [
         "A claim[source:source_ref_one][source:source_ref_two][[source:source_ref_three]][source:source_ref_one]。",
         "A claim[[source:source_ref_three]][source:source_ref_one][source:source_ref_two][source:source_ref_two]。",
+        "A claim[ [source:source_ref_one] ][ [source:source_ref_two] ][ [source:source_ref_three] ][ [source:source_ref_one] ]。",
     ] {
         let compiled = compile_agent_answer(answer, &bindings, &AnswerProvenanceLedger::default()).unwrap();
         assert_eq!(compiled.answer, "A claim。");
@@ -181,6 +182,8 @@ fn source_marker_single_bracket_colon_preserves_existing_literal_exclusions() {
     let bindings = [source_binding_fixture("source_ref_one", "1.1")];
     for answer in [
         "Example `[source:source_ref_one]`",
+        "Example `[ [source:source_ref_one] ]`",
+        "原文写着“标记 [ [source:source_ref_one] ]。”",
         "Example `` `[source:source_ref_one].` ``",
         "Example `[source:source_ref_missing]`",
         "原文写着“标记 [source:source_ref_one]。”",

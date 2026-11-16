@@ -30,14 +30,14 @@ it.each([
   expect(excerpt).toBe(source);
 });
 
-it('handles a partial formatted span and refuses to stitch separate Markdown parts', () => {
+it('handles a partial formatted span and continuous text across a source chip', () => {
   const source = '前面 __abcdef__ 后面';
   const root = document.createElement('div'); root.innerHTML = renderMarkdown(source);
   const range = document.createRange(); range.setStart(root.querySelector('strong')!.firstChild!, 1); range.setEnd(root.querySelector('strong')!.firstChild!, 4);
   expect(answerNoteExcerpt(range, [source], root)).toBe('bcd');
-  root.innerHTML = '<p>first</p><button class="agent-source-button">来源</button><p>second</p>';
+  root.innerHTML = '<p>first<button class="agent-source-button" data-reader-selection-ignore>来源</button>second</p>';
   range.selectNodeContents(root);
-  expect(answerNoteExcerpt(range, ['first', 'second'], root)).toBeNull();
+  expect(answerNoteExcerpt(range, ['first', 'second'], root)).toBe('firstsecond');
 });
 
 it.each([
@@ -65,11 +65,24 @@ it('uses the selected occurrence when the same visible words have different Mark
   expect(answerNoteExcerpt(range, [source], root)).toBe('前面 __同样');
 });
 
-it('does not borrow matching text from another part to legitimize a cross-part selection', () => {
+it('uses the selected occurrence across adjacent text parts', () => {
   const sources = ['first', 'second', 'firstsecond'];
   const root = document.createElement('div'); root.innerHTML = '<p>firstsecondfirstsecond</p>';
   const range = document.createRange(); range.setStart(root.firstChild!.firstChild!, 0); range.setEnd(root.firstChild!.firstChild!, 11);
-  expect(answerNoteExcerpt(range, sources, root)).toBeNull();
+  expect(answerNoteExcerpt(range, sources, root)).toBe('firstsecond');
+});
+
+it('saves text on both sides of a music source citation without copying the source label', () => {
+  const before = '低音以 A 为底，';
+  const after = '三音取 **C 还原**的音响。';
+  const display = answerDisplayParts([{ kind: 'markdown', text: before }, { kind: 'sources', source_ref_ids: ['score'] }, { kind: 'markdown', text: after }], []);
+  const part = display[0]; if (part.kind !== 'html') throw new Error('Expected Markdown');
+  const root = document.createElement('div'); root.innerHTML = part.html;
+  const range = document.createRange(); range.selectNodeContents(root);
+  expect(answerNoteExcerpt(range, part.markdown, root)).toBe(before + after);
+  range.setStart(root.querySelector('p')!.firstChild!, 2);
+  range.setEnd(root.querySelector('strong')!.firstChild!, 1);
+  expect(answerNoteExcerpt(range, part.markdown, root)).toBe('以 A 为底，三音取 **C');
 });
 
 it.each([

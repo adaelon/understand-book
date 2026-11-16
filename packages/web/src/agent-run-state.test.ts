@@ -3,6 +3,20 @@ import { setLocale } from './i18n';
 import { agentFailureMessage, initialRun, interruptRun, reduceRun, runStatusText, type RunActivity, type RunEvent } from "./agent-run-state";
 const descriptor = { book_id: "book", session_id: "session", turn_id: "turn" };
 
+it.each(['HTTP_413', 'REQUEST_TOO_LARGE'])('explains an oversized question without hiding the recovery action (%s)', error_code => {
+  expect(agentFailureMessage({ error_code, category: 'validation', message: 'Request Entity Too Large' }))
+    .toBe('图片或附件过大，请缩小后重新发送。');
+});
+
+it('explains that invalid video context rejected the question before answering', () => {
+  const error = { error_code: 'VIDEO_DRAFT_INVALID', category: 'conflict', message: 'A video question needs its input-time draft' };
+  expect(agentFailureMessage(error)).toBe('问题未提交：视频提问内容无效，请检查所选画面或附件后重新发送。');
+  setLocale('en');
+  try {
+    expect(agentFailureMessage(error)).toBe('Question not submitted: the video context is invalid. Check the selected frame or attachment, then send again.');
+  } finally { setLocale('zh-CN'); }
+});
+
 it('keeps raw tool diagnostics out of both known and unknown terminal failures', () => {
   const message = '$.move must satisfy anyOf; $.move.delivery_text is required';
   for (const error_code of ['TOOL_ARGUMENTS_INVALID', 'AGENT_NO_PROGRESS', 'FUTURE_INTERNAL_ERROR']) {

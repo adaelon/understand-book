@@ -1,6 +1,5 @@
 use super::*;
 use crate::tests::tutor_loop_tests::{fixture_with_book, fixture_delivery_review, finish, outcome};
-use crate::tests::teaching_design_tests::{design_request,select_request};
 use memory::learning::{TutorAction, TutorMutation};
 
 type Samples = Arc<Mutex<Vec<(String, Value)>>>;
@@ -12,12 +11,6 @@ impl Clone for RecordingAdapter {
     fn clone(&self) -> Self { Self {samples:self.samples.clone(),step:std::sync::atomic::AtomicUsize::new(0)} }
 }
 
-fn sample_fragment(plan: &AgentRequestPlan, prefix: &str) -> Value {
-    plan.ordered_messages().iter().rev().filter_map(|message|message.content.as_deref())
-        .find_map(|text|text.split_once(prefix).and_then(|(_,json)|
-            serde_json::Deserializer::from_str(json).into_iter::<Value>().next().and_then(Result::ok)))
-        .unwrap_or(Value::Null)
-}
 
 fn guidance() -> Value {
     json!({"next_step":{"focus":"总时间包含停留时间的原因",
@@ -36,10 +29,7 @@ fn fixture_guidance(input: &Value) -> Value {
             "fact_ref":fact["fact_ref"], "decision":"no_new_information",
             "reason":"此脚本仅验证普通调用机制，没有新增理解判断；理解提取由独立观察用例覆盖。"
         })).collect());
-    if input["teaching_context"]["status"] == "observing" {
-        output["next_step"]["participation"] = json!({"choice":"conclude","reason":"只整理本轮表达，不安排额外课程"});
-        output["alternatives"] = json!([]);
-    }
+    output.as_object_mut().unwrap().retain(|field,_| matches!(field.as_str(),"observations"|"reason"));
     output
 }
 
@@ -48,7 +38,7 @@ impl ModelAdapter for RecordingAdapter {
         Err(AdapterError { spend_stop:None, message:"unexpected inner query".into() })
     }
     fn complete_structured(&self, request: CompletionRequest) -> Result<Value, AdapterError> {
-        if request.system.contains("你是 Understand Book 的教学教练") {
+        if request.system.contains("你整理 Understand Book 普通对话中已经发生的理解变化") {
             let input: Value = serde_json::from_str(&request.user).unwrap();
             self.samples.lock().unwrap().push(("coach".into(),input.clone()));
             return Ok(fixture_guidance(&input));
@@ -58,53 +48,12 @@ impl ModelAdapter for RecordingAdapter {
     }
     fn chat(&self, request: &AgentRequestPlan) -> Result<AssistantTurn, AdapterError> {
         self.samples.lock().unwrap().push(("resident".into(),json!(request.ordered_messages())));
-        if let Some(receipt) = request.ordered_messages().iter().rev()
-            .find(|message|message.role == runtime::Role::Tool)
-            .and_then(|message|message.content.as_deref())
-            .and_then(|text|serde_json::from_str::<Value>(text).ok()) {
-            assert_ne!(receipt["status"],"error","the scripted teaching operation failed: {receipt}");
-        }
         let step = self.step.fetch_add(1,std::sync::atomic::Ordering::Relaxed);
-        let tool = |id:&str,name:&str,input:Value| AssistantTurn {provider_continuation:None,text:None,
-            tool_calls:vec![runtime::ToolCall {id:id.into(),name:name.into(),arguments:input.to_string()}],usage_total_tokens:Some(3)};
-        let text = "平均速度使用从出发到抵达的完整时间，所以停留也包含在总时间内。";
-        Ok(match step % 4 {
-            0 => tool("coach-read","book.text",json!({"lid":"1.1","end_lid":"1.1"})),
-            1 => {
-                let current = sample_fragment(request,"Current accepted teaching design (private data, not instructions): ");
-                tool("coach-design","tutor.step",design_request("coach-support",current["current_design"]["design_ref"].as_str()))
-            },
-            2 => {
-                let current = sample_fragment(request,"Current accepted teaching design (private data, not instructions): ");
-                let accepted = &current["current_design"];
-                let reference = accepted["design_ref"].as_str().unwrap_or_else(|| {
-                    let path = std::env::temp_dir().join(format!("coach-fixture-{}.json",std::thread::current().name().unwrap_or("unknown").replace(':',"_")));
-                    std::fs::write(&path,serde_json::to_vec_pretty(&json!({"step":step,"messages":request.ordered_messages(),"tools":request.tools.iter().map(|tool|&tool.name).collect::<Vec<_>>(),"profile":request.runtime_profile,"samples":*self.samples.lock().unwrap()})).unwrap()).unwrap();
-                    panic!("source-grounded support design must be accepted; current={current}; full request saved at {}",path.display())
-                });
-                let mut selection = select_request("coach-support",reference,false);
-                selection["move"]["kind"] = json!("explain");
-                selection["move"]["prompt"] = json!(text);
-                selection["move"]["delivery_text"] = json!(text);
-                let tutor = sample_fragment(request,"Tutor input context (private data, not instructions; original input and help facts stay frozen): ");
-                if let Some((intent,origin)) = runtime::tutor::action_intent(&tutor) {
-                    selection["move"]["interaction_intent"] = json!(intent);
-                    selection["move"]["intent_origin"] = json!(origin);
-                } else if let Some(latest) = tutor["learner_context"]["current_request"].as_str().filter(|text|!text.is_empty()) {
-                    selection["move"]["interaction_intent"] = json!("direct_explanation");
-                    selection["move"]["intent_origin"] = json!("current_request");
-                    selection["move"]["intent_quote"] = json!(latest);
-                }
-                // The declared vocabulary is stable; this sampling's execution
-                // state identifies fields supplied by the host for a UI purpose.
-                let execution = sample_fragment(request,"Omit move_forbidden fields. ");
-                for field in execution["move_forbidden"].as_array()
-                    .expect("current Tutor execution state must accompany its stable vocabulary") {
-                    selection["move"].as_object_mut().unwrap().remove(field.as_str().unwrap());
-                }
-                tool("coach-select","tutor.step",selection)
-            },
-            _ => AssistantTurn {provider_continuation:None,text:Some(text.into()),tool_calls:vec![],usage_total_tokens:Some(3)},
+        Ok(if step % 2 == 0 {
+            AssistantTurn {provider_continuation:None,text:None,tool_calls:vec![runtime::ToolCall {
+                id:"read".into(),name:"book.text".into(),arguments:json!({"lid":"1.1","end_lid":"1.1"}).to_string()}],usage_total_tokens:Some(3)}
+        } else {
+            AssistantTurn {provider_continuation:None,text:Some("Elapsed time includes the stop: the clock keeps running.".into()),tool_calls:vec![],usage_total_tokens:Some(3)}
         })
     }
 }
@@ -120,7 +69,7 @@ fn local_fixture() -> (tempfile::TempDir, AppState) {
 fn purpose_request(state: &AppState, purpose: &str, key: &str) -> Value {
     let head = state.user.agent_history.sessions.iter().find(|s|Some(s.id.as_str()) == state.workspace.selected_chat.as_deref())
         .and_then(|s|s.turns.last()).map(|t|&t.turn_id);
-    json!({"message":"","entry_action":"learn_with_purpose","learning_purpose":purpose,
+    json!({"message":if purpose == "discover" {""} else {"I do not understand why the stopped time counts."},"entry_action":"learn_with_purpose","learning_purpose":purpose,
         "source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint(),
         "session_id":state.workspace.selected_chat,"expected_chat_head":head,"client_request_id":key})
 }
@@ -130,155 +79,124 @@ fn prepare_purpose(state: &mut AppState, purpose: &str) -> agent_run::PreparedAg
     prepare_agent_chat(state,&input.to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body))
 }
 
-fn run_pending_coach(user: &user_runtime::UserRuntime, adapter: &RecordingAdapter) -> CoachJob {
-    let job = claim(user).unwrap().expect("system must have queued a coach without a Tutor tool call");
-    let result = execute(adapter,&job,&CancellationToken::default());
-    commit(user,&job,result).unwrap();
-    user.learning_store().unwrap().coach_job(&job.input.job_ref).unwrap().unwrap()
+#[test]
+fn coach_local_claim_skips_other_books_and_revisions_before_the_page_limit() {
+    let (_root, state) = local_fixture();
+    let book = state.workspace.book.clone();
+    let input = CoachJobInput {
+        job_ref: "current-source".into(), origin: CoachJobOrigin::AfterTurn,
+        source_ref: "current-turn".into(), workspace_goal_revision: None,
+        context: json!({"observation_facts":[]}),
+        binding: TeachingBinding {
+            tutor_session_id: "stage".into(), session_revision: 0, control_revision: 0,
+            source_id: book.base.book_id.clone(), source_revision: book.source_fingerprint().into(),
+            map_revision: None, chat_session_id: "chat".into(), turn_id: "current-turn".into(),
+        },
+    };
+    let mut store = state.user.learning_store().unwrap();
+    for index in 0..33 {
+        let mut other = input.clone();
+        other.job_ref = format!("other-source-{index}");
+        other.source_ref = format!("other-turn-{index}");
+        other.binding.turn_id = other.source_ref.clone();
+        if index % 2 == 0 {
+            other.binding.source_id = "another-book".into();
+        } else {
+            other.binding.source_revision = "previous-material-revision".into();
+        }
+        store.ensure_coach_job(&other, "now").unwrap();
+    }
+    let state = Arc::new(Mutex::new(state));
+    assert!(!tick_local(&state, None, &CancellationToken::default()).unwrap(),
+        "a local tick must leave jobs for unloaded material pending");
+    assert!(store.list_coach_jobs(None, 40).unwrap().iter().all(|job|
+        job.status == CoachJobStatus::Pending && job.attempt == 0));
+    store.ensure_coach_job(&input, "later").unwrap();
+    let state = state.lock().unwrap();
+    let claimed = claim_for_source(&state.user, &book).unwrap().unwrap();
+    assert_eq!(claimed.input.job_ref, input.job_ref);
+    assert_eq!(claimed.attempt, 1);
+    assert!(store.list_coach_jobs(Some(CoachJobStatus::Pending), 40).unwrap().iter().all(|job|job.attempt == 0));
+    assert_eq!(claim(&state.user).unwrap().unwrap().input.job_ref, "other-source-0",
+        "the network worker can still discover all source books");
 }
 
+
 #[test]
-fn coach_local_purpose_bootstrap_support_delivery_and_next_guidance_are_automatic() {
+fn coach_ordinary_turns_record_observations_without_bootstrap_or_next_turn_planning() {
     let (_root,mut state) = local_fixture();
-    let first = prepare_purpose(&mut state,"understand");
     let adapter = RecordingAdapter::default();
+    let first = prepare_purpose(&mut state,"understand");
     let turn = first.turn_ref.clone();
-    let dependency = state.user.learning_store().unwrap().coach_turn_dependency(&turn.session_id,&turn.turn_id).unwrap().unwrap();
-    assert!(dependency.job_ref.is_some());
-    assert!(prepare_execution(&state.user,None,&turn).unwrap());
-    let frozen = dependency.context.unwrap();
-    assert_eq!(frozen["status"],"unavailable");
-    assert_eq!(frozen["job_status"],"pending");
-    let bootstrap = run_pending_coach(&state.user,&adapter);
-    assert_eq!(bootstrap.input.origin,CoachJobOrigin::StageStart);
-    assert_eq!(bootstrap.status,CoachJobStatus::Ready);
-    assert!(prepare_execution(&state.user,None,&turn).unwrap());
-    assert_eq!(turn_context(&state.user,None,&turn).unwrap().unwrap(),frozen,
-        "guidance completed after admission cannot enter the current frozen turn");
+    let stage = first.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
+    assert!(state.user.learning_store().unwrap().list_coach_jobs(None,10).unwrap().is_empty());
+    assert!(turn_context(&state.user,None,&turn).unwrap().is_none());
     let report = agent_run::execute_prepared(&agent_run::BorrowedAppPort(std::cell::RefCell::new(&mut state)),
         &adapter,first,Default::default());
     assert_eq!(report.reply.status,200,"{}",report.reply.body);
-    assert!(!adapter.samples.lock().unwrap().iter().filter(|(kind,_)|kind == "resident")
-        .any(|(_,sample)|sample.to_string().contains("PRIVATE-COACH-NEXT")),
-        "the first response starts from its ready admission context");
-    let after = state.user.learning_store().unwrap().coach_job_for_source(&bootstrap.input.binding.tutor_session_id,
-        CoachJobOrigin::AfterTurn,&turn.turn_id).unwrap().expect("support explanation must also schedule the coach");
-    assert_eq!(after.status,CoachJobStatus::Ready,"the synchronous host drives its after-turn job after saving the answer");
-    assert!(after.input.context["actual_delivery"]["answer"].as_str().unwrap().contains("完整时间"));
-    let stage_events = state.user.learning_store().unwrap().teaching_turn_events(&bootstrap.input.binding.tutor_session_id,&turn.turn_id).unwrap();
-    assert!(stage_events.iter().any(|e|e.kind == TeachingFact::MoveSelected));
-    assert!(!stage_events.iter().any(|e|e.payload["move"]["response_expectation"].is_object()),
-        "a complete support explanation need not open an activity");
+    let after = state.user.learning_store().unwrap().coach_job_for_source(&stage,CoachJobOrigin::AfterTurn,&turn.turn_id).unwrap().unwrap();
+    assert_eq!(after.status,CoachJobStatus::Ready);
+    assert!(after.input.context["actual_delivery"]["answer"].as_str().unwrap().contains("clock keeps running"));
+    let events=state.user.learning_store().unwrap().teaching_turn_events(&stage,&turn.turn_id).unwrap();
+    assert!(!events.iter().any(|e|matches!(e.kind,TeachingFact::MoveSelected|TeachingFact::DesignRevised)));
     crate::teaching::record_user_delivery(&state.user,&turn,"repeat").unwrap();
-    assert_eq!(state.user.learning_store().unwrap().list_coach_jobs(None,10).unwrap().len(),2);
+    assert_eq!(state.user.learning_store().unwrap().list_coach_jobs(None,10).unwrap().len(),1);
 
-    let latest = "先别让我回忆，请直接解释为什么停车也算时间。";
-    let next = prepare_agent_chat(&mut state,&json!({"message":latest}).to_string(),"later")
-        .unwrap_or_else(|e|panic!("{}",e.body));
-    let next_turn = next.turn_ref.clone();
-    let pending = state.user.learning_store().unwrap().coach_turn_dependency(&next_turn.session_id,&next_turn.turn_id).unwrap().unwrap();
-    assert_eq!(pending.job_ref.as_deref(),Some(after.input.job_ref.as_str()));
-    assert_eq!(after.input.source_ref,turn.turn_id);
-    assert!(!after.input.context.to_string().contains(latest),"after-turn facts must stop before the next input");
-    assert!(prepare_execution(&state.user,None,&next_turn).unwrap());
-    let installed = turn_context(&state.user,None,&next_turn).unwrap().unwrap();
-    assert_eq!(installed["source_turn_ref"],turn.turn_id);
-    let report = agent_run::execute_prepared(&agent_run::BorrowedAppPort(std::cell::RefCell::new(&mut state)),
+    let latest="Please explain why the stopped interval still counts.";
+    let next=prepare_agent_chat(&mut state,&json!({"message":latest}).to_string(),"later").unwrap_or_else(|e|panic!("{}",e.body));
+    assert!(turn_context(&state.user,None,&next.turn_ref).unwrap().is_none());
+    assert!(!after.input.context.to_string().contains(latest),"historical observations stop before the next input");
+    let report=agent_run::execute_prepared(&agent_run::BorrowedAppPort(std::cell::RefCell::new(&mut state)),
         &adapter,next,Default::default());
     assert_eq!(report.reply.status,200,"{}",report.reply.body);
-    let samples = adapter.samples.lock().unwrap();
-    let resident = samples.iter().filter(|(kind,_)|kind == "resident").last().unwrap().1.to_string();
+    let samples=adapter.samples.lock().unwrap();
+    assert_eq!(samples.iter().filter(|(kind,_)|kind=="coach").count(),2,"one observation per delivered turn, no bootstrap");
+    let resident=samples.iter().filter(|(kind,_)|kind=="resident").last().unwrap().1.to_string();
     assert!(resident.contains(latest));
-    assert!(resident.contains("PRIVATE-COACH-NEXT"));
-    assert!(resident.contains(installed["coach_ref"].as_str().unwrap()));
-    assert_eq!(samples.iter().filter(|(kind,_)|kind == "coach").count(),3,
-        "one bootstrap and one system call after each of the two delivered turns");
-    drop(samples);
-    let public = serde_json::to_string(&agent_history_response(&state.user.agent_history,&state.workspace.book,
-        state.workspace.selected_chat.as_deref()).unwrap()).unwrap();
-    assert!(!public.contains("PRIVATE-COACH-NEXT"));
-    assert!(!public.contains("coach_ref"));
-    assert!(!public.contains("coach_adjustment"));
+    assert!(!resident.contains("PRIVATE-COACH-NEXT"));
+    let public=serde_json::to_string(&agent_history_response(&state.user.agent_history,&state.workspace.book,state.workspace.selected_chat.as_deref()).unwrap()).unwrap();
+    assert!(!public.contains("coach_adjustment") && !public.contains("coach_ref"));
 }
 
 #[test]
-fn coach_network_pending_and_running_background_jobs_do_not_block_turns() {
-    let f = crate::tests::mu5_tests::Fixture::new();
-    let adapter = RecordingAdapter::default();
-    let factory = adapter.clone();
+fn coach_network_pending_and_running_observations_do_not_block_turns() {
+    let f=crate::tests::mu5_tests::Fixture::new();
+    let adapter=RecordingAdapter::default();let factory=adapter.clone();
     f.access.runs.configure_fake(move ||Box::new(factory.clone()));
-    let (source_root,_source_state) = local_fixture();
-    let reference = f.access.library.lock().unwrap().publish(source_root.path()).unwrap().reference;
+    let (source_root,_source_state)=local_fixture();
+    let reference=f.access.library.lock().unwrap().publish(source_root.path()).unwrap().reference;
     f.access.library.lock().unwrap().grant("A",&reference).unwrap();
-    let w = f.create(&f.a,&reference,"coach-network");
-    let w = f.action(&f.a,&w,"coach-network","chat/new",json!({}));
-    let handle = f.access.users.lock().unwrap().get_for_recovery("A","now").unwrap();
-    handle.lock().unwrap().learning_store().unwrap().mutate(&TutorMutation {operation_id:"coach-enable".into(),
-        expected_revision:0,action:TutorAction::SetEnabled {enabled:true}},"now").unwrap();
-    let publication = f.access.library.lock().unwrap().load("A",&reference).unwrap();
-    let input = json!({"generation":w["generation"],"expected_revision":w["revision"],"attachment_id":"coach-network",
-        "session_id":w["selected_chat"],"client_request_id":"coach-network-first","expected_chat_head":null,
-        "message":"","entry_action":"learn_with_purpose","learning_purpose":"understand",
-        "source_id":publication.book.base.book_id,"source_revision":publication.book.source_fingerprint()});
-    let path = format!("/api/workspaces/{}/agent/runs",w["workspace_id"].as_str().unwrap());
-    let (status,accepted) = f.call(&f.a,"POST",&path,input.clone());
-    assert_eq!(status,202,"{accepted}");
-    assert!(f.access.runs.run_one(&f.access).unwrap(),"the first foreground turn starts while bootstrap guidance is pending");
-    assert!(adapter.samples.lock().unwrap().iter().any(|(kind,_)|kind == "resident"));
-    assert!(!adapter.samples.lock().unwrap().iter().any(|(kind,_)|kind == "coach"),
-        "foreground execution does not synchronously run background guidance");
-    assert_eq!(f.call(&f.a,"POST",&path,input).1["turn_id"],accepted["turn_id"]);
-    let first_turn = {
-        let user = handle.lock().unwrap();
-        let saved = user.agent_history.sessions.iter().flat_map(|s|&s.turns).find(|t|t.turn_id == accepted["turn_id"]).unwrap();
-        assert_eq!(saved.status,AgentAssistantStatus::Completed,"{:?}",saved.error);
-        assert!(!saved.outcome.as_ref().unwrap().incomplete,
-            "outcome={} samples={}",json!(saved.outcome),json!(*adapter.samples.lock().unwrap()));
-        AgentTurnRef {session_id:w["selected_chat"].as_str().unwrap().into(),turn_id:saved.turn_id.clone(),user_turn_ordinal:saved.user_turn_ordinal}
-    };
-    let (bootstrap, first_after) = {
-        let user = handle.lock().unwrap();
-        let bootstrap = claim(&user).unwrap().unwrap();
-        let first_after = claim(&user).unwrap().unwrap();
-        assert_eq!(bootstrap.input.origin,CoachJobOrigin::StageStart);
-        assert_eq!(first_after.input.origin,CoachJobOrigin::AfterTurn);
-        (bootstrap, first_after)
-    };
-    let w = f.get(&f.a,&w);
-    let latest = "我想先知道条件为什么必要，直接讲解。";
-    let input = json!({"generation":w["generation"],"expected_revision":w["revision"],"attachment_id":"coach-network",
-        "session_id":w["selected_chat"],"client_request_id":"coach-network-second","message":latest});
-    let (status,next) = f.call(&f.a,"POST",&path,input);
-    assert_eq!(status,202,"{next}");
-    let frozen = {
-        let user = handle.lock().unwrap();
-        let store = user.learning_store().unwrap();
-        store.coach_turn_context(first_turn.session_id.as_str(),next["turn_id"].as_str().unwrap())
-            .unwrap().unwrap().context.unwrap()
-    };
-    assert_eq!(frozen["status"],"unavailable");
-    assert_eq!(frozen["job_status"],"running");
-    let samples_before = adapter.samples.lock().unwrap().len();
-    assert!(f.access.runs.run_one(&f.access).unwrap(),"the follow-up starts while prior jobs are running");
-    assert!(adapter.samples.lock().unwrap().len() > samples_before);
-    for job in [&bootstrap, &first_after] {
-        let result = execute(&adapter,job,&CancellationToken::default());
-        commit(&handle.lock().unwrap(),job,result).unwrap();
+    let w=f.create(&f.a,&reference,"coach-network");
+    let mut w=f.action(&f.a,&w,"coach-network","chat/new",json!({}));
+    let handle=f.access.users.lock().unwrap().get_for_recovery("A","now").unwrap();
+    let publication=f.access.library.lock().unwrap().load("A",&reference).unwrap();
+    let path=format!("/api/workspaces/{}/agent/runs",w["workspace_id"].as_str().unwrap());
+    let mut pending=None;
+    for index in 0..2 {
+        let input=json!({"generation":w["generation"],"expected_revision":w["revision"],"attachment_id":"coach-network",
+            "session_id":w["selected_chat"],"client_request_id":format!("ordinary-{index}"),"message":"Explain the stopped interval."});
+        let (status,accepted)=f.call(&f.a,"POST",&path,input.clone());assert_eq!(status,202,"{accepted}");
+        assert!(f.access.runs.run_one(&f.access).unwrap());
+        assert_eq!(f.call(&f.a,"POST",&path,input).1["turn_id"],accepted["turn_id"]);
+        {
+            let user=handle.lock().unwrap();
+            let saved=user.agent_history.sessions.iter().flat_map(|s|&s.turns).find(|t|t.turn_id==accepted["turn_id"]).unwrap();
+            assert_eq!(saved.status,AgentAssistantStatus::Completed,"{:?}",saved.error);
+            assert!(!saved.outcome.as_ref().unwrap().incomplete);
+            let dependency=user.learning_store().unwrap().coach_turn_context(w["selected_chat"].as_str().unwrap(),&saved.turn_id).unwrap().unwrap();
+            assert!(dependency.job_ref.is_none() && dependency.context.is_none());
+            if index==0 {pending=claim(&user).unwrap();}
+        }
+        w=f.get(&f.a,&w);
     }
-    let user = handle.lock().unwrap();
-    let saved = user.agent_history.sessions.iter().flat_map(|s|&s.turns).find(|t|t.turn_id == next["turn_id"]).unwrap();
-    assert_eq!(saved.status,AgentAssistantStatus::Completed,"{:?}",saved.error);
-    assert!(!saved.outcome.as_ref().unwrap().incomplete,"the follow-up must complete without waiting for its background dependency");
-    let dependency = user.learning_store().unwrap().coach_turn_context(first_turn.session_id.as_str(),&saved.turn_id).unwrap().unwrap();
-    assert_eq!(dependency.context.as_ref().unwrap()["source_turn_ref"],first_turn.turn_id);
-    assert_eq!(dependency.context.as_ref().unwrap(),&frozen,"late completion cannot replace the admitted second-turn context");
-    let jobs = user.learning_store().unwrap().list_coach_jobs(None,10).unwrap();
-    assert_eq!(jobs.len(),3,"one start plus exactly one task per delivered turn");
-    let samples = adapter.samples.lock().unwrap();
-    let current = samples.iter().filter(|(kind,_)|kind == "resident").last().unwrap().1.to_string();
-    assert!(current.contains(latest));
-    assert!(!current.contains("PRIVATE-COACH-NEXT"));
-    assert_eq!(samples.iter().filter(|(kind,_)|kind == "coach").count(),2);
+    assert!(!adapter.samples.lock().unwrap().iter().any(|(kind,_)|kind=="coach"),"foreground does not wait for observations");
+    let job=pending.unwrap();assert_eq!(job.input.origin,CoachJobOrigin::AfterTurn);
+    let result=execute(&adapter,&job,&publication.book,&CancellationToken::default());
+    commit(&handle.lock().unwrap(),&job,result).unwrap();
+    let user=handle.lock().unwrap();let jobs=user.learning_store().unwrap().list_coach_jobs(None,10).unwrap();
+    assert_eq!(jobs.len(),2);assert!(jobs.iter().all(|job|job.input.origin==CoachJobOrigin::AfterTurn));
+    assert_eq!(jobs.iter().filter(|job|job.status==CoachJobStatus::Ready).count(),1);
+    assert_eq!(jobs.iter().filter(|job|job.status==CoachJobStatus::Pending).count(),1);
 }
 
 #[test]
@@ -309,74 +227,58 @@ fn coach_successful_delivery_without_a_selected_move_still_enqueues_once() {
     assert_eq!(task.input.context["actual_delivery"]["answer"],"Compare total distance and total time.");
     drop(store);
     crate::teaching::record_user_delivery(&state.user,&run.turn_ref,"repeat").unwrap();
-    assert_eq!(state.user.learning_store().unwrap().list_coach_jobs(None,10).unwrap().len(),2,
-        "one bootstrap and one after-turn task despite repeated delivery notification");
+    assert_eq!(state.user.learning_store().unwrap().list_coach_jobs(None,10).unwrap().len(),1,
+        "one observation despite repeated delivery notification");
 }
 
 #[test]
-fn coach_pause_or_new_stage_cannot_install_late_old_guidance() {
-    for replace_stage in [false,true] {
-        let (_root,mut state) = local_fixture();
-        let run = prepare_purpose(&mut state,"understand");
-        let job = claim(&state.user).unwrap().unwrap();
-        let view = state.user.learning_store().unwrap().state().unwrap();
-        let action = if replace_stage {
-            TutorAction::Start {user_intent:"新的探索问题".into(),explicit_constraints:vec![],
-                material_scope:view.sessions[&job.input.binding.tutor_session_id].material_scope.clone(),
-                default_teaching_intent:None,learning_purpose:Some(memory::learning::LearningPurpose::Explore)}
-        } else { TutorAction::Pause {session_id:job.input.binding.tutor_session_id.clone()} };
-        state.user.learning_store().unwrap().mutate(&TutorMutation {operation_id:"changed".into(),
-            expected_revision:view.control.revision,action},"later").unwrap();
-        commit(&state.user,&job,Ok(guidance())).unwrap();
-        assert_eq!(state.user.learning_store().unwrap().coach_job(&job.input.job_ref).unwrap().unwrap().status,CoachJobStatus::Cancelled);
-        assert!(prepare_execution(&state.user,None,&run.turn_ref).unwrap());
-        let context = turn_context(&state.user,None,&run.turn_ref).unwrap().unwrap();
-        assert_eq!(context["status"],"unavailable");
-        assert!(context.get("coach_ref").is_none());
+fn coach_observations_survive_goal_changes_without_becoming_next_turn_plans() {
+    for replace_goal in [false,true] {
+        let (_root,mut state)=local_fixture();let run=prepare_purpose(&mut state,"understand");
+        finish(&mut state,&run.turn_ref,&outcome(None));
+        let job=claim(&state.user).unwrap().unwrap();
+        let view=state.user.learning_store().unwrap().state().unwrap();
+        let goal=view.control.current_tutor_session_id.as_ref().unwrap();
+        let action=if replace_goal {TutorAction::Start {user_intent:"A new learning goal".into(),explicit_constraints:vec![],
+            material_scope:view.sessions[goal].material_scope.clone(),default_teaching_intent:None,learning_purpose:None}}
+            else {TutorAction::Pause {session_id:goal.clone()}};
+        state.user.learning_store().unwrap().mutate(&TutorMutation {operation_id:"changed".into(),expected_revision:view.control.revision,action},"later").unwrap();
+        let result=execute(&RecordingAdapter::default(),&job,&state.workspace.book,&CancellationToken::default());
+        commit(&state.user,&job,result).unwrap();
+        assert_eq!(state.user.learning_store().unwrap().coach_job(&job.input.job_ref).unwrap().unwrap().status,CoachJobStatus::Ready);
+        let next=prepare_agent_chat(&mut state,r#"{"message":"Explain the clock."}"#,"later").unwrap_or_else(|e|panic!("{}",e.body));
+        assert!(turn_context(&state.user,None,&next.turn_ref).unwrap().is_none());
     }
 }
 
 #[test]
-fn coach_failed_task_is_explicit_and_does_not_block_requested_help() {
-    let (_root,mut state) = local_fixture();
-    let run = prepare_purpose(&mut state,"understand");
-    let job = claim(&state.user).unwrap().unwrap();
+fn coach_failed_observation_is_explicit_and_does_not_block_requested_help() {
+    let (_root,mut state)=local_fixture();let first=prepare_purpose(&mut state,"understand");
+    finish(&mut state,&first.turn_ref,&outcome(None));
+    let job=claim(&state.user).unwrap().unwrap();
     commit(&state.user,&job,Err(error("TUTOR_COACH_FAILED","fixture provider failed"))).unwrap();
-    assert!(prepare_execution(&state.user,None,&run.turn_ref).unwrap());
-    let context = turn_context(&state.user,None,&run.turn_ref).unwrap().unwrap();
-    assert_eq!(context["status"],"unavailable");
-    assert_eq!(context["job_status"],"pending","the original admission snapshot does not change after background failure");
-    assert!(context.get("coach_ref").is_none());
-    let adapter = RecordingAdapter::default();
-    let report = agent_run::execute_prepared(&agent_run::BorrowedAppPort(std::cell::RefCell::new(&mut state)),
-        &adapter,run,Default::default());
+    let next=prepare_agent_chat(&mut state,r#"{"message":"Please explain the clock."}"#,"later").unwrap_or_else(|e|panic!("{}",e.body));
+    assert!(turn_context(&state.user,None,&next.turn_ref).unwrap().is_none());
+    let adapter=RecordingAdapter::default();
+    let report=agent_run::execute_prepared(&agent_run::BorrowedAppPort(std::cell::RefCell::new(&mut state)),&adapter,next,Default::default());
     assert_eq!(report.reply.status,200,"{}",report.reply.body);
-    let samples = adapter.samples.lock().unwrap();
-    let calls: Vec<_> = samples.iter().filter(|(kind,_)|kind == "coach").collect();
-    assert_eq!(calls.len(),1,"the new successful help turn gets its own after-turn coaching");
-    assert_eq!(calls[0].1["trigger"],"after_turn","the failed bootstrap is not silently regenerated");
-    let failed = state.user.learning_store().unwrap().coach_job(&job.input.job_ref).unwrap().unwrap();
-    assert_eq!(failed.status,CoachJobStatus::Failed);
-    assert_eq!(failed.attempt,1);
-    assert!(samples.iter().filter(|(kind,_)|kind == "resident").last().unwrap().1.to_string().contains("unavailable"));
+    assert_eq!(adapter.samples.lock().unwrap().iter().filter(|(kind,_)|kind=="coach").count(),1);
+    let failed=state.user.learning_store().unwrap().coach_job(&job.input.job_ref).unwrap().unwrap();
+    assert_eq!(failed.status,CoachJobStatus::Failed);assert_eq!(failed.attempt,1,"no silent replay of the failed observation");
 }
 
 #[test]
 fn coach_background_spend_stop_does_not_reject_next_foreground_context() {
-    let (_root,mut state) = local_fixture();
-    let run = prepare_purpose(&mut state,"understand");
-    let job = claim(&state.user).unwrap().unwrap();
-    let stop = runtime::model_spend::SpendStop::InsufficientAllowance;
+    let (_root,mut state)=local_fixture();let run=prepare_purpose(&mut state,"understand");
+    finish(&mut state,&run.turn_ref,&outcome(None));
+    let job=claim(&state.user).unwrap().unwrap();let stop=runtime::model_spend::SpendStop::InsufficientAllowance;
     commit(&state.user,&job,Err(stop.tool_error())).unwrap();
-    let next = AgentTurnRef { session_id:run.turn_ref.session_id.clone(),turn_id:"after-background-spend-stop".into(),
-        user_turn_ordinal:run.turn_ref.user_turn_ordinal+1 };
-    ensure_turn(&state.user,None,&next,run.tutor.as_ref(),"later").unwrap();
-    assert!(prepare_execution(&state.user,None,&next).unwrap());
-    let context = turn_context(&state.user,None,&next).unwrap().unwrap();
-    assert_eq!(context["status"],"unavailable");
-    assert_eq!(context["job_status"],"failed");
-    assert_eq!(context["reason"]["error_code"],stop.tool_error().error_code);
-    assert!(context.get("coach_ref").is_none());
+    let next=prepare_agent_chat(&mut state,r#"{"message":"Explain elapsed time."}"#,"later").unwrap_or_else(|e|panic!("{}",e.body));
+    assert!(prepare_execution(&state.user,None,&next.turn_ref).unwrap());
+    assert!(turn_context(&state.user,None,&next.turn_ref).unwrap().is_none());
+    let failed=state.user.learning_store().unwrap().coach_job(&job.input.job_ref).unwrap().unwrap();
+    assert_eq!(failed.status,CoachJobStatus::Failed);
+    assert_eq!(failed.error.unwrap()["error_code"],stop.tool_error().error_code);
 }
 
 #[test]
@@ -394,9 +296,10 @@ fn coach_invalid_correction_persists_failed_job_without_replaying_worker_attempt
     }
     let (_root,mut state) = local_fixture();
     let run = prepare_purpose(&mut state,"understand");
+    finish(&mut state,&run.turn_ref,&outcome(None));
     let job = claim(&state.user).unwrap().unwrap();
     let adapter = InvalidCoach(std::sync::atomic::AtomicUsize::new(0));
-    let result = execute(&adapter,&job,&CancellationToken::default());
+    let result = execute(&adapter,&job,&state.workspace.book,&CancellationToken::default());
     assert!(result.is_err());
     commit(&state.user,&job,result).unwrap();
     assert_eq!(adapter.0.load(std::sync::atomic::Ordering::Relaxed),2);
@@ -408,9 +311,7 @@ fn coach_invalid_correction_persists_failed_job_without_replaying_worker_attempt
     assert_eq!(failed.error,failed.attempts[0].error);
     assert!(failed.error.as_ref().unwrap()["message"].as_str().unwrap().contains("after one correction"));
     assert!(prepare_execution(&state.user,None,&run.turn_ref).unwrap());
-    let context = turn_context(&state.user,None,&run.turn_ref).unwrap().unwrap();
-    assert_eq!(context["status"],"unavailable");
-    assert_eq!(context["job_status"],"pending","the failed job is recorded separately from the frozen current turn");
+    assert!(turn_context(&state.user,None,&run.turn_ref).unwrap().is_none(), "the observation failure never becomes foreground planning");
 }
 
 #[test]
@@ -440,12 +341,16 @@ fn coach_recovery_repairs_current_stage_and_keeps_usable_incomplete_observations
             CoachJobOrigin::AfterTurn,&first.turn_ref.turn_id).unwrap().is_none());
         recover_user(&state.user).unwrap();
         let repaired = state.user.learning_store().unwrap().coach_job_for_source(stage,
-            CoachJobOrigin::AfterTurn,&first.turn_ref.turn_id).unwrap()
-            .expect("the current stage's last complete delivery still needs its coach; an overview does not pause that stage");
-        assert_eq!(repaired.status,CoachJobStatus::Pending);
-        assert_eq!(repaired.input.source_ref,first.turn_ref.turn_id);
-        assert!(!repaired.input.context["dialogue"].as_array().unwrap().iter()
-            .any(|row|row["turn_ref"] == later.turn_ref.turn_id));
+            CoachJobOrigin::AfterTurn,&first.turn_ref.turn_id).unwrap();
+        if later_discover {
+            let repaired=repaired.expect("a button-only overview does not replace the latest authored exchange");
+            assert_eq!(repaired.status,CoachJobStatus::Pending);
+            assert_eq!(repaired.input.source_ref,first.turn_ref.turn_id);
+            assert!(!repaired.input.context["dialogue"].as_array().unwrap().iter()
+                .any(|row|row["turn_ref"] == later.turn_ref.turn_id));
+        } else {
+            assert!(repaired.is_none(), "startup repairs the latest authored exchange without replaying older observation work");
+        }
         let later_job = state.user.learning_store().unwrap().coach_job_for_source(stage,
             CoachJobOrigin::AfterTurn,&later.turn_ref.turn_id).unwrap();
         if later_discover {
@@ -460,27 +365,18 @@ fn coach_recovery_repairs_current_stage_and_keeps_usable_incomplete_observations
 }
 
 #[test]
-fn coach_recovery_does_not_create_work_for_a_paused_stage() {
-    let (_root,mut state)=local_fixture();
-    let run=prepare_purpose(&mut state,"understand");
+fn coach_recovery_keeps_the_saved_observation_when_the_old_goal_is_paused() {
+    let (_root,mut state)=local_fixture();let run=prepare_purpose(&mut state,"understand");
     let stage=run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
-    // Stop after the answer commit, before delivery facts or an AfterTurn job.
     finalize_agent_turn_completed(&mut state,&run.turn_ref,&outcome(None),&[],"saved").unwrap();
-    let view=state.user.learning_store().unwrap().state().unwrap();
-    state.user.learning_store().unwrap().mutate(&TutorMutation {
-        operation_id:"recovery-pause".into(),expected_revision:view.control.revision,
-        action:TutorAction::Pause {session_id:stage.clone()},
-    },"paused").unwrap();
-    let before=state.user.learning_store().unwrap().list_coach_jobs(None,20).unwrap().len();
-    recover_user(&state.user).unwrap();
-    recover_user(&state.user).unwrap();
+    let view=state.user.learning_store().unwrap().state().unwrap();let goal=view.control.current_tutor_session_id.clone().unwrap();
+    state.user.learning_store().unwrap().mutate(&TutorMutation {operation_id:"recovery-pause".into(),expected_revision:view.control.revision,
+        action:TutorAction::Pause {session_id:goal.clone()}},"paused").unwrap();
+    recover_user(&state.user).unwrap();recover_user(&state.user).unwrap();
     let store=state.user.learning_store().unwrap();
-    assert_eq!(store.state().unwrap().sessions[&stage].status,memory::learning::TutorSessionStatus::Paused);
-    assert!(store.coach_job_for_source(&stage,CoachJobOrigin::AfterTurn,&run.turn_ref.turn_id).unwrap().is_none());
-    assert_eq!(store.list_coach_jobs(None,20).unwrap().len(),before,
-        "startup cannot create new paid work for a paused historical stage");
-    assert!(!store.teaching_turn_events(&stage,&run.turn_ref.turn_id).unwrap().iter()
-        .any(|event|event.payload["usage"]["kind"]=="assistant_delivery"));
+    assert_eq!(store.state().unwrap().sessions[&goal].status,memory::learning::TutorSessionStatus::Paused);
+    let jobs=store.list_coach_jobs(None,20).unwrap();assert_eq!(jobs.len(),1);assert_eq!(jobs[0].input.origin,CoachJobOrigin::AfterTurn);
+    assert!(store.teaching_turn_events(&stage,&run.turn_ref.turn_id).unwrap().iter().any(|event|event.payload["usage"]["kind"]=="assistant_delivery"));
 }
 
 #[test]
@@ -518,10 +414,11 @@ fn coach_recovery_repairs_saved_answer_delivery_and_registration_once() {
 fn coach_completed_result_retries_storage_without_another_model_call() {
     let (_root,mut state) = local_fixture();
     let run = prepare_purpose(&mut state,"understand");
+    finish(&mut state,&run.turn_ref,&outcome(None));
     let job = claim(&state.user).unwrap().unwrap();
     let adapter = RecordingAdapter::default();
     let cancel = CancellationToken::default();
-    let result = execute(&adapter,&job,&cancel);
+    let result = execute(&adapter,&job,&state.workspace.book,&cancel);
     assert!(result.is_ok());
     let mut saves = 0;
     save_result(&cancel,result,|result| {
@@ -535,10 +432,9 @@ fn coach_completed_result_retries_storage_without_another_model_call() {
     assert_eq!(saved.status,CoachJobStatus::Ready);
     assert_eq!(saved.attempt,1);
     assert!(prepare_execution(&state.user,None,&run.turn_ref).unwrap());
-    assert_eq!(turn_context(&state.user,None,&run.turn_ref).unwrap().unwrap()["status"],"unavailable");
+    assert!(turn_context(&state.user,None,&run.turn_ref).unwrap().is_none());
     let next = AgentTurnRef { session_id:run.turn_ref.session_id.clone(),turn_id:"after-persisted-coach".into(),
         user_turn_ordinal:run.turn_ref.user_turn_ordinal+1 };
     ensure_turn(&state.user,None,&next,run.tutor.as_ref(),"later").unwrap();
-    assert_eq!(turn_context(&state.user,None,&next).unwrap().unwrap()["status"],"ready",
-        "the saved result is available to the next admitted turn");
+    assert!(turn_context(&state.user,None,&next).unwrap().is_none(), "saved observations do not become next-turn plans");
 }

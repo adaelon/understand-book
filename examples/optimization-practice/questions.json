@@ -1,0 +1,33 @@
+[
+  {
+    "id": "bounds", "entry": "reading_margin", "section": "1.11.7.17",
+    "focus": "比较可行证书给出的界",
+    "prompt": "某最小化问题的一个原问题可行点给出目标值 9，一个对偶可行点给出对偶值 4。仅凭这些信息，最优值 $p^*$ 一定满足哪一项？",
+    "answer_input": {"kind":"single_choice","options":[{"id":"A","text":"$p^* = 4$"},{"id":"B","text":"$4 \\le p^* \\le 9$"},{"id":"C","text":"$p^* = 9$"},{"id":"D","text":"$p^* \\le 4$"}]},
+    "rule": {"kind":"choice_set","choices":["A","B","C","D"],"correct":["B"]},
+    "hint": "先把题里两个数分别标成来自原问题、来自对偶问题。",
+    "solution": "对最小化问题，任一原可行值给最优值一个上界，任一对偶可行值给一个下界，故 $4 \\le p^* \\le 9$。两个证书之间仍有间隔，不能确定最优值等于哪一个。"
+  },
+  {
+    "id": "certificates", "entry": "exam_daily", "section": "1.11.7.17",
+    "focus": "用上下界判断最优性",
+    "prompt": "同一个最小化问题有两个原可行解，目标值分别为 8、11，另有一个对偶可行解，其值为 8。哪些判断可以确定？",
+    "answer_input": {"kind":"multiple_choice","options":[{"id":"A","text":"原问题最优值至少为 8。"},{"id":"B","text":"目标值为 8 的原可行解是最优解。"},{"id":"C","text":"目标值为 11 的原可行解也是最优解。"},{"id":"D","text":"原问题只有一个最优解。"}]},
+    "rule": {"kind":"choice_set","choices":["A","B","C","D"],"correct":["A","B"]},
+    "hint": "两个 8 来源相同吗？试着在数轴上标出它们各自限制的方向。",
+    "solution": "对偶可行值给出下界 8。原可行解达到 8，上下界重合，故最优值为 8，该原可行解最优。11 高于最优值，题给信息也无法推出唯一性。"
+  },
+  {
+    "id": "boundary", "entry": "reading_margin", "section": "1.7.9.12",
+    "focus": "在可行集上比较目标值",
+    "prompt": "在 $x \\ge 3$ 的条件下，求 $f(x)=(x-1)^2$ 的最小值和取得该值的点，并说明为什么这是最小值。",
+    "answer_input": {"kind":"worked_solution"},
+    "rule": {"kind":"open","items":[
+      {"id":"proof","retry_prompt":"怎样说明你给出的最小值对整个可行区间都成立？","criterion":"说明对所有 x≥3，在 x=3 处达到最小值的理由。接受 x−1≥2 且两边非负故平方后≥4、在可行区间导数为正、顶点外的单调性或等价几何论证。只报数不能支持此项。","source_lids":["1.7.9.12"]},
+      {"id":"point","retry_prompt":"写出在哪个可行点取得你给的值。","criterion":"明确最小值在可行点 x=3 取得。","source_lids":["1.7.9.12"]},
+      {"id":"value","retry_prompt":"把取得点代入目标函数，写出相应的函数值。","criterion":"给出最小值 4；仅写 4 仍支持这一项。","source_lids":["1.7.9.12"]}
+    ]},
+    "hint": "先看允许的自变量范围，再检查候选点能否取到。",
+    "solution": "因为 $x \\ge 3$，所以 $x-1 \\ge 2$，两边非负，平方得到 $(x-1)^2 \\ge 4$。等号恰在 $x=3$ 成立，因此最小值是 4，最小值点是 3。"
+  }
+]

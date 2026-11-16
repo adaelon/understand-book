@@ -128,7 +128,7 @@ import {
   renderBookStructureModelInput,
   renderPass1ModelInput,
   renderProfileSidecarModelInput,
-  inspectRenderedModelInput,
+  renderModelInput,
   type ModelInputRenderRequest,
 } from "./model-input-renderer";
 import { evaluateModelInputBudget } from "./model-input-budget";
@@ -204,6 +204,7 @@ export type AutomaticBuildStage =
   | "profile_sidecar"
   | "pass2"
   | "book_structure"
+  | "course"
   | "formal_objects"
   | "cognitive_materials"
   | "teaching_publish"
@@ -215,12 +216,14 @@ export { buildVideoTranscript, readVideoBuild } from "./video-transcript";
 export { prepareDocumentInput } from "./document-import";
 export { prepareVideoTranslation, acceptVideoTranslation, publishVideoTranslationGroup } from "./video-translation";
 
+import { routeCourseBuild, type CourseGenerationTask } from "./course-build";
 import { routeTeachingBuildStages, type TeachingGenerationTask, type TeachingBuildInput } from "./teaching-build";
 import { prepareBuildRetrieval, readBuildRetrievalState, retrievalConfigurationMatches, type BuildRetrievalRuntime, type TeachingRetrievalRequest } from "./automatic-build-retrieval";
 import { readAutomaticBuildStageUsage } from "./automatic-build-metrics";
 import type { BuildRetrievalSelection } from "./build-intent";
 
 export type SemanticExtractor =
+  | "course-builder"
   | "formal-objects-extractor"
   | "cognitive-materials-extractor"
   | "teaching-source-reviewer"
@@ -233,7 +236,7 @@ export type SemanticExtractor =
   | "profile-sidecar-discourse-reducer"
   | "profile-sidecar-extractor"
   | "pass2-longrange-linker"
-  | "book-structure-outline" | "book-structure-outline-chapters" | "book-structure-outline-themes" | "book-structure-chapter" | "book-structure-chapter-selection" | "book-structure-themes"
+  | "book-structure-outline" | "book-structure-outline-chapters" | "book-structure-outline-themes" | "book-structure-outline-theme-page" | "book-structure-chapter" | "book-structure-chapter-selection" | "book-structure-themes"
   | "book-structure-extractor"
   | "book-structure-v2-extractor"
   | "book-structure-fragment-extractor"
@@ -267,6 +270,7 @@ export interface BuildTargetRefV2 {
 }
 
 export type AutomaticBuildGenerationTaskV1 =
+  | { kind: "course"; task: CourseGenerationTask }
   | { kind: "teaching"; task: TeachingGenerationTask }
   | { kind: "pass1"; task: Pass1ShadowTaskV1 }
   | { kind: "profile_sidecar_discourse"; task: ProfileSidecarDiscourseShadowTaskV1 }
@@ -279,6 +283,7 @@ export interface AutomaticBuildStageState {
   retrieval_preparation?: TeachingRetrievalRequest;
   retrieval_remaining?: { records: number; documents: number; queries: number; calls: number | null };
   teaching_blocked?: string;
+  course_blocked?: string;
   teaching_preparation_violations?: Array<{ code: string; actual: number; limit: number }>;
   structure_blocked?: string;
   structure_budget_blocked?: ReturnType<typeof routeStructureOrganization>["budget_blocked"];
@@ -305,6 +310,7 @@ export interface AutomaticBuildSnapshot {
 export interface AutomaticBuildSnapshotOptions {
   /** The confirmed plan's stages; omitted for an unrestricted inspection. */
   public_stage_closure?: BuildPlanV1["public_stage_closure"];
+  course_goal?: string;
   /** Accepted public dependencies selected by the plan, independent of producer upgrades. */
   reuse?: BuildPlanV1["reuse"];
   /** Observe one extraction stage from its public dependencies, without routing the whole build. */
@@ -676,8 +682,8 @@ function assertAutomaticBuildShadowInputRoutable(input: {
   on_over_limit?: "policy_generation_migration_required" | "model_input_unsplittable";
 }): void {
   const limitTokens = input.limit_tokens ?? AUTOMATIC_BUILD_SHADOW_STAGE_INPUT_LIMIT_TOKENS;
-  const rendered = inspectRenderedModelInput(input.render_request);
-  if (rendered.estimated_tokens <= limitTokens) return;
+  const estimatedTokens = estimateTokens(renderModelInput(input.render_request));
+  if (estimatedTokens <= limitTokens) return;
   const code = input.on_over_limit ?? "model_input_unsplittable";
   throw new AutomaticBuildSnapshotRecoverySignal(createAutomaticBuildRecoveryEnvelope({
     phase: "routing",
@@ -688,7 +694,7 @@ function assertAutomaticBuildShadowInputRoutable(input: {
     affected_work_units: [{
       work_unit_id: input.work_unit_id,
       evidence_lids: input.evidence_lids,
-      estimated_tokens: rendered.estimated_tokens,
+      estimated_tokens: estimatedTokens,
       limit_tokens: limitTokens,
     }],
     retryable: false,
@@ -736,6 +742,7 @@ export interface AutomaticBuildPlanGateAction {
 }
 
 const EXTRACTORS: Partial<Record<AutomaticBuildStage, SemanticExtractor>> = {
+  course: "course-builder",
   formal_objects: "formal-objects-extractor",
   cognitive_materials: "cognitive-materials-extractor",
   teaching_publish: "teaching-source-reviewer",
@@ -795,8 +802,9 @@ export function automaticBuildExtractorForWorkUnitKind(
     if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
     return "book-structure-stitch-reducer";
   }
-  if (["structure_outline", "structure_outline_chapters", "structure_outline_themes", "structure_chapter", "structure_chapter_selection", "structure_theme_plan", "structure_theme", "structure_theme_reconcile"].includes(kind)) {
+  if (["structure_outline", "structure_outline_chapters", "structure_outline_themes", "structure_outline_theme_page", "structure_chapter", "structure_chapter_selection", "structure_theme_plan", "structure_theme", "structure_theme_reconcile"].includes(kind)) {
     if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
+    if (kind === "structure_outline_theme_page") return "book-structure-outline-theme-page";
     return kind === "structure_outline_chapters" ? "book-structure-outline-chapters" : kind === "structure_outline_themes" ? "book-structure-outline-themes" : kind === "structure_outline" ? "book-structure-outline" : kind === "structure_chapter" ? "book-structure-chapter" : kind === "structure_chapter_selection" ? "book-structure-chapter-selection" : "book-structure-themes";
   }
   if (kind === "structure_relation_select" || kind === "structure_relation_delta") {
@@ -2186,6 +2194,7 @@ function routeBookStructureSource(
 ) {
   return routeBookStructureUnitWorkUnitsV2({
     transport_profile: key.transport_profile, target: key.target_ref, source, lid_nodes: loaded.lidNodes,
+    canonical_source: loaded.source,
     source_fingerprint: key.source_fingerprint, contracts: key.contracts, budget: key.budget,
     ...(key.outline ? { discovery: { outline: key.outline,
       section_by_leaf: structureDiscoverySections(source, loaded.lidNodes, loaded.source) } } : {}),
@@ -2459,6 +2468,7 @@ function routeBookStructureProductionStage(input: {
     leafCoverage.push(initial.coverage);
     if (discovery) discoveryProgress.fragments.total += initial.work_units.length;
     let children: BookStructureReductionChildV1[] = [];
+    const acceptedFragments = new Set<string>();
     let initialReady = true;
     let wholeArtifact: BookStructureUnitArtifact | undefined;
     for (const workUnit of initial.work_units) {
@@ -2482,7 +2492,7 @@ function routeBookStructureProductionStage(input: {
       }
       if (discovery) {
         discoveryProgress.fragments.done++;
-        discoveryProgress.core_leaves.done += (workUnit.input as BookStructureFragmentInputV1).core_leaf_lids.length;
+        acceptedFragments.add(workUnit.descriptor.work_unit_id);
         discoveryProgress.candidates += (artifact.payload as BookStructureFragmentObservationV1).candidate_key_stops.length;
       }
       if (workUnit.route.role === "whole") {
@@ -2496,6 +2506,9 @@ function routeBookStructureProductionStage(input: {
         });
       }
     }
+    if (discovery) discoveryProgress.core_leaves.done += initial.coverage.core_ranges
+      .filter(range => (range.slice_work_unit_ids ?? [range.work_unit_id]).every(id => acceptedFragments.has(id)))
+      .reduce((count, range) => count + range.leaf_lids.length, 0);
     if (initial.mode === "whole") {
       const wholeUnit = initial.work_units[0];
       if (initial.work_units.length !== 1 || !wholeUnit || wholeUnit.route.role !== "whole") {
@@ -2826,7 +2839,7 @@ function routeBookStructureProductionStage(input: {
   }
   const qualityRouting: AutomaticBuildStageQualityRoutingEvidenceV2 = {
     policy_set: policySet,
-    coverage: [],
+    coverage: leafCoverage.flatMap(coverage => coverage.source_slices ?? []),
     book_structure_coverage: leafCoverage,
     ...(discovery ? { book_structure_discovery: discoveryProgress } : {}),
     public_contributors: publicContributors,
@@ -3092,6 +3105,54 @@ function paperWorkspaceCandidates(sourceFile: string, rootDir: string): string[]
   return matches;
 }
 
+export class AutomaticBuildSourceConflictError extends Error {
+  readonly code = "source_workspace_conflict";
+
+  constructor() {
+    super("source_workspace_conflict: 输入文件与已有书籍工作区的来源不一致；请用 --book-id 指定独立书籍 ID，或显式选择要续建的工作区。");
+  }
+}
+
+/** A filename-derived ID is a location hint, not proof that two books share a source. */
+function assertRequestedWorkspaceSource(target: AutomaticBuildTarget, requestedPath: string): void {
+  const references = [target.source_path, path.join(target.workspace_dir, "source.txt")];
+  const add = (file: string | null | undefined, base: string) => {
+    if (file) references.push(path.resolve(base, file));
+  };
+  if (target.profile_id === "paper") {
+    const manifest = readJson<WorkbenchInputManifestLike>(path.join(target.workspace_dir, ".build", "input", "manifest.json"));
+    for (const input of Object.values(manifest.inputs ?? {})) {
+      add(input.original_path, target.root_dir);
+      add(input.path, target.workspace_dir);
+    }
+  } else {
+    const manifest = readJson<TechnicalLearningSourceManifestLike>(path.join(target.workspace_dir, "source_manifest.json"));
+    add(manifest.canonical_source?.path, manifest.version === "source_manifest.v2" ? target.workspace_dir : target.root_dir);
+    if (manifest.canonical_source?.kind === "epub") {
+      add(manifest.canonical_source.snapshot_path ?? "source.epub", target.workspace_dir);
+    }
+    const imported = path.join(target.workspace_dir, "document_import.json");
+    if (existsSync(imported)) {
+      const document = readJson<{ source_path: string; source_snapshot: string }>(imported);
+      add(document.source_path, target.root_dir);
+      add(document.source_snapshot, target.workspace_dir);
+    }
+  }
+  if (references.some(file => path.relative(file, requestedPath) === "")) return;
+  // A relocated copy of an imported package can still use its published anchors.
+  if (existsSync(requestedPath) && statSync(requestedPath).isFile()) {
+    const size = statSync(requestedPath).size;
+    let requestedBytes: Buffer | undefined;
+    for (const file of new Set(references)) {
+      if (path.extname(file).toLowerCase() !== path.extname(requestedPath).toLowerCase() || !existsSync(file)) continue;
+      const stat = statSync(file);
+      if (stat.isFile() && stat.size === size
+        && (requestedBytes ??= readFileSync(requestedPath)).equals(readFileSync(file))) return;
+    }
+  }
+  throw new AutomaticBuildSourceConflictError();
+}
+
 export function resolveAutomaticBuildTarget(
   targetInput: string,
   rootDir = process.cwd(),
@@ -3104,17 +3165,19 @@ export function resolveAutomaticBuildTarget(
   const stableWorkspace = stableBookId
     ? path.join(resolvedRoot, ".understand-book", stableBookId)
     : undefined;
+  const explicitWorkspace = path.join(resolvedRoot, ".understand-book", targetInput);
+  const targetPath = existsSync(explicitWorkspace) ? explicitWorkspace : path.resolve(rootDir, targetInput);
   if (
     stableWorkspace
     && existsSync(stableWorkspace)
     && statSync(stableWorkspace).isDirectory()
     && hasAutomaticBuildWorkspaceIdentity(stableWorkspace)
   ) {
-    return targetFromWorkspace(stableWorkspace);
+    const target = targetFromWorkspace(stableWorkspace);
+    if (path.relative(stableWorkspace, targetPath) !== "") assertRequestedWorkspaceSource(target, targetPath);
+    return target;
   }
 
-  const explicitWorkspace = path.join(resolvedRoot, ".understand-book", targetInput);
-  const targetPath = existsSync(explicitWorkspace) ? explicitWorkspace : path.resolve(rootDir, targetInput);
   if (existsSync(targetPath) && statSync(targetPath).isDirectory()) {
     const target = targetFromWorkspace(targetPath);
     if (stableBookId && target.book_id !== stableBookId) {
@@ -3153,7 +3216,11 @@ export function resolveAutomaticBuildTarget(
 
   const bookId = stableBookId ?? deriveBookId(targetPath);
   const workspaceDir = path.join(resolvedRoot, ".understand-book", bookId);
-  if (hasAutomaticBuildWorkspaceIdentity(workspaceDir)) return targetFromWorkspace(workspaceDir);
+  if (hasAutomaticBuildWorkspaceIdentity(workspaceDir)) {
+    const target = targetFromWorkspace(workspaceDir);
+    assertRequestedWorkspaceSource(target, targetPath);
+    return target;
+  }
   return {
     kind: "source_file",
     profile_id: "technical_learning",
@@ -3380,13 +3447,14 @@ function buildAutomaticBuildSnapshotInternal(
   if (target.profile_id === "paper") {
     stages.push(stageState("paper_reading_guide", [], paperGuideVerificationFresh(target.workspace_dir)));
   }
-  stages.push(...routeTeachingBuildStages({ target, retrieval: options.retrieval, source: {
+  if (!options.public_stage_closure || options.public_stage_closure.some(s => ["formal_objects","cognitive_materials","teaching_publish"].includes(s))) stages.push(...routeTeachingBuildStages({ target, retrieval: options.retrieval, source: {
     source_id: target.book_id, source_revision: canonicalSourceFingerprint(loaded.source),
     passages: unitSources.flatMap(unit => unit.leaf_lids.map(lid => {
       const node = loaded.byLid.get(lid)!;
       return { lid, unit_lid: unit.unit_lid, kind: node.kind, text: loaded.source.slice(node.span.start, node.span.end) };
     })),
   }, units: unitSources, structure: readJson<BookStructureSidecar>(path.join(target.workspace_dir, "book_structure.json")) }));
+  if (options.public_stage_closure?.includes("course")) stages.push(routeCourseBuild(readTeachingBuildInput(target), options.course_goal));
   return { target, stages };
 }
 
@@ -3394,6 +3462,7 @@ function buildAutomaticBuildSnapshotInternal(
 export function readAutomaticBuildTaskStage(target: AutomaticBuildTarget,
   focus: { stage: SemanticBuildStage; work_unit_id: string; parent_lid?: string },
   quality_profile: ExtractionQualityProfile, options: AutomaticBuildSnapshotOptions = {}) {
+  if (focus.stage === "course") return routeCourseBuild(readTeachingBuildInput(target), options.course_goal);
   if (["formal_objects", "cognitive_materials", "teaching_publish"].includes(focus.stage)) {
     return routeTeachingBuildStages({ ...readTeachingBuildInput(target), retrieval: options.retrieval }).find(s => s.stage === focus.stage);
   }
@@ -3458,7 +3527,7 @@ export function prepareAutomaticBuildSnapshot(target: AutomaticBuildTarget, stag
 async function prepareAuthorizedSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
   options: AutomaticBuildSnapshotOptions & { authorization: AutomaticBuildRetrievalAuthorization }): Promise<AutomaticBuildAsyncPreparationResult> {
   const { authorization, ...snapshotOptions } = options;
-  const routeOptions = { ...snapshotOptions, public_stage_closure: authorization.plan.public_stage_closure,
+  const routeOptions = { ...snapshotOptions, public_stage_closure: authorization.plan.public_stage_closure, course_goal: authorization.plan.course_goal,
     reuse: authorization.plan.reuse, retrieval: authorization.runtime.selection };
   let routed = routeAutomaticBuildSnapshot(target, routeOptions);
   if (routed.status === "blocked") return routed;
@@ -3549,6 +3618,7 @@ function validateExecutionClosure(plan: BuildPlanV1): AutomaticBuildStage[] | Au
   if (plan.recipe_id === "standard_deep") {
     const expectedSelected = standardDeepStageClosure(plan.content_profile, {
       pass2: selected.includes("pass2") ? "enabled" : "disabled",
+      build_course: selected.includes("course"),
       build_tutor: !['formal_objects','cognitive_materials','teaching_publish'].every(stage=>
         plan.excluded.some(item=>item.artifact === `public.${stage}`)),
     });
@@ -3668,6 +3738,7 @@ export function nextAutomaticBuildAction(snapshot: AutomaticBuildSnapshot, maxPa
         ? { violations: [{ code: "execution_body_limit", actual: stage.structure_budget_blocked.estimated_rendered_tokens,
           limit: stage.structure_budget_blocked.effective_body_limit_tokens }] } : {}),
     };
+    if (stage.course_blocked) return { kind: "needs_user", reason: "teaching_preparation_incomplete", stage: stage.stage, message: stage.course_blocked };
     if (stage.teaching_blocked) return { kind: "needs_user", reason: "teaching_preparation_incomplete", stage: stage.stage, message: stage.teaching_blocked,
       ...(stage.teaching_preparation_violations ? { violations: stage.teaching_preparation_violations } : {}) };
     if (stage.pending_tasks.length) {

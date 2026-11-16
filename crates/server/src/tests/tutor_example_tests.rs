@@ -80,9 +80,14 @@ impl ModelAdapter for PublishedExample {
             }
             stage if stage==1 || selecting && stage==2 => {
                 let spec = plan.tools.iter().find(|t| t.name == "tutor.step").unwrap();
-                let view = sampled_learner_view(plan);
+                // Explicit evidence updates use the reference example and the
+                // actual expression IDs; ordinary turns no longer advertise an
+                // automatic manual-capture example alongside background capture.
+                let mut explicit=self.example.clone();
+                if explicit["nature"]=="hypothesis" { explicit["fact_refs"]=json!(["<learner_expression_fact_ref>"]); }
+                let explicit_examples=json!([explicit]);
                 let examples = if self.example["nature"] == "hypothesis" {
-                    &view["tool_input_examples"]["examples"]
+                    &explicit_examples
                 } else { &spec.parameters["examples"] };
                 let mut input = examples.as_array().unwrap().iter().find(|e| {
                     e["operation"] == self.example["operation"] && e["move"]["move_id"] == self.example["move"]["move_id"]
@@ -129,20 +134,27 @@ fn tutor_to3_published_examples_execute_through_resident_dispatch() {
             store.state().unwrap().control.current_tutor_session_id.as_deref().and_then(|session|
                 store.current_teaching_design(session,&state.workspace.book.base.book_id,state.workspace.book.source_fingerprint()).unwrap().map(|event|event.event_id))
         };
-        state.services.adapter = Box::new(PublishedExample { example:example.clone(), previous_design_ref, stage:AtomicUsize::new(0), observed:observed.clone() });
         let request = example["move"]["intent_quote"].as_str().unwrap_or("Help me examine average speed.");
-        let result = json_post(&mut state, "/agent/chat", json!({"message":request}));
+        let run=prepare_practice_chat(&mut state,&json!({"message":request}).to_string(),"now").unwrap();
+        let previous_design_ref=run.tutor.as_ref().unwrap()["current_design"]["design_ref"].as_str().map(str::to_owned).or(previous_design_ref);
+        let owner=run.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
+        let adapter=PublishedExample { example:example.clone(), previous_design_ref, stage:AtomicUsize::new(0), observed:observed.clone() };
+        let report=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,run,Default::default());
+        assert_eq!(report.reply.status,200,"{}",report.reply.body);
+        let result:Value=serde_json::from_str(&report.reply.body).unwrap();
         let mut published = observed.lock().unwrap()[0].clone();
-        if example["operation"]=="select" { published["move"]["design_ref"]=example["move"]["design_ref"].clone(); }
-        if example["nature"] != "hypothesis" { assert_eq!(published, *example); }
+        if example["operation"]=="select" {
+            if let Some(reference)=example["move"].get("design_ref") { published["move"]["design_ref"]=reference.clone(); }
+            else { published["move"].as_object_mut().unwrap().remove("design_ref"); }
+        }
+        if example["nature"] != "hypothesis" { assert_eq!(fixture_model_input(published), fixture_model_input(example.clone())); }
         assert_ne!(result["incomplete"], true, "{example}: {result}");
         let trace = result["trace"].as_array().unwrap();
         let tool = trace.iter().find(|t| t["tool"] == "tutor.step" || t["name"] == "tutor.step");
         // The durable records, not the model's final text, establish acceptance.
         let store = state.user.learning_store().unwrap();
-        let session = store.state().unwrap().control.current_tutor_session_id.unwrap();
         let turn = state.user.agent_history.sessions[0].turns.last().unwrap();
-        let events = store.teaching_turn_events(&session, &turn.turn_id).unwrap();
+        let events = store.teaching_turn_events(&owner, &turn.turn_id).unwrap();
         match example["operation"].as_str().unwrap() {
             "select" => {
                 let saved = events.iter().find(|e| e.kind == TeachingFact::MoveSelected).expect("selected example persisted");
@@ -191,7 +203,7 @@ fn tutor_to3_assess_example_uses_original_open_response() {
     let run = prepare(&mut state);
     let mut invalid = scored.clone();
     invalid["move"]["actions"] = json!([]);
-    assert!(example_step(&state.private_context(), &run.turn_ref, invalid, &[], &[range()]).unwrap_err().message.contains("评分活动必须允许提交"));
+    assert!(example_step(&state.private_context(), &run.turn_ref, invalid, &[], &[range()]).unwrap_err().message.contains("允许提交"));
     example_step(&state.private_context(), &run.turn_ref, scored.clone(), &[], &[range()]).unwrap();
     finish(&mut state, &run.turn_ref, &outcome(None));
     let id = format!("delivery:{}:compare-journey-times", run.turn_ref.turn_id);
@@ -244,7 +256,7 @@ fn tutor_to3_observing_examples_keep_teaching_disabled() {
         let (_root, mut state) = fixture();
         discrimination(&mut state);
         let revision = state.user.learning_store().unwrap().state().unwrap().control.revision;
-        json_post(&mut state, "/tutor/mutate", json!({"operation_id":"to3-off","expected_revision":revision,"action":{"kind":"set_enabled","enabled":false}}));
+        legacy_control(&mut state,  json!({"operation_id":"to3-off","expected_revision":revision,"action":{"kind":"set_enabled","enabled":false}}));
         let observed = Arc::new(std::sync::Mutex::new(Vec::new()));
         state.services.adapter = Box::new(PublishedExample { example:example.clone(), previous_design_ref:None, stage:AtomicUsize::new(0), observed:observed.clone() });
         let result = json_post(&mut state, "/agent/chat", json!({"message":"I am asking about the denominator."}));
@@ -286,6 +298,6 @@ fn tutor_to3_examples_keep_source_fact_help_and_pause_preconditions() {
     false_fact["fact_refs"] = json!([delivery]);
     assert!(example_step(&state.private_context(), &run.turn_ref, false_fact, &[], &[range()]).is_err());
     let revision = state.user.learning_store().unwrap().state().unwrap().control.revision;
-    json_post(&mut state, "/tutor/mutate", json!({"operation_id":"to3-pause","expected_revision":revision,"action":{"kind":"set_enabled","enabled":false}}));
-    assert!(example_step(&state.private_context(), &run.turn_ref, select.clone(), &[], &[range()]).unwrap_err().message.contains("教学已暂停"));
+    legacy_control(&mut state,  json!({"operation_id":"to3-pause","expected_revision":revision,"action":{"kind":"set_enabled","enabled":false}}));
+    assert!(example_step(&state.private_context(), &run.turn_ref, select.clone(), &[], &[range()]).is_ok());
 }

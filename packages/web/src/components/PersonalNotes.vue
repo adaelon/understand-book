@@ -271,7 +271,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
 </script>
 
 <template>
-    <section v-if="notesPanel.open" id="personal-thought-window" ref="panel" class="thought-space" :class="{ 'is-moving': noteWindow.interacting.value }" :style="noteWindow.style.value" role="region" aria-label="我的想法" tabindex="-1" data-personal-notes @keydown="keydown">
+    <section v-if="notesPanel.open" id="personal-thought-window" data-tour="thought-window" ref="panel" class="thought-space" :class="{ 'is-moving': noteWindow.interacting.value }" :style="noteWindow.style.value" role="region" aria-label="我的想法" tabindex="-1" data-personal-notes @keydown="keydown">
       <header class="thought-heading" @pointerdown="noteWindow.begin($event, 'move')">
         <div class="thought-window-title"><span class="thought-pen"><PenLine :size="16" /></span><h1>{{ notesPanel.view === 'capture' ? '随手记' : '我的想法' }}</h1></div>
         <span class="thought-drag-grip" tabindex="0" role="button" aria-label="移动想法窗口" aria-description="拖动顶部，或使用方向键移动窗口" title="拖动顶部移动" @keydown="noteWindow.keyboard($event, 'move')"><GripHorizontal :size="18" /></span>
@@ -333,7 +333,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
     </section>
   <div v-if="notesOwner()" v-show="!notesPanel.open" ref="launcherElement" class="thought-toolbar" :class="{ 'is-dragging': launcher.dragging.value, 'keyboard-open': launcher.keyboardOpen.value }" :style="launcher.style.value" data-personal-notes>
     <span v-if="notice" class="toolbar-notice" role="status"><Check :size="14" />{{ notice }}</span>
-    <button class="thought-entry" aria-label="记一下" :title="drafts.length ? '继续草稿 · 可拖动 · Ctrl / ⌘ + Shift + M' : '记一下 · 可拖动 · Ctrl / ⌘ + Shift + M'" aria-description="点击直接记录；拖动或按 Alt 加方向键移动入口" aria-keyshortcuts="Control+Shift+M Meta+Shift+M" aria-controls="personal-thought-window" :aria-expanded="notesPanel.open && notesPanel.view === 'capture'" @pointerdown="launcher.begin" @keydown="launcher.keyboard" @click="launcher.click($event, capture)"><PenLine :size="17" /><span>记一下</span><span v-if="drafts.length" class="draft-dot" aria-label="有未完成的草稿" /></button>
+    <button class="thought-entry" data-tour="thought-entry" aria-label="记一下" :title="drafts.length ? '继续草稿 · 可拖动 · Ctrl / ⌘ + Shift + M' : '记一下 · 可拖动 · Ctrl / ⌘ + Shift + M'" aria-description="点击直接记录；拖动或按 Alt 加方向键移动入口" aria-keyshortcuts="Control+Shift+M Meta+Shift+M" aria-controls="personal-thought-window" :aria-expanded="notesPanel.open && notesPanel.view === 'capture'" @pointerdown="launcher.begin" @keydown="launcher.keyboard" @click="launcher.click($event, capture)"><PenLine :size="17" /><span>记一下</span><span v-if="drafts.length" class="draft-dot" aria-label="有未完成的草稿" /></button>
   </div>
 </template>
 

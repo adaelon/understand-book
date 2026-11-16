@@ -24,7 +24,8 @@ pub(crate) fn has_completed_answer(turn: &AgentChatTurn) -> bool {
     outcome.answer_view.as_ref().map_or_else(
         || outcome.answer.as_ref().is_some_and(|answer| !answer.trim().is_empty()),
         |view| view.parts.iter().any(|part| match part {
-            AgentAnswerPart::Markdown { text } => !text.trim().is_empty(),
+            AgentAnswerPart::Markdown { text } | AgentAnswerPart::SocraticQuestion { text, .. } => !text.trim().is_empty(),
+            AgentAnswerPart::MusicExample { example } => !example.label.is_empty(),
             AgentAnswerPart::Presentation { presentation_id, .. } => !presentation_id.is_empty(),
             AgentAnswerPart::Sources { source_ref_ids } => !source_ref_ids.is_empty(),
         }),

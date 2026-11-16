@@ -347,7 +347,6 @@ describe("BR10 automatic build release contract", () => {
         }],
         coverage_digest: "6".repeat(64),
         freshness_digest: "7".repeat(64),
-        public_artifact_set_digest: "8".repeat(64),
       },
       next: "replan" as const,
     };

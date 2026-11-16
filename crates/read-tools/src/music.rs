@@ -4,6 +4,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use crate::{Book, ToolError};
 use std::collections::{BTreeMap, BTreeSet};
+mod notation;
+pub mod facts;
+mod passages;
+pub use passages::crop_score_result;
 
 /// Include the notation state at every selected note, even when its declaration
 /// precedes the read range. Performance alignment is irrelevant to score facts.
@@ -101,6 +105,16 @@ pub struct MusicReadResult {
     pub sources: Vec<MusicSourceSnapshot>,
 }
 
+impl MusicReadResult {
+    /// Discovery is useful progress, but does not establish analysis evidence.
+    pub fn catalog_event_ids(&self) -> BTreeSet<&str> {
+        let catalogs = [&self.body, &self.body["suggestions"], &self.body["catalog_suggestions"]]
+            .into_iter().chain(self.sources.iter().map(|source| &source.material["read"]["catalog"]));
+        catalogs.flat_map(|catalog| catalog["items"].as_array().into_iter().flatten())
+            .filter_map(|item| item["event_id"].as_str()).collect()
+    }
+}
+
 pub fn error(message: impl Into<String>) -> ToolError {
     ToolError { error_code: "INVALID_MUSIC_SOURCE".into(), category: "invalid_input".into(), message: message.into() }
 }
@@ -109,19 +123,84 @@ impl Book {
     pub fn load_music_source(&self, dir: &std::path::Path) -> Result<MusicSourceManifest, ToolError> {
         let bytes = std::fs::read(dir.join("music_source_manifest.json"))
             .map_err(|e| error(format!("Cannot read music source manifest: {e}")))?;
-        let manifest: MusicSourceManifest = serde_json::from_slice(&bytes)
+        // Internally tagged score directions contain decimal tempos. With the
+        // server's arbitrary_precision feature, deserialize through Value just
+        // as publication loading does, so those numbers remain readable.
+        let value: Value = serde_json::from_slice(&bytes)
+            .map_err(|e| error(format!("Invalid music source manifest: {e}")))?;
+        let mut manifest: MusicSourceManifest = serde_json::from_value(value)
             .map_err(|e| error(format!("Invalid music source manifest: {e}")))?;
         manifest.validate().map_err(error)?;
         if manifest.book_id != self.base.book_id { return Err(error("Music manifest belongs to another book")); }
+        notation::enrich(&mut manifest, dir)?;
         Ok(manifest)
     }
 }
 
 /// Reads only the explicitly loaded publication; reference identity is supplied by its host.
 pub fn read(manifest: &MusicSourceManifest, publication: &PublishedBookRef, request: &MusicRead) -> Result<MusicReadResult, ToolError> {
+    if !(1..=200).contains(&request.limit) { return Err(error("Use a limit between 1 and 200")); }
+    if request.view == "score" && !manifest.score_objects.is_empty() {
+        return passages::read(manifest, publication, request);
+    }
+    if !matches!(request.view.as_str(), "events" | "score") { return read_snapshot(manifest, publication, request); }
+    // Keep complete source snapshots small enough for the runtime to admit a
+    // prefix under its actual context budget. Offsets still count input items.
+    let page_size = if request.view == "events" || manifest.score_objects.is_empty() { 1 } else { 8 };
+    let mut next = request.clone(); next.limit = request.limit.min(page_size);
+    let mut result = read_snapshot(manifest, publication, &next)?;
+    let mut returned = result.body["returned_count"].as_u64().unwrap_or(0) as usize;
+    while returned < request.limit && returned > 0 && result.body["next_offset"].is_number() {
+        next.offset = request.offset + returned; next.limit = (request.limit - returned).min(page_size);
+        let more = read_snapshot(manifest, publication, &next)?;
+        let count = more.body["returned_count"].as_u64().unwrap_or(0) as usize;
+        if count == 0 { break; }
+        returned += count;
+        result.body["next_offset"] = more.body["next_offset"].clone();
+        result.sources.extend(more.sources);
+    }
+    result.body["offset"] = json!(request.offset);
+    result.body["returned_count"] = json!(returned);
+    Ok(result)
+}
+
+fn query_rank(text: &str, query: &str) -> usize {
+    if query.is_empty() { return 1; }
+    let text = text.to_lowercase();
+    let terms: Vec<_> = query.split(|c: char| c.is_whitespace() || matches!(c, ',' | '，' | ';' | '；')).filter(|v| !v.is_empty()).collect();
+    terms.iter().filter(|term| text.contains(**term)).count() + if text.contains(query) { terms.len() + 1 } else { 0 }
+}
+
+fn matching_events<'a>(manifest: &'a MusicSourceManifest, request: &MusicRead, audio: &MusicAudioLocation, query: &str) -> Vec<&'a base_schema::MusicEvent> {
+    let mut matches: Vec<_> = manifest.events.iter().filter_map(|event| {
+        if !(event.start_ms < audio.end_ms && event.end_ms > audio.start_ms)
+            || request.event_id.as_ref().is_some_and(|id| &event.event_id != id)
+            || !(request.part_ids.is_empty() && request.voices.is_empty() || event.roles.iter().any(|role| request.part_ids.contains(&role.part_id)
+                || request.voices.iter().any(|voice| voice.part_id == role.part_id && (role.voice_ids.is_empty() || role.voice_ids.contains(&voice.voice))))) { return None; }
+        let rank = query_rank(&format!("{} {} {} {} {}", event.event_id, event.title, event.explanation, event.listen_for, event.concept_tags.join(" ")), query);
+        (rank > 0).then_some((event, rank))
+    }).collect();
+    matches.sort_by(|(a, ar), (b, br)| br.cmp(ar).then_with(|| a.start_ms.total_cmp(&b.start_ms)).then_with(|| a.event_id.cmp(&b.event_id)));
+    matches.into_iter().map(|(event, _)| event).collect()
+}
+
+fn catalog(manifest: &MusicSourceManifest, events: &[&base_schema::MusicEvent], offset: usize, limit: usize) -> Value {
+    let items: Vec<_> = events.iter().skip(offset).take(limit).map(|event| {
+        let measures: Vec<_> = manifest.occurrences.iter().filter(|o| o.start_ms < event.end_ms && o.end_ms > event.start_ms).map(|o| &o.measure).collect();
+        json!({"event_id":event.event_id,"title":event.title,"roles":event.roles,"start_ms":event.start_ms,"end_ms":event.end_ms,
+            "first_measure":measures.first(),"last_measure":measures.last(),"relation_count":event.relations.len(),
+            "read":{"view":"events","event_id":event.event_id,"limit":1}})
+    }).collect();
+    json!({"returned_count":items.len(),"items":items,"total":events.len(),"offset":offset,"next_offset":(offset.saturating_add(limit)<events.len()).then_some(offset.saturating_add(limit)),
+        "guidance":"Discovery only. Read an event before citing its analysis or using its listening cue. Labels are curated material names, not proof of a motivic relationship."})
+}
+
+/// Build one bounded, complete source for host-owned citations and examples.
+/// Model-facing reads use `read` to split this projection into budgetable pages.
+pub fn read_snapshot(manifest: &MusicSourceManifest, publication: &PublishedBookRef, request: &MusicRead) -> Result<MusicReadResult, ToolError> {
     if manifest.book_id != publication.book_id { return Err(error("Publication and music book do not match")); }
-    if !matches!(request.view.as_str(), "overview" | "events" | "score") || !(1..=200).contains(&request.limit) {
-        return Err(error("Use view overview, events or score and a limit between 1 and 200"));
+    if !matches!(request.view.as_str(), "overview" | "catalog" | "events" | "score") || !(1..=200).contains(&request.limit) {
+        return Err(error("Use view overview, catalog, events or score and a limit between 1 and 200"));
     }
     let mut audio = request.location.clone().unwrap_or_else(|| MusicAudioLocation {
         recording: manifest.recording.source.clone(), start_ms: 0.0, end_ms: manifest.recording.duration_ms,
@@ -141,6 +220,15 @@ pub fn read(manifest: &MusicSourceManifest, publication: &PublishedBookRef, requ
         return Err(error("Unknown music event; copy an event_id from an events read"));
     }
     let query = request.query.as_deref().unwrap_or("").trim().to_lowercase();
+    if request.view == "catalog" {
+        let events = matching_events(manifest, request, &audio, &query);
+        let mut body = catalog(manifest, &events, request.offset, request.limit);
+        body["view"] = json!("catalog");
+        if events.is_empty() && !query.is_empty() {
+            body["suggestions"] = catalog(manifest, &matching_events(manifest, request, &audio, ""), 0, 5);
+        }
+        return Ok(MusicReadResult { publication: publication.clone(), recording: manifest.recording.source.clone(), observation_kind: "prepared_music_material".into(), heard_audio: false, body, sources: vec![] });
+    }
     let occurrences: Vec<_> = manifest.occurrences.iter().filter(|item| item.start_ms < audio.end_ms && item.end_ms > audio.start_ms).collect();
     let mut selected_ids = Vec::new();
     let mut event_ids = Vec::new();
@@ -151,16 +239,14 @@ pub fn read(manifest: &MusicSourceManifest, publication: &PublishedBookRef, requ
     }
     let body = match request.view.as_str() {
         "overview" => json!({"work":manifest.work,"recording":manifest.recording,"score":manifest.score,
-            "parts":manifest.parts,"structure":manifest.structure,"coverage":manifest.coverage,
+            "parts":manifest.parts,"structure":manifest.structure.iter().map(|s|json!({"section_id":s.section_id,"parent_id":s.parent_id,"title":s.title,"description":s.description,
+                "start_ms":s.start_ms,"end_ms":s.end_ms,"coverage":s.coverage,"event_count":s.event_ids.len()})).collect::<Vec<_>>(),"coverage":manifest.coverage,
+            "catalog":catalog(manifest,&matching_events(manifest,request,&audio,""),0,5),
             "rights":manifest.rights,"provenance":manifest.provenance,"demonstrations":manifest.demonstrations,
             "score_marks_available":!manifest.score_marks.is_empty(),
             "guidance":"Read events or score for a bounded range. Score reads include source-anchored key signatures, meters and tempo/direction marks, with inherited notation context. work.tonality is a separately sourced work-level conclusion; a key signature's encoded_mode is the raw file value. Navigation-only sections do not imply detailed analysis. Score synthesis is not a separated recording stem."}),
         "events" => {
-            let matching: Vec<_> = manifest.events.iter().filter(|event| event.start_ms < audio.end_ms && event.end_ms > audio.start_ms
-                && request.event_id.as_ref().is_none_or(|id| &event.event_id == id)
-                && (request.part_ids.is_empty() && request.voices.is_empty() || event.roles.iter().any(|role| request.part_ids.contains(&role.part_id)
-                    || request.voices.iter().any(|voice|voice.part_id == role.part_id && (role.voice_ids.is_empty() || role.voice_ids.contains(&voice.voice)))))
-                && (query.is_empty() || format!("{} {} {} {} {}",event.event_id,event.title,event.explanation,event.listen_for,event.concept_tags.join(" ")).to_lowercase().contains(&query))).collect();
+            let matching = matching_events(manifest, request, &audio, &query);
             let items: Vec<_> = matching.iter().skip(request.offset).take(request.limit).copied().collect();
             for event in &items {
                 event_ids.push(event.event_id.clone());
@@ -169,14 +255,23 @@ pub fn read(manifest: &MusicSourceManifest, publication: &PublishedBookRef, requ
                     selected_ids.extend(evidence.score_object_ids.clone());
                 }
             }
-            json!({"events":items,"total":matching.len(),"next_offset":next_offset(request, matching.len()),
+            json!({"events":items,"total":matching.len(),"returned_count":items.len(),"next_offset":next_offset(request, matching.len()),
                 "guidance":"Relations point to independently located events. Read both passages before comparing their musical details. A metaphor is an interpretation, not a score fact."})
+        },
+        "score" if manifest.score.pdf_path.is_some() && manifest.score_objects.is_empty() => {
+            let matching: Vec<_> = manifest.pages.iter().filter(|page| query.is_empty() || page.page_id.to_lowercase().contains(&query)).collect();
+            let items: Vec<_> = matching.iter().skip(request.offset).take(request.limit).copied().collect();
+            provenance_ids.extend(manifest.provenance.iter().filter(|p| p.kind == base_schema::MusicProvenanceKind::Score).map(|p| p.provenance_id.clone()));
+            notation_preview.push(format!("PDF 原谱：{}；当前提供谱页，尚无已接纳逐音符索引。", items.iter().map(|page| page.page_id.as_str()).collect::<Vec<_>>().join("、")));
+            json!({"pages":items,"total":matching.len(),"returned_count":items.len(),"next_offset":next_offset(request, matching.len()),
+                "indexing":"page_only","guidance":"These are original PDF score pages, not transcribed note objects. Use event page evidence for coarse passage navigation. Read the actual page image to discuss unindexed notation; do not infer pitches, rhythms or accepted audio alignment from page availability."})
         },
         "score" => {
             let query_anchors: BTreeSet<_> = manifest.score_marks.iter().filter(|mark| !query.is_empty()
                 && format!("{} {} {} {}",mark.mark_id,mark.measure,mark.part_id,serde_json::to_string(&mark.value).unwrap_or_default()).to_lowercase().contains(&query))
                 .flat_map(|mark| mark.score_object_ids.iter()).collect();
             let matching: Vec<_> = manifest.score_objects.iter().filter(|object|
+                (!object.is_hidden_muted() || request.source_ids.contains(&object.source_id)) &&
                 (request.part_ids.is_empty() && request.voices.is_empty() || request.part_ids.contains(&object.part_id)
                     || request.voices.iter().any(|voice|voice.part_id == object.part_id && voice.voice == object.voice))
                 && (request.source_ids.is_empty() || request.source_ids.contains(&object.source_id))
@@ -197,7 +292,9 @@ pub fn read(manifest: &MusicSourceManifest, publication: &PublishedBookRef, requ
                 notation_preview.push(score_mark_preview(mark));
             }
             if let Some(t) = &manifest.work.tonality { notation_preview.push(format!("作品调性：{} {}。{}", t.tonic, t.mode, t.explanation)); }
-            json!({"objects":items,"alignments":alignments,"total":matching.len(),"next_offset":next_offset(request, matching.len()),
+            json!({"objects":items,"alignments":alignments,"note_pairs":facts::note_pairs(&manifest.score_objects,&items),"tie_groups":facts::tie_groups(&items),
+                "total":matching.len(),"returned_count":items.len(),"next_offset":next_offset(request, matching.len()),
+                "notation_guidance":"notation retains original spelling, note_type, dots, visibility and playback dynamics. rhythm retains time_modification and tremolo marks; absent rhythm is unknown, while an empty tremolos list is inspected absence. duration_beats is in quarter-note units and already includes time_modification. A tremolo span is repeated strokes, not a single held attack. Chord members are simultaneous; tied continuations are not new attacks. Two dots mean double-dotted. Hidden and explicitly muted objects are omitted by default, but exact source_ids can inspect them. Other hidden notes remain. midi_pitch is sounding pitch. note_pairs compares adjacent written notes within this snapshot, not attacks or transpositions between passages. tie_groups sums complete ties; neither establishes thematic derivation.",
                 "score_marks":marks,"work_tonality":manifest.work.tonality,
                 "guidance":"score_marks includes key, time and tempo declarations governing the selected notes, plus directions in their measures. Each mark keeps its original measure/beat, source anchors and provenance even when inherited from an earlier measure. encoded_mode is the raw key-signature encoding; use separately sourced work_tonality for the work's tonal identity and its documented reconciliation. sound_tempo_quarter_bpm is a MusicXML playback parameter, not a printed metronome mark or measured recording tempo. These score facts do not require accepted audio alignment or listening. Repeated score objects can have several performance occurrences. attack=false denotes sustained/tied notes; note end is not a measured acoustic release unless the provenance establishes it."})
         },
@@ -227,7 +324,10 @@ pub fn read(manifest: &MusicSourceManifest, publication: &PublishedBookRef, requ
     let preview = if !notation_preview.is_empty() { notation_preview.join("\n") } else if event_ids.is_empty() { format!("{} · {}",manifest.work.composer,manifest.work.title) } else {
         manifest.events.iter().filter(|event| event_ids.contains(&event.event_id)).map(|event| format!("{}：{}",event.title,event.explanation)).collect::<Vec<_>>().join("\n")
     };
-    let summary = json!({"view":request.view,"total":body.get("total"),"next_offset":body.get("next_offset")});
+    let mut summary = json!({"view":request.view,"offset":request.offset,"returned_count":body.get("returned_count"),"total":body.get("total"),"next_offset":body.get("next_offset")});
+    if request.view == "events" && body["total"] == 0 {
+        summary["catalog_suggestions"] = catalog(manifest,&matching_events(manifest,request,&audio,""),0,5);
+    }
     let occurrence_locations:Vec<_>=occurrences.iter().map(|occurrence| json!({"occurrence_id":occurrence.occurrence_id,"order":occurrence.order,
         "measure":occurrence.measure,"start_ms":occurrence.start_ms,"end_ms":occurrence.end_ms})).collect();
     let material = json!({"view":request.view,"read":body,"provenance":provenance,"coverage":coverage,
@@ -235,7 +335,7 @@ pub fn read(manifest: &MusicSourceManifest, publication: &PublishedBookRef, requ
     let target = MusicSourceTarget { publication: publication.clone(), audio,
         score: (!selected_ids.is_empty()).then(|| MusicScoreLocation { score: manifest.score.source.clone(), source_ids: selected_ids }),
         occurrence_ids: occurrences.iter().map(|o| o.occurrence_id.clone()).collect(), event_ids, provenance_ids };
-    let sources = if request.view != "overview" && material["read"]["total"] == 0 { vec![] } else {
+    let sources = if request.view != "overview" && material["read"]["returned_count"] == 0 { vec![] } else {
         vec![MusicSourceSnapshot { target, title: manifest.title.clone(), label, preview, material: material.clone() }]
     };
     Ok(MusicReadResult { publication: publication.clone(), recording: manifest.recording.source.clone(),
@@ -250,7 +350,7 @@ fn next_offset(request: &MusicRead, total: usize) -> Option<usize> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    fn fixture() -> MusicSourceManifest {
+    pub(super) fn fixture() -> MusicSourceManifest {
         serde_json::from_value(json!({
             "version":"music_source_manifest.v1","book_id":"music-book","title":"Repeated theme",
             "work":{"work_id":"work","title":"Theme","composer":"Composer","movement":null},
@@ -266,6 +366,58 @@ mod tests {
         })).unwrap()
     }
     fn publication() -> PublishedBookRef { PublishedBookRef { book_id:"music-book".into(),publication_id:"publication-v1".into() } }
+
+    #[test]
+    fn catalog_discovers_separate_terms_and_recovers_from_an_empty_search_without_citing_labels() {
+        let mut manifest = fixture();
+        manifest.events[0].title = "主题的出现".into();
+        let mut later = manifest.events[0].clone(); later.event_id = "later".into(); later.title = "动机素材".into();
+        manifest.events.push(later);
+        let request = |value| serde_json::from_value::<MusicRead>(value).unwrap();
+        let found = read(&manifest, &publication(), &request(json!({"view":"catalog","query":"动机 主题 素材","limit":1}))).unwrap();
+        assert!(found.sources.is_empty(), "A catalog label is not an observed analysis");
+        assert_eq!(found.body["total"], 2);
+        assert_eq!(found.body["items"][0]["event_id"], "later");
+        assert_eq!(found.body["next_offset"], 1);
+        let full = read(&manifest, &publication(), &request(found.body["items"][0]["read"].clone())).unwrap();
+        assert_eq!(full.sources[0].target.event_ids, vec!["later"]);
+        for view in ["catalog", "events"] {
+            let missing = read(&manifest, &publication(), &request(json!({"view":view,"query":"absent"}))).unwrap();
+            assert!(missing.sources.is_empty());
+            let suggestions = if view == "catalog" { &missing.body["suggestions"] } else { &missing.body["catalog_suggestions"] };
+            assert_eq!(suggestions["total"], 2);
+        }
+        let events = read(&manifest, &publication(), &request(json!({"view":"events","query":"动机 主题 素材"}))).unwrap();
+        assert_eq!(events.sources.len(), 2);
+        assert_eq!(events.sources[0].target.event_ids, vec!["later"]);
+        assert_eq!(events.body["returned_count"], 2);
+    }
+
+    #[test]
+    fn score_pages_keep_order_and_only_hide_objects_that_are_explicitly_muted() {
+        let mut manifest = fixture();
+        let prototype = manifest.score_objects[0].clone();
+        manifest.score_objects = (0..21).map(|i| {
+            let mut n = prototype.clone(); n.source_id = format!("n{i}"); n.beat = (i % 6) as f64; n.measure = (i / 6 + 1).to_string();
+            n.notation = Some(serde_json::from_value(json!({"written_pitch":{"step":"C","alter":0,"octave":4},"note_type":"quarter","dots":0,
+                "visible":i > 1,"playback_dynamics":if i == 0 { Some(0) } else { None },"chord":false,"grace":false})).unwrap()); n
+        }).collect();
+        let request = |value| serde_json::from_value::<MusicRead>(value).unwrap();
+        let first = read(&manifest, &publication(), &request(json!({"view":"score","limit":17}))).unwrap();
+        assert_eq!(first.body["returned_count"], 17);
+        assert_eq!(first.body["total"], 20);
+        assert_eq!(first.body["next_offset"], 17);
+        assert_eq!(first.sources.len(), 1);
+        let objects: Vec<_> = first.sources.iter().flat_map(|s| s.material["read"]["objects"].as_array().unwrap()).collect();
+        assert_eq!(objects.iter().map(|n|n["source_id"].as_str().unwrap()).collect::<Vec<_>>(), (1..=17).map(|i|format!("n{i}")).collect::<Vec<_>>());
+        let last = read(&manifest, &publication(), &request(json!({"view":"score","offset":17,"limit":17}))).unwrap();
+        assert_eq!(last.body["returned_count"], 3); assert!(last.body["next_offset"].is_null());
+        let exhausted = read(&manifest, &publication(), &request(json!({"view":"score","offset":20}))).unwrap();
+        assert!(exhausted.sources.is_empty(), "An exhausted page supplies no new score evidence");
+        let inspect = read(&manifest, &publication(), &request(json!({"view":"score","source_ids":["n0"]}))).unwrap();
+        assert_eq!(inspect.sources[0].material["read"]["objects"][0]["notation"]["playback_dynamics"].as_f64(), Some(0.0));
+        assert_eq!(inspect.sources[0].target.score.as_ref().unwrap().source_ids, vec!["n0"]);
+    }
 
     #[test]
     fn notation_context_survives_paging_changes_and_source_citation_without_audio_alignment() {

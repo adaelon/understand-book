@@ -13,7 +13,7 @@ function publicPrerequisiteFixture() {
   const fixture = structureProductionFixture(2);
   writeFileSync(path.join(fixture.target.workspace_dir, "source.txt"), readFileSync(fixture.source, "utf8"));
   fixture.write("source_manifest.json", { book_id: fixture.target.book_id,
-    canonical_source: { kind: "markdown", truth_file: "source.txt" } });
+    canonical_source: { kind: "markdown", path: fixture.source, truth_file: "source.txt" } });
   // The supported reuse boundary consists of public source/profile/base artifacts.
   // Remove all extraction history before creating any current structure work.
   rmSync(path.join(fixture.target.workspace_dir, ".build"), { recursive: true, force: true });

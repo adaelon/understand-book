@@ -1,0 +1,18 @@
+{
+  "title": "两位信使，哪一位先到？",
+  "initial_state": {
+    "metric": "l1",
+    "steps": 0
+  },
+  "state_contract": {
+    "metric": "量距规则：l1、l2 或 linf",
+    "steps": "共同消耗的步数；整数，从 0 到两条路径中较长者的长度"
+  },
+  "readable_content": "甲 (3,4) 与乙 (0,5) 在 L1 尺度下长 7、5，在 L2 下均为 5，在 L∞ 下为 4、5。两人从原点出发，以同一把尺每步消耗一个单位；L1 第五步乙到而甲未到，L2 第五步同时到，L∞ 第四步甲先到。",
+  "assumptions": [
+    "无障碍街区；L1 只走横纵，L2 可沿直线，L∞ 两轴可同时各走一个单位。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

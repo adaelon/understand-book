@@ -8,18 +8,8 @@ fn board(state: &AppState, operation: &str, value: Value) -> Value {
     crate::board_api::route(&state.user, &state.workspace, operation, &value, NOW).unwrap()
 }
 
-fn ordinary_board_replies(state: &mut AppState) {
-    // These fixtures exercise storage and dispatch. Their scripted adapter
-    // returns plain answers rather than choosing an active teaching move.
-    let revision = state.user.learning_store().unwrap().state().unwrap().control.revision;
-    let reply = post(state, "/tutor/mutate", &json!({"operation_id":"board-storage-off",
-        "expected_revision":revision,"action":{"kind":"set_enabled","enabled":false}}).to_string());
-    assert_eq!(reply.status, 200, "{}", reply.body);
-}
-
 fn setup() -> (tempfile::TempDir, AppState, Value, Value) {
-    let (root, mut state, sources) = super::board_browser_host::fixture();
-    ordinary_board_replies(&mut state);
+    let (root, state, sources) = super::board_browser_host::fixture();
     let mut document = board(&state, "create", json!({"title":"持续追问"}));
     for kind in ["prebuild", "understanding"] {
         document = board(&state, "import", json!({"board_id":document["board_id"],
@@ -167,7 +157,6 @@ fn board_storage_failure_stays_unsaved_until_retry_publishes_the_same_answer() {
 #[test]
 fn board_root_conversation_delivers_reopens_and_survives_chat_switch() {
     let (_root, mut state, sources) = super::board_browser_host::fixture();
-    ordinary_board_replies(&mut state);
     let document = board(&state, "create", json!({"title":"从问题开始理解"}));
     assert!(document["items"].as_array().unwrap().is_empty());
     let request = json!({"message":"从整张空白画板开始说明平均速度。", "client_request_id":"board-root-conversation",

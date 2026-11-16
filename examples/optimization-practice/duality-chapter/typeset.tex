@@ -1,0 +1,30 @@
+\usepackage{amsmath,amssymb}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{xcolor}
+\definecolor{chapterblue}{HTML}{253D50}
+\setstretch{1.20}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.32em}
+\raggedbottom
+\setlength{\emergencystretch}{2em}
+\setlength{\headheight}{15pt}
+\setlength{\headsep}{8mm}
+\setlength{\footskip}{12mm}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\sffamily 最优化方法 I}
+\fancyhead[R]{\small\sffamily 对偶理论}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.3pt}
+\ctexset{
+  section={format=\Large\bfseries\sffamily\color{chapterblue},beforeskip=0.7em,afterskip=0.8em},
+  subsection={format=\large\bfseries\sffamily\color{chapterblue},beforeskip=0.8em,afterskip=0.4em},
+  subsubsection={format=\normalsize\bfseries\sffamily,beforeskip=0.6em,afterskip=0.25em}
+}
+\AtBeginDocument{
+  \setlength{\abovedisplayskip}{7pt plus 2pt minus 2pt}
+  \setlength{\belowdisplayskip}{7pt plus 2pt minus 2pt}
+  \setlength{\abovedisplayshortskip}{4pt plus 2pt minus 1pt}
+  \setlength{\belowdisplayshortskip}{5pt plus 2pt minus 1pt}
+}

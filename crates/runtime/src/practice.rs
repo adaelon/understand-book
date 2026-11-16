@@ -402,13 +402,13 @@ mod tests {
             note_ref: Some(NoteRef { note_id: "n1".into(), revision: Some(1) }) };
         let ids = |context: Value| crate::tutor::instruction_modules(&context, &[], None).into_iter()
             .map(|module| module.asset_id).filter(|id| id.contains("practice")).collect::<Vec<_>>();
-        assert_eq!(ids(json!({"status":"active","current_action":entry})), ["resident-agent.tutor.practice"]);
+        assert_eq!(ids(json!({"status":"practice","current_action":entry})), ["resident-agent.tutor.practice"]);
         let practice = spec(&[PracticeHintKind::InProblem]).public_view();
-        assert_eq!(ids(json!({"status":"active","learner_context":{"responding_to_practice":{"practice":practice}}})),
+        assert_eq!(ids(json!({"status":"practice","learner_context":{"responding_to_practice":{"practice":practice}}})),
             ["resident-agent.tutor.practice-response"]);
-        assert_eq!(ids(json!({"status":"active","learner_context":{"pending_activity":{"practice":practice}}})),
+        assert_eq!(ids(json!({"status":"practice","learner_context":{"pending_activity":{"practice":practice}}})),
             ["resident-agent.tutor.practice-response"]);
-        assert!(ids(json!({"status":"active","learner_context":{"pending_activity":{"prompt":"ordinary"}}})).is_empty());
+        assert!(ids(json!({"status":"practice","learner_context":{"pending_activity":{"prompt":"ordinary"}}})).is_empty());
         assert!(ids(json!({"status":"observing","learner_context":{"responding_to_practice":{"practice":practice}}})).is_empty());
     }
 

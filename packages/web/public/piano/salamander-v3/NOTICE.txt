@@ -1,0 +1,12 @@
+Salamander Grand Piano V3 — Yamaha C5
+Recordings by Alexander Holm. Retuned mapping by Markus Fiedler. SFZ reconstruction by kinwie.
+Source https://github.com/sfzinstruments/SalamanderGrandPiano
+Licensed under Creative Commons Attribution 3.0 Unported.
+https://creativecommons.org/licenses/by/3.0/
+
+Understand Book uses the original v8 medium-touch FLAC recordings unchanged: 48 kHz, 24-bit stereo. No lossy encoding or sample-rate/bit-depth reduction.
+The upstream instrument records in minor thirds and maps those recordings to adjacent keys.
+The mapping preserves the upstream fast-response offsets and records the upstream retuned cents.
+Per-key playback adjustments align the measured early sustained fundamental to A4=440 Hz equal temperament.
+The reference window is 0.10–0.50 seconds after sample start; low notes below 100 Hz use 0.6–3.6 seconds. Natural string beating and decay remain.
+Recordings are loaded by musical range. Other velocity layers, release-noise and pedal-noise recordings are available upstream.

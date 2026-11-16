@@ -19,7 +19,8 @@ test('WB1 four retained types survive source navigation, editing, reopen and ori
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto('/');
-  await page.getByRole('button', { name: '画板', exact: true }).first().click();
+  await page.locator('.topbar .tools-toggle').click();
+  await page.getByRole('button', { name: '当前资料的画板', exact: true }).click();
   await page.getByRole('textbox', { name: '新画板名称' }).fill('平均速度为什么不能直接平均');
   await page.getByRole('button', { name: '新建画板', exact: true }).click();
   const board = page.getByRole('region', { name: '知识画板工作区', exact: true });

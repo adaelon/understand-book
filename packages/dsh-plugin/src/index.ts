@@ -42,7 +42,8 @@ export async function apply(ctx: Context, input: Config = {}) {
   });
   ctx.tools.register({ name: "ub_build_prepare_and_confirm", description: "Prepare an exact standard book build plan and ask the human to approve it. Returns a durable invocation reference; does not start executors.",
     parameters: { type: "object", properties: { target_input: { type: "string" }, root_dir: { type: "string" }, pass2: { type: "string", enum: ["enabled", "disabled"], description: "Optional long-range relation enrichment. Defaults to disabled; enable only when explicitly requested." }, max_parallel: { type: "integer", minimum: 1, maximum: 3 },
-      build_tutor: { type: 'boolean', description: 'Explicitly include extra Tutor teaching assets. Defaults to false; source understanding and book structure remain available.' },
+      course_goal: { type: 'string', description: 'Optional course scope, learning question and intended audience; requires build_course.' },
+      build_course: { type: 'boolean', description: 'Explicitly include extra inquiry courses. Defaults to false; source understanding and book structure remain available.' },
       retrieval: { type: "object", properties: { retrieval_mode: { type: "string", enum: ["lexical_only", "semantic_required"] },
         budget: { type: "object", properties: { max_documents: { type: "integer", minimum: 0 }, max_queries: { type: "integer", minimum: 0 },
           max_calls: { type: "integer", minimum: 0 }, max_input_tokens: { type: "integer", minimum: 0 } },

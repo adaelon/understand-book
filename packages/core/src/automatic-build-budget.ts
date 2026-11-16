@@ -445,7 +445,7 @@ function validatePerformanceHistory(
     semantic_attempt_count: input.semantic_attempt_count,
   };
   const computed = sha256(stableJson(identity));
-  return { history: { ...identity, revision_digest: computed }, digest: computed };
+  return { history: identity, digest: computed };
 }
 
 export function evaluateAutomaticBuildPlanBudget(input: {

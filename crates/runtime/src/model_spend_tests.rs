@@ -162,7 +162,7 @@ fn adm4_usage_snapshots_survive_truncation_error_status_and_cancellation() {
         let wire = if mode == "http-error" {
             response(
                 r#"{"error":{"message":"failed"},"usage":{"prompt_tokens":10,"completion_tokens":5,"total_tokens":15}}"#,
-                500,
+                400,
                 false,
             )
         } else {

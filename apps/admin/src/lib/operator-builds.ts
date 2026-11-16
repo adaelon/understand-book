@@ -2,7 +2,9 @@ import type { BookRef } from './types';
 export interface OperatorMaterial {
   material_id:string;label:string;state:string;published_book_ref?:BookRef|null;
   target_input?:string;root_dir?:string;pass2?:'enabled'|'disabled';max_parallel?:number;
-  material_kind?:'book'|'video'|'music';build_tutor?:boolean;
+  material_kind?:'book'|'video'|'music';build_course?:boolean;
+  course_goal?:string|null;
+  course?:{lessons:{id:string;question:string;objective:string;estimated_minutes:number}[]};
   invocation_ref?:string|null;workspace_dir?:string|null;
   required_capabilities?:string[];
   plan?:{review_markdown:string;model_runtime?:{provider:string;model:string;max_output_tokens?:number;reasoning_effort?:string|null}}|null;

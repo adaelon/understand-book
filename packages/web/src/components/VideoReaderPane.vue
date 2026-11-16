@@ -11,13 +11,17 @@ import type { VideoQuestionContext } from '../../../core/src/generated/VideoQues
 import { videoContentRect, videoRegion, type DisplayRect, type Point } from '../video-region';
 import { videoTime } from '../video-question';
 import { captureQuestionImage } from '../question-image';
-import { ArrowLeft, Captions, Check, ChevronDown, Clock3, Crosshair, Focus, Languages, Play, Search, Scissors, X } from '@lucide/vue';
+import { ArrowLeft, Captions, Check, ChevronDown, Clock3, Crosshair, Focus, Languages, Maximize2, Pause, Play, Search, Scissors, Volume2, X } from '@lucide/vue';
 const props = defineProps<{ initial: PreparingVideo; owner: string; published?: import('../video-api').PublishedVideo; playback?: import('../video-api').VideoPlayback; detailsLoading?: boolean; detailsError?: string; embedded?: boolean; mediaUrl?: string; question?: VideoQuestionContext | null; selectionDisabled?: boolean; adoptionError?: string }>();
 const emit = defineEmits<{ (event: 'close'): void; (event: 'frame-ready', ready: boolean): void; (event: 'ready', publication: NonNullable<PreparingVideo['publication']>): void; (event: 'select-region', context: VideoQuestionContext): void; (event: 'clear-region'): void; (event: 'select-range', context: VideoQuestionContext): void; (event: 'clear-range'): void }>();
 const state = ref(props.initial), player = ref<HTMLVideoElement>(), error = ref(''), playbackFailure = ref('');
 const buffering = ref(true);
 const mediaSource = computed(() => props.mediaUrl || videoUrl(state.value.video, 'media'));
 const playlist = computed(() => props.playback?.hls ? mediaSource.value.replace(/\/media$/, '/playback/index.m3u8') : null);
+const originalPlayback = ref(true);
+const timelineOrigin = computed(() => originalPlayback.value
+  ? (props.playback?.timeline_origin_ms ?? props.published?.timeline_origin_ms ?? state.value.timeline_origin_ms ?? 0) : 0);
+function logicalPosition() { return Math.max(0, (player.value?.currentTime ?? 0) * 1000 - timelineOrigin.value); }
 let releasePlayback: (() => void) | undefined;
 function savedPosition(): number {
   try { const saved = JSON.parse(localStorage.getItem(key) || 'null'); return Number.isFinite(saved?.time) && saved.time >= 0 ? Math.min(saved.time, Math.max(0, duration.value / 1000 - 0.1)) : 0; } catch { return 0; }
@@ -26,9 +30,20 @@ function connectPlayback() {
   releasePlayback?.(); releasePlayback = undefined;
   if (!player.value) return;
   buffering.value = true; playbackFailure.value = '';
-  releasePlayback = attachVideoPlayback(player.value, mediaSource.value, playlist.value, savedPosition(), message => { playbackFailure.value = message; buffering.value = false; });
+  releasePlayback = attachVideoPlayback(player.value, mediaSource.value, playlist.value, savedPosition(), message => { playbackFailure.value = message; buffering.value = false; }, original => { originalPlayback.value = original; });
 }
 function retryPlayback() { remember(); connectPlayback(); }
+function togglePlayback() {
+  const video = player.value;
+  if (!video) return;
+  if (video.paused) void video.play().catch(failure => { playbackFailure.value = failure.message; });
+  else video.pause();
+}
+function fullscreen() {
+  const card = player.value?.closest<HTMLElement>('.video-player-card');
+  if (document.fullscreenElement) void document.exitFullscreen();
+  else if (card?.requestFullscreen) void card.requestFullscreen().catch(() => {});
+}
 const transcript = ref<TranscriptMap | undefined>(props.published?.map);
 const surface = ref<HTMLElement>(), transcriptSurface = ref<HTMLElement>();
 const translations = computed(() => new Map(props.published?.translations?.map(t => [t.segment_id, t.zh_text]) ?? []));
@@ -90,7 +105,7 @@ function beginRange() {
   try {
     cancelSelection(); rangeError.value = '';
     rangeContext = props.question ? JSON.parse(JSON.stringify(props.question)) : captureQuestion(crypto.randomUUID());
-    const start = props.question?.range?.start_ms ?? Math.floor((player.value?.currentTime ?? 0) * 1000);
+    const start = props.question?.range?.start_ms ?? Math.floor(logicalPosition());
     rangeStart.value = start / 1000;
     rangeEnd.value = (props.question?.range?.end_ms ?? Math.min(start + 10000, props.published!.source.duration_ms)) / 1000;
     rangeEditing.value = true;
@@ -98,7 +113,7 @@ function beginRange() {
 }
 function markRange(edge: 'start' | 'end') {
   if (!player.value) return;
-  const seconds = Math.floor(player.value.currentTime * 1000) / 1000;
+  const seconds = Math.floor(logicalPosition()) / 1000;
   if (edge === 'start') rangeStart.value = seconds;
   else rangeEnd.value = seconds;
 }
@@ -173,7 +188,7 @@ function followFrame() {
     const context = props.playback ?? props.published;
     if (context) {
       const [numerator, denominator] = context.time_base;
-      frameTime.value = Math.round(metadata.mediaTime * denominator / numerator) * numerator / denominator * 1000;
+      frameTime.value = Math.round((metadata.mediaTime - timelineOrigin.value / 1000) * denominator / numerator) * numerator / denominator * 1000;
     }
     emit('frame-ready', true);
     followFrame();
@@ -193,19 +208,19 @@ function rememberMoment() {
 }
 function thoughtContext() {
   const reference=(props.published ?? props.playback)?.publication;
-  const actual=frameTime.value ?? Math.round((player.value?.currentTime ?? 0)*1000);
+  const actual=frameTime.value ?? Math.round(logicalPosition());
   return {book_id:reference?.book_id ?? null,publication_id:reference?.publication_id ?? null,video_time_ms:actual,
     label:`${props.initial.title} · ${timeLabel(actual)}`};
 }
-defineExpose({ captureQuestion, seek, editing, thoughtContext });
+defineExpose({ captureQuestion, seek, editing, thoughtContext, position });
 let loadedPublication: string | undefined;
-function seek(ms: number) { if (player.value) { player.value.currentTime = ms / 1000; position.value = ms; player.value.pause(); remember(); } }
+function seek(ms: number) { if (player.value) { player.value.currentTime = (ms + timelineOrigin.value) / 1000; position.value = ms; player.value.pause(); remember(); } }
 function timeLabel(ms: number) { const s=Math.floor(ms/1000); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`; }
 let timer: ReturnType<typeof setTimeout> | undefined, disposed = false;
 const key = `video-position:${props.owner}:${props.initial.video.media_id}:${props.initial.video.media_revision}`;
 function remember() {
   if (!player.value || player.value.readyState === 0) return;
-  try { localStorage.setItem(key, JSON.stringify({ time: player.value.currentTime, rate: player.value.playbackRate })); } catch { /* Playback works without browser storage. */ }
+  try { localStorage.setItem(key, JSON.stringify({ time: logicalPosition() / 1000, rate: player.value.playbackRate })); } catch { /* Playback works without browser storage. */ }
 }
 function restore() {
   followFrame();
@@ -213,10 +228,10 @@ function restore() {
   if (!player.value) return;
   try {
     const saved = JSON.parse(localStorage.getItem(key) || 'null');
-    if (saved && Number.isFinite(saved.time) && saved.time >= 0) player.value.currentTime = Math.min(saved.time, player.value.duration);
+    if (saved && Number.isFinite(saved.time) && saved.time >= 0) player.value.currentTime = Math.min(saved.time, duration.value / 1000) + timelineOrigin.value / 1000;
     if (saved && Number.isFinite(saved.rate) && saved.rate >= .25 && saved.rate <= 4) player.value.playbackRate = saved.rate;
   } catch { /* Start at the beginning if no valid local position exists. */ }
-  position.value = player.value.currentTime * 1000;
+  position.value = logicalPosition();
 }
 async function refresh() {
   if (props.published || props.playback) return;
@@ -259,14 +274,22 @@ onBeforeUnmount(() => { disposed = true; clearTimeout(timer); resizeObserver?.di
     <section class="video-viewing" :aria-label="uiText('观看与选取')">
     <div class="video-player-card">
     <div v-if="state.playable && !error" class="video-stage">
-      <video ref="player" :controls="!selecting" playsinline preload="metadata"
+      <video ref="player" :controls="!selecting && timelineOrigin === 0" playsinline preload="metadata"
         :poster="playback?.cover_url || undefined" @waiting="buffering = true" @loadeddata="buffering = false" @canplay="buffering = false" @playing="buffering = false"
-        @timeupdate="position = ($event.target as HTMLVideoElement).currentTime * 1000" @seeking="seeking" @loadedmetadata="restore" @resize="measure" @play="playbackStarted" @pause="paused = true; remember()" @seeked="remember" @ratechange="remember" @error="playbackError" />
+        @timeupdate="position = logicalPosition()" @seeking="seeking" @loadedmetadata="restore" @resize="measure" @play="playbackStarted" @pause="paused = true; remember()" @seeked="remember" @ratechange="remember" @error="playbackError" />
       <div v-if="buffering && !playbackFailure" class="video-buffering" role="status">{{ uiText('正在加载画面…') }}</div>
       <div v-if="selecting || visibleRegion" class="video-region-layer" :class="{ selecting }" :style="contentStyle" :aria-label="uiText('画面框选区域')"
         @pointerdown="startSelection" @pointermove="moveSelection" @pointerup="finishSelection" @pointercancel="cancelSelection" @lostpointercapture="cancelSelection">
         <div v-if="visibleRegion" class="video-region-box" :style="regionStyle" />
       </div>
+    </div>
+    <div v-if="state.playable && timelineOrigin !== 0 && !selecting" class="relative-video-controls">
+      <button type="button" :aria-label="paused ? uiText('播放') : uiText('暂停')" @click="togglePlayback"><Play v-if="paused" :size="17" /><Pause v-else :size="17" /></button>
+      <span class="relative-video-clock">{{ timeLabel(position) }} / {{ timeLabel(duration) }}</span>
+      <input class="relative-video-progress" type="range" :aria-label="uiText('观看位置')" min="0" :max="duration" step="1" :value="position" @input="seek(Number(($event.target as HTMLInputElement).value))" />
+      <label class="relative-video-volume"><Volume2 :size="16" aria-hidden="true" /><input type="range" :aria-label="uiText('音量')" min="0" max="1" step="0.05" :value="player?.volume ?? 1" @input="player && (player.volume = Number(($event.target as HTMLInputElement).value))" /></label>
+      <select :aria-label="uiText('播放速度')" :value="player?.playbackRate ?? 1" @change="player && (player.playbackRate = Number(($event.target as HTMLSelectElement).value))"><option v-for="rate in [.5, .75, 1, 1.25, 1.5, 2]" :key="rate" :value="rate">{{ rate }}×</option></select>
+      <button type="button" :aria-label="uiText('全屏视频')" @click="fullscreen"><Maximize2 :size="17" /></button>
     </div>
     <div v-if="published" class="video-tools" :aria-label="uiText('视频提问工具')">
       <button :disabled="frameTime === null" @click="rememberMoment">记下此刻的想法</button>
@@ -360,6 +383,17 @@ h1 { font-size: clamp(19px, 2.2cqi, 27px); font-weight: 600; letter-spacing: -.0
 .video-viewing { min-width: 0; }
 .video-player-card { overflow: hidden; border: 1px solid #dedbd5; border-radius: 14px; background: #fff; box-shadow: 0 4px 20px #28251f06; }
 .video-stage { position: relative; }
+.relative-video-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 8px 12px; background: #202525; color: #fff; }
+.relative-video-controls button { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; min-height: 32px; color: inherit; background: transparent; border: 0; }
+.relative-video-controls input { accent-color: #add5c0; }
+.relative-video-clock { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.relative-video-progress { flex: 1; min-width: 80px; }
+.relative-video-volume { display: flex; align-items: center; gap: 4px; }
+.relative-video-volume input { width: 52px; }
+.relative-video-controls select { color: inherit; background: #303737; border: 1px solid #626b68; border-radius: 4px; padding: 3px; }
+.video-player-card:fullscreen { display: flex; flex-direction: column; background: #000; }
+.video-player-card:fullscreen .video-stage { flex: 1; min-height: 0; }
+.video-player-card:fullscreen video { width: 100%; height: 100%; object-fit: contain; }
 .video-buffering { position: absolute; top: 1rem; left: 50%; transform: translateX(-50%); border-radius: 2rem; padding: .55rem 1rem; color: white; background: #16252bcc; pointer-events: none; font-size: .85rem; }
 video { display: block; width: 100%; aspect-ratio: 16 / 9; max-height: 48vh; background: #171817; object-fit: contain; object-position: center; }
 .video-region-layer { position: absolute; pointer-events: none; }

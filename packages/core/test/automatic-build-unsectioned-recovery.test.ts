@@ -141,7 +141,7 @@ describe("Pass1 recovery after unsectioned source regrouping", () => {
     expect(pass1.pending_work_units).toEqual(pass1.work_units);
     expect(pass1.quality_routing?.public_contributors).toEqual([]);
     expect(pass1.policy_set?.members.map(member => member.policy_generation_id).sort()).toEqual([
-      "pass1-lid-stitch.full.v2", "pass1-source-slice.full.v2", "pass1-window.full.v2",
+      "pass1-lid-stitch.full.v2", "pass1-source-slice.full.v3", "pass1-window.full.v2",
     ]);
     // Generation isolation changes the durable namespace only. The extraction
     // prompt, output schema and full quality contract remain the same.

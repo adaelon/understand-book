@@ -6,6 +6,17 @@ use serde_json::Value;
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Session events use Unix seconds/milliseconds or RFC 3339 timestamps.
+pub fn profile_timestamp_ms(value: &str) -> Option<u64> {
+    if let Ok(number) = value.parse::<f64>() {
+        if number.is_finite() && number >= 0.0 {
+            return Some((number * if number > 100_000_000_000.0 { 1.0 } else { 1_000.0 }) as u64);
+        }
+    }
+    time::OffsetDateTime::parse(value, &time::format_description::well_known::Rfc3339)
+        .ok().and_then(|time| (time.unix_timestamp_nanos() / 1_000_000).try_into().ok())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct BackgroundClaim {
     pub key: String,
@@ -52,6 +63,19 @@ pub enum ProfilePayload {
 }
 
 impl ProfilePayload {
+    /// Keep one canonical key when the reviewer recognizes a paraphrased trait.
+    pub fn reuse_key_from(&mut self, previous: &Self) -> Result<(), ToolError> {
+        match (self, previous) {
+            (Self::Background(new), Self::Background(old)) => new.key.clone_from(&old.key),
+            (Self::Capability(new), Self::Capability(old)) => new.key.clone_from(&old.key),
+            (Self::Goal(new), Self::Goal(old)) => new.key.clone_from(&old.key),
+            (Self::ExplanationPreference(new), Self::ExplanationPreference(old)) => new.key.clone_from(&old.key),
+            (Self::Constraint(new), Self::Constraint(old)) => new.key.clone_from(&old.key),
+            _ => return Err(invalid_profile_fact("profile revision must keep the same claim kind".into())),
+        }
+        Ok(())
+    }
+
     pub fn semantic_key(&self) -> String {
         match self {
             ProfilePayload::Background(claim) => format!("background:{}", claim.key),
@@ -203,6 +227,9 @@ pub struct ProfileFact {
     pub sensitivity: Sensitivity,
     pub created_at: String,
     pub updated_at: String,
+    /// Original assertion time, not the time a background review finished.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub observed_at_ms: Option<u64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub valid_until: Option<String>,
     #[serde(default)]
@@ -324,7 +351,10 @@ impl MemoryStore {
         input: CreateProfileFact,
         now: &str,
     ) -> Result<ProfileFact, ToolError> {
-        let fact = build_profile_fact(input, Vec::new(), now)?;
+        let mut fact = build_profile_fact(input, Vec::new(), now)?;
+        if fact.source == FactSource::UserStated {
+            fact.observed_at_ms = profile_timestamp_ms(now);
+        }
         reject_excluded_evidence(&self.document.exclusions, &fact.evidence)?;
         if let Some(existing) = self
             .document
@@ -376,6 +406,7 @@ impl MemoryStore {
             .expect("candidate cloned from current document");
         fact.status = FactStatus::Confirmed;
         fact.updated_at = now.to_string();
+        fact.observed_at_ms = profile_timestamp_ms(now).or(fact.observed_at_ms);
         let confirmed = fact.clone();
         reconcile_global_promotions(&mut candidate, &[confirmed.payload.semantic_key()], now)?;
         self.commit_document(candidate)?;
@@ -427,7 +458,8 @@ impl MemoryStore {
                 "profile correction 必须由 user_stated 提交".into(),
             ));
         }
-        let corrected = build_profile_fact(replacement, vec![fact_id.to_string()], now)?;
+        let mut corrected = build_profile_fact(replacement, vec![fact_id.to_string()], now)?;
+        corrected.observed_at_ms = profile_timestamp_ms(now);
         reject_excluded_evidence(&self.document.exclusions, &corrected.evidence)?;
         if self
             .document
@@ -695,6 +727,7 @@ pub(crate) fn build_profile_fact_with_capture(
         sensitivity: input.sensitivity,
         created_at: now.to_string(),
         updated_at: now.to_string(),
+        observed_at_ms: None,
         valid_until: input.valid_until,
         supersedes,
     };
@@ -914,6 +947,10 @@ fn compare_resolution(
         })
         .then_with(|| authority_rank(left).cmp(&authority_rank(right)))
         .then_with(|| status_rank(left.status).cmp(&status_rank(right.status)))
+        .then_with(|| match (left.observed_at_ms, right.observed_at_ms) {
+            (Some(left), Some(right)) => left.cmp(&right),
+            _ => Ordering::Equal,
+        })
         .then_with(|| left.updated_at.cmp(&right.updated_at))
         .then_with(|| left.fact_id.cmp(&right.fact_id))
 }
@@ -938,8 +975,7 @@ fn authority_rank(fact: &ProfileFact) -> u8 {
     match fact.source {
         FactSource::AgentInferred => 0,
         FactSource::DeterministicBehavior => 1,
-        FactSource::UserStated if fact.supersedes.is_empty() => 2,
-        FactSource::UserStated => 3,
+        FactSource::UserStated => 2,
     }
 }
 

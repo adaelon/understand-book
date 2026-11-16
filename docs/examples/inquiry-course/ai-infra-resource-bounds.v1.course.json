@@ -1,0 +1,25 @@
+{
+  "language": "zh-CN",
+  "units": [{"id": "resource-models", "title": "第 1 章 · 先算资源下界"}],
+  "routes": [{"id": "budgets", "title": "从资源下界到实测校准", "question": "如何用资源模型判断系统能做到什么？", "structure_ref": "theme:budgets", "lesson_ids": ["compute-or-bandwidth"]}],
+  "lessons": [{
+    "summary": {
+      "id": "compute-or-bandwidth",
+      "unit_id": "resource-models",
+      "question": "算力翻倍，为什么生成不一定更快？",
+      "objective": "用计算与读取两项时间下界，判断哪一种资源升级能降低生成时间的下界。",
+      "prerequisites": "会做除法、理解单位换算；本课会介绍工作量、算力与带宽。",
+      "estimated_minutes": 8,
+      "duration_basis": "作者估算：准备 1 分钟、预测 1 分钟、实验 2 分钟、解释 1 分钟、新情境作答 2 分钟、反馈 1 分钟；尚待目标读者试学校准。",
+      "source": {"publication": {"book_id": "BIND_BOOK_ID", "publication_id": "BIND_PUBLICATION_ID"}, "source_revision": "BIND_SOURCE_REVISION", "start_lid": "3.6.2", "end_lid": "3.6.3", "label": "《深入理解 AI Infra》§1.3.1–1.3.2", "structure_refs": ["unit:3:fragment:0015#overlap_max_time_bound", "unit:3:fragment:0015#weight_bound_h100_numbers"]}
+    },
+    "introduction": "你要为一个生成请求选择升级方案。它需要做 140 GFLOPs 的计算，并读取 70 GB 权重。原配置的算力为 989.4 TFLOP/s，带宽为 3.35 TB/s。\n\n工作量 ÷ 处理速度 = 所需时间。这里 G 表示 10⁹，T 表示 10¹²，因此 GFLOPs ÷ TFLOP/s、GB ÷ TB/s 的结果都是毫秒。\n\n本课固定一个请求，假设容量足够，计算与读取可以充分重叠。我们比较的是理想模型的时间下界；实际运行还可能有额外开销。",
+    "prediction": {"question": "只升级一种资源，哪一种更可能降低这个请求的时间下界？先给出你的判断。", "options": [{"id": "compute", "text": "只把算力翻倍"}, {"id": "bandwidth", "text": "只把带宽翻倍"}, {"id": "both", "text": "两种升级效果一样"}, {"id": "unsure", "text": "还不能确定，我想先试一试"}]},
+    "experiment": {"kind": "resource_bounds", "instruction": "依次试一试三种配置。注意：每次只改变一种资源，工作量与读取量都保持不变。观察哪条时间条仍然更长。", "work_gflops": 140, "read_gb": 70, "compute_tflops": 989.4, "bandwidth_tb_s": 3.35},
+    "explanation": "原配置的计算时间约为 0.1415 ms，读取时间约为 20.8955 ms。即使两项工作充分重叠，请求也必须等到两项都完成，所以模型下界是 max(计算时间, 读取时间)。\n\n只把算力翻倍，计算缩短到约 0.0707 ms，但读取仍要约 20.8955 ms，下界没有降低。只把带宽翻倍，读取缩短到约 10.4478 ms，下界也随之降低。\n\n判断升级方案时，先找当前较慢的一项。这个结论依赖本课的工作量、读取量与重叠假设；这里没有给出真实设备的性能保证。",
+    "task": {"question": "换一组参数：一个请求要做 64 GFLOPs 计算、读取 32 GB；算力为 200 TFLOP/s，带宽为 2 TB/s。仍假设容量足够、计算与读取充分重叠。只把算力翻倍与只把带宽翻倍后，下界分别是多少？哪个解释成立？", "options": [{"id": "read-bound", "text": "16 ms 与 8 ms；两种升级后仍是读取用时更长"}, {"id": "compute-bound", "text": "0.16 ms 与 0.32 ms；只看计算完成的时间"}, {"id": "both-half", "text": "8 ms 与 8 ms；任何资源翻倍都会让下界减半"}, {"id": "sum", "text": "16.16 ms 与 8.32 ms；把计算和读取的时间相加"}]},
+    "hint": "先分别计算 64 ÷ 200 与 32 ÷ 2，单位都是 ms。每次升级只修改对应的分母。题目假设充分重叠，比较每种配置中较大的时间。",
+    "assessment": {"rule": {"kind": "choice_set", "choices": ["read-bound", "compute-bound", "both-half", "sum"], "correct": ["read-bound"]}, "source_lids": ["3.6.3"], "source_sufficient": true, "feedback": "after_submit"},
+    "solution": "原配置：计算 64 ÷ 200 = 0.32 ms，读取 32 ÷ 2 = 16 ms。\n\n算力翻倍：计算 0.16 ms、读取 16 ms，下界为 16 ms。\n带宽翻倍：计算 0.32 ms、读取 8 ms，下界为 8 ms。\n\n两种配置都由读取时间决定下界。把两项相加对应的是顺序执行的假设；本题给定充分重叠。答对这道选择题表明你在这个情境中选对了计算与解释；下次还可以换参数自己推导。"
+  }]
+}

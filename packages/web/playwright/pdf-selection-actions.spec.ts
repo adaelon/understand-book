@@ -558,6 +558,7 @@ test('RE6 licensed two-column formula PDF keeps original typography and column g
     });
   });
   const before = await positions(); expect(before).toHaveLength(4);
+  await page.locator('.topbar .tools-toggle').click();
   await page.getByRole('button', { name: '阅读设置', exact: true }).click();
   await expect(page.locator('.reader-typography-panel')).toContainText('PDF 原版保留原始排版');
   await page.getByLabel('字号', { exact: true }).fill('22');
@@ -884,6 +885,7 @@ test('RN3 Markdown and delivered answer entries share the editor, preserving old
   await expect(editor).toContainText('助手摘录');
   await expect(editor.getByRole('textbox')).toHaveValue('');
   await editor.getByRole('textbox').fill('我的回答笔记');
+  await page.locator('.topbar .tools-toggle').click();
   await page.getByRole('button', { name: '打开书', exact: true }).click();
   const picker = page.getByRole('dialog', { name: '书库', exact: true });
   await picker.getByPlaceholder('.understand-book/book-id').fill('another-book');
@@ -903,6 +905,7 @@ test('RN3 Markdown and delivered answer entries share the editor, preserving old
   await card.getByRole('button', { name: '编辑', exact: true }).click();
   await expect(editor.getByRole('textbox')).toHaveValue('> 未知作者的旧摘录\n\n混排正文');
   await editor.getByRole('textbox').fill('旧笔记的修订正文');
+  await page.locator('.topbar .tools-toggle').click();
   await page.getByRole('button', { name: '打开书', exact: true }).click();
   await picker.getByPlaceholder('.understand-book/book-id').fill('another-book');
   await picker.getByRole('button', { name: '打开', exact: true }).click();

@@ -21,6 +21,7 @@ use runtime::memory_review::{
 use runtime::run_context::CancellationToken;
 use runtime::{AdapterError, ModelAdapter, ProviderConfig, ProviderRegistry};
 use serde_json::json;
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
@@ -715,6 +716,7 @@ impl ReviewCoordinator {
                 if let Err(error) = state.user.store.commit_review_result(
                     &job_id,
                     &eligible_turn_ids,
+                    &input.existing_facts,
                     &output.fact_candidates,
                     &output.intent_observations,
                     &finished.timestamp,
@@ -1030,6 +1032,7 @@ fn copy_historical_backfill_input(
             book_id: turn.published_book_ref.as_ref().map(|r|r.book_id.clone()).or_else(||Some(session.book_id.clone())),
             turn_id: turn.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
+            observed_at_ms: review_turn_time(&state.user, &session.id, &turn.turn_id),
             user: turn.user_authored_text().into(),
             input_action: turn.domain.interaction.as_ref().map(|a|a.action.clone()),
             assistant_status: match turn.status {
@@ -1070,6 +1073,7 @@ pub(crate) fn copy_user_review_input(
             book_id: turn.published_book_ref.as_ref().map(|r|r.book_id.clone()).or_else(||Some(session.book_id.clone())),
             turn_id: turn.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
+            observed_at_ms: review_turn_time(user, &session.id, &turn.turn_id),
             user: turn.user_authored_text().into(),
             input_action: turn.domain.interaction.as_ref().map(|a|a.action.clone()),
             assistant_status: match turn.status {
@@ -1098,6 +1102,48 @@ pub(crate) fn copy_user_review_input(
             "review job turn range is not contiguous in AgentHistory",
         ));
     }
+    let books: std::collections::BTreeSet<_> = turns.iter()
+        .map(|turn| turn.book_id.as_deref().unwrap_or(&job.book_id)).collect();
+    let mut existing_fact_evidence = BTreeMap::new();
+    let existing_facts = user.store.profile_facts().iter().filter(|fact| {
+        matches!(fact.status, memory::FactStatus::Confirmed | memory::FactStatus::Provisional | memory::FactStatus::Pending)
+            && (fact.capture == memory::ProfileFactCapture::CurrentInteraction || fact.status == memory::FactStatus::Confirmed)
+            && fact.sensitivity == memory::Sensitivity::Normal
+            && match &fact.applicability {
+                memory::Applicability::Any => true,
+                memory::Applicability::ContentProfile { profile_id } => books.len() == 1 && profile_id == content_profile,
+                _ => false,
+            }
+            && match &fact.scope {
+                memory::ProfileScope::Global => true,
+                memory::ProfileScope::Book { book_id } => job.learning_workspace_id.is_none() && books.contains(book_id.as_str()),
+                memory::ProfileScope::Workspace { learning_workspace_id, book_id } =>
+                    job.learning_workspace_id.as_ref() == Some(learning_workspace_id) && books.contains(book_id.as_str()),
+            }
+    }).map(|fact| {
+        let mut fact = fact.clone();
+        let mut evidence_times = Vec::new();
+        let mut quotes = Vec::new();
+        for evidence in &fact.evidence {
+            if let memory::EvidenceRef::Turn { session_id, turn_id } = evidence {
+                evidence_times.push(review_turn_time(user, session_id, turn_id));
+                if let Some(turn) = user.agent_history.sessions.iter().find(|s| s.id == *session_id)
+                    .and_then(|s| s.turns.iter().find(|t| t.turn_id == *turn_id)) {
+                    quotes.push(turn.user_authored_text().to_owned());
+                }
+            } else if let memory::EvidenceRef::MemoryRecord { mem_id } = evidence {
+                let record = user.store.profile_evidence_record(mem_id);
+                evidence_times.push(record.and_then(|record| memory::profile_timestamp_ms(&record.generated_at)));
+                if let Some(record) = record { quotes.push(record.content.clone()); }
+            } else { evidence_times.push(None); }
+        }
+        if fact.observed_at_ms.is_none() {
+            fact.observed_at_ms = evidence_times.into_iter().collect::<Option<Vec<_>>>()
+                .and_then(|times| times.into_iter().max());
+        }
+        existing_fact_evidence.insert(fact.fact_id.clone(), quotes);
+        fact
+    }).collect();
     Ok(ReviewInput {
         job_id: job.job_id.clone(),
         session_id: job.session_id.clone(),
@@ -1106,7 +1152,14 @@ pub(crate) fn copy_user_review_input(
         from_turn_exclusive: job.from_turn_exclusive,
         to_turn_inclusive: job.to_turn_inclusive,
         turns,
+        existing_facts,
+        existing_fact_evidence,
     })
+}
+
+fn review_turn_time(user: &crate::user_runtime::UserRuntime, session_id: &str, turn_id: &str) -> Option<u64> {
+    user.session_store.as_ref()?.logs.get(session_id)?.projection.turn_started_at.get(turn_id)
+        .and_then(|time| memory::profile_timestamp_ms(time))
 }
 
 pub(crate) fn user_review_session<'a>(
@@ -1223,10 +1276,39 @@ impl RunningServer {
     }
 }
 
-fn open_resident_memory_store(memory_path: &Path, now: &str) -> MemoryStore {
-    match MemoryStore::open_private(memory_path) {
-        Ok(store) => store,
-        Err(error) => MemoryStore::unavailable(memory_path, error, now),
+fn open_resident_memory_store(memory_path: &Path, now: &str) -> Result<MemoryStore, read_tools::ToolError> {
+    let open = || -> Result<MemoryStore, read_tools::ToolError> {
+        let unavailable = |message: String| read_tools::ToolError {
+            error_code: memory::READER_PRIVATE_STORAGE_UNAVAILABLE.into(),
+            category: "unavailable".into(),
+            message,
+        };
+        let directory = memory_path.parent().filter(|p| !p.as_os_str().is_empty())
+            .ok_or_else(|| unavailable("Local reader storage has no parent directory".into()))?;
+        memory::ReaderPrivateStorageGate::create_dir_all(directory)
+            .map_err(|e| unavailable(format!("Cannot create local reader storage: {e}")))?;
+        // Acquire before loading or recovering any snapshots. Keep the file in place:
+        // replacing it would let two processes lock different files for the same root.
+        let lock = std::fs::OpenOptions::new().create(true).truncate(false).read(true).write(true)
+            .open(directory.join("reader.lock"))
+            .map_err(|e| unavailable(format!("Cannot open local reader storage lock: {e}")))?;
+        match lock.try_lock() {
+            Ok(()) => {}
+            Err(std::fs::TryLockError::WouldBlock) => return Err(read_tools::ToolError {
+                error_code: "READER_PRIVATE_STORAGE_BUSY".into(),
+                category: "conflict".into(),
+                message: "This local reader storage is already open. Close the other reader or select a different memory directory.".into(),
+            }),
+            Err(error) => return Err(unavailable(format!("Cannot lock local reader storage: {error}"))),
+        }
+        let mut store = MemoryStore::open_private(memory_path)?;
+        store.retain_writer_lease(Arc::new(lock));
+        Ok(store)
+    };
+    match open() {
+        Ok(store) => Ok(store),
+        Err(error) if error.error_code == "READER_PRIVATE_STORAGE_BUSY" => Err(error),
+        Err(error) => Ok(MemoryStore::unavailable(memory_path, error, now)),
     }
 }
 
@@ -1289,7 +1371,8 @@ fn start_server_with_memory_path(
     let stop = Arc::new(AtomicBool::new(false));
     let service_mode = cfg!(target_os = "linux") && config.reader_only;
     let startup_now = now_ts();
-    let mut store = open_resident_memory_store(&memory_path, &startup_now);
+    let mut store = open_resident_memory_store(&memory_path, &startup_now)
+        .map_err(|error| format!("[{}] {}", error.error_code, error.message))?;
     let (session_path, history_path) = if store.private_storage_available() {
         let parent = memory_path.parent();
         (
@@ -1487,9 +1570,13 @@ fn start_server_with_memory_path(
     let boundary_timeout = review_boundary_timeout();
     let selection_translation_executor: Arc<dyn SelectionTranslationExecutor> =
         Arc::new(ProviderSelectionTranslationExecutor { stop: stop.clone() });
+    // Playback needs only the selected directory. A private-history or build-intent
+    // request can hold AppState for seconds while a score or an audio range is due.
+    let music_book_dir = Arc::new(Mutex::new(PathBuf::from(&dir)));
     for _ in 0..4 {
         let server = server.clone();
         let state = state.clone();
+        let music_book_dir = music_book_dir.clone();
         let review_coordinator = review_coordinator.clone();
         let selection_translation_executor = selection_translation_executor.clone();
         let run_coordinator = run_coordinator.clone();
@@ -1542,10 +1629,8 @@ fn start_server_with_memory_path(
                 }
                 if (video_url.starts_with("/book/music/") || (video_url.starts_with("/books/") && video_url.contains("/music/")))
                     && matches!(method.as_str(), "GET" | "HEAD") {
-                    let source = {
-                        let guard = state.lock().unwrap();
-                        crate::music_media::local_path(&guard.workspace.book_dir, &video_url)
-                    };
+                    let directory = music_book_dir.lock().unwrap().clone();
+                    let source = crate::music_media::local_path(&directory, &video_url);
                     match source { Ok(path) => crate::video_media::serve(request, &path), Err(_) => { let _ = request.respond(tiny_http::Response::empty(404)); } }
                     continue;
                 }
@@ -1696,6 +1781,49 @@ fn start_server_with_memory_path(
                             let _ = request.respond(response_from_json(reply.status, reply.body));
                             continue;
                         }
+                        if api_url == "/reader/voice-status" {
+                            let reply = if method == "GET" { crate::ok_json(&crate::voice_input::status()) }
+                                else { Reply {status:405,body:"{}".into()} };
+                            let _ = request.respond(response_from_json(reply.status,reply.body));
+                            continue;
+                        }
+                        if api_url == "/reader/voice-transcribe" {
+                            let result = if method != "POST" {
+                                Err(crate::user_storage_paths::error("METHOD_NOT_ALLOWED","validation","Voice input accepts POST"))
+                            } else {
+                                serde_json::from_str(&body).map_err(|_|crate::user_storage_paths::error("VOICE_INVALID","validation","录音读取失败。"))
+                                    .and_then(|input|crate::voice_input::Work::prepare(&input))
+                                    .and_then(|work|work.execute(&runtime::run_context::CancellationToken::with_host_stop(stop_signal.clone())))
+                            };
+                            let reply = match result { Ok(value)=>crate::ok_json(&value),Err(error)=>crate::err_reply(&error) };
+                            let _ = request.respond(response_from_json(reply.status,reply.body));
+                            continue;
+                        }
+                        if matches!(api_url.as_str(), "/reader/guidance" | "/tutor/ask-step" | "/tutor/grade") {
+                            let reply = if method != "POST" {
+                                Reply { status: 405, body: json!({"message":"reader.guidance only accepts POST"}).to_string() }
+                            } else {
+                                let prepared = serde_json::from_str::<serde_json::Value>(&body)
+                                    .map_err(|error| crate::user_storage_paths::error("INVALID_READING_GUIDANCE", "validation", &error.to_string()))
+                                    .and_then(|input| crate::reading_guidance::GuidanceWork::prepare(&state.lock().unwrap().private_context(),
+                                        api_url.trim_start_matches('/'), &input, &request_now));
+                                match prepared {
+                                    Err(error) => crate::err_reply(&error),
+                                    Ok(input) => {
+                                        let adapter: Box<dyn ModelAdapter + Send> = match review_coordinator.provider_config_snapshot() {
+                                            Some(config) => crate::host_lifecycle::ServiceAdapter::from_config(config, stop_signal.clone()),
+                                            None => Box::new(UnconfiguredAdapter),
+                                        };
+                                        match input.execute(adapter.as_ref()).and_then(|value|
+                                            input.finish(&state.lock().unwrap().private_context(), value, &request_now)) {
+                                            Ok(value) => crate::ok_json(&value), Err(error) => crate::err_reply(&error),
+                                        }
+                                    }
+                                }
+                            };
+                            let _ = request.respond(response_from_json(reply.status, reply.body));
+                            continue;
+                        }
                         if api_url == "/reader/selection.translate" {
                             let reply = if method == "POST" {
                                 route_selection_translation_request(
@@ -1754,7 +1882,7 @@ fn start_server_with_memory_path(
                             let mut guard = state
                                 .lock()
                                 .unwrap_or_else(|poisoned| poisoned.into_inner());
-                            route(
+                            let reply = route(
                                 &mut guard,
                                 Req {
                                     method: &method,
@@ -1762,7 +1890,11 @@ fn start_server_with_memory_path(
                                     body: &body,
                                     now: &request_now,
                                 },
-                            )
+                            );
+                            if method == "POST" {
+                                music_book_dir.lock().unwrap().clone_from(&guard.workspace.book_dir);
+                            }
+                            reply
                         };
                         let boundary = (is_review_boundary(&method, &api_url)
                             || (method == "POST"
@@ -1878,6 +2010,7 @@ fn is_api_url(url: &str) -> bool {
     let (path, _) = split_url(url);
     let path = path.strip_prefix("/api").unwrap_or(path);
     path.starts_with("/book/")
+        || path == "/learning-task"
         || path.starts_with("/books/")
         || path.starts_with("/reader/")
         || path.starts_with("/memory/")
@@ -2186,7 +2319,7 @@ mod tests {
         std::fs::write(&blocker, "not a directory").unwrap();
         let memory_path = blocker.join("memory.json");
 
-        let store = open_resident_memory_store(&memory_path, "t-storage");
+        let store = open_resident_memory_store(&memory_path, "t-storage").unwrap();
 
         assert!(!store.private_storage_available());
         assert_eq!(store.profile_facts().len(), 0);
@@ -2196,6 +2329,54 @@ mod tests {
         );
         assert!(!memory_path.exists());
         std::fs::remove_file(blocker).unwrap();
+    }
+
+    #[test]
+    fn local_reader_writer_child() {
+        let Some(path) = std::env::var_os("UB_TEST_LOCAL_WRITER_MEMORY") else { return; };
+        let error = open_resident_memory_store(Path::new(&path), "child").err().unwrap();
+        assert_eq!(error.error_code, "READER_PRIVATE_STORAGE_BUSY");
+    }
+
+    #[test]
+    fn local_reader_writer_rejects_second_host_and_preserves_notes() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("memory/memory.json");
+        let content = |text: &str| memory::NoteContent {
+            content: text.into(), title: None, authorship: memory::NoteAuthorship::User,
+            context: memory::NoteContext::default(), source_refs: vec![], change_note: None,
+            based_on_turn: None, source: None, capture: None,
+        };
+        let mut first = open_resident_memory_store(&path, "first").unwrap();
+        first.create_personal_note(content("first reader note"), "first", "2026-11-16T00:00:00Z").unwrap();
+        let child = std::process::Command::new(std::env::current_exe().unwrap())
+            .args(["--exact", "host::tests::local_reader_writer_child", "--nocapture"])
+            .env("UB_TEST_LOCAL_WRITER_MEMORY", &path).output().unwrap();
+        assert!(child.status.success(), "{}\n{}", String::from_utf8_lossy(&child.stdout), String::from_utf8_lossy(&child.stderr));
+        let duplicate = start_server_with_memory_path(
+            ServerHostConfig::desktop(root.path().join("library"), root.path().join("dist")), path.clone(),
+        ).err().expect("A duplicate host must fail before opening session or history storage");
+        assert!(duplicate.contains("READER_PRIVATE_STORAGE_BUSY"), "{duplicate}");
+        drop(first);
+        let mut second = open_resident_memory_store(&path, "second").unwrap();
+        second.create_personal_note(content("second reader note"), "second", "2026-11-16T00:01:00Z").unwrap();
+        drop(second);
+        let reopened = open_resident_memory_store(&path, "reopen").unwrap();
+        let texts: std::collections::BTreeSet<_> = reopened.personal_notes(None, None, 100)
+            .into_iter().map(|note| note.value.record.content).collect();
+        assert_eq!(texts, ["first reader note".to_string(), "second reader note".to_string()].into_iter().collect());
+    }
+
+    #[test]
+    fn local_reader_writer_lives_through_learning_connection() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("memory.json");
+        let first = open_resident_memory_store(&path, "first").unwrap();
+        let learning = first.learning_store().unwrap();
+        drop(first);
+        assert_eq!(open_resident_memory_store(&path, "second").err().unwrap().error_code, "READER_PRIVATE_STORAGE_BUSY");
+        drop(learning);
+        assert!(open_resident_memory_store(&path, "reopen").is_ok());
     }
 
     #[test]
@@ -2471,6 +2652,58 @@ mod tests {
 }))
     }
 
+    #[test]
+    fn profile_review_input_reads_original_event_times_evidence_and_only_its_scope() {
+        let state = review_test_state_with("profile-revision-context", 1, 2);
+        let mut state = state.lock().unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let paths = crate::session_store::SessionPaths::from_history(&dir.path().join("history.json"));
+        let session = state.user.agent_history.sessions[0].clone();
+        let mut log = crate::session_log::SessionLog::open(paths.session(&session.id)).unwrap();
+        for mut event in crate::session_event::tests::sample_events(&session) {
+            event.at = match &event.body {
+                crate::session_event::EventBody::TurnAccepted(_) if event.turn_id.as_deref() == Some("turn-review-0-1") => "1",
+                crate::session_event::EventBody::TurnAccepted(_) => "2",
+                _ => "999",
+            }.into();
+            log.append(event).unwrap();
+        }
+        let (sessions, history) = crate::session_store::SessionStore::open(paths).unwrap();
+        state.user.session_store = Some(sessions);
+        state.user.agent_history = history;
+        let fact = CreateProfileFact {
+            scope: ProfileScope::Book { book_id: session.book_id.clone() },
+            applicability: Applicability::Any,
+            payload: ProfilePayload::ExplanationPreference(PreferenceClaim { key: "style".into(), value: "examples".into() }),
+            source: FactSource::UserStated,
+            evidence: vec![EvidenceRef::Turn { session_id: session.id.clone(), turn_id: "turn-review-0-1".into() }],
+            confidence: None, sensitivity: Sensitivity::Normal, valid_until: None,
+        };
+        // Simulate a pre-field document; original event time must be recovered.
+        let old = state.user.store.create_profile_fact(fact.clone(), "legacy-unknown").unwrap();
+        let mut foreign = fact;
+        foreign.scope = ProfileScope::Workspace { learning_workspace_id: "other-workspace".into(), book_id: session.book_id.clone() };
+        state.user.store.create_profile_fact(foreign, "legacy-unknown").unwrap();
+        let explicit = state.user.store.apply_memory_op(memory::MemoryOp::Remember {
+            operation_id: "remember-language".into(), book_id: session.book_id.clone(),
+            evidence_text: "我长期偏好中文讲解。".into(),
+            fact: memory::ExplicitProfileFact {
+                scope: ProfileScope::Global, applicability: Applicability::Any,
+                payload: ProfilePayload::ExplanationPreference(PreferenceClaim { key: "language".into(), value: "Chinese".into() }),
+                sensitivity: Sensitivity::Normal, valid_until: None, sensitive_plaintext_acknowledged: false,
+            },
+        }, "3").unwrap();
+        let memory::MemoryOpOutcome::Remembered { fact: explicit, .. } = explicit else { panic!() };
+        let job = state.user.store.review_state().review_jobs[0].clone();
+        let input = copy_review_input(&state, &job).unwrap();
+        assert_eq!(input.turns.iter().map(|turn| turn.observed_at_ms).collect::<Vec<_>>(), vec![Some(1_000), Some(2_000)]);
+        assert_eq!(input.existing_facts.len(), 2);
+        assert_eq!(input.existing_facts.iter().find(|fact| fact.fact_id == old.fact_id).unwrap().observed_at_ms, Some(1_000));
+        assert_eq!(input.existing_fact_evidence[&old.fact_id], vec!["I prefer worked examples 1"]);
+        assert_eq!(input.existing_fact_evidence[&explicit.fact_id], vec!["我长期偏好中文讲解。"]);
+        assert!(state.user.store.profile_facts().iter().find(|fact| fact.fact_id == old.fact_id).unwrap().observed_at_ms.is_none(), "copying input is read-only");
+    }
+
     fn translation_host_state(name: &str) -> Arc<Mutex<AppState>> {
         let dir = std::env::temp_dir().join(format!("ub-translation-host-{name}"));
         let _ = std::fs::remove_dir_all(&dir);
@@ -2710,13 +2943,12 @@ mod tests {
                 Ok(serde_json::json!({}))
             }
         }
-        let state = review_test_state("paper-localization-lock");
-        {
-            let mut guard = state.lock().unwrap();
-            guard.workspace.book = (Book::load(&PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("../../.understand-book/understanding-transformer-from-the-perspective-of-associative-memory").to_string_lossy()).unwrap()).into();
-            guard.workspace.session_path = None;
-        }
+        let mut fixture = crate::tests::state_named("paper-localization-lock");
+        crate::tests::attach_paper_profile(&mut fixture);
+        crate::tests::write_pdf_runtime_artifacts(&mut fixture);
+        fixture.workspace.book = Book::load(fixture.workspace.book_dir.to_str().unwrap()).unwrap().into();
+        fixture.workspace.session_path = None;
+        let state = Arc::new(Mutex::new(fixture));
         let called = Arc::new(AtomicBool::new(false));
         let response =
             route_paper_localization_request(&state, &Probe(state.clone(), called.clone()));

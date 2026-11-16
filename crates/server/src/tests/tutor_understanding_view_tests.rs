@@ -9,7 +9,7 @@ fn directory() -> PathBuf {
 
 fn captured_fixture() -> (tempfile::TempDir, AppState, Value) {
     let (root, state) = super::tutor_building_blocks_tests::fixture();
-    let tb4 = directory().join("../tutor-building-blocks-tb4/browser");
+    let tb4 = directory().parent().unwrap().join("tutor-building-blocks-tb4/browser");
     let read = |file: &str| -> Value {
         serde_json::from_str(&std::fs::read_to_string(tb4.join(file)).unwrap()).unwrap()
     };

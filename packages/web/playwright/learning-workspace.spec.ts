@@ -57,13 +57,13 @@ test('W5 creates two workspaces and preserves cross-book conversation, goals, dr
   };
   const open = async (id: string) => {
     await page.locator('.learning-member').filter({ hasText: id.replaceAll('-', ' ') }).getByRole('button', { name: /^(开始阅读|继续阅读)$/ }).click();
-    await expect(page.locator('.workspace-goal-bar')).toBeVisible();
+    await expect(page.locator('.topbar')).toBeVisible();
     await expect(page.getByRole('textbox', { name: '围绕当前阅读内容提问' })).toBeEnabled();
   };
-  const manage = () => page.getByRole('button', { name: '工作区与资料', exact: true }).click();
+  const manage = () => page.getByRole('button', { name: '学习资料', exact: true }).click();
   const enter = async (goal: string) => {
     await page.locator('.learning-space-card').filter({ hasText: goal }).getByRole('button', { name: '打开工作区' }).click();
-    await expect(page.locator('.workspace-goal-bar')).toContainText(goal);
+    await expect.poll(async () => (await scene(page))?.learning_workspace_goal?.text).toBe(goal);
   };
   const input = page.getByRole('textbox', { name: '围绕当前阅读内容提问' });
   const ask = async (message: string) => {
@@ -142,7 +142,7 @@ test('W5 creates two workspaces and preserves cross-book conversation, goals, dr
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: resolve(output, 'workspace-management-mobile.png'), fullPage: true });
   await enter('期末考试冲刺');
-  await expect(page.locator('.workspace-goal-bar')).toBeVisible();
+  await expect(page.locator('.topbar')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: resolve(output, 'workspace-reader-mobile.png'), fullPage: true });
   expect(failures).toEqual([]);

@@ -43,18 +43,34 @@ it('creates exact reuse and missing source inputs with one platform budget, with
   await mount();await click('创建准备任务');await fill('准备任务名称','两书复习');await fill('平台预算上限（元）','1.234567');await fill('每次执行预计占用（元）','0.001');await fill('成果授权账号（空格或逗号分隔）','A, B A');await check('existing-book · exact-old');await fill('资料名称','待构建书');await fill('来源文件或工作区位置','E:/source/book.md');await fill('成果根目录','E:/build');await submit();
   expect(writes()).toHaveLength(1);expect(writes()[0][0]).toBe('/api/admin/operator-builds');const body=JSON.parse(writes()[0][1].body);
   expect(body).toMatchObject({name:'两书复习',max_micro_cny:1234567,reserved_per_execution_micro_cny:1000,visible_to_users:['A','B'],materials:[{published_book_ref:existing},{target_input:'E:/source/book.md',root_dir:'E:/build',pass2:'disabled'}]});
-  expect(body.materials[1]).toMatchObject({material_kind:'book',build_tutor:false,required_capabilities:['text','tutor']});
+  expect(body.materials[1]).toMatchObject({material_kind:'book',build_course:false,required_capabilities:['text','tutor']});
+});
+
+it('creates a course build with the requested scope instead of legacy teaching prebuild',async()=>{
+  await mount();await click('创建准备任务');await fill('准备任务名称','条件与论证');await fill('平台预算上限（元）','2');await fill('每次执行预计占用（元）','0.02');await fill('成果授权账号（空格或逗号分隔）','A');await fill('资料名称','数学教材');await fill('来源文件或工作区位置','E:/source/math.md');await fill('成果根目录','E:/build');
+  expect(document.querySelector('[role=dialog]')!.textContent).not.toContain('预构建 Tutor');
+  await check('构建课程');await fill('课程目标与范围（可选）','  通过反例理解充分条件  ');await submit();
+  const material=JSON.parse(writes()[0][1].body).materials[0];
+  expect(material).toMatchObject({build_course:true,course_goal:'通过反例理解充分条件'});expect(material).not.toHaveProperty('build_tutor');
+});
+
+it('shows the constructed lessons before publishing their materials',async()=>{
+  task={...task,state:'ready',materials:[{material_id:'one',label:'速率',state:'imported',published_book_ref:built,build_course:true,course:{lessons:[{id:'rate',question:'什么时候可以平均两个速率？',objective:'解释等时间条件。',estimated_minutes:20}]}}]};
+  await mount();await click('查看构建任务');
+  expect(document.body.textContent).toContain('已构建 1 课 · 预计共 20 分钟');
+  expect(document.body.textContent).toContain('什么时候可以平均两个速率？');
+  expect(document.body.textContent).toContain('解释等时间条件。');
 });
 
 it('creates and starts an MP4 in one submission with the entered budget and no Tutor assets',async()=>{
-  task={...task,state:'draft',revision:0,materials:[{material_id:'source-1',label:'视频课',state:'pending',material_kind:'video',build_tutor:false}]};
+  task={...task,state:'draft',revision:0,materials:[{material_id:'source-1',label:'视频课',state:'pending',material_kind:'video',build_course:false}]};
   await mount();await click('创建准备任务');await fill('准备任务名称','视频课准备');await fill('平台预算上限（元）','2');await fill('每次执行预计占用（元）','0.02');await fill('成果授权账号（空格或逗号分隔）','A');await fill('资料名称','视频课');await fill('来源文件或工作区位置','E:/source/lecture.MP4');await fill('成果根目录','E:/build');
   const dialog=document.querySelector('[role=dialog]')!;
-  expect(dialog.textContent).toContain('不预生成 Tutor 教学材料');expect(dialog.textContent).not.toContain('额外预构建 Tutor 教学材料');
+  expect(dialog.textContent).toContain('不自动构建课程');expect(dialog.textContent).not.toContain('额外预构建 Tutor 教学材料');
   expect([...dialog.querySelectorAll('button')].find(b=>b.type==='submit')!.textContent).toBe('创建并开始构建');
   await submit();
   expect(writes()).toHaveLength(2);const created=JSON.parse(writes()[0][1].body);
-  expect(created.materials).toMatchObject([{material_kind:'video',build_tutor:false,required_capabilities:['text','video','translation','visual_index','graph','discourse']}]);
+  expect(created.materials).toMatchObject([{material_kind:'video',build_course:false,required_capabilities:['text','video','translation','visual_index','graph','discourse']}]);
   expect(writes()[1][0]).toBe(`/api/admin/operator-builds/${created.task_id}/start`);
   expect(JSON.parse(writes()[1][1].body)).toMatchObject({expected_revision:0,max_micro_cny:2000000});
   expect(document.querySelector('[aria-label="运营构建任务详情"]')).not.toBeNull();
@@ -73,7 +89,7 @@ it('creates curated music with score and event requirements and starts the exist
   await submit();
   expect(writes()).toHaveLength(2);
   const created=JSON.parse(writes()[0][1].body);
-  expect(created.materials).toMatchObject([{material_kind:'music',target_input:'E:/music/curation.json',build_tutor:false,required_capabilities:['music','music_score','music_events']}]);
+  expect(created.materials).toMatchObject([{material_kind:'music',target_input:'E:/music/curation.json',build_course:false,required_capabilities:['music','music_score','music_events']}]);
   expect(writes()[1][0]).toBe(`/api/admin/operator-builds/${created.task_id}/start`);
   expect(document.querySelector('[role=dialog]')).toBeNull();
 });
@@ -90,7 +106,7 @@ it('reuses music without requiring a fabricated transcript and exposes music cap
 });
 
 it('leaves a saved video task available to retry when its start is rejected',async()=>{
-  task={...task,state:'draft',revision:0,materials:[{material_id:'source-1',label:'视频课',state:'pending',material_kind:'video',build_tutor:false}]};
+  task={...task,state:'draft',revision:0,materials:[{material_id:'source-1',label:'视频课',state:'pending',material_kind:'video',build_course:false}]};
   const original=fetcher.getMockImplementation()!;
   fetcher.mockImplementation(async(url:string,init?:RequestInit)=>url.endsWith('/start')?Response.json({error_code:'BUILD_BUDGET_EXHAUSTED',message:'exhausted'},{status:409}):original(url,init));
   await mount();await click('创建准备任务');await fill('准备任务名称','视频课准备');await fill('平台预算上限（元）','2');await fill('每次执行预计占用（元）','0.02');await fill('成果授权账号（空格或逗号分隔）','A');await fill('资料名称','视频课');await fill('来源文件或工作区位置','E:/source/lecture.mp4');await fill('成果根目录','E:/build');await submit();

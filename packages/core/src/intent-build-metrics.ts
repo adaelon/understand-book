@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import {
   existsSync,
   lstatSync,
@@ -219,7 +218,6 @@ export interface IntentBuildAblationReportV1 {
     lid_or_quote: false;
     user_profile: false;
   };
-  digest: string;
 }
 
 export function validateIntentBuildUsageEventV1(input: unknown): IntentBuildUsageEventV1 {
@@ -435,7 +433,7 @@ export function replayIntentBuildUsageEvents(
   }
   const events = [...byId.values()].sort((left, right) => left.occurred_at.localeCompare(right.occurred_at)
     || left.event_id.localeCompare(right.event_id));
-  const reportWithoutDigest = {
+  return {
     version: "intent_build_ablation_report.v1" as const,
     book_id: options.book_id,
     as_of: options.as_of,
@@ -453,10 +451,6 @@ export function replayIntentBuildUsageEvents(
       lid_or_quote: false as const,
       user_profile: false as const,
     },
-  };
-  return {
-    ...reportWithoutDigest,
-    digest: createHash("sha256").update(canonicalBuildJson(reportWithoutDigest), "utf8").digest("hex"),
   };
 }
 

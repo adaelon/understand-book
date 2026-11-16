@@ -127,6 +127,9 @@ export function runStatusText(snapshot: RunSnapshot, connection: string): string
 export function agentFailureMessage(error: AgentChatTurn['error'], summary?: AgentChatTurn['run_summary']): string | undefined {
   if (!error) return;
   if (error.error_code === 'AGENT_RUN_CANCELLED') return;
+  if (error.error_code === 'VIDEO_DRAFT_INVALID') return uiText('问题未提交：视频提问内容无效，请检查所选画面或附件后重新发送。');
+  if (error.error_code === 'HTTP_413' || error.error_code === 'REQUEST_TOO_LARGE') return uiText('图片或附件过大，请缩小后重新发送。');
+  if (error.error_code === 'SUBMISSION_STORAGE_FAILED') return uiText('问题尚未发送，浏览器暂时无法保存重试信息。请保留内容后重试。');
   const trace = summary?.trace ?? [];
   const reviewFailed = error.error_code === 'TEACHING_REVIEW_FAILED'
     || (error.error_code === 'TEACHING_INVALID' && summary?.activities?.some(activity => activity.name === 'tutor_delivery_review' && activity.status === 'failed'));

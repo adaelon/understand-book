@@ -154,14 +154,22 @@ fn work(
 }
 
 fn implication(evidence: &LearningEvidence, historical: bool) -> Value {
-    json!({"evidence_ref":evidence.evidence_id,"action_ref":evidence.action_ref,
+    let mut view=json!({"evidence_ref":evidence.evidence_id,"action_ref":evidence.action_ref,
+        "nature":evidence.nature,"status":evidence.status,
         "teaching_implication":preview(&json!(evidence.teaching_implication),600),
         "interpretation":preview(&json!(evidence.interpretation),600),
         "correction":evidence.correction.as_ref().map(|text|preview(&json!(text),600)),
         "supersedes":evidence.supersedes,"fact_refs":evidence.fact_refs,"support_delivery_refs":evidence.support_delivery_refs,"assistance_refs":evidence.assistance_refs,
         "scope":{"source_id":evidence.source_id,"source_revision":evidence.source_revision,
             "tutor_session_id":evidence.session_id,"design_ref":evidence.design_ref,"block_refs":evidence.block_refs},
-        "historical":historical})
+        "historical":historical});
+    // Bound the view after removing unassessed teacher inferences, so those
+    // discarded narratives cannot evict the user's correction or original words.
+    if view["nature"]=="hypothesis" && view["status"]=="unassessed" {
+        view.as_object_mut().unwrap().remove("interpretation");
+        view.as_object_mut().unwrap().remove("teaching_implication");
+    }
+    view
 }
 
 fn is_work(fact: &TeachingEvent) -> bool {

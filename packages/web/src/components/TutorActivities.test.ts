@@ -109,10 +109,43 @@ it('retains an answer-matching interactive question and formats its help', async
 const api = vi.hoisted(() => ({
   tutorActivities: vi.fn(), tutorDisplay: vi.fn(), tutorAction: vi.fn(),
   tutorHelpDisplayed: vi.fn(), tutorFeedbackDisplayed: vi.fn(),
-  tutorPageHelp: vi.fn(),
+  tutorPageHelp: vi.fn(), tutorAskStep: vi.fn(), tutorGrade: vi.fn(),
 }));
+
+it('sends only a selected calculation step, restores the draft, and grades only a submitted version', async () => {
+  const delivery = 'calculation-test';
+  const activity = { delivery_ref: delivery, status:'active', attempted:false, help_seen:[],
+    move:{ move_id:'calc', prompt:'求最小值和取得点。', actions:['submit','revise'], answer_input:{kind:'worked_solution'} } };
+  api.tutorActivities.mockResolvedValue({activities:[activity]});
+  api.tutorAskStep.mockResolvedValue({help_ref:'hint-calc', text:'这个点满足题里的约束吗？'});
+  api.tutorAction.mockResolvedValue({event_id:'answer-calc',assessment:'unassessed',help:null});
+  api.tutorGrade.mockResolvedValue({assessment:'correct'});
+  const props = {sessionId:'chat',turnId:'turn'};
+  let wrapper = mount(TutorActivities,{props});
+  try {
+    await flushPromises();
+    const input = wrapper.get('textarea');
+    const working = '先求导。\nx=1 可以吗？\n未发送的草稿';
+    await input.setValue(working);
+    const step = 'x=1 可以吗？'; const start = working.indexOf(step);
+    input.element.setSelectionRange(start, start + step.length); await input.trigger('select');
+    await wrapper.get('.ask').trigger('click'); await flushPromises();
+    expect(api.tutorAskStep).toHaveBeenCalledTimes(1);
+    expect(api.tutorAskStep.mock.calls[0][0].text).toBe(step);
+    expect(JSON.stringify(api.tutorAskStep.mock.calls[0][0])).not.toContain('未发送的草稿');
+    expect(api.tutorAction).not.toHaveBeenCalled(); expect(api.tutorGrade).not.toHaveBeenCalled();
+    expect(wrapper.text()).toContain('这个点满足题里的约束吗？');
+    wrapper.unmount(); wrapper = mount(TutorActivities,{props}); await flushPromises();
+    expect(wrapper.get('textarea').element.value).toBe(working);
+    const answer='因为 x≥3，所以 x−1≥2。等号在 x=3 时成立，最小值为 4。';
+    await wrapper.get('textarea').setValue(answer);
+    await wrapper.get('button.primary').trigger('click'); await flushPromises();
+    expect(api.tutorAction.mock.calls[0][0]).toMatchObject({delivery_ref:delivery,action:'submit',response:answer});
+    expect(api.tutorGrade).toHaveBeenCalledWith('answer-calc','zh-CN');
+  } finally { wrapper.unmount(); localStorage.clear(); }
+});
 vi.mock('../api', () => ({ api, ApiError: class extends Error {} }));
-vi.mock('../network-context', () => ({ bindSceneApi: (value: unknown) => value }));
+vi.mock('../network-context', async importOriginal => ({ ...await importOriginal<typeof import('../network-context')>(), bindSceneApi: (value: unknown) => value }));
 const notes = vi.hoisted(() => ({ openPersonalNotes: vi.fn() }));
 vi.mock('../personal-notes', () => notes);
 
@@ -148,7 +181,8 @@ it('assembles an answer from card picks instead of free text', async () => {
   try {
     await flushPromises();
     reveal(wrapper.get('article').element); await flushPromises();
-    expect(wrapper.find('textarea').exists()).toBe(false);
+    expect(wrapper.find('textarea[aria-label="活动回答"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('我的思路');
     const cards = wrapper.findAll('.practice-card');
     await cards[1].trigger('click'); await cards[0].trigger('click'); await cards[2].trigger('click'); await cards[2].trigger('click');
     expect(cards[2].attributes('aria-pressed')).toBe('false');
@@ -244,6 +278,24 @@ beforeEach(() => {
 });
 afterEach(() => vi.unstubAllGlobals());
 
+it.each(['explanation', 'response', 'practice', 'continuation', 'failed'])('reports guidance availability after loading %s', async kind => {
+  let finish!: (result: { activities: unknown[] }) => void;
+  let fail!: (error: Error) => void;
+  api.tutorActivities.mockImplementationOnce(() => new Promise((resolve, reject) => { finish = resolve; fail = reject; }));
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' } });
+  try {
+    expect(wrapper.emitted('guidance-available')?.at(-1)).toEqual([false]);
+    if (kind === 'failed') fail(new Error('unavailable'));
+    else finish({ activities: [{ delivery_ref: 'activity', status: 'active', attempted: false, help_seen: [],
+      move: { move_id: kind, prompt: '当前内容', actions: kind === 'practice' ? ['submit'] : [],
+        ...(kind === 'response' ? { response_expectation: { public_prompt: '你的理由是什么？', block_refs: [] } } : {}) },
+      ...(kind === 'continuation' ? { continuation: { availability: { status: 'eligible' } } } : {}),
+    }] });
+    await flushPromises();
+    expect(wrapper.emitted('guidance-available')?.at(-1)).toEqual([kind === 'explanation']);
+  } finally { wrapper.unmount(); }
+});
+
 it('focuses the active response from the learning dock without replacing a draft or submitting it', async () => {
   const wrapper = mount(TutorActivities, { attachTo: document.body, props: { sessionId: 'chat', turnId: 'turn' } });
   try {
@@ -297,7 +349,7 @@ it('waits for an explicitly unready presentation before registering its visible 
 it('states when the original question has no hint or explanation and does not invent a help action', async () => {
   api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref:'question',status:'active',attempted:false,help_seen:[],move:{move_id:'q',prompt:'Explain',actions:['submit']} }] });
   const wrapper=mount(TutorActivities,{props:{sessionId:'chat',turnId:'turn'}}); await flushPromises();
-  expect(wrapper.text()).toContain('当前题目未提供提示或直接讲解');
+  expect(wrapper.text()).toContain('问这一步');
   expect(wrapper.find('[data-help-action]').exists()).toBe(false); expect(api.tutorAction).not.toHaveBeenCalled(); wrapper.unmount();
 });
 

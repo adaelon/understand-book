@@ -140,7 +140,7 @@ test('English reading toolbar keeps every supported action within the desktop wi
     import { createApp } from '/node_modules/.vite/deps/vue.js';
     import TopBar from '/src/components/TopBar.vue';
     import '/src/style.css';
-    createApp(TopBar, { chapterTitle: 'Understanding computer architecture', guideChapterTitle: 'Requirements and architecture', guideChapterEnabled: true, progressPct: 35, anchorLid: '1.1', debugOpen: false, leftRailOpen: true, buildIntentOpen: false, buildIntentAvailable: true, workbenchAvailable: true, desktopHost: true, mobileCollapsible: false, mobileOpen: false, typographyAvailable: true, focusAvailable: true }).mount('#app');
+    createApp(TopBar, { chapterTitle: 'Understanding computer architecture', progressPct: 35, anchorLid: '1.1', debugOpen: false, leftRailOpen: true, buildIntentOpen: false, buildIntentAvailable: true, workbenchAvailable: true, desktopHost: true, mobileCollapsible: false, mobileOpen: false, typographyAvailable: true, focusAvailable: true }).mount('#app');
     </script></body></html>` }));
   await page.goto('/locale-toolbar.html?lang=en');
   await expect(page.locator('.topbar')).toBeVisible();

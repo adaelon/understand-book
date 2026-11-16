@@ -2,7 +2,7 @@ use crate::tutor_continuation::*;
 use serde_json::{json, Value};
 
 fn action_context(action: &str) -> Value {
-    json!({"status":"active","current_action":{
+    json!({"status":"practice","current_action":{
         "action":{"origin":"ui_entry","entry_action":action},"user_supplement":"",
         "accepted_request":"UI request","answer_ref":null,"answer_text":null,
         "source_excerpt":null,"source_bindings":[],"target":null,
@@ -11,7 +11,7 @@ fn action_context(action: &str) -> Value {
 
 #[test]
 fn tutor_projection_exposes_only_current_operations() {
-    for (status, operations) in [("observing",json!(["trace","understanding","evidence"])), ("reference",json!(["trace"]))] {
+    for (status, operations) in [("observing",json!(["trace","understanding","evidence","corrections","closed_book"])), ("reference",json!(["trace"]))] {
         let context = json!({"status":status});
         let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
         let registration = registry.registration("tutor.step").unwrap();
@@ -53,7 +53,7 @@ fn tutor_action_intent_preserves_request_default_and_preference_precedence() {
     context["default_teaching_intent"] = json!("guided_inquiry");
     context["current_action"]["user_supplement"] = json!("Explain directly this time.");
     assert!(action_intent(&context).is_none());
-    for context in [context,json!({"status":"active","current_request":"Explain directly."})] {
+    for context in [context,json!({"status":"practice","current_request":"Explain directly."})] {
         let registry = crate::orchestrator::resident_tool_registry().with_tutor_context(Some(&context));
         let registration = registry.registration("tutor.step").unwrap();
         let fields = &registration.spec.parameters["properties"]["move"]["properties"];

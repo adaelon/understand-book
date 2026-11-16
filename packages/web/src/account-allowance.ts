@@ -28,7 +28,20 @@ export interface AccountAllowanceSummary {
   status: 'active' | 'scheduled' | 'expired' | 'closed' | 'no_period';
   replenishment: { offers: AllowanceOffer[]; contact?: string | null };
 }
-export interface AllowanceOffer { offer_id: string; title: string; amount_fen: number; delta_milli_percent: number; basis_version: string; instructions: string }
+export interface AllowanceOffer { offer_id: string; title: string; amount_fen: number; budget_micro_cny: number; delta_milli_percent: number; basis_version: string; instructions: string }
+/** Current balance uses the actual total grant, including top-ups. Historical
+ * usage keeps the server's immutable original-period projection. */
+export function budgetPercentage(amount: number, total: number): AllowancePercentage {
+  if (total <= 0) return { value: '0', nonzero: false, below_tenth: false };
+  const numerator = BigInt(amount), denominator = BigInt(total);
+  const tenths = (numerator * 1000n + denominator / 2n) / denominator;
+  return { value: String(Number(tenths) / 10), nonzero: amount !== 0, below_tenth: amount !== 0 && numerator * 1000n < denominator };
+}
+export function remainingPercentages(balance: AllowancePeriod['balance']): AllowancePercentages {
+  const total = balance.granted_micro_cny;
+  const ratio = (amount: number) => budgetPercentage(Math.max(0, amount), total);
+  return { granted: ratio(total), available: ratio(Math.min(total, balance.available_micro_cny)), debited: ratio(balance.debited_micro_cny), active_reserved: ratio(balance.active_reserved_micro_cny), pending: ratio(balance.pending_micro_cny), deficit: ratio(-balance.available_micro_cny) };
+}
 export function offerPercentage(milli: number): string { return `${milli / 1000}%`; }
 export function paymentAmount(fen: number): string { return `${Math.trunc(fen / 100)}.${String(fen % 100).padStart(2, '0')}`; }
 export interface AccountUsage {

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -9,7 +9,9 @@ import { harness, textResponse, toolResponse } from "./harness.ts";
 
 import { MetadataModel, objects, candidateFor } from "./control-fixture.ts";
 
-for (const pass2 of ["disabled", "enabled"] as const) test(`installed DSH and real stdio complete standard plan, Pass2 ${pass2}, yielding between handoffs`, { timeout: 240000 }, async () => {
+for (const mode of ["disabled", "enabled", "course"] as const) test(`installed DSH and real stdio complete standard plan, mode ${mode}, yielding between handoffs`, { timeout: 240000 }, async () => {
+  const pass2 = mode === 'enabled' ? 'enabled' : 'disabled';
+  const buildCourse = mode === 'course';
   const root = mkdtempSync(path.join(tmpdir(), "ub-dsh-control-"));
   const source = path.join(root, "book.md");
   writeFileSync(source, "# Transactions\n\nTransactions group operations into one atomic change.\n");
@@ -67,7 +69,7 @@ for (const pass2 of ["disabled", "enabled"] as const) test(`installed DSH and re
     return { answers: [{ id: request.questions[0].id, selected: ["批准"] }] };
   });
   try {
-    const invocation = await control.prepareAndConfirm(h.parent, new AbortController().signal, { target_input: source, root_dir: root, pass2,build_tutor:true }) as any;
+    const invocation = await control.prepareAndConfirm(h.parent, new AbortController().signal, { target_input: source, root_dir: root, pass2,build_tutor:!buildCourse,build_course:buildCourse,...(buildCourse?{course_goal:'Explain atomic grouping from the supplied definition.'}:{}) }) as any;
     assert.match(invocation.invocation_ref, /^abinv1_/u); assert.equal(h.model.requests.length, 0);
     if (pass2 === "enabled") {
       const cancelled = await control.run(h.parent, cancellation.signal, invocation.invocation_ref) as any;
@@ -90,7 +92,15 @@ for (const pass2 of ["disabled", "enabled"] as const) test(`installed DSH and re
     }
     assert.equal(result.step.action.kind, "DONE", root);
     assert.ok(stages.has("pass1")); assert.ok(stages.has("profile_sidecar")); assert.ok(stages.has("book_structure"));
-    for (const stage of ["formal_objects", "cognitive_materials", "teaching_publish"]) assert.ok(stages.has(stage), stage);
+    for (const stage of ["formal_objects", "cognitive_materials", "teaching_publish"]) assert.equal(stages.has(stage),!buildCourse,stage);
+    if(buildCourse){
+      assert.ok(stages.has('course'));
+      const artifact=JSON.parse(readFileSync(path.join(root,'.understand-book','book','inquiry_course.json'),'utf8'));
+      assert.equal(artifact.course.lessons[0].experiment.kind,'inquiry');
+      assert.equal(artifact.course.lessons[0].assessment.rule.kind,'open');
+      const report=JSON.parse(readFileSync(path.join(root,'.understand-book','book','course_build_report.json'),'utf8'));
+      assert.equal(report.lessons[0].review.accepted,true);
+    }
     // One local claim has no eligible long-range pairs; Engine closes Pass2 without a model task.
     if (pass2 === "disabled") assert.equal(stages.has("pass2"), false);
     if (pass2 === "enabled") assert.equal(sawRetry, true);

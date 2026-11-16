@@ -111,7 +111,7 @@ fn inv6_binding_preserves_account_workspace_notes_chats_role_and_allowance() {
     let paths = f.access.users.lock().unwrap().paths("A").unwrap();
     let memory = std::fs::read(&paths.memory).unwrap();
     let history = f.ok(&f.a, "GET", "/api/me/chats", json!({}));
-    f.ok(&f.a,"POST","/api/me/tutor/mutate",json!({"operation_id":"learning-before-binding","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
+    f.ok(&f.a,"POST","/api/me/tutor/mutate",json!({"operation_id":"learning-before-binding","expected_revision":0,"action":{"kind":"start","user_intent":"Preserve learning records","material_scope":[],"explicit_constraints":[],"default_teaching_intent":null}}));
     let learning = f.ok(&f.a, "GET", "/api/me/tutor/state", json!({}));
     let account: (String, i64, bool) = f
         .control

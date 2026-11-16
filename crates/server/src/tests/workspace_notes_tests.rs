@@ -216,6 +216,13 @@ fn workspace_notes_imports_preserve_delivered_sources_and_reading_authorship() {
         .unwrap()
         .contains("慢的路段占用了更多时间"));
     assert!(!answer["source_bindings"].as_array().unwrap().is_empty());
+    let viewport = state.workspace.reader.viewport().top_lid.clone();
+    let window = call(&mut state, "source.read", json!({
+        "note_id": answer["note_id"], "source_ref_id": answer["source_bindings"][0]["source_ref_id"]
+    }));
+    assert!(window["segments"].as_array().unwrap().iter()
+        .any(|segment| !segment["highlights"].as_array().unwrap().is_empty()));
+    assert_eq!(state.workspace.reader.viewport().top_lid, viewport);
     let original_turn = state.user.agent_history.sessions[0].turns[0].clone();
     state.workspace.learning_workspace_id = Some("another-workspace".into());
     assert!(crate::workspace_notes_api::route(
@@ -290,4 +297,105 @@ fn workspace_notes_imports_preserve_delivered_sources_and_reading_authorship() {
     );
     assert_eq!(source["stale"], false);
     assert_eq!(source["can_open_in_reader"], true);
+}
+
+#[test]
+fn workspace_notes_imports_restore_original_publication_for_implicit_sources() {
+    let f = Fixture::new();
+    let original = f.create(&f.a, &f.x, "original-note-source");
+    let original = f.action(&f.a, &original, "original-note-source", "chat/new", json!({}));
+    let port = f.run(&original, "original-note-source");
+    let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+    let make_binding = |reference: &base_schema::PublishedBookRef, id: &str| {
+        let publication = f.access.library.lock().unwrap().load("A", reference).unwrap();
+        let range = EvidenceRange { start_lid: "1.1".into(), end_lid: "1.1".into(), ranges: vec![] };
+        let resolved = publication.book.resolve_source(&range, "zh-CN", None).unwrap();
+        SourceBinding {
+            source_ref_id: id.into(), book_id: reference.book_id.clone(),
+            publication_id: None, source_revision: Some(publication.book.source_fingerprint().into()),
+            evidence_range: Some(range), evidence_text_digest: resolved.evidence_text_digest,
+            media: None, music: None, label_snapshot: resolved.label, preview_snapshot: resolved.preview,
+        }
+    };
+    let implicit = make_binding(&f.x, "ordinary-source");
+    let mut explicit = make_binding(&f.y, "explicit-other-book");
+    explicit.publication_id = Some(f.y.publication_id.clone());
+    let turn = {
+        let mut user = handle.lock().unwrap();
+        let mut session = user.agent_history.sessions.iter()
+            .find(|session| session.id == port.scope.chat_session_id).unwrap().clone();
+        assert!(session.learning_workspace_id.is_none());
+        let current = &mut session.turns[0];
+        assert_eq!(current.published_book_ref.as_ref(), Some(&f.x));
+        current.status = AgentAssistantStatus::Completed;
+        current.source_bindings = vec![implicit, explicit];
+        current.outcome = Some(OuterOutcome {
+            answer: Some("原始阅读回合的解释 [[source:ordinary-source]]".into()), answer_view: None,
+            incomplete: false, warning: None, turns: 1, tokens_spent: 0, effects: vec![], trace: vec![],
+            profile_usage: Default::default(), memory_updates: vec![], source_bindings: current.source_bindings.clone(),
+            delivery_diagnostics: None, request_audit: Default::default(), teaching_delivery_move_refs: vec![],
+        });
+        let turn = AgentTurnRef {
+            session_id: session.id.clone(), turn_id: current.turn_id.clone(), user_turn_ordinal: current.user_turn_ordinal,
+        };
+        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+        turn
+    };
+    drop(port);
+    let original = f.get(&f.a, &original);
+    let reading = f.action(&f.a, &original, "original-note-source", "memory/save", json!({
+        "type":"note", "content":"把原始回答记到阅读笔记", "note":{"association":{
+            "kind":"answer", "session_id":turn.session_id, "turn_id":turn.turn_id,
+        }},
+    }))["result"]["record"].clone();
+    assert!(reading["note"]["source_bindings"][0]["publication_id"].is_null());
+    let scope = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({
+        "goal":{"text":"复用原始阅读笔记"}, "members":[f.x,f.y],
+    }))["learning_workspace_id"].as_str().unwrap().to_owned();
+    let records = f.ok(&f.a, "GET", &format!("/api/me/learning-records/{}", turn.session_id), Value::Null);
+    f.ok(&f.a, "POST", &format!("/api/learning-workspaces/{scope}/records"), json!({
+        "session_id":turn.session_id, "through_seq":records["through_seq"], "goal_revision":1,
+    }));
+    let open = |reference: &base_schema::PublishedBookRef, attachment: &str| f.ok(&f.a, "POST", "/api/workspaces", json!({
+        "published_book_ref":reference, "learning_workspace_id":scope, "attachment_id":attachment,
+    }));
+    let other = open(&f.y, "other-note-book");
+    let imported = f.action(&f.a, &other, "other-note-book", "notes/import", json!({
+        "source":{"kind":"answer", "session_id":turn.session_id, "turn_id":turn.turn_id},
+    }))["result"].clone();
+    assert_eq!(imported["origin"]["publication_id"], f.x.publication_id);
+    assert_eq!(imported["source_bindings"][0]["publication_id"], f.x.publication_id);
+    assert_eq!(imported["source_bindings"][1]["publication_id"], f.y.publication_id);
+
+    let current = open(&f.x, "reading-note-book");
+    let imported_reading = f.action(&f.a, &current, "reading-note-book", "notes/import", json!({
+        "source":{"kind":"reading_note", "mem_id":reading["mem_id"]},
+    }))["result"].clone();
+    assert_eq!(imported_reading["source_bindings"][0]["publication_id"], f.x.publication_id);
+
+    // Existing notebook files retain the original publication in origin already.
+    let retained = {
+        let user = handle.lock().unwrap();
+        let store = crate::workspace_notes_api::scoped_store(&user, Some(&scope)).unwrap();
+        let mut note: memory::workspace_notes::WorkspaceNote = serde_json::from_value(imported.clone()).unwrap();
+        note.note_id = "note-before-publication-fix".into();
+        note.source_bindings[0].publication_id = None;
+        store.create(note).unwrap()
+    };
+    for note_id in [imported["note_id"].as_str().unwrap(), imported_reading["note_id"].as_str().unwrap(), &retained.note_id] {
+        let input = json!({"note_id":note_id,"source_ref_id":"ordinary-source"});
+        let resolved = f.action(&f.a, &other, "other-note-book", "notes/source.resolve", input.clone());
+        assert_eq!(resolved["result"]["stale"], false);
+        assert!(resolved["result"]["source_url"].as_str().unwrap().contains(&f.x.publication_id));
+        let read = f.action(&f.a, &other, "other-note-book", "notes/source.read", input.clone());
+        assert_eq!(read["result"]["published_book_ref"], json!(f.x));
+        assert!(read["result"]["segments"].as_array().unwrap().iter()
+            .any(|segment| !segment["highlights"].as_array().unwrap().is_empty()));
+        let opened = f.action(&f.a, &other, "other-note-book", "notes/source.open", input);
+        assert!(opened["result"]["source_url"].as_str().unwrap().contains(&f.x.publication_id));
+        assert_eq!(f.get(&f.a, &other)["published_book_ref"], json!(f.y));
+    }
+    let user = handle.lock().unwrap();
+    let store = crate::workspace_notes_api::scoped_store(&user, Some(&scope)).unwrap();
+    assert_eq!(store.read(&retained.note_id).unwrap(), retained, "source reads must not rewrite saved revisions");
 }

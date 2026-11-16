@@ -83,7 +83,7 @@ describe("ReaderWorkspace", () => {
     const wrapper = mount(ReaderWorkspace, {
       props: { logical, environment: environment(390, 844), globalActionsOpen: false },
     });
-    const menu = wrapper.get('.workspace-mobile-nav button[aria-haspopup="menu"]');
+    const menu = wrapper.get('.workspace-mobile-nav [data-workspace-menu]');
     expect(menu.text()).toBe("菜单");
     expect(menu.attributes("aria-expanded")).toBe("false");
     await menu.trigger("click");

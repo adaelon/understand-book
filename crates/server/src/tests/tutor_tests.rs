@@ -146,13 +146,12 @@ fn tutor_readiness_is_separate_from_control_and_rejects_stale_or_missing_publica
 }
 
 #[test]
-fn tutor_t18_readiness_endpoint_uses_foundation_and_preserves_enabled_intent() {
+fn tutor_t18_readiness_endpoint_uses_foundation_without_a_global_switch() {
     let root = tempfile::tempdir().unwrap();
     let mut state = state_named("t18-readiness");
     state.workspace.book_dir = root.path().into();
     state.user.store = MemoryStore::open(root.path().join("memory.json")).unwrap();
     t15_foundation(root.path(), &state.workspace.book);
-    post(&mut state, "/tutor/mutate", r#"{"operation_id":"on","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}"#);
     for receipt in [None, Some(json!({"status":"failed"}))] {
         if let Some(receipt) = receipt {
             std::fs::write(root.path().join("teaching_readiness.json"), receipt.to_string()).unwrap();
@@ -163,13 +162,13 @@ fn tutor_t18_readiness_endpoint_uses_foundation_and_preserves_enabled_intent() {
         assert_ne!(view["teaching_assets"]["status"], "ready");
         assert!(view["limitations"].is_array());
         assert!(view.get("required_stages").is_none());
-        assert!(state.user.learning_store().unwrap().state().unwrap().control.enabled);
+        assert!(!state.user.learning_store().unwrap().state().unwrap().control.enabled);
     }
     std::fs::remove_file(root.path().join("book_structure.json")).unwrap();
     let reply = route(&mut state, Req { method:"GET", url:"/tutor/readiness", body:"", now:"now" });
     assert_eq!(serde_json::from_str::<Value>(&reply.body).unwrap()["status"], "preparing");
     assert!(!teaching::start_request(&state.private_context(), "now").unwrap()["started"].as_bool().unwrap());
-    assert!(state.user.learning_store().unwrap().state().unwrap().control.enabled);
+    assert!(!state.user.learning_store().unwrap().state().unwrap().control.enabled);
 }
 
 #[test]
@@ -197,8 +196,8 @@ fn tutor_api_is_global_across_chat_and_reopen_and_reports_storage_failure() {
         "/tutor/mutate",
         r#"{"operation_id":"enable","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}"#,
     );
-    assert_eq!(enabled.status, 200, "{}", enabled.body);
-    let request = r#"{"operation_id":"start","expected_revision":1,"action":{"kind":"start","user_intent":"理解这个关系","explicit_constraints":[],"material_scope":[],"default_teaching_intent":null}}"#;
+    assert_eq!(enabled.status, 400, "{}", enabled.body);
+    let request = r#"{"operation_id":"start","expected_revision":0,"action":{"kind":"start","user_intent":"理解这个关系","explicit_constraints":[],"material_scope":[],"default_teaching_intent":null}}"#;
     let started = post(&mut state, "/tutor/mutate", request);
     assert_eq!(started.status, 200, "{}", started.body);
     let before = state.user.learning_store().unwrap().state().unwrap();
@@ -217,7 +216,7 @@ fn tutor_api_is_global_across_chat_and_reopen_and_reports_storage_failure() {
     let conflict = post(
         &mut state,
         "/tutor/mutate",
-        r#"{"operation_id":"stale","expected_revision":0,"action":{"kind":"set_enabled","enabled":false}}"#,
+        r#"{"operation_id":"stale","expected_revision":0,"action":{"kind":"pause","session_id":"tutor-start"}}"#,
     );
     assert_eq!(conflict.status, 409);
     std::fs::remove_file(root.path().join("learning.db")).unwrap();
@@ -225,7 +224,7 @@ fn tutor_api_is_global_across_chat_and_reopen_and_reports_storage_failure() {
     let failed = post(
         &mut state,
         "/tutor/mutate",
-        r#"{"operation_id":"off","expected_revision":2,"action":{"kind":"set_enabled","enabled":false}}"#,
+        r#"{"operation_id":"pause","expected_revision":1,"action":{"kind":"pause","session_id":"tutor-start"}}"#,
     );
     assert_eq!(failed.status, 503);
     assert!(failed.body.contains("LEARNING_STORAGE_UNAVAILABLE"));

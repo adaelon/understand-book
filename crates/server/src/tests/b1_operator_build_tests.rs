@@ -54,6 +54,48 @@ fn admission() -> Value {
 }
 
 #[test]
+fn automatic_course_import_binds_publication_and_publishes_playable_inquiry() {
+    let f=fixture();let id="built-inquiry";
+    let mut input=create(&f,id);input["materials"][1]["build_course"]=json!(true);
+    input["materials"][1]["course_goal"]=json!("通过阅读和推理理解条件");
+    f.ok(&f.b,"POST","/api/admin/operator-builds",input);
+    prepare(&f,id);transition(&f,id,"start");
+    let task=f.ok(&f.b,"POST","/api/admin/operator-builds/next",json!({"host_session_id":"operator-host"}))["task"].clone();
+    let directory=task["materials"][1]["plan"]["workspace_dir"].as_str().unwrap();
+    let root=std::path::Path::new(directory);
+    let book=read_tools::Book::load(root.to_str().unwrap()).unwrap();
+    let mut course:Value=serde_json::from_str(include_str!("../../../../docs/examples/inquiry-course/ai-infra-resource-bounds.v1.course.json")).unwrap();
+    let lesson=&mut course["lessons"][0];
+    lesson["summary"]["source"]=json!({"publication":{"book_id":book.base.book_id,"publication_id":"build"},"source_revision":book.source_fingerprint(),"start_lid":"1.1","end_lid":"1.3","label":"真实版本绑定测试","structure_refs":["1"]});
+    lesson["experiment"]=json!({"kind":"inquiry","activity":"reasoning","instruction":"核对条件","material":"对照材料中的定义和结论。","response_prompt":"写出所依据的条件。"});
+    lesson["prediction"]["options"]=json!([]);lesson["task"]["options"]=json!([]);
+    lesson["assessment"]=json!({"rule":{"kind":"open","items":[{"id":"condition","criterion":"解释条件与结论的关系","source_lids":["1.2"]}]},"source_lids":["1.2"],"source_sufficient":true,"feedback":"after_submit"});
+    let lesson_id=lesson["summary"]["id"].as_str().unwrap().to_owned();
+    f.ok(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/materials/new/progress"),json!({"host_session_id":"operator-host","state":"complete","invocation_ref":"course-invocation","workspace_dir":directory}));
+    let import=json!({"host_session_id":"operator-host","invocation_ref":"course-invocation","workspace_dir":directory});
+    assert_ne!(f.call(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/materials/new/import"),import.clone()).0,200);
+    std::fs::write(root.join("inquiry_course.json"),json!({"version":"course_artifact.v1","source_id":book.base.book_id,"source_revision":book.source_fingerprint(),"course":course}).to_string()).unwrap();
+    std::fs::write(root.join("course_build_report.json"),json!({"source_id":book.base.book_id,"source_revision":book.source_fingerprint(),"lessons":[{"id":lesson_id,"review":{"accepted":true,"issues":[]}}]}).to_string()).unwrap();
+    let imported=f.ok(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/materials/new/import"),import);
+    let reference=imported["materials"][1]["published_book_ref"].clone();
+    assert_eq!(imported["materials"][1]["course"]["lessons"][0]["source"]["publication"],reference);
+    assert!(imported["materials"][1].get("prepared_course").is_none());
+    f.ok(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/finish"),json!({"host_session_id":"operator-host","state":"ready"}));
+    let mut release=super::s1_workspace_publication_tests::publication(&f,"course-release",0);
+    release.as_object_mut().unwrap().remove("operation_id");release["manifest"]["materials"][1]["published_book_ref"]=reference;
+    release["manifest"]["topic_links"]=json!([]);release["manifest"]["suggested_route"]=json!([]);
+    let published=f.ok(&f.b,"POST",&format!("/api/admin/operator-builds/{id}/publish"),json!({"operation_id":"publish-course","release":release}));
+    assert_eq!(published["workspace_release"]["version"],1);
+    let public=f.ok(&f.a,"GET","/api/workspace-releases/exam-course/versions/1",Value::Null);
+    assert!(public["manifest"]["inquiry_course"]["lessons"][0].get("solution").is_none());
+    let used=f.ok(&f.a,"POST","/api/workspace-releases/exam-course/versions/1/use",json!({"operation_id":"use-built-course","goal":{"text":"理解条件"}}));
+    let workspace=used["workspace"]["learning_workspace_id"].as_str().unwrap();
+    let api=format!("/api/learning-workspaces/{workspace}/shared-release/course");
+    let opened=f.ok(&f.a,"POST",&api,json!({"operation_id":"start-course","run_id":null,"expected_revision":0,"release_version":1,"action":{"kind":"start","lesson_id":format!("new-{lesson_id}")}}));
+    assert_eq!(opened["inquiry_kind"],"reasoning");assert!(opened["experiment"].is_null());
+}
+
+#[test]
 fn b1_two_materials_reuse_resume_import_publish_and_personal_use_follow_one_platform_budget() {
     let f = fixture();
     let id = "b1-course";

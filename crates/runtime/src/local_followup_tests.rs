@@ -1,4 +1,31 @@
 #[test]
+fn unified_answers_deliver_the_full_explanation_without_a_teaching_selection() {
+    for tutor in [
+        serde_json::json!({"status":"observing","current_design":{"design_ref":"legacy-plan"},"learner_context":{}}),
+        serde_json::json!({"status":"practice","learner_context":{"responding_to_practice":{"delivery_ref":"original-question"}}}),
+    ] {
+        let b = book();
+        let mut store = MemoryStore::open(tmp("unified-answer")).unwrap();
+        let mut reader = Reader::new(&b, DEFAULT_RADIUS);
+        let snapshot = default_profile_snapshot(&b, &store, "t0");
+        let answer = "Selecting cards for a route does not remove cards from the catalog. For example, a catalog holds A and B while this route uses only A: B remains available for another route. The route changes which card is used now, not which cards exist.";
+        let adapter = ReviewedTeachingAdapter::new(vec![turn_final(answer)], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(3), ..Default::default() }, adapter.model_runtime_profile());
+        context.tutor = Some(tutor);
+        let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},
+            accepted:vec![], selections:Default::default(), reviews:vec![]};
+        let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
+            &mut EphemeralCompactionCheckpointSink::default(), "Why does a card omitted from a route still exist?", "t0").unwrap();
+        let plans = adapter.inner.0.seen_plans.borrow();
+        assert_eq!(plans.len(), 1, "ordinary answers and practice feedback must not be regenerated through select");
+        assert!(!plans[0].instructions.contains("When adopting a design select"));
+        assert_eq!(outcome.answer.as_deref(), Some(answer));
+        assert!(port.accepted.is_empty());
+        assert!(!outcome.incomplete);
+    }
+}
+
+#[test]
 fn local_followup_finish_delivers_exact_body_without_review_or_copy_sampling() {
     let b = book();
     let mut store = MemoryStore::open(tmp("local-followup-finish")).unwrap();
@@ -12,7 +39,7 @@ fn local_followup_finish_delivers_exact_body_without_review_or_copy_sampling() {
     let sink = std::sync::Arc::new(TeachingStreamSink::default());
     let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
     context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-    context.tutor = Some(serde_json::json!({"status":"active", "current_design":{"design_ref":"design:current","design":design()},
+    context.tutor = Some(serde_json::json!({"status":"practice", "current_design":{"design_ref":"design:current","design":design()},
         "learner_context":{"current_request":"B is still available, right?"}}));
     let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},
         accepted:vec![], selections:Default::default(), reviews:vec![]};
@@ -67,7 +94,7 @@ fn local_followup_finish_preserves_unfinished_requested_reader_operation() {
     context.goal.as_mut().unwrap().requirements = vec![crate::goal::GoalRequirement {
         id:"goto".into(), description:"Jump to the original passage".into(), basis_turn_id:"t1".into(),
         verification:crate::goal::GoalVerification::ReaderAction }];
-    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+    context.tutor = Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port = TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},
         accepted:vec![], selections:Default::default(), reviews:vec![]};
     let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,

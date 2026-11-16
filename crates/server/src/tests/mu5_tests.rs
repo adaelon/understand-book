@@ -3,6 +3,8 @@ use super::*;
 mod om4;
 #[path = "workspace_open_retry_tests.rs"]
 mod open_retry;
+#[path = "learning_task_tests.rs"]
+mod learning_task;
 use crate::{
     authorization::Authorization,
     control_store::ControlStore,
@@ -21,6 +23,33 @@ pub(crate) struct Fixture {
     pub(super) y: PublishedBookRef,
     pub(crate) a: String,
     pub(super) b: String,
+}
+
+#[test]
+fn mu5_reader_highlight_preserves_selection_group_and_chat_fallback() {
+    let f = Fixture::new();
+    let w = f.create(&f.a, &f.x, "highlight");
+    let mut w = f.action(&f.a, &w, "highlight", "chat/new", json!({}));
+    let chat = w["selected_chat"].clone();
+    let mut ids = Vec::new();
+    for (start, end) in [(0, 1), (6, 7)] {
+        w = f.action(&f.a, &w, "highlight", "reader/highlight", json!({
+            "lid":"1.1", "range":{"start":start,"end":end},
+            "source_session_id":"highlight-group:subscripts"
+        }));
+        ids.push(w["result"]["highlight_id"].clone());
+    }
+    let ordinary = f.action(&f.a, &w, "highlight", "reader/highlight", json!({"lid":"1.2"}));
+    let fresh = f.create(&f.a, &f.x, "reopen");
+    let recalled = f.action(&f.a, &fresh, "reopen", "memory/recall", json!({"type":"highlight"}));
+    let records = recalled["result"].as_array().unwrap();
+    for (id, start) in ids.iter().zip([0, 6]) {
+        let record = records.iter().find(|record| &record["mem_id"] == id).unwrap();
+        assert_eq!(record["source_session_id"], "highlight-group:subscripts");
+        assert_eq!(record["range"]["start"], start);
+    }
+    let record = records.iter().find(|record| record["mem_id"] == ordinary["result"]["highlight_id"]).unwrap();
+    assert_eq!(record["source_session_id"], chat);
 }
 
 #[test]
@@ -424,54 +453,23 @@ fn mu5_old_run_keeps_original_private_scope_but_reader_stales_and_revocation_sto
 }
 
 #[test]
-fn mu5_tutor_shared_revision_and_old_teaching_control_are_enforced() {
-    let f = Fixture::new();
-    let w = f.create(&f.a, &f.x, "one");
-    let w = f.action(&f.a, &w, "one", "chat/new", json!({}));
-    let a2 = f.create(&f.a, &f.y, "two");
-    let enabled = f.ok(&f.a,"POST","/api/me/tutor/mutate",json!({"operation_id":"enable","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
-    assert_eq!(enabled["control"]["revision"], 1);
-    assert_eq!(f.call(&f.a,"POST","/api/tutor/mutate",json!({"operation_id":"loser","expected_revision":0,"action":{"kind":"set_enabled","enabled":false}})).0,409);
-    let mut port = f.run(&w, "one");
-    {
-        let user = f.access.users.lock().unwrap().get("A", "now").unwrap();
-        let user = user.lock().unwrap();
-        let private = port.scope.private_user(&user);
-        teaching::start_request(&private, "now").unwrap();
-        teaching::prepare(
-            &private,
-            &AgentTurnRef {
-                session_id: port.scope.chat_session_id.clone(),
-                turn_id: port.scope.turn_id.clone(),
-                user_turn_ordinal: 1,
-            },
-            &json!({"message":"Teach this"}),
-            "now",
-        )
-        .unwrap()
-        .unwrap();
-    }
-    assert!(port.tutor_active().unwrap());
-    let control = f.ok(&f.a, "GET", "/api/tutor/state", json!({}));
-    let disabled = f.ok(&f.a,"POST","/api/tutor/mutate",json!({"operation_id":"disable-from-two","expected_revision":control["control"]["revision"],"action":{"kind":"set_enabled","enabled":false}}));
-    assert!(!port.tutor_active().unwrap());
-    assert!(port
-        .tutor_step(
-            json!({"operation":"material","object_id":"speed"}),
-            &[],
-            &[]
-        )
-        .is_err());
-    f.ok(&f.a,"POST","/api/tutor/mutate",json!({"operation_id":"re-enable","expected_revision":disabled["control"]["revision"],"action":{"kind":"set_enabled","enabled":true}}));
-    assert!(
-        !port.tutor_active().unwrap(),
-        "re-enable cannot revive old control binding"
-    );
-    assert_eq!(f.get(&f.a, &a2)["published_book_ref"], json!(f.y));
-    assert_eq!(
-        f.ok(&f.b, "GET", "/api/tutor/state", json!({}))["control"]["revision"],
-        0
-    );
+fn mu5_learning_goals_share_revisions_and_reject_the_removed_switch() {
+    let f=Fixture::new();
+    let w=f.create(&f.a,&f.x,"one");let w=f.action(&f.a,&w,"one","chat/new",json!({}));
+    let other=f.create(&f.a,&f.y,"two");
+    assert_eq!(f.call(&f.a,"POST","/api/me/tutor/mutate",json!({"operation_id":"removed","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}})).0,400);
+    let goal=f.ok(&f.a,"POST","/api/me/tutor/mutate",json!({"operation_id":"goal","expected_revision":0,"action":{"kind":"start","user_intent":"Understand this source","explicit_constraints":[],"material_scope":[{"source_id":f.x.book_id,"scope_refs":[],"role":"primary"}],"default_teaching_intent":null}}));
+    let id=goal["control"]["current_tutor_session_id"].clone();
+    assert_eq!(goal["control"]["revision"],1);
+    assert_eq!(f.call(&f.a,"POST","/api/tutor/mutate",json!({"operation_id":"stale","expected_revision":0,"action":{"kind":"pause","session_id":id}})).0,409);
+    let mut port=f.run(&w,"one");
+    { let handle=f.access.users.lock().unwrap().get("A","now").unwrap();let user=handle.lock().unwrap();
+      teaching::prepare(&port.scope.private_user(&user),&AgentTurnRef {session_id:port.scope.chat_session_id.clone(),turn_id:port.scope.turn_id.clone(),user_turn_ordinal:1},&json!({"message":"Explain this source"}),"now").unwrap(); }
+    assert!(!port.tutor_active().unwrap(),"a saved goal does not activate a separate teaching flow");
+    let paused=f.ok(&f.a,"POST","/api/tutor/mutate",json!({"operation_id":"pause","expected_revision":1,"action":{"kind":"pause","session_id":id}}));
+    assert_eq!(paused["sessions"][id.as_str().unwrap()]["status"],"paused");
+    assert_eq!(f.get(&f.a,&other)["published_book_ref"],json!(f.y));
+    assert_eq!(f.ok(&f.b,"GET","/api/tutor/state",json!({}))["control"]["revision"],0);
 }
 
 #[test]
@@ -862,6 +860,14 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
         f.get(&f.a, &current)["presentation"],
         current["presentation"]
     );
+    let mut preview = request.clone();
+    preview["saved_state"] = json!(frozen);
+    let preview = f.action(&f.a, &current, "parent", "presentation/read", preview);
+    assert_eq!(preview["result"]["restored_state"], pending_scene);
+    assert_eq!(preview["revision"], current["revision"]);
+    assert_eq!(preview["presentation"], current["presentation"]);
+    let active = f.action(&f.a, &current, "parent", "presentation/read", request.clone());
+    assert_eq!(active["result"]["restored_state"]["values"]["slider"], 9);
     let restored = f.action(
         &f.a,
         &current,

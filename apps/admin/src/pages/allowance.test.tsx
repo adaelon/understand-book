@@ -51,7 +51,7 @@ beforeEach(async () => {
     if (url.startsWith('/api/admin/operations/')) return lookup();
     if (url === '/api/admin/allowance-offers') return Response.json({ items: offers });
     if (url === '/api/admin/cloud-plans') return Response.json({ items: cloudPlans });
-    if (url === `${base}/cloud-plan-purchases`) return Response.json({ current: null, next: null, catalog: { items: [] } });
+    if (url === `${base}/cloud-plan-purchases`) return Response.json({ current: null, next: null, catalog: { items: [] }, purchase_starts_at: Math.floor(Date.now() / 1000), purchase_blocked_by_unlimited: false });
     if (url.startsWith(`${base}/allowance-periods`)) return Response.json(page([period]));
     throw new Error(`Unexpected request ${url}`);
   });
@@ -59,83 +59,82 @@ beforeEach(async () => {
 });
 afterEach(async () => { await unmount(); queryClient.clear(); vi.unstubAllGlobals(); });
 
-it('shows fixed percentages and sends signed exact percentage gifts without local grants', async () => {
-  await mount(); expect(text()).toContain('130%'); expect(text()).toContain('150%'); expect(text()).not.toContain('AI 使用额度（元）');
-  await click('赠送 / 调整'); await fill('delta', '0.0001'); await fill('reason', '赠送'); await submit(); expect(writes()).toHaveLength(0);
-  await fill('delta', '50.025'); await submit();
-  expect(writes()[0][0]).toBe(`${base}/allowance-percentage-adjustments`);
-  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: 'period-a', revision: 2, basis_version: 'standard-v1', delta_milli_percent: 50025, reason: '赠送' });
-  expect(text()).toContain('提交后可用额度：130%'); expect(text()).toContain('50.025%');
+it('manages exact cost budgets without asking for percentages or internal versions', async () => {
+  await mount(); expect(text()).toContain('当前可用预算13.00 元'); expect(text()).toContain('本期预算总额15.00 元');
+  await click('赠送 / 扣回预算'); await fill('budget', '0.0000001'); await fill('reason', '赠送'); await submit(); expect(writes()).toHaveLength(0);
+  await fill('budget', '3.333333'); await submit();
+  expect(writes()[0][0]).toBe(`${base}/allowance-adjustments`);
+  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: 'period-a', revision: 2, delta_micro_cny: 3333333, reason: '赠送' });
+  expect(text()).toContain('提交后可用额度：13.00 元 AI 预算');
 });
 
-it('shows unlimited beta access and actual costs without a low-balance warning', async () => {
-  await mount(<AllowancePanel userId="A" current={{ ...period, expires_at: 253402300799, balance: {
-    ...period.balance, unlimited: true, granted_micro_cny: 0, available_micro_cny: -12000000, debited_micro_cny: 12000000,
-  } }} />);
+it('shows unlimited beta access without low balance or an absurd expiry date', async () => {
+  await mount(<AllowancePanel userId="A" current={{ ...period, expires_at: 253402300799, balance: { ...period.balance, unlimited: true, granted_micro_cny: 0, available_micro_cny: -12000000, debited_micro_cny: 12000000 } }} />);
   expect(text()).toContain('当前可用不限额度'); expect(text()).toContain('累计已用12.00 元');
-  expect(text()).not.toContain('当前可用额度不足'); expect(text()).not.toContain('9999');
-  expect(writes()).toHaveLength(0);
+  expect(text()).not.toContain('当前预算不足'); expect(text()).not.toContain('9999'); expect(writes()).toHaveLength(0);
 });
 
-it('requires an explicit basis for new or legacy periods and never guesses commercial values', async () => {
-  await mount(<AllowancePanel userId="A" current={{ ...period, balance: { ...period.balance, allowance_basis: null, percentages: null } }} />);
-  expect(text()).toContain('此额度期尚未设置百分比基准，当前按金额展示'); expect(text()).toContain('当前可用¥ 13.00'); expect([...document.querySelector('section > div')!.querySelectorAll('button')].find(b => b.textContent === '登记收款')).toBeUndefined();
-  await click('配置百分比基准'); expect(document.querySelector<HTMLInputElement>('[name="basis_amount"]')?.value).toBe('');
-  await fill('basis_version', 'configured-v2'); await fill('basis_amount', '20'); await submit();
-  expect(writes()[0][0]).toBe(`${base}/allowance-basis`); expect(JSON.parse(writes()[0][1].body)).toMatchObject({ period_id: 'period-a', revision: 2, basis: { version: 'configured-v2', basis_micro_cny: 20000000 } });
-  await click('新建额度期'); await fill('basis_version', 'configured-v3'); await fill('basis_amount', '30'); await submit();
-  expect(JSON.parse(writes()[1][1].body).basis).toEqual({ version: 'configured-v3', basis_micro_cny: 30000000 });
+it('opens a free grant with its dates and initial budget in one operation', async () => {
+  await mount(<AllowancePanel userId="A" current={null} />); await click('单独赠送 AI 额度');
+  expect(document.querySelector('[name="basis_version"]')).toBeNull();
+  await fill('budget', '10'); await fill('reason', '体验'); await submit();
+  expect(writes()).toHaveLength(1); expect(writes()[0][0]).toBe(`${base}/allowance-periods`);
+  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ initial_grant_micro_cny: 10000000, reason: '体验' });
+  expect(JSON.parse(writes()[0][1].body).basis).toBeUndefined();
 });
 
-it('preserves cash, percentage and original operation through unknown receipt retry', async () => {
+it('preserves form values and shows a rejected operation in the dialog', async () => {
+  mutate = async () => Response.json({ error_code: 'ALLOWANCE_PERIOD_OVERLAP' }, { status: 409 });
+  await mount(<AllowancePanel userId="A" current={null} />); await click('单独赠送 AI 额度');
+  await fill('budget', '10'); await fill('reason', '体验'); await submit();
+  expect(document.querySelector('[role="dialog"]')?.textContent).toContain('有效期与已有额度期重叠');
+  expect(document.querySelector<HTMLInputElement>('[name="budget"]')?.value).toBe('10');
+  expect(sessionStorage.length).toBe(0);
+  mutate = async (_path, body) => Response.json(receipt(body)); await submit();
+  expect(document.querySelector('[role="dialog"]')).toBeNull(); expect(writes()).toHaveLength(2);
+});
+
+it('preserves cash and budget through an uncertain payment retry', async () => {
   mutate = async () => { throw new TypeError('network lost'); };
-  await mount(); await click('登记收款'); expect(text()).toContain('授予 AI 使用额度（%）'); await fill('amount', '12.50'); await fill('delta', '50'); await fill('note', '已确认到账'); await submit();
+  await mount(); await click('收款并补充本期'); await fill('amount', '12.50'); await fill('budget', '5'); await submit();
   const original = JSON.parse(writes()[0][1].body);
-  expect(original).toMatchObject({ amount_fen: 1250, delta_milli_percent: 50000, basis_version: 'standard-v1' });
-  expect(text()).toContain('实际收款（元）12.50'); expect(text()).toContain('增加 / 调整额度50%');
+  expect(original).toMatchObject({ amount_fen: 1250, delta_micro_cny: 5000000 });
+  await click('关闭并核对原操作'); expect(text()).toContain('实际收款（元）12.50');
   await unmount(); await mount(); expect(text()).toContain(original.operation_id);
   mutate = async (_path, body) => Response.json(receipt(body)); await click('按原操作重试');
   expect(writes()).toHaveLength(2); expect(JSON.parse(writes()[1][1].body)).toEqual(original); expect(sessionStorage.length).toBe(0);
-  const calls = fetcher.mock.calls; const retryIndex = calls.length - 1 - [...calls].reverse().findIndex(([, init]) => init?.method === 'POST');
-  expect(fetcher.mock.calls[retryIndex - 1][0]).toBe(`/api/admin/operations/${original.operation_id}`);
 });
 
-it('creates and edits a priced percentage offer without granting to the displayed account', async () => {
-  await mount(); await click('新增补充方案');
-  await fill('title', '学习补充'); await fill('amount', '12.50'); await fill('delta', '50'); await fill('basis_version', 'standard-v1'); await fill('instructions', '人工确认后到账');
-  mutate = async (_path, body) => { offers = [{ ...body } as unknown as AllowanceOffer]; return Response.json(receipt(body, 'allowance-offers')); };
-  await submit(); const original = JSON.parse(writes()[0][1].body);
-  expect(writes()[0][0]).toBe('/api/admin/allowance-offers'); expect(original).toMatchObject({ amount_fen: 1250, delta_milli_percent: 50000, enabled: true, basis_version: 'standard-v1' });
-  expect(original.period_id).toBeUndefined(); expect(text()).toContain('12.50 元 · 增加 50%');
-  await click('编辑方案'); await fill('amount', '15'); await submit();
-  expect(JSON.parse(writes()[1][1].body)).toMatchObject({ offer_id: original.offer_id, amount_fen: 1500, delta_milli_percent: 50000 });
+it('creates an add-on with independent sale price and AI budget', async () => {
+  await mount(); await click('新增加购商品');
+  await fill('title', '学习补充'); await fill('amount', '12.50'); await fill('budget', '5'); await fill('instructions', '人工确认后到账');
+  await submit(); expect(writes()[0][0]).toBe('/api/admin/allowance-offers');
+  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ amount_fen: 1250, budget_micro_cny: 5000000, enabled: true });
+  expect(JSON.parse(writes()[0][1].body).period_id).toBeUndefined();
 });
 
-it('saves a cloud-plan draft without guessing price or quotas and does not grant to the account', async () => {
+it('saves an unpriced cloud-plan draft without making up commercial values', async () => {
   await mount(); await click('新增套餐商品');
-  for (const name of ['amount', 'basis_version', 'basis_amount', 'grant', 'storage_mb', 'max_file_mb', 'retention_days']) {
-    expect(document.querySelector<HTMLInputElement>(`[name="${name}"]`)!.value).toBe('');
-  }
+  for (const name of ['amount', 'budget', 'storage_mb', 'max_file_mb', 'retention_days']) expect(document.querySelector<HTMLInputElement>(`[name="${name}"]`)!.value).toBe('');
+  expect(document.querySelector('[name="basis_version"]')).toBeNull();
   await fill('title', '待配置冲刺'); await submit();
   expect(writes()[0][0]).toBe('/api/admin/cloud-plans');
-  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ title: '待配置冲刺', revision: 0, enabled: false, amount_fen: null, grant_milli_percent: null, basis: null, storage_bytes: null, max_file_bytes: null, retention_seconds: null });
-  expect(JSON.parse(writes()[0][1].body).user_id).toBeUndefined();
+  expect(JSON.parse(writes()[0][1].body)).toMatchObject({ title: '待配置冲刺', revision: 0, enabled: false, amount_fen: null, budget_micro_cny: null, storage_bytes: null, max_file_bytes: null, retention_seconds: null });
 });
 
-it('opens a paid cloud period by pinned product version and retries an uncertain receipt with the original operation', async () => {
+it('opens a paid plan with a pinned product version and no manually entered dates or basis', async () => {
   cloudPlans = [cloudProduct];
-  mutate = async () => { throw new TypeError('connection lost'); };
-  await mount(<AllowancePanel userId="A" current={null} />); await click('核款并开通');
-  expect(text()).toContain('实收 12.50 元'); expect(text()).toContain('授予 100%');
-  await fill('channel', '已核验渠道'); await fill('note', '已核款'); await submit();
-  const original = JSON.parse(writes()[0][1].body);
+  await mount(<AllowancePanel userId="A" current={null} />); await click('开通 / 续费套餐');
+  const dialog = document.querySelector('[role="dialog"]')!;
+  expect(dialog.textContent).toContain('确认实收 12.50 元'); expect(dialog.textContent).toContain('发放 1.00 元 AI 预算');
+  expect(dialog.querySelector('[name="basis_version"]')).toBeNull(); expect(dialog.querySelector('[name="starts_at"]')).toBeNull();
+  await submit(); const original = JSON.parse(writes()[0][1].body);
   expect(writes()[0][0]).toBe(`${base}/cloud-plan-purchases`);
-  expect(original).toMatchObject({ product_id: 'cloud-fixture', product_revision: 2, channel: '已核验渠道', note: '已核款' });
-  expect(original.starts_at).toBeUndefined(); expect(original.expires_at).toBeUndefined();
-  expect(text()).toContain('购买商品版本2');
-  await unmount(); await mount();
-  mutate = async (_path, body) => Response.json({ ...receipt(body, 'cloud-plan-purchases'), entitlement: { title: cloudProduct.title, starts_at: 1791648000, expires_at: 1791907200 } });
-  await click('按原操作重试');
-  expect(JSON.parse(writes()[1][1].body)).toEqual(original);
-  expect(text()).toContain('已开通 测试用三天套餐'); expect(sessionStorage.length).toBe(0);
+  expect(original).toMatchObject({ product_id: 'cloud-fixture', product_revision: 2, channel: '微信' });
+});
+
+it('does not offer direct date editing for sold plan periods', async () => {
+  await mount(<AllowancePanel userId="A" current={{ ...period, is_plan: true }} />);
+  const section = document.querySelector('[aria-label="本期 AI 使用预算"]')!;
+  expect(section.textContent).not.toContain('编辑有效期'); expect(section.textContent).toContain('需要延长使用时间');
 });

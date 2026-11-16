@@ -49,6 +49,38 @@ fn omitted_schema() -> Value {
     }})
 }
 
+fn add_context_cache(schema: &mut Value, id: BookToolId) {
+    if schema.get("properties").is_some() {
+        schema["properties"]["context_cache"] = json!({"type":"object","additionalProperties":false,
+            "required":["source_id","source_revision"],"properties":{
+                "source_id":{"type":"string"},"source_revision":{"type":"string"},
+                "citations":{"type":"array","items":{"type":"object","additionalProperties":false,
+                    "required":["source_ref_id","start_lid","end_lid","source_range"],"properties":{
+                        "source_ref_id":{"type":"string"},"start_lid":{"type":"string"},"end_lid":{"type":"string"},
+                        "source_range":{"type":"object","additionalProperties":false,"required":["start","end"],
+                            "properties":{"start":{"type":"integer","minimum":0},"end":{"type":"integer","minimum":0}}}
+                    }},"description":"Ready citation IDs for the canonical text delivered by this read, bounded by its exact source_range. No omitted text is included."},
+                "inline":{"type":"array","items":{"type":"object","additionalProperties":false,
+                    "required":["arguments","result","source_ref_id"],"properties":{
+                        "arguments":book_tool_contracts::input_schema(BookToolId::Text),
+                        "result":crate::book_output_schema::canonical(BookToolId::Text).unwrap(),
+                        "source_ref_id":{"type":"string","description":"Already registered source for precisely this delivered text; cite as [[source:<source_ref_id>]]."},
+                        "next_call":schema_for::<read_tools::BookTextCall>()
+                    }}}
+            },"description":"Bounded Resident prefetch and ready citations. Only delivered canonical text supplies source evidence; search excerpts and locators do not. Omitted text stays in the book with exact continuation calls."});
+        if matches!(id, BookToolId::Text | BookToolId::Search | BookToolId::Concept) {
+            schema["properties"]["context_cache"]["properties"]["reading"] =
+                schema_for::<read_tools::reading_support::ReadingSupport>();
+        }
+    } else {
+        for key in ["oneOf","anyOf"] {
+            for branch in schema.get_mut(key).and_then(Value::as_array_mut).into_iter().flatten() {
+                add_context_cache(branch, id);
+            }
+        }
+    }
+}
+
 /// Error details are execution-path diagnostics; only the common error identity
 /// is shared. They are deliberately outside the successful domain schema.
 fn error_schema() -> Value {
@@ -80,9 +112,10 @@ pub fn book_envelope_schema(tool: &str) -> Option<Value> {
         full["properties"]["delivery"] = json!({"type":"object","additionalProperties":false,
             "required":["status","returned_count","omitted_count","evidence"],"properties":{
                 "status":{"enum":["complete","partial"]},"returned_count":{"type":"integer","minimum":0},
-                "omitted_count":{"type":"integer","minimum":0},"evidence":{"const":"locators_only"}}});
+                "omitted_count":{"type":"integer","minimum":0},"evidence":{"enum":["locators_only","locators_with_inline_source"]}}});
         full["required"].as_array_mut().unwrap().extend([json!("exhaustive"),json!("next_calls"),json!("delivery")]);
     }
+    add_context_cache(&mut full, id);
     let mut partial = full.clone();
     if !matches!(id, BookToolId::Text | BookToolId::Search) {
         add_delivery(&mut partial, &delivery_schema(id == BookToolId::SearchText));

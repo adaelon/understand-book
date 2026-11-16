@@ -188,3 +188,77 @@ fn respond_translation(request: tiny_http::Request) {
         "usage":{"prompt_tokens":20,"prompt_cache_hit_tokens":0,"completion_tokens":10,"total_tokens":30}
     }).to_string()).with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())).unwrap();
 }
+
+#[test]
+fn reading_guidance_real_http_is_one_billed_completion_without_chat_or_reader_mutation() {
+    let fake = tiny_http::Server::http("127.0.0.1:0").unwrap();
+    let provider_url = format!("http://{}", fake.server_addr().to_ip().unwrap());
+    let mut f = Fixture::new();
+    super::adm5_tests::seed(&mut f, &provider_url, 1_000_000);
+    f.access.runs.configure(ProviderConfig::from_values("native", "fixture-key", provider_url, "fixture-model").unwrap()).unwrap();
+    let w = f.create(&f.a, &f.x, "guidance-page");
+    let history_before = f.access.users.lock().unwrap().get("A", "now").unwrap()
+        .lock().unwrap().agent_history.sessions.len();
+    let mut input = Fixture::stamp(&w, "guidance-page");
+    for (key, value) in json!({"purpose":"understand","scope":"section","lid":"1.1",
+        "material_title":"Current book","scope_label":"Current section","locale":"en"}).as_object().unwrap() {
+        input[key] = value.clone();
+    }
+    let path = format!("/api/workspaces/{}/reader/guidance", w["workspace_id"].as_str().unwrap());
+    let server = multi_user_host::start_with_access("127.0.0.1:0".parse().unwrap(),
+        Arc::new(Site::new("https://reader.example").unwrap()), f.access.clone()).unwrap();
+    assert_eq!(post(&server.url, &f.b, &path, input.clone()).0, 404);
+    let mut stale = input.clone(); stale["generation"] = json!(999);
+    assert_eq!(post(&server.url, &f.a, &path, stale).0, 409);
+    let (url, token) = (server.url.clone(), f.a.clone());
+    let call = std::thread::spawn(move || post(&url, &token, &path, input));
+    let mut request = fake.recv_timeout(Duration::from_secs(10)).unwrap().unwrap();
+    let mut body = String::new(); request.as_reader().read_to_string(&mut body).unwrap();
+    let sent: Value = serde_json::from_str(&body).unwrap();
+    assert!(sent["tools"].is_null() || sent["tools"].as_array().is_some_and(Vec::is_empty));
+    assert!(body.contains("Current section"));
+    // A slow suggestion cannot hold the reader's workspace or user lock.
+    let read_path = format!("/api/workspaces/{}/reader/state", w["workspace_id"].as_str().unwrap());
+    assert_eq!(post(&server.url, &f.a, &read_path, Fixture::stamp(&w, "guidance-page")).0, 200);
+    let reply = json!({"question":"What would you like to understand here?","draft":"I want to understand the main idea of this section."});
+    request.respond(tiny_http::Response::from_string(json!({
+        "choices":[{"message":{"content":reply.to_string()},"finish_reason":"stop"}],
+        "usage":{"prompt_tokens":20,"prompt_cache_hit_tokens":0,"completion_tokens":10,"total_tokens":30}
+    }).to_string()).with_header(tiny_http::Header::from_bytes("Content-Type", "application/json").unwrap())).unwrap();
+    let (status, result) = call.join().unwrap();
+    assert_eq!(status, 200, "{result}"); assert_eq!(result["result"], reply);
+    assert!(fake.try_recv().unwrap().is_none(), "one guidance must not start more model work");
+    let charges: i64 = f.control.connection.query_row(
+        "SELECT count(*) FROM model_call_charges WHERE user_id='A' AND task_ref IS NOT NULL AND run_ref IS NULL AND purpose='reading_guidance' AND state='settled'",
+        [], |row| row.get(0)).unwrap();
+    assert_eq!(charges, 1);
+    assert_eq!(f.get(&f.a, &w)["revision"], w["revision"]);
+    assert_eq!(f.access.users.lock().unwrap().get("A", "now").unwrap()
+        .lock().unwrap().agent_history.sessions.len(), history_before);
+    server.shutdown();
+}
+
+#[test]
+fn voice_input_real_http_keeps_scene_authority_and_accepts_recording_sized_requests() {
+    let f = Fixture::new();
+    let w = f.create(&f.a, &f.x, "voice-page");
+    let server = multi_user_host::start_with_access("127.0.0.1:0".parse().unwrap(),
+        Arc::new(Site::new("https://reader.example").unwrap()), f.access.clone()).unwrap();
+    let path = format!("/api/workspaces/{}/reader/voice-status", w["workspace_id"].as_str().unwrap());
+    let stamp = Fixture::stamp(&w, "voice-page");
+    let (status, body) = post(&server.url, &f.a, &path, stamp.clone());
+    assert_eq!(status, 200, "{body}");
+    assert_eq!(body["result"]["max_seconds"], 90);
+    assert_eq!(post(&server.url, &f.b, &path, stamp.clone()).0, 404);
+    let mut stale = stamp.clone(); stale["generation"] = json!(999);
+    assert_eq!(post(&server.url, &f.a, &path, stale).0, 409);
+    let path = path.replace("voice-status", "voice-transcribe");
+    let mut input = stamp;
+    input["audio"] = json!("A".repeat(120_000));
+    input["mime_type"] = json!("video/webm"); input["locale"] = json!("zh-CN");
+    let (status, body) = post(&server.url, &f.a, &path, input);
+    assert_eq!(status, 400, "{body}");
+    assert!(body.to_string().contains("VOICE_INVALID"), "recording must reach voice validation: {body}");
+    assert_eq!(f.get(&f.a, &w)["revision"], w["revision"]);
+    server.shutdown();
+}

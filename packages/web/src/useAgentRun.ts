@@ -24,6 +24,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   let terminalNotified = false;
   let reconcileTask: Promise<void> | null = null;
   let reconcileTimer: number | null = null;
+  let retryDelay = 1000;
 
   function sameDescriptor(left: RunDescriptor | null | undefined, right: RunDescriptor): boolean {
     return !!left
@@ -46,12 +47,16 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     source?.close();
     source = null;
   }
+  function clearReconcileTimer() {
+    if (reconcileTimer !== null) window.clearTimeout(reconcileTimer);
+    reconcileTimer = null;
+  }
   function close() {
     presentations.stop(); music.stop();
     observationGeneration += 1;
     cancellationPending.value = false;
-    if (reconcileTimer !== null) window.clearTimeout(reconcileTimer);
-    reconcileTimer = null;
+    clearReconcileTimer();
+    retryDelay = 1000;
     reconcileTask = null;
     closeTransport();
     connection.value = "closed";
@@ -62,6 +67,7 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     snapshot.value = next;
     presentations.update(next); music.update(next);
     if (next.persistence_state !== "pending") {
+      clearReconcileTimer();
       closeTransport();
       connection.value = next.error?.error_code === "AGENT_RUN_NOT_FOUND" ? "interrupted" : "closed";
       if (!terminalNotified && previous?.persistence_state === "pending") {
@@ -75,8 +81,21 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
     if (source || generation !== observationGeneration || !active.value) return;
     const current = new EventSource(agentRunEventsUrl(descriptor.turn_id, cursor));
     source = current;
-    current.onopen = () => { if (source === current) connection.value = "connected"; };
-    current.onerror = () => { if (source === current) { connection.value = "reconnecting"; presentations.stop(); music.stop(); scheduleReconcile(); } };
+    current.onopen = () => {
+      if (source !== current) return;
+      connection.value = "connected";
+      retryDelay = 1000;
+      clearReconcileTimer();
+    };
+    current.onerror = () => {
+      if (source !== current) return;
+      connection.value = "reconnecting";
+      presentations.stop(); music.stop();
+      // HTTP errors such as 503 close EventSource permanently. A non-null
+      // closed source must not prevent subscribing to this same run again.
+      if (current.readyState === 2) { flushDraft(); closeTransport(); }
+      scheduleReconcile(retryDelay);
+    };
     for (const name of events) current.addEventListener(name, (message) => {
       if (source !== current || !snapshot.value || (network.value.enabled && observedScene !== sceneKey())) return;
       cursor = (message as MessageEvent).lastEventId || cursor;
@@ -131,18 +150,29 @@ export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
         }
         connection.value = navigator.onLine === false ? "offline" : "reconnecting";
       } finally {
-        if (generation === observationGeneration) reconcileTask = null;
+        if (generation === observationGeneration) {
+          reconcileTask = null;
+          if (active.value && connection.value !== "authentication" && source?.readyState !== 1) {
+            connection.value = navigator.onLine === false ? "offline" : "reconnecting";
+            scheduleReconcile(retryDelay);
+            retryDelay = Math.min(retryDelay * 2, 30_000);
+          }
+        }
       }
     })();
     return reconcileTask;
   }
 
-  function scheduleReconcile() {
-    if (!snapshot.value || snapshot.value.persistence_state !== "pending" || reconcileTask || reconcileTimer !== null) return;
+  function scheduleReconcile(delay = 0) {
+    if (disposed || !active.value || reconcileTask) return;
+    if (reconcileTimer !== null) {
+      if (delay) return;
+      clearReconcileTimer();
+    }
     reconcileTimer = window.setTimeout(() => {
       reconcileTimer = null;
       void reconcile();
-    }, 0);
+    }, delay);
   }
 
   function observe(descriptor: RunDescriptor) {

@@ -11,7 +11,7 @@ fn board_provider_failure_before_first_tool_keeps_current_work_without_another_m
         context.messages.push(Message{role:Role::Tool,content:Some(r#"{"status":"board_part_committed","candidate_id":"old"}"#.into()),tool_calls:vec![],tool_call_id:Some("historical-commit".into()),provider_continuation:None});
         context.board_request_context=Some(serde_json::json!({"board_id":"board","selected_item":{"item_id":"mutable","title":"人工保留的标题"},
             "regeneration":if regeneration {serde_json::json!({"source":{"candidate_id":"old-pending"},"original_request":"Add an example"})} else {serde_json::Value::Null}}));
-        context.tutor=Some(serde_json::json!({"status":"active"}));
+        context.tutor=Some(serde_json::json!({"status":"practice"}));
         let error=ToolError{error_code:"PROVIDER_ERROR".into(),category:"provider".into(),message:"HTTP 400; all tools cannot be deferred".into()};
         let result=delivery_fallback::deliver(&b,&adapter,&mut context,&ResidentTurnResources::default(),
             &mut EphemeralCompactionCheckpointSink::default(),"基于当前内容完成未应用的修改",&error,None).unwrap();

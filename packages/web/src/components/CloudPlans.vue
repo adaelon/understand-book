@@ -2,8 +2,8 @@
 import { t as uiText } from '../i18n';
 
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
-import { allowanceTime, offerPercentage, paymentAmount } from '../account-allowance';
-import { accountCloudPlans, cloudPlanDurations, cloudPlanTiers, cloudRetention, cloudStorageSize, saleableCloudPlans, type AccountCloudPlans, type CloudPlanDuration, type CloudPlanProduct, type CloudStorageSummary } from '../cloud-plans';
+import { allowanceTime, paymentAmount } from '../account-allowance';
+import { accountCloudPlans, cloudPlanDurations, cloudPlanTiers, cloudQuotaLabel, cloudRetention, cloudStorageSize, saleableCloudPlans, type AccountCloudPlans, type CloudPlanDuration, type CloudPlanProduct, type CloudStorageSummary } from '../cloud-plans';
 import { network, sceneKey } from '../network-context';
 
 const summary = ref<AccountCloudPlans | null>(null);
@@ -55,14 +55,14 @@ onBeforeUnmount(() => { request++; });
         <h4>{{ uiText('当前：') }}{{ summary.current.title }}</h4>
         <p>{{ cloudPlanTiers[summary.current.tier] }} · {{ cloudPlanDurations[summary.current.duration] }}</p>
         <p>{{ allowanceTime(summary.current.starts_at) }} {{ uiText('至') }} {{ allowanceTime(summary.current.expires_at) }}{{ uiText('（香港时间）') }}</p>
-        <p>{{ uiText('本期套餐额度') }} {{ offerPercentage(summary.current.grant_milli_percent) }} {{ uiText('· 个人空间') }} {{ cloudStorageSize(summary.current.storage_bytes) }} {{ uiText('· 单文件上限') }} {{ cloudStorageSize(summary.current.max_file_bytes) }}</p>
+        <p>{{ uiText('本期 AI 额度已发放，剩余比例见额度概览。') }}</p><p>{{ uiText('个人空间') }} {{ cloudStorageSize(summary.current.storage_bytes) }} {{ uiText('· 单文件上限') }} {{ cloudStorageSize(summary.current.max_file_bytes) }}</p>
         <p>{{ uiText('到期后的私人资料保留') }} {{ cloudRetention(summary.current.retention_seconds) }}{{ uiText('；可在个人资料区域查看和整理空间。') }}</p>
       </section>
       <p v-else class="empty">{{ uiText('当前没有生效的云端套餐，可以选择下方已开放的套餐。') }}</p>
       <section v-if="summary.next" class="entitlement" :aria-label="uiText('下一期套餐')">
         <h4>{{ uiText('已安排下一期：') }}{{ summary.next.title }}</h4>
         <p>{{ allowanceTime(summary.next.starts_at) }} {{ uiText('至') }} {{ allowanceTime(summary.next.expires_at) }}{{ uiText('（香港时间）') }}</p>
-        <p>{{ uiText('套餐额度') }} {{ offerPercentage(summary.next.grant_milli_percent) }} {{ uiText('· 个人空间') }} {{ cloudStorageSize(summary.next.storage_bytes) }}</p>
+        <p>{{ uiText('生效时发放新一期完整额度。') }} {{ uiText('个人空间') }} {{ cloudStorageSize(summary.next.storage_bytes) }}</p>
       </section>
       <fieldset class="duration"><legend>{{ uiText('选择学习时长') }}</legend>
         <button v-for="(label, value) in cloudPlanDurations" :key="value" type="button" :aria-pressed="duration === value" @click="duration = value">{{ label }}</button>
@@ -72,7 +72,7 @@ onBeforeUnmount(() => { request++; });
         <article v-for="product in products" :key="product.product_id" class="product">
           <span>{{ cloudPlanTiers[product.tier] }}</span><h4>{{ product.title }}</h4>
           <p class="price">¥{{ paymentAmount(product.amount_fen!) }} <small>/ {{ cloudPlanDurations[product.duration] }}</small></p>
-          <dl><div><dt>{{ uiText('服务额度') }}</dt><dd>{{ offerPercentage(product.grant_milli_percent!) }}</dd></div><div><dt>{{ uiText('个人空间') }}</dt><dd>{{ cloudStorageSize(product.storage_bytes!) }}</dd></div><div><dt>{{ uiText('单文件上限') }}</dt><dd>{{ cloudStorageSize(product.max_file_bytes!) }}</dd></div><div><dt>{{ uiText('到期后资料保留') }}</dt><dd>{{ cloudRetention(product.retention_seconds!) }}</dd></div></dl>
+          <dl><div><dt>{{ uiText('AI 使用额度') }}</dt><dd>{{ cloudQuotaLabel(product, summary.catalog.items) }}</dd></div><div><dt>{{ uiText('个人空间') }}</dt><dd>{{ cloudStorageSize(product.storage_bytes!) }}</dd></div><div><dt>{{ uiText('单文件上限') }}</dt><dd>{{ cloudStorageSize(product.max_file_bytes!) }}</dd></div><div><dt>{{ uiText('到期后资料保留') }}</dt><dd>{{ cloudRetention(product.retention_seconds!) }}</dd></div></dl>
           <button type="button" @click="selected = product">{{ uiText('查看开通方式') }}</button>
         </article>
       </div>

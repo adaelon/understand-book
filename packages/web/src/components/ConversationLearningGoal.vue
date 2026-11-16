@@ -6,11 +6,11 @@ import { Target } from '@lucide/vue';
 import type { TutorSession } from '../generated/TutorSession';
 import LearningPurposeEntry from './LearningPurposeEntry.vue';
 import type { LearningPurpose } from '../generated/LearningPurpose';
-import type { LearningScopeKind, LearningScopeOption } from '../learning-purpose';
-const props = defineProps<{ session: TutorSession | null; enabled: boolean; busy: boolean; available: boolean; ready: boolean; error: string; workspaceScoped?: boolean; musicMode?: boolean; videoMode?: boolean;
+import type { LearningPurposeStart, LearningScopeKind, LearningScopeOption } from '../learning-purpose';
+const props = defineProps<{ session: TutorSession | null; busy: boolean; available: boolean; ready: boolean; error: string; workspaceScoped?: boolean; musicMode?: boolean; videoMode?: boolean;
   learningScopeOptions?: LearningScopeOption[]; learningPurposeAvailable?: boolean; learningPurposeReason?: string }>();
 const emit = defineEmits<{ (e: 'goal', value: string): void; (e: 'resume'): void; (e: 'manage'): void; (e: 'retry'): void;
-  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind): void }>();
+  (e: 'learning-purpose', purpose: LearningPurpose, scope?: LearningScopeKind, request?: LearningPurposeStart): void }>();
 const editing = ref(false);
 const draft = ref('');
 const requestedGoal = ref<string | null>(null);
@@ -22,7 +22,7 @@ function cancelEdit() { if (props.busy) return; editing.value = false; requested
 function onEditorKeydown(event: KeyboardEvent) {
   if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); cancelEdit(); }
   if (event.key !== 'Tab') return;
-  const controls = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('input:not(:disabled), button:not(:disabled)'));
+  const controls = Array.from((event.currentTarget as HTMLElement).querySelectorAll<HTMLElement>('input:not(:disabled), textarea:not(:disabled), select:not(:disabled), button:not(:disabled)'));
   const first = controls[0], last = controls[controls.length - 1];
   if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
@@ -43,9 +43,9 @@ function save() {
   if (props.busy || !props.available || !draft.value.trim()) return;
   requestedGoal.value = draft.value.trim(); emit('goal', requestedGoal.value);
 }
-function choosePurpose(purpose: LearningPurpose, scope?: LearningScopeKind) {
+function choosePurpose(purpose: LearningPurpose, scope?: LearningScopeKind, request?: LearningPurposeStart) {
   editing.value = false;
-  emit('learning-purpose', purpose, scope);
+  emit('learning-purpose', purpose, scope, request);
 }
 </script>
 <template>
@@ -57,7 +57,7 @@ function choosePurpose(purpose: LearningPurpose, scope?: LearningScopeKind) {
         <p class="goal-text">{{ session.user_intent }}</p>
         <div class="goal-actions"><button ref="editButton" type="button" :aria-label="workspaceScoped ? uiText('调整阶段') : uiText('调整目标')" :disabled="busy || !available" @click="edit"><span class="desktop-adjust">{{ workspaceScoped ? uiText('调整阶段') : uiText('调整目标') }}</span><span class="mobile-adjust">{{ uiText('调整') }}</span></button><button class="goal-manage" type="button" @click="emit('manage')">{{ uiText('详情') }}</button></div>
       </div>
-      <div v-if="session.status !== 'active' || !enabled || savedGoal" class="goal-resume"><span>{{ savedGoal ? uiText('学习目标已保存') : session.status === 'ended' ? uiText('这次学习已结束') : !enabled ? uiText('连续教学已关闭') : uiText('连续教学已暂停') }}</span><button type="button" :disabled="busy || !available || !ready" @click="resume">{{ savedGoal ? enabled ? uiText('开始这次学习') : uiText('开启并开始这次学习') : enabled ? uiText('继续这次学习') : uiText('开启并继续这次学习') }} <span aria-hidden="true">→</span></button></div>
+      <div v-if="session.status !== 'active' || savedGoal" class="goal-resume"><span>{{ savedGoal ? uiText('学习目标已保存') : session.status === 'ended' ? uiText('这次学习已结束') : uiText('这次学习已暂停') }}</span><button type="button" :disabled="busy || !available || !ready" @click="resume">{{ savedGoal ? uiText('开始这次学习') : uiText('继续这次学习') }} <span aria-hidden="true">→</span></button></div>
       <p v-if="!ready && learningPurposeReason" role="status">{{ learningPurposeReason }}</p>
     </template>
     <div v-else class="goal-empty">
@@ -66,7 +66,7 @@ function choosePurpose(purpose: LearningPurpose, scope?: LearningScopeKind) {
     <div v-if="editing" class="goal-editor-overlay" @click.self="cancelEdit">
     <form role="dialog" aria-modal="true" :aria-label="uiText('调整目标')" @submit.prevent="save" @keydown="onEditorKeydown">
       <h3>{{ workspaceScoped ? uiText('调整当前阶段') : uiText('调整目标') }}</h3>
-      <LearningPurposeEntry :music-mode="musicMode" :video-mode="videoMode" :reason="learningPurposeReason" :available="!!learningPurposeAvailable" :ready="ready && available" :enabled="enabled" :busy="busy"
+      <LearningPurposeEntry :music-mode="musicMode" :video-mode="videoMode" :reason="learningPurposeReason" :available="!!learningPurposeAvailable" :ready="ready && available" :busy="busy"
         :scope-options="learningScopeOptions" :show-custom="false" @choose="choosePurpose" />
       <label>{{ workspaceScoped ? uiText('阶段焦点') : uiText('学习目标') }}<input ref="goalInput" v-model="draft" data-workspace-input="learning-goal" :disabled="busy || !available" /></label>
       <div class="goal-actions"><button :disabled="busy || !available || !draft.trim()">{{ uiText('保存目标') }}</button><button type="button" :disabled="busy" @click="cancelEdit">{{ uiText('取消') }}</button></div>

@@ -3,7 +3,7 @@ use crate::{
     control_store::ControlStore,
     learning_workspace::{authorize_material, insert_goal, require_active, validate_goal},
     user_storage_paths::error,
-    workspace_publication::{self, Manifest},
+    workspace_publication::{self},
 };
 use base_schema::{PublishedBookRef, WorkspaceGoalInput};
 use read_tools::ToolError;
@@ -101,10 +101,9 @@ fn reference(
     db.query_row("SELECT release_id,version FROM workspace_release_instances WHERE owner_user_id=? AND learning_workspace_id=?",params![owner,workspace],|r|Ok((r.get(0)?,r.get(1)?))).optional().map_err(|_|storage())
 }
 fn refs(release: &Value) -> Result<BTreeSet<PublishedBookRef>, ToolError> {
-    let manifest: Manifest =
-        serde_json::from_value(release["manifest"].clone()).map_err(|_| storage())?;
-    Ok(manifest
-        .materials
+    let materials: Vec<workspace_publication::Material> =
+        serde_json::from_value(release["manifest"]["materials"].clone()).map_err(|_| storage())?;
+    Ok(materials
         .into_iter()
         .map(|m| m.published_book_ref)
         .collect())
@@ -228,12 +227,15 @@ impl ControlStore {
             .collect();
         let added: Vec<_> = new.difference(&old).cloned().collect();
         let removed: Vec<_> = old.difference(&new).cloned().collect();
+        let course_changed: bool = self.connection.query_row(
+            "SELECT json_extract(a.manifest_json,'$.inquiry_course') IS NOT json_extract(b.manifest_json,'$.inquiry_course') FROM workspace_releases a JOIN workspace_releases b ON a.release_id=b.release_id WHERE a.release_id=? AND a.version=? AND b.version=?",
+            params![id, selected, version], |row| row.get(0)).map_err(|_|storage())?;
         let previous = &current["release"]["manifest"];
         let next = &release["manifest"];
         Ok(json!({"instance":current,"release":release,"changes":{
             "added_materials":added,"removed_materials":removed,
             "public_goal_changed":previous["public_goal"] != next["public_goal"],
-            "composition_changed":previous["topic_links"] != next["topic_links"] || previous["suggested_route"] != next["suggested_route"] || previous["external_resources"] != next["external_resources"],
+            "composition_changed":course_changed || previous["topic_links"] != next["topic_links"] || previous["suggested_route"] != next["suggested_route"] || previous["external_resources"] != next["external_resources"] || previous["inquiry_course"] != next["inquiry_course"],
             "required_capabilities_changed":previous["materials"] != next["materials"],
             "description_changed":previous["name"] != next["name"] || previous["publisher"] != next["publisher"] || previous["applicability"] != next["applicability"] || previous["prerequisites"] != next["prerequisites"]
         },"preserved_private_materials":preserved}))

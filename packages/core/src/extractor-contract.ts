@@ -555,6 +555,9 @@ export function automaticBuildCandidateCorrection(diagnostic: AutomaticBuildFail
   // Persisted Tutor failures used this generic code before field diagnostics were emitted.
   // Only known, unchanged Tutor field rules admit a same-scope correction.
   if (diagnostic.code === "semantic_output_invalid") {
+    if (diagnostic.expected === "teaching review omits sampled source") return {
+      code: diagnostic.code, json_pointer: "/", expected: "For each review sample verify and cite every input evidence_lids entry in its source_bindings, including coverage evidence, for either verdict. Use the review field for a finish action.",
+    };
     if (diagnostic.expected === "composite object requires components") return {
       code: diagnostic.code, json_pointer: "/objects", expected: "Every composite object requires at least one component_keys entry referencing a local object. Preserve source-grounded meaning and evidence.",
     };

@@ -59,8 +59,7 @@ test('W6 preserves original chat and sources, links only selected history and ke
     await expect(input).toBeEnabled();
   };
   const manage = async () => {
-    const workspace = (await scene(page)).learning_workspace_id;
-    await page.getByRole('button', { name: workspace ? '工作区与资料' : '打开书', exact: true }).click();
+    await page.getByRole('button', { name: '学习资料', exact: true }).click();
   };
   await page.request.post(`${control}/model`, { data: { book: 'first' } });
   await ask('旧记录：我想分清速度和变化率，请展示原文');
@@ -70,7 +69,8 @@ test('W6 preserves original chat and sources, links only selected history and ke
   const old = (await api('/api/me/learning-records')).records.find((record: any) => record.session_id === originalChat);
   const originalDetail = await originalRecord(originalChat, old.through_seq);
   expect(originalDetail.sources.length).toBeGreaterThan(0);
-  await page.getByRole('button', { name: '新对话', exact: true }).first().click();
+  await page.locator('.topbar .tools-toggle').click();
+  await page.locator('.topbar').getByRole('button', { name: '新对话', exact: true }).click();
   await expect(page.locator('.a-msg')).toHaveCount(0);
   await page.request.post(`${control}/model`, { data: {} });
   await ask('你好，这是另一段尚未选择的交流');

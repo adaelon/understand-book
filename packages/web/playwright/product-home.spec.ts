@@ -50,9 +50,15 @@ for (const width of [320, 390, 768, 1000, 1024, 1440]) {
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 
+    const course = page.getByRole('link', { name: '选一本书或一套课程，开始学习', exact: false });
+    await expect(course).toHaveAttribute('href', './index.html?view=learning');
+    await expect(page.getByRole('navigation', { name: '首页导航' }).getByRole('link', { name: '学习', exact: true }))
+      .toHaveAttribute('href', './index.html?view=learning');
+    await expect(page.getByRole('navigation', { name: '首页导航' }).getByRole('link', { name: '学习资料', exact: true }))
+      .toHaveAttribute('href', './index.html?view=materials');
     const start = page.getByRole('link', { name: '看看怎样学', exact: true });
     if (width === 390 || width === 1440) {
-      await expect(start).toBeInViewport({ ratio: 1 });
+      await expect(course).toBeInViewport({ ratio: 1 });
       await page.screenshot({ path: info.outputPath(`home-viewport-${width}.png`) });
       await page.locator('.home-hero').screenshot({ path: info.outputPath(`home-workspace-${width}.png`) });
     }
@@ -63,10 +69,10 @@ for (const width of [320, 390, 768, 1000, 1024, 1440]) {
     await page.getByRole('link', { name: '试着想明白一个问题', exact: true }).click();
     await expect(page).toHaveURL(/#learning-story$/);
     await expect(page.getByRole('radio', { name: '把一边拉得越长越好', exact: true })).toBeInViewport();
-    await page.locator('.home-hero-actions').getByRole('link', { name: '参与内测', exact: false }).click();
-    await expect(page).toHaveURL(/#begin$/);
+    await page.locator('#begin').scrollIntoViewIfNeeded();
     await expect(page.getByRole('link', { name: '已有内测码，开始注册', exact: false })).toBeInViewport();
-    await expect(page.getByRole('link', { name: '已经有账号？继续阅读', exact: false })).toHaveAttribute('href', './?account=login');
+    await expect(page.getByRole('link', { name: '已有内测码，开始注册', exact: false })).toHaveAttribute('href', './index.html?view=learning&account=register');
+    await expect(page.getByRole('link', { name: '已经有账号？继续学习', exact: false })).toHaveAttribute('href', './index.html?view=learning&account=login');
     expect(errors).toEqual([]);
   });
 }

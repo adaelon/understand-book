@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>同一对向量，三条等距线</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:clamp(9px,3vw,28px);background:#0b1c2a;color:#deecf1;font:15px/1.55 system-ui,sans-serif}main{max-width:750px;margin:auto;border:1px solid #456075;background:#102b3b;padding:clamp(10px,3vw,24px)}header{display:flex;justify-content:space-between;align-items:end;gap:8px;border-bottom:1px solid #456075}h1{font-size:clamp(20px,3vw,31px);margin:0 0 6px}small{color:#b7cbcf;font:12px/1.4 monospace}svg{width:100%;height:auto;max-height:55vh;min-height:210px;display:block;margin:10px auto}svg text{fill:#d7e8ec;font:12px system-ui}nav{display:flex;gap:6px}button{min-height:44px;min-width:57px;border:1px solid #78939c;background:#142f3e;color:#edf6f1;font:inherit;cursor:pointer;border-radius:1px}button[aria-pressed=true]{border-color:#edbf7b;color:#ffd99c;background:#343633}#readout{font-size:18px;font-weight:700;margin:8px 0 0}p{margin:4px 0;color:#c3d9dd}
+</style></head><body><main><header><h1>同一对向量，三条等距线</h1><small>半径 5</small></header><p>端点固定。换一把尺，观察两个端点是在边界上、里面，还是外面。</p>
+<svg id="stage" viewBox="-140 -136 280 272" role="img" aria-label="固定向量与所选范数的等距边界"><defs><pattern id="grid" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M20 0H0V20" stroke="#315366" stroke-width=".65" fill="none"/></pattern></defs><rect x="-128" y="-128" width="256" height="256" fill="url(#grid)"/><g stroke="#7796a2" fill="none"><path d="M-124 0H124m-5 -3 5 3-5 3M0 124V-124m-3 5 3-5 3 5"/></g><path id="boundary" fill="#c4ab6a" fill-opacity=".11" stroke="#f6c783" stroke-width="1.7"/><path d="M60 0V-80H0" fill="none" stroke="#88a6a9" stroke-dasharray="2 3"/><path d="M0 0L60 -80M0 0V-100" stroke="#d1e9f5" fill="none" stroke-width="2"/><g fill="#ffe2a4"><circle cx="60" cy="-80" r="3"/><circle cx="0" cy="-100" r="3"/></g><text x="66" y="-79">甲 (3,4)</text><text x="6" y="-105">乙 (0,5)</text><text x="4" y="14">O</text><text x="120" y="-6">x</text><text x="5" y="-120">y</text></svg>
+<nav aria-label="换尺"><button id="l1">L1</button><button id="l2">L2</button><button id="linf">L∞</button></nav><p id="readout" aria-live="polite"></p><p id="why"></p></main>
+<script>(()=>{const host=window.presentation, points=[[3,4],[0,5]], names={l1:'L1',l2:'L2',linf:'L∞'};
+const length=(m,[x,y])=>m==='l1'?Math.abs(x)+Math.abs(y):m==='l2'?Math.hypot(x,y):Math.max(Math.abs(x),Math.abs(y));
+const valid=m=>Object.hasOwn(names,m);
+const $=id=>document.getElementById(id);
+function compare(m){const [a,b]=points.map(p=>length(m,p));return '甲 '+a+'　乙 '+b+'　'+(a===b?'一样长':a>b?'甲更长':'乙更长')}
+let metric='l2';
+function draw(){const paths={l1:'M0 -100L100 0 0 100 -100 0Z',l2:'M100 0A100 100 0 1 1 -100 0A100 100 0 1 1 100 0Z',linf:'M-100 -100H100V100H-100Z'};$('boundary').setAttribute('d',paths[metric]);$('readout').textContent=compare(metric);$('why').textContent={l1:'两分量的绝对值相加。甲在菱形外，乙在菱形上。',l2:'沿直线量，两支箭都落在半径为 5 的圆上。',linf:'只量较大的绝对分量。甲在正方形内，乙在边界上。'}[metric]}
+function select(m){if(!valid(m))return;metric=m;for(const k of Object.keys(names))$(k).setAttribute('aria-pressed',String(k===m));draw()}
+for(const k of Object.keys(names))$(k).onclick=()=>select(k);
+select(valid(host?.initialState?.metric)?host.initialState.metric:metric);
+host?.registerStateReader(()=>({values:{metric},visible_step:names[metric],observation:{summary:$('readout').textContent,state:{metric}}}));
+host?.registerStateRestorer(saved=>select(saved.values.page.metric));})();</script></body></html>

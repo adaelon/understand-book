@@ -39,22 +39,44 @@ pub(crate) fn require_reference(scope: &crate::run_scope::RunScope, reference: O
     Ok(())
 }
 
-/// Browser mediaTime is rounded to microseconds. Recover its integer stream PTS before
-/// storing FrameLocation, so a rounded-up presentation time does not exclude that frame.
-pub(crate) fn presentation_time_base(directory: &Path, source: &base_schema::VideoSourceAsset) -> Result<[u32; 2], ToolError> {
+/// Browser playback uses container timestamps; locations use milliseconds from its origin.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub(crate) struct PresentationTimeline {
+    pub time_base: [u32; 2],
+    pub origin_ms: f64,
+    pub video_start_ms: f64,
+    pub audio_start_ms: Option<f64>,
+}
+
+pub(crate) fn presentation_timeline(directory: &Path, source: &base_schema::VideoSourceAsset) -> Result<PresentationTimeline, ToolError> {
+    probe_timeline(&directory.join(&source.imported_path), false)
+}
+
+pub(crate) fn probe_timeline(file: &Path, ignore_editlist: bool) -> Result<PresentationTimeline, ToolError> {
     let mut command = Command::new(crate::video_media::executable("ffprobe"));
-    command.args(["-v", "error", "-select_streams", "V:0", "-show_entries", "stream=time_base", "-of", "csv=p=0"])
-        .arg(directory.join(&source.imported_path)).stdin(Stdio::null());
+    command.args(["-v", "error"]);
+    if ignore_editlist { command.args(["-ignore_editlist", "1"]); }
+    command.args(["-show_entries", "stream=codec_type,time_base,start_time:stream_disposition=attached_pic:format=start_time", "-of", "json"])
+        .arg(file).stdin(Stdio::null());
     #[cfg(windows)] {
         use std::os::windows::process::CommandExt;
         command.creation_flags(0x08000000);
     }
     let output = command.output().map_err(|e| failed(format!("Cannot read video time base: {e}")))?;
     if !output.status.success() { return Err(failed("Cannot read video time base")); }
-    let value = String::from_utf8_lossy(&output.stdout);
-    let (n, d) = value.trim().split_once('/').ok_or_else(|| failed("Missing video time base"))?;
+    let value: serde_json::Value = serde_json::from_slice(&output.stdout).map_err(|e| failed(e.to_string()))?;
+    let streams = value["streams"].as_array().ok_or_else(|| failed("Missing video streams"))?;
+    let video = streams.iter().find(|s| s["codec_type"] == "video" && s["disposition"]["attached_pic"] != 1)
+        .ok_or_else(|| failed("Missing video stream"))?;
+    let (n, d) = video["time_base"].as_str().and_then(|s| s.split_once('/')).ok_or_else(|| failed("Missing video time base"))?;
     let parse = |v: &str| v.parse::<u32>().ok().filter(|n| *n > 0).ok_or_else(|| failed("Invalid video time base"));
-    Ok([parse(n)?, parse(d)?])
+    let milliseconds = |v: &serde_json::Value| v.as_str().and_then(|s| s.parse::<f64>().ok()).filter(|n| n.is_finite()).map(|n| n * 1000.0);
+    Ok(PresentationTimeline {
+        time_base: [parse(n)?, parse(d)?],
+        origin_ms: milliseconds(&value["format"]["start_time"]).unwrap_or(0.0),
+        video_start_ms: milliseconds(&video["start_time"]).ok_or_else(|| failed("Missing video start time"))?,
+        audio_start_ms: streams.iter().find(|s| s["codec_type"] == "audio").and_then(|s| milliseconds(&s["start_time"])),
+    })
 }
 
 pub(crate) fn source_context(
@@ -186,7 +208,7 @@ pub fn read_frames(
     for requested_ms in &request.sampling {
         cancel.check()?;
         // Numeric parameters plus immutable publication identity replace repeated decoding.
-        let key = format!("{}-{:?}", requested_ms.to_bits(), rect);
+        let key = format!("relative-v1-{}-{:?}", requested_ms.to_bits(), rect);
         let target = cache.join(key);
         if !target.join("frame.json").is_file() || !target.join("frame.png").is_file() {
             let staging = tempfile::tempdir_in(cache).map_err(|e| failed(e.to_string()))?;
@@ -206,6 +228,7 @@ pub fn read_frames(
                     "-loglevel",
                     "info",
                     "-copyts",
+                    "-start_at_zero",
                     "-ss",
                     &(*requested_ms / 1000.0).to_string(),
                     "-i",
@@ -454,6 +477,29 @@ pub(crate) mod tests {
         pixels.truncate(info.buffer_size());
         assert_eq!(info.color_type, png::ColorType::Rgb);
         (info.width, info.height, pixels)
+    }
+
+    #[test]
+    fn video_frames_nonzero_origin_uses_the_audio_relative_timeline() {
+        let root = tempfile::tempdir().unwrap();
+        let (book, publication, mut request) = fixture(root.path());
+        let status = Command::new(crate::video_media::executable("ffmpeg"))
+            .args(["-nostdin", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=2",
+                "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=16000:duration=2",
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-output_ts_offset", "5", "-y"])
+            .arg(root.path().join("media/original.mp4")).status().unwrap();
+        assert!(status.success());
+        let (manifest, _) = book.load_video_source(root.path()).unwrap();
+        let timeline = presentation_timeline(root.path(), &manifest.source).unwrap();
+        assert!((timeline.origin_ms - 4936.0).abs() < 0.001);
+        request.sampling = vec![500.0, 1900.0];
+        let batch = read_frames(&book, root.path(), &publication, "relative", &root.path().join("cache"), request, &CancellationToken::default()).unwrap();
+        assert_eq!(batch.images[0].read.frame.actual_pts_ms, 563.96484375);
+        assert_eq!(batch.images[1].read.frame.actual_pts_ms, 1963.96484375);
+        let cache = crate::video_playback::prepare(root.path(), root.path()).unwrap().unwrap();
+        let playback = crate::video_playback::projection(root.path(), &cache, &publication).unwrap();
+        assert_eq!(playback["timeline_origin_ms"], 4936.0);
+        assert_eq!(playback["hls"], false, "edit-list-dependent HLS must use original Range playback");
     }
 
     #[test]

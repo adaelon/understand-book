@@ -47,6 +47,10 @@ path, or request to “build this paper” is not by itself a natural-language r
 - **Explicit reading goal:** only when the user asks to plan the build around a stated reading goal,
   use **Natural-language reading goal** below. The goal route may call the Desktop controller and
   produce reader-private artifacts.
+- **Build a course:** use the standard route with `--course`; pass an explicitly requested course
+  topic or chapter scope with `--course-goal`. A course goal selects the shared course content and
+  does not select the reader-private intent route. An empty goal lets BookStructure organize the
+  source into lessons. Include the course stages and their budget in the exact plan projection.
 
 Do this classification before either plan-authoring surface is called. Never reinterpret an
 ordinary prebuild request as a reading goal merely because the workspace contains a paper.
@@ -89,7 +93,7 @@ BookStructure from Pass1 and profile sidecars. Record `pass2=enabled|disabled` i
 For a new standard plan, call the installed code-owned surface directly:
 
 ```text
-<build-exe> legacy-plan <target> --root <root> [--pass2 <enabled|disabled>] [budget flags]
+<build-exe> legacy-plan <target> --root <root> [--pass2 <enabled|disabled>] [--course] [--course-goal <goal>] [budget flags]
 ```
 
 Consume only `explicit_legacy_build_plan.v1`. Show its exact stage closure,

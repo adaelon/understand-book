@@ -1,5 +1,53 @@
 # Linux 多人阅读现网运行说明
 
+2026-11-13 **22:11:01 HKT** 已上线阅读器 `<sub>` / `<sup>` 显示、跨上下标完整划线与引用，以及新对话快捷按钮移除、演示页开关常驻。沿用 `all-pending-20261113`，当前 PID **359409**；前端热更新，服务端分组补丁重开维护 **27.978 秒**，无数据迁移。同期发布《数据科学与知识工程：复习与开卷速查（公式详解版）》，49 个现有账号及未来账号按既有默认规则可读，原有预构建文件保留。Linux 132 项前端测试、多人划线接口回归及正式构建通过；正式域名实测选中、划线、刷新、完整引用与返回，以及桌面／手机新对话界面通过。回退点 `/opt/understand-book/backups/reader-scripts-20261113`。[发布、验证与恢复记录](performance/reader-scripts-20261113/README.md)。以下保留历史。
+
+2026-11-13 **15:01:12 HKT** 已合并上线近期待发布的云端改动，包括理解地图、课程与补学、教学观察隔离、教师纠错与档案修订、音乐表达、语音输入及后台管理。当前版本 `all-pending-20261113`，control schema **24**、learning schema **7**；切换维护 **42.984 秒**，**49 个学习数据库、3,347 条记录**逐行保留。Linux 六个正式程序及读者／后台 Web 构建通过，**1,443 项相关自动化检查、6 个受控浏览器场景**通过；公网 10 个入口、13 项资源、旧账号、桌面／手机及后台验证通过。备份任务于 15:03 正常重开服务，最终 PID **350828**；新增付费模型请求 **0 次**。恢复点为 `/opt/understand-book/backups/all-pending-20261113`。教学归纳仍有旧状态未完整更新等已知问题。[完整发布与恢复记录](performance/all-pending-release-20261113/README.md)。以下保留历史。
+
+2026-11-11 **20:12:08 HKT** 已热更新来源阅读的目录同步、正文宽度及紧凑布局，沿用实际运行版本 `delivery-repair-20261111`、PID **285614**。Linux 36 项相关测试、类型检查与多人前端构建通过；公网 10 个入口、13 项静态资源及普通账号／管理员读取通过。补齐当前静态目录缺失的既有后台构建；未重启服务、无数据迁移。[发布与恢复记录](performance/source-reader-layout-20261111/README.md)。以下保留历史。
+
+2026-11-11 **11:09:07 HKT** 已上线两门探究课及三维知识对象，11:10:20 发布 **AI Infra · 资源与批处理决策课**，11:25:19 正式 HTTPS 验收通过。当前版本 `inquiry-course-20261111`、PID **269674**，control schema **24**，learning schema **6 → 7**。两课包含原文来源、概念与多轮实验、针对性反馈、理解记录、决策与迁移及三维对象操作；公开入口见共享预构建工作区。完整备份及独立恢复检查通过，**3,146 条**原学习记录逐行保留；切换维护 **289.026 秒**。两课真实预测反馈、理解入库、桌面／手机及对象提问草稿验证通过，验收费用 **0.156227 元**，专用账号已停用。开放后恢复须保留 schema 7 与新增学习数据。[上线、验收与恢复记录](performance/inquiry-course-20261111/README.md)。以下保留历史。
+
+2026-11-09 **13:27:56 HKT** 已完成运行修复发布，当前版本 `operations-remediation-r2-20261109`、PID **207632**、schema **24**，最终切换维护 **31.883 秒**。视频检索位置可接续原文读取；浏览器不可用时停止无效重绘；告警恢复按具体能力判定，并补齐联网费率、历史预占提醒。按用户批准释放 **472 条、128.654186 元**历史预占，未知供应商成本保留并由平台承担。真实视频及白板验证、重新登录读取、现有账号数据检查通过。材料补建按用户决定暂缓。[检查与修复记录](performance/operations-audit-20261109/README.md) · [发布与验证证据](performance/operations-audit-20261109/remediation.json)。
+
+2026-11-09 **12:08:25 HKT** 已修复画板预览浏览器路径漏配，正式 HTTPS 的画板制作、预览、保存及重新登录读取通过，验证费用 **0.043705 元**。沿用 `continuous-source-20261108`、schema 23，PID **201165**，配置切换维护 **3.531 秒**；新增启动前浏览器与渲染资源检查，自动巡检已确认恢复。[修复与验证记录](performance/board-preview-path-20261109/README.md)。
+
+2026-11-08 **18:10:47 HKT** 已上线统一的文字来源阅读，版本 `continuous-source-20261108`、PID `195637`，切换维护 **28.447 秒**。候选基于 `operations-observability-20261108`，沿用生产数据根 `production-20261031` 和 schema 23，恢复点为 `/opt/understand-book/backups/continuous-source-20261108`。Linux 115 项前端定向测试与正式构建通过。公网验证覆盖引用高亮、前后分页、工作区首页和阅读现场的笔记来源、桌面 1440px 与手机 390px、关闭后返回笔记。课程来源随探究短课发布。[切换回执](performance/continuous-source-20261108/code-deployment.json) · [公网验证](performance/continuous-source-20261108/public-verification.json)。
+
+2026-11-08 **15:31:43 HKT** 已上线业务可用性、失败明细及自动邮件告警，版本 `operations-observability-20261108`、PID `192657`，最终切换维护 **14.791 秒**，控制库升级至 **schema 23**。每分钟独立巡检并向 `zjxlijo@gmail.com` 通知异常、升级和恢复；两封演练邮件已确认收件。费率覆盖检测、历史结果补录、用户与运维计数分离、正常/不可读/到期的隔离验证及正式问答通过，实际验证费用 **0.017793 元**。首次尝试被新监测的供应商匹配错误拦截，已恢复旧版后修正、复测并重发。沿用原数据根；[上线证据、邮件规则与同机监测边界](performance/operations-observability-20261108/README.md)。
+
+2026-11-08 **10:42:21 HKT** 已续接到期模型费率并恢复问答，10:42:40 正式 HTTPS 真实提问成功保存及交付。费率与 `adaelon` 原额度期均续至 **2026-12-08 00:00 HKT**，原余额与历史费用保留；版本仍为 `tutor-locality-20261106`、PID `188030`、schema 22。两次维护分别 13.180 / 3.751 秒，第二次修正替换配置的服务账号读取权限。验证实际费用 **0.016020 元**；原四轮失败及两轮运维验证均保留。[故障、恢复与续接记录](performance/model-rates-renewal-20261108/README.md)。
+
+2026-11-06 **15:00:51 HKT** 已上线 Tutor 的 Pass1/discourse 取证和理解承接，版本 `tutor-locality-20261106`、PID `179438`，维护 **10.511 秒**。Linux 四项真实读源检查、8 项续读回归与正式账号、公网检查通过，额外模型费用 0 元。数据根 production-20261031、schema 22。[发布记录](performance/tutor-locality-20261106/deployment/README.md)。
+
+2026-11-06 **09:53:50 HKT** 已上线谱面乐器导航和收起入口，基于当前 `coach-cost-20261105` 仅更新前端，PID `166920` 保持。Linux 39 项相关测试、类型检查、多人构建与静态入口检查通过；正式贝九桌面、390px 手机及连续播放翻页验证通过。根盘当前约 99% 已用，旧开发目录 `target/debug` 有约 23.36 GiB 可清理构建产物；尚未删除服务器文件。[发布与磁盘检查](performance/instrument-navigation-20261105/deployment/README.md)。
+
+2026-11-05 **15:55:12 HKT** 已上线知识树、理解果实及苏格拉底问答联动，版本 `knowledge-tree-socratic-20261105`、PID `159704`，维护 **9.174 秒**。Linux 25 项相关检查、163 项 Web 检查与六个正式程序构建通过；正式账号可读的 25 份材料、28 个发布版本均成功返回知识树，桌面／手机入口、真实模型提问、“先到这里”及草稿保留通过。沿用 production-20261031、schema 22，无数据迁移。[发布、公网与恢复记录](performance/knowledge-tree-20261105/deployment/README.md)。
+
+2026-11-05 **00:06:00 HKT** 已上线音乐回答中的可听谱例与 Yamaha C5 原始无损钢琴，版本 `answer-piano-lossless-20261104`、PID `152604`，维护 **25.586 秒**。Linux 21 项音乐检查、152 项 Web 检查及六个正式程序构建通过；正式贝九第 17–21 小节的真实 Agent 回合、四键同亮、和弦接续、FLAC 请求、来源重开与桌面/手机点听通过。沿用原数据根、schema 22，无数据迁移。[发布与恢复记录](performance/salamander-lossless-20261104/deployment/README.md)。
+
+2026-11-04 **18:51:04 HKT** 已继续热更新普通对话区阅读空间，覆盖音乐伴听、阅读问答和手机。正式 HTTPS 的长回复样例中，1524 × 694 窗口的侧栏回复高 484px、输入栏高 69px，手机无横向溢出，页面运行错误为零。沿用 `reading-followup-20261104`、PID 138264，维护时间为零。[普通对话发布与公网记录](performance/presentation-reading-space-20261104/README.md)。
+
+2026-11-04 **16:54:07 HKT** 已合并发布演示分屏阅读空间、演示快照只读和发送备份提示修复，版本 `reading-followup-20261104`，PID `138264`。后台构建期间网站正常服务，确认活动任务归零后切换，维护 **30.056 秒**。Linux 131 项相关检查、多人前端及六个正式程序构建通过，切换前后的账号读取与制作能力一致，沿用 production-20261031、schema 22。[发布与恢复记录](performance/presentation-reading-space-20261104/README.md)。
+
+2026-11-04 **15:14:58 HKT** 已更新正式站音乐伴听的自动翻页。实际 HTTPS 阅读器以 1× 连续播放《魔王》，在慢网测试中自然跨过全部 8 个分页点，全程保留可读谱面。手机翻页和临近页尾恢复播放也已验证。[实播与发布记录](performance/music-score-loading-20261104/README.md)
+
+2026-11-04 已更新原谱阅读器的底部常驻小地图，01–09 及回听标记直接控制原声定位，完整导览以浮层打开。正式《魔王》桌面和手机九组交互验证通过，谱面区域高 562px、播放栏高 83px；沿用 `presentation-scenes-20261103`。见[真实页面与发布记录](performance/erlkoenig-reader-layout-20261104/README.md)。
+
+2026-11-04 **09:48:18 HKT** 已发布“舒伯特—李斯特《魔王》（原谱跟听）”：259 秒原声、9 页原谱、148 小节、5309 个音头及 165 个休止符，维持“部分跟谱”提示。39 个现有及未来站内账号默认可读，正式 HTTPS 的 15 项播放、谱面、权限及手机检查通过。沿用 `presentation-scenes-20261103`、schema 22，程序未升级，无数据迁移；默认授权维护 20.938 秒，服务 PID `124236`。见[发布与恢复记录](performance/erlkoenig-20261103/deployment/README.md)。
+
+2026-11-03 **21:03:36 HKT** 已上线演示页选型、五个场景及三维制作指导，版本 `presentation-scenes-20261103`，PID `103148`。Linux 17 项回归、15 组场景预览、读者／管理员读取与公网资源检查通过；维护 17.807 秒，沿用 production-20261031、schema 22，无数据迁移。[发布与恢复记录](performance/presentation-scenes-20261103/deployment/README.md)。
+
+2026-11-03 **19:57:11 HKT** 已上线 Tennstedt 1992 贝九四乐章，版本 `beethoven9-tennstedt-20261103`，PID 97114。330 页总谱、四章原声及六段合成示范已向 38 个现有与未来站内账号开放；公网实播、补页及手机导览通过。沿用 production-20261031、schema 22，无数据迁移；两次维护分别 9.681 / 6.152 秒。原服务功能和用户数据保留，旧 Coates 继续撤下。见[正式发布与恢复记录](performance/beethoven9-tennstedt-20261103/deployment/README.md)。
+
+2026-11-03 14:57:24 HKT 已上线“记一下”自动避让操作按钮修复，沿用 `music-publication-20261103`，PID 91848 保持。公网桌面、低高度窗口及 390/320px 长草稿、拖放避让与发送命中通过；真实请求中普通点击停止返回 HTTP 200，测试对话已清理。刷新阅读页面使用新版；[发布、截图与恢复记录](performance/note-launcher-avoidance-20261103/README.md)。
+
+2026-11-03 14:28:30 HKT 已发布吴冠中《审美力》当前完成的预构建成果，书籍 `shenmeili-wu-guanzhong`，默认发布 `01a1a018-4dd9-76e3-bac0-b6d116a0e7b9`。按项目默认规则向现有及未来站内账号开放；561 个正文叶节点、全书结构和 Tutor 公网验证通过，正式教学材料仍在准备中。沿用 `music-publication-20261103`，默认授权维护耗时 0.35 秒，服务已恢复。详见[发布及验证记录](performance/shenmeili-publication-20261103/README.md)。
+
+2026-11-03 11:24:32 HKT 已上线阅读顶栏与目录布局，沿用现网版本 music-publication-20261103、PID 88489。完整书名位于左侧目录顶部，顶栏显示目录、章节和进度。11:26 HKT 公网桌面及 390/320px 实际目录开合、选章返回正文检查通过。前端恢复点和证据见[发布记录](performance/reader-header-20261103/README.md)。
+
+2026-11-03 00:14:30 HKT 已合并上线阅读输入引导、学习入口、演示开关、发送按钮、画板首页、新手引导及模型限流恢复。当前服务器 `184.195.172.171`，版本 `all-pending-20261102`，PID `84751`，正式数据根 `/opt/understand-book/data/production-20261031`；维护 26.738 秒，无数据迁移。353 项前端与 74 项后端检查、隔离副本和公网接口及桌面/手机页面验证通过。默认前台模型并发和活动回合上限为 8；旧版本与配置恢复点保留。详见[本次发布记录](performance/all-pending-release-20261102/README.md)。以下为历史记录。
+
 2026-10-30 17:49 HKT 已上线用户确认的“记一下”浮动入口：移除底部整行占位，自动避开可见输入区和手机导航，可拖动、记住位置，一点击入正文并继续草稿。基于当前线上 `all-pending-20261030`，仅替换 Reader 前端入口和相关资源；PID 524591 保持。17:50 HKT 公网资源字节与读者登录读取通过，17:52 HKT 公网桌面／手机交互及截图验收通过，刷新页面生效；[发布与恢复记录](performance/note-launcher-20261030/README.md)。
 
 2026-10-30 16:57 HKT 已上线发送按钮避让与画像导航：随手记入口独立占位，发送不再被“继续写／我的想法”遮挡；主导航改为“问答 · 画像 · 工具”。沿用 `all-pending-20261030`，仅更新前端，PID 524591 保持。17:01 HKT 公网桌面/手机验收通过，刷新页面生效；[验证与恢复记录](performance/send-button-20261030/README.md)。
@@ -121,9 +169,9 @@
 ## 入口与版本
 
 - 正式入口：`https://understandbook.top/`；后台 `https://understandbook.top/admin/`；旧 `https://115.190.121.150` 保留路径以 308 跳转到域名，历史 8080 入口经旧 IP 跳转。
-- release：`/opt/understand-book/releases/all-pending-20261030`；后台静态文件已补齐。服务、沙箱 worker 与阅读器沿用本次合并发布，后台源码与前版一致。见[合并发布](performance/all-pending-release-20261030/README.md)及[后台修复](performance/admin-static-repair-20261030/README.md)。
+- release：`/opt/understand-book/releases/operations-remediation-r2-20261109`；服务、沙箱 worker 与多人阅读器使用该版本，管理后台及已打开旧页面所需资源保留。见[当前发布](performance/operations-audit-20261109/remediation.json)。
 - 服务：`understand-book-multi.service`；账户 `understand-book`；后端 `127.0.0.1:8788`。
-- 数据：`/opt/understand-book/data/multi-reader-to-tb-20261012`，control schema 22；Memory 按账号加载升级至 6，未加载的旧文件保留原版本。旧资料归属账号 `reader`。
+- 数据：`/opt/understand-book/data/production-20261031`，control schema 24；Memory 按账号加载升级至 6，未加载的旧文件保留原版本。旧资料归属账号 `reader`。
 - 环境：`/opt/understand-book/multi-reader.env`，0600；沿用旧 Provider 路由和 Key。
 - 初始登录资料：远端 `/opt/understand-book/multi-reader-credentials.json`，0600；本地交付另存用户私人目录。凭证不进入仓库或运行证据。
 
@@ -164,7 +212,48 @@ journalctl -u understand-book-cert-renew.service --no-pager
 
 对话历史按当前材料显示。新打开材料时建立独立阅读现场，默认尚未选择聊天；空白对话不表示历史丢失。点击“本书历史”或空白区的历史入口可以打开旧记录。迁入的 17 段对话分布为 `ai-agent-engineering` 6、`quantification-essence` 7、`mastering-rust` / Transformer 论文 / `quickstart-demo` / `sample-book` 各 1；其他三份材料在旧数据里没有对话。
 
-演示配置为服务根 `presentation-sandbox.json`，worker 使用现网 release，Python 运行时 `/opt/understand-book/tools/render-runtime`，浏览器 `/usr/lib64/chromium-browser/chromium-browser`。运行时沿用已验收的 Matplotlib 3.11.0 / Manim 0.21.0 / PyAV 17.1.0。`/etc/polkit-1/rules.d/49-understand-book-render.rules` 授予专用宿主账号 systemd 的 `manage-units` 权限；生产模板及权限边界见 [发布运行单](Linux多人阅读-MU11发布运行单.md)。生成任务仍为 nobody，使用独立文件系统、网络命名空间和原有资源限额。制作状态从登录后的 `/api/auth/me` 查看，改配置后需重启宿主；浏览器刷新后显示新能力。
+演示配置为服务根 `presentation-sandbox.json`，worker 使用现网 release。当前 Ubuntu 制作运行时位于 `/opt/understand-book/tools/render-runtime-ubuntu`，画板预览浏览器为 `/opt/understand-book/tools/render-runtime-ubuntu/browsers/google-chrome/chrome`，Node 为 `/opt/understand-book/tools/node-v24.20.0-linux-x64/bin/node`；以下版本信息保留迁入时的记录。运行时沿用已验收的 Matplotlib 3.11.0 / Manim 0.21.0 / PyAV 17.1.0。`/etc/polkit-1/rules.d/49-understand-book-render.rules` 授予专用宿主账号 systemd 的 `manage-units` 权限；生产模板及权限边界见 [发布运行单](Linux多人阅读-MU11发布运行单.md)。生成任务仍为 nobody，使用独立文件系统、网络命名空间和原有资源限额。制作状态从登录后的 `/api/auth/me` 查看，改配置后需重启宿主；浏览器刷新后显示新能力。
+
+## 业务备份与异地恢复（2026-11-09）
+
+**已启用并验证**：14:08:44 HKT 最新异地快照 `1cd7750f94f9` 完成，包含当前 R2 版本；已恢复验证 1,186 个用户文件、47 个数据库和示例材料，主机备份与异地监测定时任务均 active/enabled。采集时须短暂停写，本次最新窗口为 53.446 秒。
+
+备份覆盖控制库、全部账号聊天/笔记/画板及学习数据、已发布材料、当前可部署程序和网页、制作/嵌入运行时、服务配置与凭证。缓存、编译中间产物和临时观测队列不入业务快照。使用加密 restic 仓库，共用数据块避免重复传输；[官方恢复用法](https://restic.readthedocs.io/en/stable/050_restore.html)。
+
+- 主机：`184.195.172.171`。`understand-book-backup.timer` 每小时尝试；距最近成功采集不足 23 小时跳过，活动问答或后台任务未结束也跳过。空闲时短暂停止接收新请求并停写，完成本地一致副本后立即恢复网站，异地传输在后台进行。
+- 本地：`/opt/understand-book/backups/business`，`latest` 指向最近成功异地传输的快照，保留 2 份。本次任务的发布前控制库与配置恢复点另行保留。
+- 异地：退休服务器 `115.190.121.150` 的 `/opt/understand-book/backups/production-restic`，保留最近 7 份 business 快照。旧机仍承担备份和监测，不能随旧业务退役而关停。
+- 状态：主机 `operations/backup-status.json` 中 `offsite_at` 和 `snapshot_id` 表示完成异地备份；只有 `finished_at` 不代表已传到另一台机器。传输日志在 `operations/backup-transfer.log`，失败时下次先重传已冻结的副本。
+- 异地监测：旧机 `understand-book-external.timer` 每分钟检查正式 HTTPS、备份新鲜度和磁盘。超过 36 小时没有新备份或可用磁盘不足 1 GiB 会按原收件配置告警。计划维护最多豁免 120 秒的网站告警，不豁免备份或磁盘告警。
+- 恢复凭证在主机 `operations` 私有目录，另存本机 `E:\allwork\backups\understand-book-recovery`，仅当前 Windows 用户可访问。凭证不能随代码提交，也不能仅依赖故障主机上的副本。
+
+查看任务与备份结果：
+
+```bash
+systemctl list-timers understand-book-backup.timer
+journalctl -u understand-book-backup.service -n 50 --no-pager
+cat /opt/understand-book/operations/backup-status.json
+# 旧备份节点
+systemctl list-timers understand-book-external.timer
+cat /opt/understand-book/operations-external/status.json
+```
+
+恢复先落到独立目录；不要直接覆盖运行中的生产根。磁盘须容纳选中快照的恢复体积。在主机可调用已配置的仓库参数（密码不会出现在命令行）：
+
+```python
+import runpy, subprocess
+ops = runpy.run_path('/opt/understand-book/operations/backup-production.py')
+subprocess.run([*ops['restic_args'](), 'snapshots', '--tag', 'business'], check=True)
+# 把 SNAPSHOT_ID 换成上一步选定的业务快照。
+subprocess.run([*ops['restic_args'](), 'restore', 'SNAPSHOT_ID',
+                '--target', '/opt/understand-book/restore-isolated'], check=True)
+```
+
+绝对来源路径会保留在恢复目录下：业务副本中的 `restore.json` 记录数据根和 release，`data` 对应生产数据根，`release` 对应程序版本，`config`/`operations` 对应服务配置和运维任务；`tools`、`models-ubuntu` 独立位于原 `/opt/understand-book` 路径。替换生产前先停写并保留当前数据，恢复专用服务账号、同发行版系统依赖及文件属主，再按原路径放回这些目录与配置。先验证控制库、用户数据和示例材料，再启用服务与定时任务；不能把旧快照当作常规发布回退覆盖上线后的新写入。
+
+旧备份节点的 Python SQLite 3.34.1 不支持当前 STRICT 表；数据库校验使用已有 Node 24 运行时的 SQLite 3.53.4，不能把旧工具的语法拒绝判断为数据损坏。
+
+本次恢复演练的实际范围、快照和结果在[修复证据](performance/operations-audit-20261109/remediation.json)记录。恢复演练只操作隔离目录。
 
 ## 账号、备份与回退
 
@@ -172,7 +261,7 @@ journalctl -u understand-book-cert-renew.service --no-pager
 
 ```bash
 systemctl stop understand-book-multi
-/opt/understand-book/releases/mu12-20261001/target/release/manage_reader /opt/understand-book/data/multi-reader password reader
+/opt/understand-book/releases/operations-remediation-r2-20261109/target/release/manage_reader /opt/understand-book/data/production-20261031 password reader
 systemctl start understand-book-multi
 ```
 

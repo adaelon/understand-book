@@ -44,6 +44,110 @@ fn save(directory: &Path, value: &Value) {
 }
 
 #[test]
+fn music_read_tools_load_decimal_score_tempo_from_published_bytes() {
+    let directory = tempfile::tempdir().unwrap();
+    let mut source = fixture(directory.path());
+    source["provenance"].as_array_mut().unwrap().push(json!({"provenance_id":"notation", "kind":"score",
+        "description":"Original MusicXML tempo", "source_url":null, "processor":null}));
+    source["score_marks"] = json!([{"mark_id":"tempo", "part_id":"p", "measure":"1", "measure_index":1,
+        "beat":0, "staff":null, "score_object_ids":["s1"], "provenance_id":"notation",
+        "value":{"kind":"direction", "words":["Allegro ma non troppo"],
+            "metronome":{"beat_unit":"quarter", "dots":0, "per_minute":"88"}, "sound_tempo_quarter_bpm":88.0002}}]);
+    save(directory.path(), &source);
+    let book = Book::load(directory.path().to_str().unwrap()).unwrap();
+    let loaded = book.load_music_source(directory.path()).unwrap();
+    assert_eq!(loaded, crate::music_media::load(directory.path()).unwrap());
+    assert!(matches!(loaded.score_marks[0].value, base_schema::MusicScoreMarkValue::Direction {
+        sound_tempo_quarter_bpm:Some(bpm), ..
+    } if bpm == 88.0002));
+}
+
+#[test]
+fn music_local_reader_opens_guide_citations_only_for_the_original_publication() {
+    let f = Fixture::new();
+    let input = f.root.path().join("local-guide-citation");
+    fixture(&input);
+    let (reference, directory) = {
+        let mut library = f.access.library.lock().unwrap();
+        let reference = library.publish(&input).unwrap().reference;
+        library.grant("A", &reference).unwrap();
+        let directory = library.load("A", &reference).unwrap().directory().to_path_buf();
+        (reference, directory)
+    };
+    // Use the same unbound local workspace as the standalone music Reader.
+    let mut state = super::video_draft_tests::media_learning_state(&directory, Book::load(directory.to_str().unwrap()).unwrap());
+    let run = prepare_agent_chat(&mut state, r#"{"message":"Explain the curator guide."}"#, "now")
+        .unwrap_or_else(|r| panic!("{}", r.body));
+    let turn = state.user.agent_history.sessions.iter_mut().flat_map(|s| &mut s.turns)
+        .find(|turn| turn.turn_id == run.turn_ref.turn_id).unwrap();
+    turn.published_book_ref = Some(reference.clone());
+    turn.source_bindings.push(SourceBinding { music:None, media:None, source_ref_id:"guide".into(),
+        book_id:reference.book_id.clone(), publication_id:Some(reference.publication_id.clone()),
+        source_revision:None, evidence_range:None, evidence_text_digest:String::new(), label_snapshot:"Guide".into(), preview_snapshot:"Guide".into() });
+    let request = AgentSourceRequest { note_mem_id:None, turn_id:run.turn_ref.turn_id, source_ref_id:"guide".into() };
+    assert!(agent_source_binding(&state, &request).is_ok());
+    // Opening another local snapshot must not silently rebind the old card.
+    state.workspace.book_dir = input;
+    assert_eq!(agent_source_binding(&state, &request).unwrap_err().error_code, "PUBLICATION_BINDING_REQUIRED");
+}
+
+#[test]
+fn music_pdf_source_publishes_page_evidence_and_preserves_original_bytes() {
+    let f = Fixture::new(); let input = f.root.path().join("music-pdf");
+    let mut source = fixture(&input);
+    source["score"].as_object_mut().unwrap().remove("musicxml_path");
+    source["score"]["pdf_path"] = json!("music/source.pdf");
+    std::fs::write(input.join("music/source.pdf"), b"%PDF-1.4 original score").unwrap();
+    for field in ["score_objects", "occurrences", "note_alignments", "coverage"] { source[field] = json!([]); }
+    source["events"][0]["evidence"][0]["score_object_ids"] = json!([]);
+    source["events"][0]["evidence"][0]["score_page_ids"] = json!(["page"]);
+    source["structure"][0]["coverage"] = json!("navigation_only");
+    save(&input, &source);
+    let mut library = f.access.library.lock().unwrap();
+    let first = library.publish(&input).unwrap(); library.grant("A", &first.reference).unwrap();
+    let published = library.load("A", &first.reference).unwrap();
+    let view = crate::music_media::projection(published.directory()).unwrap();
+    assert_eq!(view["manifest"]["score"]["pdf_path"], "music/source.pdf");
+    assert_eq!(crate::music_media::capabilities(&crate::music_media::load(published.directory()).unwrap())["music_score"], true);
+    let manifest = crate::music_media::load(published.directory()).unwrap();
+    for view in ["score", "events"] {
+        let read = read_tools::music::read(&manifest, &first.reference, &serde_json::from_value(json!({"view":view})).unwrap()).unwrap();
+        assert_eq!(read.sources.len(), 1);
+        assert!(!read.heard_audio);
+        let saved = read.sources[0].clone();
+        let binding = SourceBinding { music:Some(saved.clone()),media:None,source_ref_id:"pdf-source".into(),book_id:first.reference.book_id.clone(),
+            publication_id:Some(first.reference.publication_id.clone()),source_revision:None,evidence_range:None,evidence_text_digest:String::new(),
+            label_snapshot:saved.label.clone(),preview_snapshot:saved.preview.clone() };
+        let popup = crate::music_source::popup(&binding, Ok((&published.book, published.directory())), first.reference.url("music/audio"));
+        assert_eq!(popup["music_score_pages"].as_array().unwrap().len(), 1);
+        assert_eq!(popup["music_score_pages"][0]["page_id"], "page");
+    }
+    let original = library.music_asset("A", &first.reference, "music/source").unwrap();
+    assert_eq!(std::fs::read(&original).unwrap(), b"%PDF-1.4 original score");
+    std::fs::write(input.join("music/source.pdf"), b"%PDF-1.4 different edition").unwrap();
+    assert_eq!(library.publish(&input).unwrap_err().error_code, "BOOK_CONTENT_CHANGED");
+    assert_eq!(std::fs::read(original).unwrap(), b"%PDF-1.4 original score");
+}
+
+#[test]
+fn music_readiness_explains_missing_curated_events_without_hiding_asset_failures() {
+    let root = tempfile::tempdir().unwrap();
+    let mut source = fixture(root.path());
+    source["events"] = json!([]);
+    source["structure"][0]["event_ids"] = json!([]);
+    source["structure"][0]["coverage"] = json!("navigation_only");
+    save(root.path(), &source);
+    let book = Book::load(root.path().to_str().unwrap()).unwrap();
+    let readiness = crate::tutor_api::readiness_view(&book, root.path());
+    assert_eq!(readiness["status"], "preparing");
+    assert_eq!(readiness["reason"], "本章可听原声、看总谱、按段落跳转，尚无精选导听片段");
+    std::fs::remove_file(root.path().join("music/audio.mp3")).unwrap();
+    let missing = crate::tutor_api::readiness_view(&book, root.path());
+    assert_eq!(missing["status"], "preparing");
+    assert_ne!(missing["reason"], readiness["reason"]);
+}
+
+#[test]
 fn music_learning_purpose_admission_freezes_scope_and_continues_original_material() {
     use super::video_draft_tests::{media_learning_state, media_purpose_input, media_continue_input};
     for selected in [false, true] {
@@ -62,26 +166,21 @@ fn music_learning_purpose_admission_freezes_scope_and_continues_original_materia
                 "occurrence_id":"o2","focused_part_ids":["p"]});
         }
         let first = prepare_agent_chat(&mut state, &input.to_string(), "first").unwrap_or_else(|r| panic!("{}",r.body));
-        assert_eq!(first.tutor.as_ref().unwrap()["status"], "active");
+        assert_eq!(first.tutor.as_ref().unwrap()["status"], "observing");
         let stage_id = first.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
-        let learning = state.user.learning_store().unwrap().state().unwrap();
-        assert_eq!(learning.sessions[&stage_id].material_scope[0].source_id, reference.book_id);
-        assert_eq!(!learning.sessions[&stage_id].material_scope[0].scope_refs.is_empty(), selected);
-        assert_eq!(learning.sessions[&stage_id].learning_purpose, Some(memory::learning::LearningPurpose::Understand));
+        assert_eq!(first.tutor.as_ref().unwrap()["learning_purpose"],"understand");
+        assert_eq!(first.tutor.as_ref().unwrap()["binding"]["source_id"],state.workspace.book.base.book_id);
         assert_eq!(first.scope.music_question.is_some(), selected);
         let saved = state.user.agent_history.sessions.iter().flat_map(|s| &s.turns).find(|t| t.turn_id == first.turn_ref.turn_id).unwrap();
         assert!(saved.domain.interaction.as_ref().unwrap().source_bindings.is_empty(), "music scope is not the curator guide's text range");
         assert!(saved.domain.interaction.as_ref().unwrap().accepted_request.contains(if selected {"音乐片段"} else {"当前音乐"}));
         super::tutor_loop_tests::finish(&mut state, &first.turn_ref, &super::tutor_loop_tests::outcome(None));
-        let after = state.user.learning_store().unwrap().coach_job_for_source(&stage_id,
-            memory::tutor_coach::CoachJobOrigin::AfterTurn, &first.turn_ref.turn_id).unwrap().unwrap();
-        assert_eq!(after.input.context["music_question"], json!(first.scope.music_question));
+        assert!(state.user.learning_store().unwrap().coach_job_for_source(&stage_id,memory::tutor_coach::CoachJobOrigin::AfterTurn,&first.turn_ref.turn_id).unwrap().is_none(),"a purpose button alone supplies no authored learner expression");
         let input = media_continue_input(&state, &first.turn_ref);
         let next = prepare_agent_chat(&mut state, &input.to_string(), "next").unwrap_or_else(|r| panic!("{}",r.body));
         assert_eq!(next.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], stage_id);
         assert_eq!(json!(next.scope.music_question), json!(first.scope.music_question));
-        let dependency = state.user.learning_store().unwrap().coach_turn_dependency(&next.turn_ref.session_id, &next.turn_ref.turn_id).unwrap().unwrap();
-        assert_eq!(dependency.job_ref, Some(after.input.job_ref));
+        assert!(state.user.learning_store().unwrap().coach_turn_dependency(&next.turn_ref.session_id,&next.turn_ref.turn_id).unwrap().is_none_or(|dependency|dependency.job_ref.is_none()));
         super::tutor_loop_tests::finish(&mut state, &next.turn_ref, &super::tutor_loop_tests::outcome(None));
         let again_input = media_continue_input(&state, &next.turn_ref);
         let again = prepare_agent_chat(&mut state, &again_input.to_string(), "again").unwrap_or_else(|r| panic!("{}",r.body));
@@ -91,8 +190,8 @@ fn music_learning_purpose_admission_freezes_scope_and_continues_original_materia
             super::tutor_loop_tests::finish(&mut state, &again.turn_ref, &super::tutor_loop_tests::outcome(None));
             let whole_input = media_purpose_input(&state, "music-whole-after-clip");
             let whole = prepare_agent_chat(&mut state, &whole_input.to_string(), "whole").unwrap_or_else(|r| panic!("{}",r.body));
-            assert_ne!(whole.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], stage_id,
-                "changing a passage goal to the whole recording must start the requested scope");
+            assert_eq!(whole.tutor.as_ref().unwrap()["binding"]["tutor_session_id"], stage_id,
+                "the observation owner stays on this source; the explicit goal keeps its requested scope");
         }
     }
 }
@@ -210,18 +309,22 @@ fn music_reader_adopts_calibration_without_replacing_chat_or_old_publication() {
 }
 
 #[test]
-fn music_publication_requires_distribution_rights_and_immutable_original_bytes() {
+fn music_publication_preserves_rights_records_and_immutable_original_bytes() {
     let f = Fixture::new(); let input = f.root.path().join("music-rights");
     let source = fixture(&input); let mut candidate = source.clone();
     let mut library = f.access.library.lock().unwrap();
     candidate["rights"] = json!([]); save(&input, &candidate);
-    assert_eq!(library.publish(&input).unwrap_err().error_code, "MUSIC_DISTRIBUTION_UNAVAILABLE");
-    candidate = source.clone(); candidate["rights"][0]["distribution"] = json!("local_only"); save(&input, &candidate);
-    assert_eq!(library.publish(&input).unwrap_err().error_code, "MUSIC_DISTRIBUTION_UNAVAILABLE");
-    save(&input, &source); let first = library.publish(&input).unwrap(); library.grant("A", &first.reference).unwrap();
+    assert_eq!(library.publish(&input).unwrap_err().error_code, "MUSIC_RIGHTS_RECORD_MISSING");
+    candidate = source;
+    for right in candidate["rights"].as_array_mut().unwrap() { right["distribution"] = json!("local_only"); }
+    save(&input, &candidate);
+    let first = library.publish(&input).unwrap(); library.grant("A", &first.reference).unwrap();
     std::fs::write(input.join("music/audio.mp3"), b"changed performance").unwrap();
     assert_eq!(library.publish(&input).unwrap_err().error_code, "BOOK_CONTENT_CHANGED");
     assert_eq!(std::fs::read(library.music_asset("A", &first.reference, "music/audio").unwrap()).unwrap(), b"fixture audio bytes");
+    drop(library);
+    let context = f.ok(&f.a, "GET", &first.reference.url("music_context"), json!({}));
+    assert_eq!(context["manifest"]["rights"], candidate["rights"]);
 }
 
 #[test]
@@ -236,3 +339,4 @@ fn music_media_stream_has_audio_type_and_range_semantics() {
     assert_eq!(crate::video_media::stream_response(&path, "GET", Some("bytes=12-")).unwrap().status_code().0, 416);
     assert_eq!(crate::video_media::stream_response(&path, "HEAD", Some("bytes=3-6")).unwrap().data_length(), Some(10));
 }
+

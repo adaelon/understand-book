@@ -43,6 +43,13 @@ export function cloudStorageSize(bytes: number): string {
   const label = unit === 1024 ** 3 ? 'GB' : unit === 1024 ** 2 ? 'MB' : unit === 1024 ? 'KB' : uiText('字节');
   return `${Number((bytes / unit).toFixed(2))} ${label}`;
 }
+export function cloudQuotaLabel(product: CloudPlanProduct, catalog: CloudPlanProduct[]): string {
+  const amount = (plan: CloudPlanProduct) => plan.basis && plan.grant_milli_percent != null ? plan.basis.basis_micro_cny * plan.grant_milli_percent / 100000 : 0;
+  const basics = saleableCloudPlans(catalog, product.duration).filter(plan => plan.tier === 'basic');
+  const base = basics.length ? Math.min(...basics.map(amount)) : 0;
+  if (!base) return uiText('含本期 AI 使用额度');
+  return uiText('基础版用量的 {0} 倍', [Number((amount(product) / base).toFixed(2))]);
+}
 export function cloudRetention(seconds: number): string {
   return seconds % 86400 === 0 ? uiText('{0} 天', [seconds / 86400]) : seconds % 3600 === 0 ? uiText('{0} 小时', [seconds / 3600]) : uiText('{0} 秒', [seconds]);
 }

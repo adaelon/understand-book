@@ -201,6 +201,7 @@ fn run_one(
         user.store.commit_review_result(
             &job.job_id,
             &turns,
+            &input.existing_facts,
             &output.fact_candidates,
             &output.intent_observations,
             &elapsed_millis(now_ms, started).to_string(),

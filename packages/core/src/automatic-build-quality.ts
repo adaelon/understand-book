@@ -49,6 +49,7 @@ interface QualityFloorV1 {
 
 const QUALITY_FLOORS: Record<ExtractionQualityProfile, Record<QualityStage, QualityFloorV1>> = {
   full: {
+    course: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     formal_objects: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     cognitive_materials: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     teaching_publish: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
@@ -60,6 +61,7 @@ const QUALITY_FLOORS: Record<ExtractionQualityProfile, Record<QualityStage, Qual
     book_structure: { min_eligible_unit_coverage: 1, max_low_information_rate: 0.05 },
   },
   balanced: {
+    course: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     formal_objects: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     cognitive_materials: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     teaching_publish: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
@@ -71,6 +73,7 @@ const QUALITY_FLOORS: Record<ExtractionQualityProfile, Record<QualityStage, Qual
     book_structure: { min_eligible_unit_coverage: 0.9, max_low_information_rate: 0.1 },
   },
   sparse: {
+    course: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     formal_objects: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     cognitive_materials: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
     teaching_publish: { min_eligible_unit_coverage: 1, max_low_information_rate: 0 },
@@ -311,7 +314,7 @@ export function automaticBuildStageArtifactPath(
 ): string {
   const buildRoot = path.join(target.workspace_dir, ".build");
   switch (stage) {
-    case "formal_objects": case "cognitive_materials": case "teaching_publish":
+    case "course": case "formal_objects": case "cognitive_materials": case "teaching_publish":
       throw new Error("teaching artifacts require generation-scoped paths");
     case "pass1": return path.join(buildRoot, "pass1", `${workUnitId}.json`);
     case "paper_metadata": return path.join(buildRoot, "paper-metadata", `${workUnitId}.json`);
@@ -592,6 +595,7 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
 
   const reductionParentIds = new Set(input.routing.reduction_parents.map((parent) => parent.parent_lid));
   const coverageByParent = new Map<string, ModelInputSliceCoverageV1>();
+  const validSliceCoverageParents = new Set<string>();
   let coverageInvalid = false;
   for (const coverage of input.routing.coverage) {
     if (coverageByParent.has(coverage.parent_lid)) coverageInvalid = true;
@@ -634,33 +638,104 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
       || coverage.gap_utf16 !== 0
       || coverage.core_overlap_utf16 !== 0) {
       coverageInvalid = true;
+    } else {
+      validSliceCoverageParents.add(coverage.parent_lid);
     }
   }
-  // BookStructure fragments cover semantic leaves, rather than UTF-16 source
-  // slices. Check the router's existing exact leaf cover against the descriptors.
+  // BookStructure owns each semantic leaf once. A long leaf may need several
+  // source slices, all of which must belong to that one leaf range.
   const leafCoverageByParent = new Map<string, BookStructureLeafCoverageManifestV1>();
   if (input.stage === "book_structure") {
+    const sliceWorkUnitIdsByParent = new Map<string, Set<string>>();
+    for (const descriptor of input.work_units) {
+      if (descriptor.input_basis.kind !== "source_slices") continue;
+      for (const slice of descriptor.input_basis.slices) {
+        const ids = sliceWorkUnitIdsByParent.get(slice.parent_lid) ?? new Set<string>();
+        ids.add(descriptor.work_unit_id);
+        sliceWorkUnitIdsByParent.set(slice.parent_lid, ids);
+      }
+    }
     for (const coverage of input.routing.book_structure_coverage ?? []) {
       if (leafCoverageByParent.has(coverage.parent_unit_lid)) coverageInvalid = true;
       leafCoverageByParent.set(coverage.parent_unit_lid, coverage);
+      const sourceCoverageByLeaf = new Map<string, ModelInputSliceCoverageV1>();
+      for (const sourceCoverage of coverage.source_slices ?? []) {
+        const validated = coverageByParent.get(sourceCoverage.parent_lid);
+        if (sourceCoverageByLeaf.has(sourceCoverage.parent_lid)
+          || !validSliceCoverageParents.has(sourceCoverage.parent_lid)
+          || !validated
+          || sourceCoverage.version !== validated.version
+          || sourceCoverage.parent_span_utf16.start !== validated.parent_span_utf16.start
+          || sourceCoverage.parent_span_utf16.end !== validated.parent_span_utf16.end
+          || sourceCoverage.slice_count !== validated.slice_count
+          || sourceCoverage.expected_core_utf16 !== validated.expected_core_utf16
+          || sourceCoverage.covered_core_utf16 !== validated.covered_core_utf16
+          || sourceCoverage.gap_utf16 !== validated.gap_utf16
+          || sourceCoverage.core_overlap_utf16 !== validated.core_overlap_utf16
+          || sourceCoverage.coverage_digest !== validated.coverage_digest) {
+          coverageInvalid = true;
+        }
+        sourceCoverageByLeaf.set(sourceCoverage.parent_lid, sourceCoverage);
+      }
       let cursor = 0;
       const leafLids = new Set<string>();
+      const slicedLeafLids = new Set<string>();
       const rangeIds = new Set<string>();
       for (const range of [...coverage.core_ranges].sort((left, right) => left.start_ordinal - right.start_ordinal)) {
         const descriptor = descriptorsById.get(range.work_unit_id);
         const basis = descriptor?.input_basis;
-        if (rangeIds.has(range.work_unit_id)
-          || !validCoverageCount(range.start_ordinal) || !validCoverageCount(range.end_ordinal_exclusive)
+        if (!validCoverageCount(range.start_ordinal) || !validCoverageCount(range.end_ordinal_exclusive)
           || range.start_ordinal !== cursor || range.end_ordinal_exclusive <= range.start_ordinal
           || range.leaf_lids.length !== range.end_ordinal_exclusive - range.start_ordinal
-          || basis?.kind !== "semantic_projection" || basis.projection_kind !== "book_structure"
-          || basis.core_range?.start_ordinal !== range.start_ordinal
-          || basis.core_range?.end_ordinal_exclusive !== range.end_ordinal_exclusive
-          || (descriptor?.kind !== "structure_unit" && descriptor?.aggregation?.parent_lid !== coverage.parent_unit_lid)
-          || range.leaf_lids.some(lid => !descriptor?.evidence_lids.includes(lid) || leafLids.has(lid))) {
+          || range.leaf_lids.some(lid => leafLids.has(lid))) {
           coverageInvalid = true;
         }
-        rangeIds.add(range.work_unit_id);
+        if (range.slice_work_unit_ids !== undefined) {
+          const leafLid = range.leaf_lids[0];
+          const declaredIds = new Set(range.slice_work_unit_ids);
+          const actualIds = sliceWorkUnitIdsByParent.get(leafLid) ?? new Set<string>();
+          const sourceCoverage = sourceCoverageByLeaf.get(leafLid);
+          if (range.end_ordinal_exclusive - range.start_ordinal !== 1
+            || range.leaf_lids.length !== 1
+            || !declaredIds.has(range.work_unit_id)
+            || declaredIds.size !== range.slice_work_unit_ids.length
+            || declaredIds.size !== actualIds.size
+            || [...actualIds].some(id => !declaredIds.has(id))
+            || !sourceCoverage || sourceCoverage.slice_count !== declaredIds.size) {
+            coverageInvalid = true;
+          }
+          const ordinals: number[] = [];
+          for (const id of range.slice_work_unit_ids) {
+            const sliceDescriptor = descriptorsById.get(id);
+            const sliceBasis = sliceDescriptor?.input_basis;
+            if (rangeIds.has(id)
+              || sliceDescriptor?.kind !== "structure_fragment"
+              || sliceDescriptor.aggregation?.parent_lid !== coverage.parent_unit_lid
+              || sliceDescriptor.aggregation.role !== "fragment"
+              || !sliceDescriptor.evidence_lids.includes(leafLid)
+              || sliceBasis?.kind !== "source_slices" || sliceBasis.slices.length !== 1
+              || sliceBasis.slices[0].parent_lid !== leafLid) {
+              coverageInvalid = true;
+            } else {
+              ordinals.push(sliceBasis.slices[0].ordinal);
+            }
+            rangeIds.add(id);
+          }
+          if (ordinals.sort((left, right) => left - right).some((ordinal, index) => ordinal !== index)) {
+            coverageInvalid = true;
+          }
+          slicedLeafLids.add(leafLid);
+        } else {
+          if (rangeIds.has(range.work_unit_id)
+            || basis?.kind !== "semantic_projection" || basis.projection_kind !== "book_structure"
+            || basis.core_range?.start_ordinal !== range.start_ordinal
+            || basis.core_range?.end_ordinal_exclusive !== range.end_ordinal_exclusive
+            || (descriptor?.kind !== "structure_unit" && descriptor?.aggregation?.parent_lid !== coverage.parent_unit_lid)
+            || range.leaf_lids.some(lid => !descriptor?.evidence_lids.includes(lid))) {
+            coverageInvalid = true;
+          }
+          rangeIds.add(range.work_unit_id);
+        }
         range.leaf_lids.forEach(lid => leafLids.add(lid));
         cursor = range.end_ordinal_exclusive;
       }
@@ -668,7 +743,9 @@ export function evaluateAutomaticBuildStageQualityV2(input: {
         || !validCoverageCount(coverage.expected_leaf_count) || coverage.expected_leaf_count < 1
         || cursor !== coverage.expected_leaf_count || leafLids.size !== coverage.expected_leaf_count
         || coverage.covered_leaf_count !== coverage.expected_leaf_count
-        || coverage.gap_count !== 0 || coverage.core_overlap_count !== 0) {
+        || coverage.gap_count !== 0 || coverage.core_overlap_count !== 0
+        || sourceCoverageByLeaf.size !== slicedLeafLids.size
+        || [...sourceCoverageByLeaf.keys()].some(lid => !slicedLeafLids.has(lid))) {
         coverageInvalid = true;
       }
     }

@@ -9,6 +9,7 @@ import { discardNoteDraft, emptyNoteContent, emptyNoteContext, notesPanel, openT
 import { network, installIdentity, installWorkspace, submittedRunDrafts, readerKey } from './network-context';
 import { writeReaderSurfacePreference } from './reader-surface';
 import * as networkClient from './network-client';
+import { inquiryCourse } from './inquiry-course';
 import { invoke } from '@tauri-apps/api/core';
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 
@@ -18,9 +19,11 @@ const api = vi.hoisted(() => Object.fromEntries([
   "profileMemory", "profileBackfill", "intentUsageEvent", "intentArtifacts", "bookLibrary", "paperMetadata",
   "openBook", "agentNew", "disposeEffect", "agentRunCreate", "agentRun", "agentRunRetrySave", "formulaSemantics",
   "save", "replace", "delete", "prepareNote", "agentHistorySelect", "agentSourceResolve", "tutorState", "tutorReadiness", "tutorMutate", "tutorStart",
+  "closedBook", "learningTasks", "selectLearningTask",
 ].map(key => [key, vi.fn()])));
 vi.mock("./api", async original => ({ ...await original<typeof import("./api")>(), api }));
 vi.mock("./components/PdfReaderPane.vue", () => ({ default: { name: "PdfReaderPane", template: "<div />" } }));
+vi.mock('./inquiry-course', () => ({ inquiryCourse: { catalog: vi.fn() } }));
 vi.mock('./reading-share', async original => ({ ...await original<typeof import('./reading-share')>(), renderShare: vi.fn() }));
 
 function deferred<T>() {
@@ -29,6 +32,51 @@ function deferred<T>() {
   const promise = new Promise<T>((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
+
+it('submits the selected presentation output once and resets it only after acceptance', async () => {
+  const admission = deferred<unknown>();
+  api.agentRunCreate.mockReturnValue(admission.promise);
+  const wrapper = start(); await flushPromises();
+  const rail = wrapper.findComponent({ name: 'RightRail' });
+  rail.vm.$emit('update:agentInput', '解释一下这里');
+  rail.vm.$emit('update:presentationRequested', true);
+  await flushPromises();
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledWith('解释一下这里', expect.objectContaining({ presentation_requested: true, display_user: '解释一下这里' }));
+  expect(rail.props('presentationRequested')).toBe(true);
+  admission.resolve({ book_id: 'startup', session_id: 'startup-chat', turn_id: 'page-request' });
+  await flushPromises();
+  expect(rail.props('presentationRequested')).toBe(false);
+});
+
+it('keeps presentation output with a rejected draft so a retry carries the same intent', async () => {
+  const { ApiError } = await import('./api');
+  api.agentRunCreate.mockRejectedValue(new ApiError(409, 'ALLOWANCE_INSUFFICIENT', 'model_spend', 'denied'));
+  const wrapper = start(); await flushPromises();
+  const rail = wrapper.findComponent({ name: 'RightRail' });
+  rail.vm.$emit('update:agentInput', '解释一下这里');
+  rail.vm.$emit('update:presentationRequested', true);
+  await flushPromises();
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(rail.props('presentationRequested')).toBe(true);
+  expect(rail.props('agentInput')).toBe('解释一下这里');
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(2);
+  expect(api.agentRunCreate).toHaveBeenLastCalledWith('解释一下这里', expect.objectContaining({ presentation_requested: true }));
+});
+
+it('leaves ordinary messages unchanged when presentation output is switched off', async () => {
+  api.agentRunCreate.mockResolvedValue({ answer: '解释内容', effects: [] });
+  const wrapper = start(); await flushPromises();
+  const rail = wrapper.findComponent({ name: 'RightRail' });
+  rail.vm.$emit('update:agentInput', '解释一下这里');
+  rail.vm.$emit('update:presentationRequested', true);
+  rail.vm.$emit('update:presentationRequested', false);
+  await flushPromises();
+  rail.vm.$emit('send-agent'); await flushPromises();
+  expect(api.agentRunCreate.mock.calls[0][0]).toBe('解释一下这里');
+  expect(api.agentRunCreate.mock.calls[0][1]).not.toHaveProperty('presentation_requested');
+});
 const history = (book = "startup") => ({ active_session_id: `${book}-chat`, sessions: [],
   current: { id: `${book}-chat`, book_id: book, turns: [], goals: [] } });
 let book = "startup";
@@ -59,6 +107,7 @@ beforeEach(() => {
   vi.resetAllMocks();
   config.global.stubs = { ...originalStubs, BoardWorkspace: boardWorkspaceStub };
   book = "startup";
+  vi.mocked(inquiryCourse.catalog).mockResolvedValue({ release_id: '', release_version: 0, course: null, progress: [] });
   api.videoContext.mockResolvedValue(null);
   api.musicContext.mockResolvedValue(null);
   api.videoPlayback.mockImplementation(async () => { const video = await api.videoContext(); return video ? { ...video, hls: false } : null; });
@@ -84,6 +133,9 @@ beforeEach(() => {
   api.text.mockImplementation(async (lid: string) => ({ lid, text: lid === "1.1" ? "可立即阅读的正文" : "# 首章" }));
   api.recall.mockResolvedValue([]);
   api.agentHistory.mockImplementation(async () => history(book));
+  api.closedBook.mockResolvedValue(null);
+  api.learningTasks.mockResolvedValue({ tasks: [] });
+  api.selectLearningTask.mockResolvedValue({});
   api.profileMemory.mockResolvedValue({});
   api.profileBackfill.mockResolvedValue({ jobs: [], sessions: [] });
   api.intentArtifacts.mockResolvedValue({ overlay: null });
@@ -259,16 +311,15 @@ it('loads the selected formula panel on demand after body hydration', async () =
   expect(rail.props('selectedFormula')).toEqual(formula);
 });
 
-it('enables continuous teaching without inventing a goal or sending a synthetic question', async () => {
+it('shows learning preferences without the removed teaching switch or an automatic question', async () => {
   api.tutorState.mockResolvedValue({ control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
-  api.tutorMutate.mockResolvedValue({ control: { enabled: true, revision: 1, current_tutor_session_id: null }, sessions: {} });
-  api.tutorStart.mockResolvedValue({ started: true, message: '请从原文开始学习' });
-  api.agentRunCreate.mockResolvedValue({ answer: '已开始', answer_view: { parts: [] }, effects: [] });
   const w = mount(App, { shallow: true, global: { renderStubDefaultSlot:true, stubs: { RightRail: defineComponent({ template: '<div><slot name="tutor-control" /></div>' }) } } });
   wrappers.push(w);
   await flushPromises();
-  w.findComponent({ name: 'TutorControl' }).vm.$emit('toggle');
-  await flushPromises();
+  expect(w.findComponent({ name: 'TutorControl' }).exists()).toBe(false);
+  expect(w.text()).toContain('阅读时提议练习');
+  expect(w.text()).toContain('整理我的学习脉络');
+  expect(api.tutorMutate).not.toHaveBeenCalled();
   expect(api.tutorStart).not.toHaveBeenCalled();
   expect(api.agentRunCreate).not.toHaveBeenCalled();
 });
@@ -307,29 +358,31 @@ it('keeps desktop connection settings and advanced protocol selection bound to t
   } });
 });
 
-it.each([false,true])('resumes from the goal card only after enabling has been confirmed (enable failure: %s)', async failEnable => {
+it.each([false,true])('continues a saved goal only after its resume is confirmed (resume failure: %s)', async failResume => {
   const session = { id:'learning',revision:1,status:'paused',user_intent:'理解原文',explicit_constraints:[],
     current_focus:{interpretation:'',target_object_refs:[],capability_targets:[]},
     material_scope:[{source_id:'startup',scope_refs:[],role:'primary'}],default_teaching_intent:null,path_instance_ref:null,progress_ref:null };
   const state = {control:{enabled:false,revision:1,current_tutor_session_id:'learning'},sessions:{learning:session}};
   api.tutorState.mockImplementation(async()=>structuredClone(state));
   api.tutorMutate.mockImplementation(async request => {
-    if (request.action.kind === 'set_enabled') {
-      if (failEnable) throw new Error('保存失败');
-      state.control.enabled = true;
-    } else if (request.action.kind === 'resume') state.sessions.learning.status = 'active';
+    if (request.action.kind === 'resume') {
+      if (failResume) throw new Error('继续学习暂时失败');
+      state.sessions.learning.status = 'active';
+    }
     state.control.revision++; return structuredClone(state);
   });
   api.tutorStart.mockResolvedValue({started:false,reason:'测试已记录继续操作'});
   const w = mount(App,{shallow:true,global:{renderStubDefaultSlot:true,stubs:{RightRail:defineComponent({template:'<div><slot name="learning-goal" /></div>'})}}});
   wrappers.push(w); await flushPromises();
   w.findComponent({name:'ConversationLearningGoal'}).vm.$emit('resume'); await flushPromises();
-  expect(api.tutorMutate.mock.calls.map(([request])=>request.action.kind)).toEqual(failEnable ? ['set_enabled'] : ['set_enabled','resume']);
-  expect(api.tutorStart).toHaveBeenCalledTimes(failEnable ? 0 : 1);
+  expect(api.tutorMutate.mock.calls.map(([request])=>request.action.kind)).toEqual(['resume']);
+  expect(api.tutorStart).toHaveBeenCalledTimes(failResume ? 0 : 1);
   expect(api.agentRunCreate).not.toHaveBeenCalled();
+  expect(w.getComponent({name:'ConversationLearningGoal'}).props('session').status).toBe(failResume ? 'paused' : 'active');
+  if (failResume) expect(w.getComponent({name:'ConversationLearningGoal'}).props('error')).toContain('继续学习暂时失败');
 });
 
-it('does not resume the previous book goal when enabling finishes after switching books', async () => {
+it('does not continue the previous book goal when its resume finishes after switching books', async () => {
   const session = (source: string) => ({ id: `${source}-learning`, revision: 1, status: 'paused', user_intent: `${source}的目标`,
     explicit_constraints: [], current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
     material_scope: [{ source_id: source, scope_refs: [], role: 'primary' }], default_teaching_intent: null, path_instance_ref: null, progress_ref: null });
@@ -338,55 +391,50 @@ it('does not resume the previous book goal when enabling finishes after switchin
   api.tutorState.mockImplementation(async () => state(book, book === 'second'));
   api.tutorReadiness.mockImplementation(async () => ({ status: 'ready', source_id: book, source_revision: 's1', limitations: [], reason: '可用',
     teaching_assets: { status: 'ready', teaching_map_revision: 's1', limitations: [], reason: '可用' } }));
-  const enabling = deferred<ReturnType<typeof state>>();
-  api.tutorMutate.mockReturnValueOnce(enabling.promise).mockResolvedValue(state('second', true));
+  const resuming = deferred<ReturnType<typeof state>>();
+  api.tutorMutate.mockReturnValueOnce(resuming.promise).mockResolvedValue(state('second', true));
   const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
     RightRail: defineComponent({ template: '<div><slot name="learning-goal" /></div>' }),
   } } }); wrappers.push(w); await flushPromises();
   w.getComponent({ name: 'ConversationLearningGoal' }).vm.$emit('resume'); await flushPromises();
-  expect(api.tutorMutate.mock.calls.map(([request]) => request.action.kind)).toEqual(['set_enabled']);
+  expect(api.tutorMutate.mock.calls.map(([request]) => request.action.kind)).toEqual(['resume']);
   w.getComponent({ name: 'TopBar' }).vm.$emit('open-book'); await flushPromises();
   await w.get('input[placeholder=".understand-book/book-id"]').setValue('second');
   await w.get('.book-picker-actions .primary-action').trigger('click'); await flushPromises();
   expect(w.getComponent({ name: 'ConversationLearningGoal' }).props('session').id).toBe('second-learning');
-  enabling.resolve(state('startup', true)); await flushPromises();
-  expect(api.tutorMutate.mock.calls.map(([request]) => request.action.kind)).toEqual(['set_enabled']);
+  resuming.resolve(state('startup', true)); await flushPromises();
+  expect(api.tutorMutate.mock.calls.map(([request]) => request.action.kind)).toEqual(['resume']);
   expect(api.tutorStart).not.toHaveBeenCalled();
   expect(api.agentRunCreate).not.toHaveBeenCalled();
 });
 
-it.each(['off', 'active', 'paused', 'other', 'enable-fails'])(
-  'submits one canonical chapter purpose request and leaves session admission to the server (%s)', async mode => {
+it.each(['off', 'active', 'paused', 'other'])(
+  'submits one canonical chapter purpose request independently of the saved legacy teaching state (%s)', async mode => {
   const session = { id: 'learning', revision: 1, status: mode === 'paused' ? 'paused' : 'active', user_intent: '学习', explicit_constraints: [],
     current_focus: { interpretation: '', target_object_refs: [], capability_targets: [] },
     material_scope: [{ source_id: 'startup', scope_refs: [mode === 'other' ? '2' : '1'], role: 'primary' }],
     default_teaching_intent: null, path_instance_ref: null, progress_ref: null };
   const hasSession = ['active', 'paused', 'other'].includes(mode);
-  const state = { control: { enabled: !['off', 'enable-fails'].includes(mode), revision: 1, current_tutor_session_id: hasSession ? 'learning' : null },
+  const state = { control: { enabled: mode !== 'off', revision: 1, current_tutor_session_id: hasSession ? 'learning' : null },
     sessions: hasSession ? { learning: session } : {} };
   api.tutorState.mockImplementation(async () => structuredClone(state));
-  api.tutorMutate.mockImplementation(async request => {
-    if (mode === 'enable-fails') throw new Error('保存失败');
-    if (request.action.kind === 'set_enabled') state.control.enabled = true;
-    if (request.action.kind === 'resume') session.status = 'active';
-    state.control.revision++; return structuredClone(state);
-  });
   api.agentRunCreate.mockResolvedValue({ answer: '章节导读', answer_view: { parts: [] }, effects: [] });
   const w = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
     ReaderWorkspace: defineComponent({ template: '<div><slot /></div>', setup(_props, { expose }) { expose({ showAssistant: () => {} }); } }),
   } } }); wrappers.push(w); await flushPromises();
-  const bar = w.getComponent({ name: 'TopBar' });
-  expect(bar.props('guideChapterTitle')).toBe('首章');
-  expect(bar.props('guideChapterEnabled')).toBe(state.control.enabled);
-  bar.vm.$emit('guide-chapter'); bar.vm.$emit('guide-chapter'); await flushPromises();
-  const failed = mode === 'enable-fails';
-  const actions = api.tutorMutate.mock.calls.map(([request]) => request.action);
-  expect(actions.map(action => action.kind)).toEqual(['off', 'enable-fails'].includes(mode) ? ['set_enabled'] : []);
+  const rail = w.getComponent({ name: 'RightRail' });
+  expect(rail.props('learningScopeOptions')).toContainEqual({ value: 'chapter', lid: '1', label: '当前章节 · 首章' });
+  expect(api.agentRunCreate).not.toHaveBeenCalled();
+  expect(api.tutorMutate).not.toHaveBeenCalled();
+  rail.vm.$emit('learning-purpose', 'understand', 'chapter', { message: '我认识术语，但不知道用途' });
+  rail.vm.$emit('learning-purpose', 'understand', 'chapter', { message: '我认识术语，但不知道用途' });
+  await flushPromises();
+  expect(api.tutorMutate).not.toHaveBeenCalled();
   expect(api.tutorStart).not.toHaveBeenCalled();
-  expect(api.agentRunCreate).toHaveBeenCalledTimes(failed ? 0 : 1);
-  if (!failed) expect(api.agentRunCreate).toHaveBeenCalledWith('', expect.objectContaining({
+  expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
+  expect(api.agentRunCreate).toHaveBeenCalledWith('我认识术语，但不知道用途', expect.objectContaining({
     entry_action: 'learn_with_purpose', learning_purpose: 'understand', chapter_lid: '1', source_id: 'startup', source_revision: 'startup', session_id: 'startup-chat',
-    display_user: '带我读《首章》这一章', question_quote: null,
+    display_user: '带我读懂 · 当前章节 · 首章\n\n我认识术语，但不知道用途', question_quote: null,
   }));
 });
 
@@ -412,7 +460,7 @@ it('preserves the current scope, purpose, teaching mode and constraints when edi
   expect(api.agentRunCreate).not.toHaveBeenCalled();
 });
 
-it.each(['discover', 'understand', 'exam', 'explore'] as const)(
+it.each(['discover', 'understand', 'exam', 'explore', 'practice'] as const)(
   'starts %s from the conversation with a captured chapter and one typed request', async purpose => {
   api.agentRunCreate.mockResolvedValue({ answer: '开始学习', answer_view: { parts: [] }, effects: [] });
   const w = startPurpose(); await flushPromises();
@@ -427,6 +475,27 @@ it.each(['discover', 'understand', 'exam', 'explore'] as const)(
   expect(JSON.parse(JSON.stringify(api.agentRunCreate.mock.calls[0][1]))).not.toHaveProperty('question_anchor_lid');
   expect(api.tutorMutate).not.toHaveBeenCalled();
   expect(api.tutorStart).not.toHaveBeenCalled();
+});
+
+it.each(['understand', 'exam', 'explore', 'practice'] as const)('passes the actual %s input and subsection through the full App without consuming the chat draft', async purpose => {
+  api.manifest.mockResolvedValue({ stats_by_lid: {}, tree: [
+    { lid: '1', kind: 'chapter', title: '材料总标题', children: ['1.1', '1.2'], span: { start: 0, end: 100 } },
+    { lid: '1.1', kind: 'section', title: '引言', children: ['1.1.1'], span: { start: 8, end: 60 } },
+    { lid: '1.1.1', kind: 'paragraph', children: [], span: { start: 12, end: 60 } },
+  ] });
+  api.agentRunCreate.mockResolvedValue({ answer: '开始学习', effects: [] });
+  const w = startPurpose({ message: '未发送的聊天草稿', quote: null, goalId: null }); await flushPromises();
+  const rail = w.getComponent({ name: 'RightRail' });
+  expect(rail.props('learningScopeOptions')).toEqual([
+    { value: 'section', lid: '1.1', label: '当前小节 · 引言' }, { value: 'material', label: '整份材料' },
+  ]);
+  rail.vm.$emit('learning-purpose', purpose, 'section', { message: '趋势与套利有什么区别？' });
+  await flushPromises();
+  expect(api.agentRunCreate).toHaveBeenCalledWith('趋势与套利有什么区别？', expect.objectContaining({
+    entry_action: 'learn_with_purpose', learning_purpose: purpose, chapter_lid: '1.1',
+    display_user: expect.stringContaining('趋势与套利有什么区别？'), question_quote: null,
+  }));
+  expect(rail.props('agentInput')).toBe('未发送的聊天草稿');
 });
 
 it.each([undefined, 'material'] as const)(
@@ -459,22 +528,24 @@ it('lets discovery start while Tutor readiness is unavailable without enabling t
   expect(api.tutorStart).not.toHaveBeenCalled();
 });
 
-it('retains the question draft when enabling a purpose fails', async () => {
+it('retains the question draft and blocks a learning purpose when readiness cannot be read', async () => {
   const draft = { message: '尚未发送的问题', quote: { lid: '1.1', quote: '可立即阅读的正文' }, goalId: null };
   api.tutorState.mockResolvedValue({ control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} });
-  api.tutorMutate.mockRejectedValue(new Error('启用学习失败'));
+  api.tutorReadiness.mockRejectedValue(new Error('当前材料状态暂不可读取'));
   const w = mount(App, { props: { chatDraft: draft }, shallow: true, global: { renderStubDefaultSlot: true, stubs: {
     ReaderWorkspace: learningWorkspaceStub,
-    RightRail: defineComponent({ name: 'RightRail', props: ['agentInput', 'askDraft'], template: '<div><slot name="learning-goal" /></div>' }),
+    RightRail: defineComponent({ name: 'RightRail', props: ['agentInput', 'askDraft', 'learningPurposeReady', 'learningPurposeReason'], template: '<div><slot name="learning-goal" /></div>' }),
   } } });
   wrappers.push(w); await flushPromises();
   const rail = w.getComponent({ name: 'RightRail' });
   rail.vm.$emit('learning-purpose', 'exam'); await flushPromises();
-  expect(api.tutorMutate).toHaveBeenCalledTimes(1);
+  expect(api.tutorMutate).not.toHaveBeenCalled();
   expect(api.agentRunCreate).not.toHaveBeenCalled();
   expect(rail.props('agentInput')).toBe(draft.message);
   expect(rail.props('askDraft')).toEqual(draft.quote);
-  expect(w.getComponent({ name: 'ConversationLearningGoal' }).props('error')).toContain('启用学习失败');
+  expect(rail.props('learningPurposeReady')).toBe(false);
+  expect(rail.props('learningPurposeReason')).toBe('学习状态暂时无法读取，请重试。');
+  expect(w.getComponent({ name: 'ConversationLearningGoal' }).props('ready')).toBe(false);
 });
 
 it('locks purpose submission while pending and accepts one changed purpose after completion', async () => {
@@ -517,7 +588,6 @@ it.each(['video', 'music'] as const)('starts %s learning at its real selected po
   const fixture = installLearningMedia(kind);
   const state = { control: { enabled: false, revision: 0, current_tutor_session_id: null }, sessions: {} };
   api.tutorState.mockImplementation(async () => structuredClone(state));
-  api.tutorMutate.mockImplementation(async () => { state.control.enabled = true; state.control.revision++; return structuredClone(state); });
   api.agentRunCreate.mockResolvedValue({ answer: '媒体教学', answer_view: { parts: [] }, effects: [] });
   const w = startPurpose({ message: '尚未发送的提问', quote: null, goalId: null }, fixture.stubs); await flushPromises();
   const pane = w.getComponent({ name: fixture.paneName });
@@ -529,7 +599,7 @@ it.each(['video', 'music'] as const)('starts %s learning at its real selected po
   expect(rail.props('learningPurposeReady')).toBe(true);
   expect(rail.props('learningScopeOptions').map((scope: { value: string }) => scope.value)).toEqual(['media', 'material']);
   rail.vm.$emit('learning-purpose', 'understand', 'media'); await flushPromises();
-  expect(api.tutorMutate.mock.calls.map(([request]) => request.action.kind)).toEqual(['set_enabled']);
+  expect(api.tutorMutate).not.toHaveBeenCalled();
   expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
   const meta = api.agentRunCreate.mock.calls[0][1];
   expect(meta).toMatchObject({ entry_action: 'learn_with_purpose', learning_purpose: 'understand', source_id: book, source_revision: book });
@@ -572,7 +642,7 @@ it.each(['video', 'music'] as const)('allows a whole-material %s overview while 
   expect(fixture.captureQuestion).not.toHaveBeenCalled();
 });
 
-it.each(['video', 'music'] as const)('saves a custom %s goal, then explicitly enables and starts it with the actual media context', async kind => {
+it.each(['video', 'music'] as const)('saves a custom %s goal, then explicitly continues it with the actual media context', async kind => {
   const fixture = installLearningMedia(kind);
   const goal = kind === 'video' ? '我想搞懂 FP16 的显存核算，能解释为什么参数、梯度和优化器状态占用不同空间。'
     : '我想听懂这段音乐的主题与声部，能指出旋律如何从小提琴交给钢琴。';
@@ -587,8 +657,7 @@ it.each(['video', 'music'] as const)('saves a custom %s goal, then explicitly en
     if (action.kind === 'start') {
       state.sessions.media = { ...other, id: 'media', status: 'active', user_intent: action.user_intent, material_scope: action.material_scope };
       state.control.current_tutor_session_id = 'media';
-    } else if (action.kind === 'set_enabled') state.control.enabled = true;
-    else if (action.kind === 'resume') state.sessions.media.revision++;
+    } else if (action.kind === 'resume') state.sessions.media.revision++;
     state.control.revision++;
     return structuredClone(state);
   });
@@ -606,7 +675,7 @@ it.each(['video', 'music'] as const)('saves a custom %s goal, then explicitly en
   expect(w.get('.goal-resume').text()).toContain('学习目标已保存');
   expect(api.agentRunCreate).not.toHaveBeenCalled();
   await w.get('.goal-resume button').trigger('click'); await flushPromises();
-  expect(api.tutorMutate.mock.calls.map(([request]) => request.action.kind)).toEqual(['start', 'set_enabled', 'resume']);
+  expect(api.tutorMutate.mock.calls.map(([request]) => request.action.kind)).toEqual(['start', 'resume']);
   expect(api.tutorStart).toHaveBeenCalledTimes(1);
   expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
   expect(api.agentRunCreate.mock.calls[0][0]).toBe(`${continuation}\n\n本次学习目标：\n${goal}`);
@@ -627,10 +696,12 @@ it.each(['video', 'music'] as const)('saves a custom %s goal, then explicitly en
 
 it('opens understanding directly from the chat without changing teaching or the draft', async () => {
   const w = mount(App,{props:{chatDraft:{message:'尚未发送',quote:null,goalId:null}},shallow:true,global:{renderStubDefaultSlot:true,
-    stubs:{RightRail:defineComponent({template:'<div><slot name="learning-actions" /></div>'})}}});
+    stubs:{RightRail:defineComponent({name:'RightRail',props:['agentInput'],template:'<div><slot name="learning-actions" /></div>'})}}});
   wrappers.push(w); await flushPromises();
   await w.findAll('button').find(button=>button.text()==='我的理解')!.trigger('click');
-  expect(w.findComponent({name:'TutorPanel'}).props('initialView')).toBe('understanding');
+  expect(w.findComponent({name:'UnderstandingMap'}).exists()).toBe(true);
+  w.getComponent({name:'UnderstandingMap'}).vm.$emit('close'); await flushPromises();
+  expect(w.getComponent({name:'RightRail'}).props('agentInput')).toBe('尚未发送');
   expect(api.tutorMutate).not.toHaveBeenCalled();
   expect(api.agentRunCreate).not.toHaveBeenCalled();
 });
@@ -802,7 +873,7 @@ describe("workspace startup", () => {
     const savedTurn = { turn_id: 'stopped', user: '待回答', status: 'failed', effect_labels: [], error: spendError };
     api.agentRunCreate.mockResolvedValue(descriptor);
     api.agentRun.mockReturnValue(snapshot.promise);
-    const wrapper = mount(App, { props: { chatDraft: { message: '待回答', quote: null, goalId: null } }, shallow: true, global: { renderStubDefaultSlot: true } });
+    const wrapper = mount(App, { props: { chatDraft: { message: '待回答', quote: null, goalId: null, presentationRequested: true } }, shallow: true, global: { renderStubDefaultSlot: true } });
     wrappers.push(wrapper); await flushPromises();
     api.agentHistory.mockResolvedValue({ ...history(), current: { ...history().current, turns: [savedTurn] } });
     const rail = wrapper.findComponent({ name: 'RightRail' });
@@ -816,6 +887,7 @@ describe("workspace startup", () => {
     await flushPromises();
     expect(rail.props('chat')[0].spendStop.message).toContain(state === 'failed' ? '尚未保存' : '已保存');
     expect(rail.props('agentInput')).toBe(state === 'new-draft' ? '等待期间写的新问题' : '待回答');
+    expect(rail.props('presentationRequested')).toBe(state !== 'new-draft');
     expect(api.agentRunCreate).toHaveBeenCalledTimes(1);
   });
   it('ADM8 restores a denied draft and quote, exposes the allowance action, and only explicitly continues the original goal', async () => {
@@ -862,7 +934,9 @@ describe("workspace startup", () => {
     api.text.mockImplementation(async (lid: string) => ({ lid, text }));
     api.recall.mockResolvedValue([{ mem_id: "table-highlight", type: "highlight", layer: "long_term", book_id: book,
       anchor: { lid: "1.1" }, content: "读者", range: { start: text.indexOf("读者"), end: text.indexOf("读者") + 2 } }]);
-    const wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: { ReaderPane: false } } });
+    const wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+      ReaderPane: false, BoardSourcePreview: false, BoardSourceReader: false, BoardSourceSegment: false, Teleport: true,
+    } } });
     wrappers.push(wrapper); await flushPromises();
     const pane = wrapper.findComponent({ name: "ReaderPane" });
     const table = pane.props("segments").find((seg: { kind: string }) => seg.kind === "table");
@@ -873,10 +947,9 @@ describe("workspace startup", () => {
     expect(table.text).toBe(text);
     pane.vm.$emit('focus-source-local', { lid: "1.1", quote: "读者" });
     await flushPromises();
-    expect(wrapper.get('.source-preview-table').element.tagName).toBe('DIV');
-    expect(wrapper.findAll('.source-preview-table table tr')).toHaveLength(2);
-    expect(wrapper.get('.source-preview-table td mark.source-focus-mark').text()).toBe('读者');
-    expect(wrapper.find('.source-preview-table mark.hl-mark').exists()).toBe(false);
+    expect(wrapper.findAll('.source-preview-dialog table tr')).toHaveLength(2);
+    expect(wrapper.get('.source-preview-dialog td mark').text()).toBe('读者');
+    expect(wrapper.find('.source-preview-dialog mark.hl-mark').exists()).toBe(false);
   });
 
   it('restores the unsent message and quote after the network scene remounts', async () => {
@@ -888,7 +961,7 @@ describe("workspace startup", () => {
     expect(rail.props('askDraft')).toEqual(draft.quote);
     rail.vm.$emit('update:agentInput', '继续编辑');
     await flushPromises();
-    expect(wrapper.emitted('update:chatDraft')?.at(-1)).toEqual([{ ...draft, message: '继续编辑' }]);
+    expect(wrapper.emitted('update:chatDraft')?.at(-1)).toEqual([expect.objectContaining({ ...draft, message: '继续编辑' })]);
   });
   it('rebinds the network workspace before retrying a failed history read', async () => {
     installIdentity({ user_id: 'A', csrf_token: 'csrf' });
@@ -1245,7 +1318,6 @@ it.each([false, true])('keeps a plain workspace draft in video, binds it on send
     const rail = wrapper.getComponent({ name: 'RightRail' });
     expect(rail.props('agentInput')).toBe('联系书中的内容解释视频');
     expect(wrapper.getComponent({ name: 'VideoReaderPane' }).props('owner')).toBe('video-learner:learning-video');
-    expect(wrapper.getComponent({ name: 'TopBar' }).props('guideChapterTitle')).toBeUndefined();
     await vi.advanceTimersByTimeAsync(6500); await flushPromises();
     expect(api.adoptVideoPublication).not.toHaveBeenCalled();
     if (selectedRange) {
@@ -1453,7 +1525,10 @@ it('RN4 searches and displays all parts of a grouped highlight without changing 
   const highlight = { type: 'highlight', layer: 'long_term', book_id: 'startup', source_session_id: 'highlight-group:g', content: '前半段', mem_id: 'h1', anchor: { lid: '1.1' } };
   api.recall.mockResolvedValue([highlight, { ...highlight, mem_id: 'h2', anchor: { lid: '2.1' }, content: '后半段搜索目标' }]);
   const w = start(); await flushPromises();
-  expect(w.getComponent({ name: 'RightRail' }).props('contextHighlights')).toEqual([{ ...highlight, content: '前半段\n后半段搜索目标' }]);
+  expect(w.getComponent({ name: 'RightRail' }).props('contextHighlights')).toEqual([{ ...highlight, content: '前半段\n后半段搜索目标',
+    selection_context: { status: 'resolved', resolution_basis: 'exact', raw_quote: '前半段\n后半段搜索目标',
+      resolved_quote: '前半段\n后半段搜索目标', ranges: [] },
+  }]);
 });
 
 describe('RS1 shared note selection and scope', () => {

@@ -21,7 +21,7 @@ impl ModelAdapter for Hello {
     fn complete(&self, request: CompletionRequest) -> Result<ParsedResponse, AdapterError> {
         // The local host drains observation work after delivering the Resident
         // answer. Keep that structured call separate from sampled chat history.
-        assert!(request.system.starts_with("你是 Understand Book 的教学教练。"));
+        assert!(request.system.starts_with("你整理 Understand Book 普通对话中已经发生的理解变化。"));
         let input: Value = serde_json::from_str(&request.user).unwrap();
         assert_eq!(input["trigger"], "after_turn");
         assert_eq!(input["teaching_context"]["status"], "observing");
@@ -32,9 +32,7 @@ impl ModelAdapter for Hello {
             .collect();
         Ok(ParsedResponse {
             sufficient: true,
-            answer: Some(json!({"next_step":{"focus":"Keep the accepted Resident task",
-                "participation":{"choice":"conclude", "reason":"Observation only."}},
-                "observations":observations, "reason":"The delivered response is already recorded."}).to_string()),
+            answer: Some(json!({"observations":observations, "reason":"The delivered response is already recorded."}).to_string()),
             citations: vec![],
             model_supplement: vec![],
         })
@@ -79,11 +77,17 @@ fn active_model_projection_new_turn_after_restart_keeps_previous_sampled_prefix(
     assert_eq!(second.status, 200, "{}", second.body);
     let requests = requests.lock().unwrap();
     assert_eq!(requests.len(), 2);
-    assert!(requests[1].input.starts_with(&first_projection.input));
+    // Turn-bound context is refreshed on admission; the accepted dialogue and
+    // provider continuation must still survive reopening the session store.
+    let dialogue = |input: &[runtime::Message]| input.iter()
+        .filter(|message| message.role != runtime::Role::System).cloned().collect::<Vec<_>>();
+    let previous = dialogue(&first_projection.input);
+    assert!(!previous.is_empty());
+    assert!(dialogue(&requests[1].input).starts_with(&previous));
     assert_eq!(requests[1].instructions, first_projection.instructions);
     let restored = &state.user.session_store.as_ref().unwrap().logs[&session_id]
         .projection.active_model_projection.as_ref().unwrap();
-    assert!(restored.input.starts_with(&first_projection.input));
+    assert!(dialogue(&restored.input).starts_with(&previous));
 }
 
 #[test]

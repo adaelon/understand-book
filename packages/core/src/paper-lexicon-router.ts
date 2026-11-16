@@ -13,7 +13,6 @@ import { evaluateModelInputBudget, type ModelInputBudgetEvidenceV2 } from "./mod
 import { renderPaperLexiconModelInput } from "./model-input-renderer";
 import {
   routeModelInputSlices,
-  type ModelInputSliceRenderContextV1,
   type ModelInputSliceV1,
   type ModelInputUnsplittableDraftV1,
 } from "./model-input-slice";
@@ -563,6 +562,7 @@ function wholeLidSlice(
   node: LidNode,
 ): ModelInputSliceV1 {
   const core = source.slice(node.span.start, node.span.end);
+  const coreSha256 = sha256(core);
   return {
     version: "model_input_slice.v1",
     source_fingerprint: fingerprint,
@@ -571,25 +571,8 @@ function wholeLidSlice(
     core_span_utf16: { ...node.span },
     context_span_utf16: { ...node.span },
     boundary_kind: "whole_lid",
-    core_sha256: sha256(core),
-    context_sha256: sha256(core),
-  };
-}
-
-function sliceFromRenderContext(
-  fingerprint: string,
-  context: ModelInputSliceRenderContextV1,
-): ModelInputSliceV1 {
-  return {
-    version: "model_input_slice.v1",
-    source_fingerprint: fingerprint,
-    parent_lid: context.parent_lid,
-    ordinal: context.ordinal,
-    core_span_utf16: { ...context.core_span_utf16 },
-    context_span_utf16: { ...context.context_span_utf16 },
-    boundary_kind: context.boundary_kind,
-    core_sha256: sha256(context.core),
-    context_sha256: sha256(`${context.context_before}${context.core}${context.context_after}`),
+    core_sha256: coreSha256,
+    context_sha256: coreSha256,
   };
 }
 
@@ -794,7 +777,7 @@ function routeClusterFragments(input: {
       parent,
       context_overlap_utf16: 64,
       budget: lexiconBudget(input.maxInputTokens),
-      render: (context) => renderPaperLexiconModelInput(sourcePacketIdentity({
+      render: (context, slice) => renderPaperLexiconModelInput(sourcePacketIdentity({
         clusters: [input.cluster],
         route: {
           version: "paper_lexicon_packet_route.v1",
@@ -803,7 +786,7 @@ function routeClusterFragments(input: {
           fragment_ordinal: baseOrdinal + context.ordinal,
         },
         source: input.source,
-        source_slices: [sliceFromRenderContext(fingerprint, context)],
+        source_slices: [slice],
         visible_lids: [context.parent_lid],
       })),
     });

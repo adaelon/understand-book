@@ -118,6 +118,10 @@ pub(crate) fn dispatch(
     now: i64,
 ) -> Result<Value, ToolError> {
     let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
+    if parts.as_slice() == ["admin", "operations"] {
+        if method != "GET" || !query.is_empty() { return Err(admin_store::invalid()); }
+        return crate::operations::report(access, now);
+    }
     if parts.as_slice() == ["admin", "monitor"] {
         if method != "GET" || !query.is_empty() { return Err(admin_store::invalid()); }
         return access.monitor.snapshot(&access.admin, access.runs.limits.active_runs, now);
@@ -143,7 +147,7 @@ pub(crate) fn dispatch(
         return match parts.as_slice() {
             ["admin", "workspace-releases"] => {
                 let (limit,offset) = page(query)?;
-                access.admin.workspace_releases(None,limit,offset)
+                access.admin.workspace_releases(None,limit,offset,None)
             },
             ["admin", "workspace-releases", id, "versions", version] if query.is_empty() =>
                 access.admin.workspace_release(None,id,version.parse().map_err(|_|admin_store::invalid())?,false),

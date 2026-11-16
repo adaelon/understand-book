@@ -2,10 +2,48 @@ import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { parseMusicScore, renderMusicScore } from './music-score';
 import { synthesizeScoreDemonstration } from './music-demonstrations';
+import { MusicScoreObjectZ } from './music-contract';
 
 export const selectedScore = `<?xml version="1.0"?><score-partwise version="4.0"><work><work-title>Selected phrase</work-title></work><part-list><score-part id="P1"><part-name>Clarinet</part-name><score-instrument id="I1"><instrument-name>Clarinet</instrument-name></score-instrument><midi-instrument id="I1"><midi-channel>1</midi-channel><midi-program>72</midi-program></midi-instrument></score-part></part-list><part id="P1"><measure number="1"><attributes><divisions>4</divisions><time><beats>2</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef><transpose><diatonic>-1</diatonic><chromatic>-2</chromatic></transpose></attributes><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><tie type="start"/></note><note><chord/><pitch><step>E</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type></note><note><pitch><step>C</step><octave>4</octave></pitch><duration>4</duration><voice>1</voice><type>quarter</type><tie type="stop"/></note><backup><duration>8</duration></backup><note><rest/><duration>8</duration><voice>2</voice><type>half</type></note></measure><measure number="2"><note><grace slash="yes"/><pitch><step>D</step><octave>4</octave></pitch><voice>1</voice><type>eighth</type></note><note><pitch><step>E</step><octave>4</octave></pitch><duration>8</duration><voice>1</voice><type>half</type></note><barline location="right"><repeat direction="backward"/></barline></measure></part></score-partwise>`;
 
 describe('curated MusicXML', () => {
+  it('preserves tuplet and tremolo meaning without applying duration adjustment twice', () => {
+    const xml = selectedScore.replace('<type>quarter</type>', '<type>quarter</type><dot/><time-modification><actual-notes>6</actual-notes><normal-notes>4</normal-notes><normal-type>16th</normal-type></time-modification><notations><ornaments><tremolo type="single">2</tremolo></ornaments></notations>');
+    const parsed = parseMusicScore(xml);
+    expect(parsed.notes[0]).toMatchObject({ source_id:'P1-m1-n1', duration_beats:1, notation: {
+      note_type:'quarter', dots:1, rhythm:{ time_modification:{ actual_notes:6, normal_notes:4, normal_type:'16th', normal_dots:0 }, tremolos:[{ kind:'single', marks:2 }] },
+    } });
+    expect(parsed.notes[1].notation?.rhythm).toEqual({ time_modification:null, tremolos:[] });
+    const published = MusicScoreObjectZ.parse({ ...parsed.notes[0], page_id:'page1', svg_element_id:'P1-m1-n1' });
+    expect(published.notation?.rhythm).toEqual(parsed.notes[0].notation?.rhythm);
+  });
+  it('preserves spelling, value and hidden playback state without changing source IDs', () => {
+    const xml = selectedScore.replace('<note><pitch><step>C</step>', '<note print-object="no" dynamics="0"><pitch><step>C</step>')
+      .replace('<note><chord/>', '<note print-object="no"><chord/>')
+      .replace('<type>quarter</type><tie', '<type>eighth</type><dot/><dot/><tie');
+    const parsed = parseMusicScore(xml);
+    expect(parsed.notes[0]).toMatchObject({ source_id: 'P1-m1-n1', midi_pitch: 58, notation: {
+      written_pitch: { step: 'C', alter: 0, octave: 4 }, note_type: 'eighth', dots: 2,
+      visible: false, playback_dynamics: 0, chord: false, grace: false,
+    } });
+    expect(parsed.notes[1].notation).toMatchObject({ visible: false, playback_dynamics: null, chord: true });
+    expect(parsed.notes[4].notation).toMatchObject({ grace: true, note_type: 'eighth' });
+    const demo = synthesizeScoreDemonstration(parsed.notes.slice(0, 4), 120);
+    expect(demo.timings.map(n => n.source_id)).toEqual(['P1-m1-n2', 'P1-m1-n3']);
+  });
+  it('retains a source metronome number with a missing beat unit without inventing its unit', () => {
+    const xml = selectedScore.replace('<measure number="2">', '<measure number="2"><direction><direction-type><words>Presto</words><metronome><beat-unit/><per-minute>116</per-minute></metronome></direction-type></direction>');
+    const direction = parseMusicScore(xml).marks.find(mark => mark.value.kind === 'direction');
+    expect(direction?.value).toEqual({ kind: 'direction', words: ['Presto', '原谱节拍器：116（未注明拍值）'], metronome: null, sound_tempo_quarter_bpm: null });
+  });
+  it('renders percussion attacks without inventing a sounding pitch or synthesizing a pitched tone', async () => {
+    const xml = selectedScore.replace('<pitch><step>C</step><octave>4</octave></pitch>', '<unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>');
+    const parsed = parseMusicScore(xml);
+    expect(parsed.notes[0]).toMatchObject({ rest: false, unpitched: true, midi_pitch: null });
+    const rendered = await renderMusicScore(parsed);
+    expect(rendered.svg.get(rendered.score_objects[0].page_id)).toContain('P1-m1-n1');
+    expect(() => synthesizeScoreDemonstration(parsed.notes.slice(0, 1), 120)).toThrow('pitched score objects');
+  });
   it('retains Schubert key encoding, meter and tempo as source-anchored score marks', () => {
     const original = readFileSync(new URL('../../../evals/music/assets/schubert-d780-3-noctave.musicxml', import.meta.url), 'utf8');
     const parsed = parseMusicScore(original);

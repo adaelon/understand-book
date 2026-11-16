@@ -43,6 +43,8 @@ pub(crate) struct Manifest {
     pub suggested_route: Vec<Composition>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub external_resources: Vec<ExternalResource>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub inquiry_course: Option<memory::course::InquiryCourse>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -91,6 +93,10 @@ impl Publish {
             let url = url::Url::parse(&external.url).map_err(|_| invalid())?;
             if !matches!(url.scheme(), "http" | "https") { return Err(invalid()); }
         }
+        if let Some(course) = &manifest.inquiry_course {
+            course.validate()?;
+            if course.lessons.iter().any(|l|!references.contains(&l.summary.source.publication)) { return Err(invalid()); }
+        }
         Ok(())
     }
     pub(crate) fn apply(&self, db: &Connection, actor: &str, operation_id: &str, now: i64) -> Result<Value, ToolError> {
@@ -100,6 +106,7 @@ impl Publish {
             let exists: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM users WHERE user_id=? AND disabled=0)", [user], |r| r.get(0)).map_err(|_| storage())?;
             if !exists { return Err(error("WORKSPACE_RELEASE_READER_UNAVAILABLE", "validation", "A selected reader is unavailable")); }
         }
+        crate::inquiry_course::validate_sources(db, self.manifest.inquiry_course.as_ref())?;
         let readiness = readiness(db, &self.manifest, &self.visible_to_users, &self.allowed_tiers)?;
         let version = latest + 1;
         db.execute("INSERT INTO workspace_releases(release_id,version,manifest_json,visible_to_users_json,readiness_json,published_by,operation_id,created_at) VALUES(?,?,?,?,?,?,?,?)", params![self.release_id,version,json!(self.manifest).to_string(),json!(self.visible_to_users).to_string(),readiness.to_string(),actor,operation_id,now]).map_err(|_| storage())?;
@@ -199,15 +206,33 @@ fn readiness(db: &Connection, manifest: &Manifest, readers: &[String], publishin
     Ok(json!({"status":if ready {"ready"} else {"incomplete"},"materials":materials,"audience":audience}))
 }
 pub(crate) fn detail(db:&Connection, owner:Option<&str>, id:&str, version:u32, export:bool)->Result<Value,ToolError> {
-    let row: Option<(String,String,String,String,i64)> = db.query_row("SELECT manifest_json,visible_to_users_json,readiness_json,published_by,created_at FROM workspace_releases WHERE release_id=? AND version=?",params![id,version],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?))).optional().map_err(|_|storage())?;
-    let Some((manifest,readers,initial,publisher,created_at)) = row else {return Err(crate::authorization::missing())};
+    // Public browsing reads only the course directory. Lesson bodies and private
+    // solutions stay in storage; administrative reads retain the full manifest.
+    let row: Option<(String,String,String,String,i64,Option<String>)> = db.query_row(
+        "SELECT CASE WHEN ?3 THEN json_remove(manifest_json,'$.inquiry_course') ELSE manifest_json END,
+                visible_to_users_json,readiness_json,published_by,created_at,
+                CASE WHEN ?3 AND json_type(manifest_json,'$.inquiry_course')='object' THEN
+                    json_object('language',json_extract(manifest_json,'$.inquiry_course.language'),
+                        'units',json_extract(manifest_json,'$.inquiry_course.units'),
+                        'routes',json_extract(manifest_json,'$.inquiry_course.routes'),
+                        'lessons',(SELECT json_group_array(json_extract(lesson.value,'$.summary'))
+                            FROM json_each(manifest_json,'$.inquiry_course.lessons') lesson)) END
+           FROM workspace_releases WHERE release_id=?1 AND version=?2",
+        params![id,version,owner.is_some()],|r|Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?,r.get(4)?,r.get(5)?)))
+        .optional().map_err(|_|storage())?;
+    let Some((manifest,readers,initial,publisher,created_at,course)) = row else {return Err(crate::authorization::missing())};
     let readers:Vec<String> = serde_json::from_str(&readers).map_err(|_|storage())?;
     if let Some(owner) = owner {
         let retained: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM workspace_release_instance_history h JOIN workspace_release_instances i USING(owner_user_id,learning_workspace_id) WHERE i.owner_user_id=? AND i.release_id=? AND h.version=?)",params![owner,id,version],|r|r.get(0)).map_err(|_|storage())?;
         if !readers.iter().any(|reader|reader==owner) && !retained && !crate::course_access::release_allowed(db,owner,id,version,crate::multi_user_host::now())? { return Err(crate::authorization::missing()); }
     }
     let manifest:Manifest = serde_json::from_str(&manifest).map_err(|_|storage())?;
-    if export { return Ok(json!({"schema":"workspace_release.v1","release_id":id,"version":version,"manifest":manifest})); }
+    let mut public_manifest = json!(manifest);
+    if let Some(course) = course {
+        let overview: memory::course::CourseOverview = serde_json::from_str(&course).map_err(|_|storage())?;
+        public_manifest["inquiry_course"] = json!(overview);
+    }
+    if export { return Ok(json!({"schema":"workspace_release.v1","release_id":id,"version":version,"manifest":public_manifest})); }
     let mut initial:Value = serde_json::from_str(&initial).map_err(|_|storage())?;
     let current_readers = owner.map(|owner|vec![owner.to_owned()]).unwrap_or_else(||readers.clone());
     if let Some(owner) = owner {
@@ -217,7 +242,7 @@ pub(crate) fn detail(db:&Connection, owner:Option<&str>, id:&str, version:u32, e
     let availability = readiness(db,&manifest,&current_readers,&[])?;
     let latest_version:u32 = db.query_row("SELECT MAX(version) FROM workspace_releases WHERE release_id=?",[id],|r|r.get(0)).map_err(|_|storage())?;
     let archived = archived(db,id)?;
-    let mut result = json!({"release_id":id,"version":version,"latest_version":latest_version,"manifest":manifest,"created_at":created_at,"publisher_user_id":publisher,"readiness_at_publication":initial,"availability":availability,"archived":archived});
+    let mut result = json!({"release_id":id,"version":version,"latest_version":latest_version,"manifest":public_manifest,"created_at":created_at,"publisher_user_id":publisher,"readiness_at_publication":initial,"availability":availability,"archived":archived});
     result["allowed_tiers"] = json!(crate::course_access::tiers(db,id,version)?);
     if owner.is_none() { result["visible_to_users"] = json!(readers); }
     Ok(result)
@@ -245,14 +270,16 @@ impl AdminStore {
         let control = self.control.lock().unwrap();
         detail(&control.connection,owner,id,version,export)
     }
-    pub(crate) fn workspace_releases(&self, owner:Option<&str>, limit:u32, offset:u32)->Result<Value,ToolError> {
+    pub(crate) fn workspace_releases(&self, owner:Option<&str>, limit:u32, offset:u32, book_id:Option<&str>)->Result<Value,ToolError> {
         let control = self.control.lock().unwrap();
         let db = &control.connection;
         let tier = owner.map(|owner|crate::course_access::current_tier(db,owner,crate::multi_user_host::now())).transpose()?.flatten();
-        let filter = "(?1 IS NULL OR EXISTS(SELECT 1 FROM json_each(visible_to_users_json) WHERE value=?1) OR EXISTS(SELECT 1 FROM course_release_access a,json_each(a.allowed_tiers_json) t WHERE a.release_id=workspace_releases.release_id AND a.version=workspace_releases.version AND t.value=?2))";
-        let total:i64 = db.query_row(&format!("SELECT count(*) FROM workspace_releases WHERE {filter}"),params![owner,tier],|r|r.get(0)).map_err(|_|storage())?;
-        let mut statement = db.prepare(&format!("SELECT release_id,version FROM workspace_releases WHERE {filter} ORDER BY created_at DESC,release_id,version DESC LIMIT ?3 OFFSET ?4")).map_err(|_|storage())?;
-        let rows = statement.query_map(params![owner,tier,limit,offset],|r|Ok((r.get::<_,String>(0)?,r.get::<_,u32>(1)?))).map_err(|_|storage())?.collect::<Result<Vec<_>,_>>().map_err(|_|storage())?;
+        let filter = "(?1 IS NULL OR EXISTS(SELECT 1 FROM json_each(visible_to_users_json) WHERE value=?1) OR EXISTS(SELECT 1 FROM course_release_access a,json_each(a.allowed_tiers_json) t WHERE a.release_id=workspace_releases.release_id AND a.version=workspace_releases.version AND t.value=?2))
+            AND (?3 IS NULL OR EXISTS(SELECT 1 FROM json_each(manifest_json,'$.inquiry_course.lessons') lesson
+                WHERE json_extract(lesson.value,'$.summary.source.publication.book_id')=?3))";
+        let total:i64 = db.query_row(&format!("SELECT count(*) FROM workspace_releases WHERE {filter}"),params![owner,tier,book_id],|r|r.get(0)).map_err(|_|storage())?;
+        let mut statement = db.prepare(&format!("SELECT release_id,version FROM workspace_releases WHERE {filter} ORDER BY created_at DESC,release_id,version DESC LIMIT ?4 OFFSET ?5")).map_err(|_|storage())?;
+        let rows = statement.query_map(params![owner,tier,book_id,limit,offset],|r|Ok((r.get::<_,String>(0)?,r.get::<_,u32>(1)?))).map_err(|_|storage())?.collect::<Result<Vec<_>,_>>().map_err(|_|storage())?;
         let items = rows.into_iter().map(|(id,version)|detail(db,owner,&id,version,false)).collect::<Result<Vec<_>,_>>()?;
         Ok(json!({"items":items,"total":total,"limit":limit,"offset":offset}))
     }

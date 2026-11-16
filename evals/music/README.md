@@ -1,5 +1,9 @@
 # 音乐 M0 样本与对齐实验
 
+2026-11-11：新增[回答质量对照入口](../answer-quality/README.md)与[八道贝九动机分析题](answer-quality-cases.json)，比较当前产品、同模型直答及 Astra 的文字回答。首轮使用六道开发题，两道保留题不参与本轮调整；真实运行、失败及事实核验见[首轮记录](../../docs/performance/music-answer-quality-20261111/README.md)。
+
+2026-11-03：当前贝九改用 Tennstedt 1992 四乐章工程与用户视频音轨，旧 Coates 选段退出当前构建。新入口与验证见[四乐章构建记录](../../docs/performance/beethoven9-tennstedt-20261103/README.md)；下文贝九内容为已弃用方案的历史实验。
+
 更新：2026-10-23。舒伯特 Vetter 原录音已完成全曲跟谱校准并发布到本机内容库，使用 [schubert-calibrated-curation.json](schubert-calibrated-curation.json) 重建；见[发布与真实播放器验收](../../docs/performance/music-schubert-alignment-20261022/VERIFICATION.md)。保留原谱的八度／变音差异、延续音，以及 19 个未确认独立发声而不亮点的谱音。没有独立人类起音标签，模型一致性不等同绝对误差。贝九仍为待核候选。下文保留 2026-10-22 的 M0 实验过程，旧候选和合成演示结果不代表本次真人录音发布的结果。
 
 ## 已取得的素材

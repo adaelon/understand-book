@@ -1,4 +1,4 @@
-import type { MusicSourceManifest, MusicNoteAlignment, MusicQuestionContext } from '../../core/src/music-contract';
+import type { MusicSourceManifest, MusicNoteAlignment, MusicQuestionContext, MusicEvent } from '../../core/src/music-contract';
 import type { PublishedBookRef } from './network-context';
 
 /** Prefix end bounds retain overlapping sustained notes without scanning the whole score each frame. */
@@ -27,13 +27,13 @@ export function musicNoteOpacity(note: MusicNoteAlignment, ms: number, playing: 
   if (ms < note.end_ms) return 1;
   return playing ? Math.max(0, 1 - (ms - note.end_ms) / MUSIC_TRAIL_MS) : 0;
 }
-export function musicQuestion(manifest: MusicSourceManifest, publication: PublishedBookRef, currentMs: number, focused: readonly string[], draftId: string, voices: { part_id: string; voice: string }[] = []): MusicQuestionContext {
+export function musicQuestion(manifest: MusicSourceManifest, publication: PublishedBookRef, currentMs: number, focused: readonly string[], draftId: string, voices: { part_id: string; voice: string }[] = [], selected?: MusicEvent | null): MusicQuestionContext {
   const ms = Math.max(0, Math.min(Math.floor(currentMs), manifest.recording.duration_ms - 1));
   const aligned = manifest.coverage.some(item => item.status === 'accepted' && item.granularity !== 'phrase' && item.start_ms <= ms && item.end_ms > ms);
   const occurrence = aligned ? new MusicTimeline(manifest.occurrences).at(ms).at(-1) : undefined;
-  const ids = occurrence?.score_object_ids ?? [];
+  const ids = selected ? [...new Set(selected.evidence.flatMap(evidence => evidence.score_object_ids))] : occurrence?.score_object_ids ?? [];
   return { draft_id: draftId, publication: { ...publication },
-    audio: { recording: { ...manifest.recording.source }, start_ms: occurrence?.start_ms ?? ms, end_ms: occurrence?.end_ms ?? Math.min(ms + 1000, manifest.recording.duration_ms) },
+    audio: { recording: { ...manifest.recording.source }, start_ms: selected?.start_ms ?? occurrence?.start_ms ?? ms, end_ms: selected?.end_ms ?? occurrence?.end_ms ?? Math.min(ms + 1000, manifest.recording.duration_ms) },
     score: ids.length ? { score: { ...manifest.score.source }, source_ids: [...ids] } : null,
-    occurrence_id: occurrence?.occurrence_id ?? null, focused_part_ids: [...focused], focused_voices: voices.map(voice => ({ ...voice })) };
+    occurrence_id: selected ? null : occurrence?.occurrence_id ?? null, focused_part_ids: [...focused], focused_voices: voices.map(voice => ({ ...voice })) };
 }

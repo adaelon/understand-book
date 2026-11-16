@@ -528,6 +528,36 @@ impl WorkspaceRegistry {
         Ok(())
     }
 
+    pub(crate) fn check_voice_scene(&mut self, context: &AuthorizedContext, user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>, id: &str, input: &Value) -> Result<(), ToolError> {
+        let scene = self.scene(context.user_id(),id,user,library)?;
+        let scene = scene.lock().unwrap();
+        let stamp = serde_json::from_value(input.clone()).map_err(|_|invalid())?;
+        scene.check_attachment(&stamp)
+    }
+
+    pub(crate) fn prepare_guidance(
+        &mut self, context: &AuthorizedContext, user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>, id: &str, action: &str, input: &Value,
+    ) -> Result<(crate::reading_guidance::GuidanceWork, PublishedBookRef), ToolError> {
+        let scene = self.scene(context.user_id(), id, user, library)?;
+        let scene = scene.lock().unwrap();
+        let stamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
+        scene.check_attachment(&stamp)?;
+        let work = crate::reading_guidance::GuidanceWork::prepare(&private_context(user, &scene.workspace), action, input,
+            &crate::multi_user_host::now().to_string())?;
+        Ok((work, scene.workspace.publication.as_ref().ok_or_else(missing)?.reference.clone()))
+    }
+
+    pub(crate) fn finish_guidance(&mut self, context: &AuthorizedContext, user: &UserRuntime,
+        library: &Mutex<PublishedLibrary>, id: &str, publication: &PublishedBookRef,
+        work: &crate::reading_guidance::GuidanceWork, result: Value) -> Result<Value, ToolError> {
+        let scene = self.scene(context.user_id(), id, user, library)?;
+        let scene = scene.lock().unwrap();
+        if scene.workspace.publication.as_ref().map(|p| &p.reference) != Some(publication) { return Err(missing()); }
+        work.finish(&private_context(user, &scene.workspace), result, &crate::multi_user_host::now().to_string())
+    }
+
     pub(crate) fn prepare_translation(
         &mut self,
         context: &AuthorizedContext,
@@ -631,6 +661,9 @@ impl WorkspaceRegistry {
         if action.is_empty() {
             return Ok(view(&scene));
         }
+        if action == "learning-task/state" {
+            return crate::learning_task::local_list(user, &scene.workspace);
+        }
         if matches!(action, "attach" | "takeover" | "fork") {
             let next = attachment(input)?;
             if action == "fork"
@@ -678,10 +711,10 @@ impl WorkspaceRegistry {
         }
         let stamp: WorkspaceStamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
         if matches!(action, "reader/state" | "profile/manifest" | "profile/memory" | "memory/recall" | "memory/prepare_note"
-            | "chat/history" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
-            | "reader/pdf_ranges.project" | "agent/source.resolve" | "memory/presentation.read" | "memory/presentation.observe"
+            | "chat/history" | "knowledge/tree" | "knowledge/resume" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
+            | "reader/pdf_ranges.project" | "agent/source.resolve" | "agent/source.read" | "memory/presentation.read" | "memory/presentation.observe"
             | "boards/list" | "boards/read" | "boards/conversation" | "boards/catalog" | "boards/search" | "boards/related" | "boards/source.resolve" | "boards/source.read" | "boards/presentation.read" | "boards/presentation.observe"
-            | "notes/list" | "notes/read" | "notes/source.resolve"
+            | "notes/list" | "notes/read" | "notes/source.resolve" | "notes/source.read"
             | "presentation/read" | "presentation/observe" | "presentation/feedback/read") {
             scene.check_attachment(&stamp)?;
         } else {
@@ -693,13 +726,21 @@ impl WorkspaceRegistry {
             command.as_object_mut().ok_or_else(invalid)?.remove(key);
         }
         let input = &command;
-        if matches!(action, "notes/source.resolve" | "notes/source.open") {
+        if action == "learning-task" {
+            let result = crate::learning_task::select(user, &scene.workspace, input, now)?;
+            let mut value = view(&scene); value["result"] = result; return Ok(value);
+        }
+        if matches!(action, "notes/source.resolve" | "notes/source.read" | "notes/source.open") {
             let binding = crate::workspace_notes_api::source_binding(user, &scene.workspace, input)?;
             let same_publication = binding.book_id == scene.workspace.book.base.book_id
                 && binding.publication_id.as_ref() == scene.workspace.publication.as_ref().map(|p| &p.reference.publication_id);
             if !same_publication {
                 let mut value = view(&scene);
-                value["result"] = crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?;
+                value["result"] = if action == "notes/source.read" {
+                    crate::cross_book::source_window(library, owner, &binding, input)?
+                } else {
+                    crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?
+                };
                 return Ok(value);
             }
         }
@@ -1010,9 +1051,12 @@ impl WorkspaceRegistry {
             let turn = input["turn_id"].as_str().ok_or_else(invalid)?;
             if scene.workspace.selected_chat.as_deref() != Some(session) { return Err(stale()); }
             let mut request = input.clone();
-            request["saved_state"] = scene.presentation.as_ref().filter(|saved|
-                saved.session_id == session && saved.turn_id == turn && json!(saved.reference) == input["reference"]
-            ).map(|s| json!(s)).unwrap_or(Value::Null);
+            // An explicit receipt previews that snapshot without moving the workspace.
+            if request["saved_state"].is_null() {
+                request["saved_state"] = scene.presentation.as_ref().filter(|saved|
+                    saved.session_id == session && saved.turn_id == turn && json!(saved.reference) == input["reference"]
+                ).map(|s| json!(s)).unwrap_or(Value::Null);
+            }
             let result = with_turn_presentation(user, &scene.workspace, library, session, turn, |private| {
                 crate::workspace_client::reply(crate::presentation_api::route_with_restore(
                     private, &request.to_string(), action == "presentation/observe", false
@@ -1033,8 +1077,9 @@ impl WorkspaceRegistry {
             value["result"] = crate::workspace_client::reply(reply)?;
             return Ok(value);
         }
-        if matches!(action, "agent/source.resolve" | "agent/source.open") {
-            let request = crate::parse_agent_source_request(&input.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
+        if matches!(action, "agent/source.resolve" | "agent/source.read" | "agent/source.open") {
+            let source = if action == "agent/source.read" { &input["source"] } else { input };
+            let request = crate::parse_agent_source_request(&source.to_string()).map_err(|r| crate::workspace_client::reply(r).unwrap_err())?;
             let mut binding = crate::workspace_source_binding(user, &scene.workspace, &request)?;
             // Older delivered pages used an implicit current-book source. Resolve it
             // against their saved turn, not whichever material the Reader now displays.
@@ -1043,9 +1088,19 @@ impl WorkspaceRegistry {
                     .filter(|s| s.matches_scope(scene.workspace.learning_workspace_id.as_deref(), &scene.workspace.book.base.book_id))
                     .flat_map(|s| &s.turns).find(|t| t.turn_id == request.turn_id)
                     .and_then(|t| t.published_book_ref.as_ref())
-                    .filter(|r| r.book_id == binding.book_id && scene.workspace.publication.as_ref().map(|p| &p.reference) != Some(*r)) {
+                    .filter(|r| r.book_id == binding.book_id && (action == "agent/source.read" || scene.workspace.publication.as_ref().map(|p| &p.reference) != Some(*r))) {
                     binding.publication_id = Some(reference.publication_id.clone());
                 }
+            }
+            if action == "agent/source.read" {
+                let mut value = view(&scene);
+                let publication = scene.workspace.publication.as_ref().map(|p| &p.reference);
+                value["result"] = if crate::board_api::validate_source_publication(&scene.workspace.book, &binding, publication).is_ok() {
+                    crate::board_api::workspace_source_window(&scene.workspace, &binding, input)?
+                } else {
+                    crate::cross_book::source_window(library, owner, &binding, input)?
+                };
+                return Ok(value);
             }
             if binding.publication_id.is_some() {
                 let mut value = view(&scene);
@@ -1150,7 +1205,10 @@ impl WorkspaceRegistry {
                     &mut user.store,
                     input["lid"].as_str().ok_or_else(invalid)?,
                     range,
-                    scene.workspace.selected_chat.clone(),
+                    input["source_session_id"].as_str()
+                        .filter(|id| id.starts_with("highlight-group:"))
+                        .map(str::to_owned)
+                        .or_else(|| scene.workspace.selected_chat.clone()),
                     "long_term",
                     now
                 )?)
@@ -1632,6 +1690,12 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
             let manifest = self.scope.reading_book().load_music_source(&self.scope.book_dir)?;
             read_tools::music::read(&manifest, &reference, &request)
         }
+    }
+    fn music_example_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<base_schema::MusicSourceManifest, ToolError> {
+        self.authorized()?;
+        self.scope.check_user(&self.user.lock().unwrap())?;
+        let publication = self.media_publication(reference)?;
+        publication.book.load_music_source(publication.directory())
     }
     fn interact_music(&mut self, request: runtime::music::MusicInteractRequest, cancellation: &runtime::run_context::CancellationToken) -> Result<runtime::music::MusicPlaybackReceipt, ToolError> {
         self.authorized()?;

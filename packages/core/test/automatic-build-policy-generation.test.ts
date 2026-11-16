@@ -16,6 +16,8 @@ import {
   automaticBuildPolicyMigrationReceiptPath,
   createAutomaticBuildStagePolicySet,
   freezeAutomaticBuildStagePolicySet,
+  inspectAutomaticBuildStagePolicySet,
+  prepareAutomaticBuildPolicyMigrations,
   materializeAdoptedAutomaticBuildGenerationArtifact,
   recordAutomaticBuildPriorGenerationAdoption,
   recordAutomaticBuildPolicyMigration,
@@ -31,6 +33,8 @@ import {
 import { automaticBuildLegacyStageArtifactPath } from "../src/automatic-build-legacy";
 import { resolveAutomaticBuildTarget } from "../src/build-orchestrator";
 import { resolveContentProfile } from "../src/content-profile";
+import { pass1ModelSlicePolicyMembers } from "../src/pass1-reduction";
+import { profileSidecarMapReducePolicyMembers } from "../src/profile-sidecar-reduction";
 import { evaluateModelInputBudget } from "../src/model-input-budget";
 import {
   automaticBuildGenerationArtifactPath,
@@ -92,6 +96,58 @@ it("P1 rechecks a competing first policy and receipt creation", () => {
   let winner: ReturnType<typeof recordAutomaticBuildPolicyMigration> | undefined;
   writes.beforeMkdir = () => { winner = recordAutomaticBuildPolicyMigration(input); };
   expect(recordAutomaticBuildPolicyMigration(input)).toEqual(winner);
+});
+
+describe("fragment policy upgrade after removing model digest echoes", () => {
+  const stages = [
+    {
+      stage: "pass1" as const,
+      members: pass1ModelSlicePolicyMembers,
+      kind: "pass1_source_slice",
+      previousGeneration: "pass1-source-slice",
+      previousVersion: "v2",
+      previousPrompt: "87889ca048baf6d31303650dfb953d58eb30d1a260d2ff448c6c3f41281d88eb",
+    },
+    {
+      stage: "profile_sidecar" as const,
+      members: profileSidecarMapReducePolicyMembers,
+      kind: "profile_sidecar_discourse_fragment",
+      previousGeneration: "profile-sidecar-discourse-fragment",
+      previousVersion: "v1",
+      previousPrompt: "6a55eab027ec04049bf01bcf3c6a9cd143a8f7023617230416449bac4f89f761",
+    },
+  ];
+
+  it.each(stages)("prepares $stage beside its frozen previous fragment contract", (stage) => {
+    const { target } = fixture(`fragment-upgrade-${stage.stage}`);
+    const profile = resolveContentProfile("technical_learning");
+    for (const quality of ["full", "balanced", "sparse"] as const) {
+      const members = stage.members(profile, quality);
+      const previous = createAutomaticBuildStagePolicySet({
+        target_ref: target.target_ref,
+        stage: stage.stage,
+        members: members.map(member => member.kind === stage.kind ? {
+          ...member,
+          policy_generation_id: `${stage.previousGeneration}.${quality}.${stage.previousVersion}`,
+          policy_fingerprint: { ...member.policy_fingerprint, prompt_sha256: stage.previousPrompt },
+        } : member),
+      });
+      freezeAutomaticBuildStagePolicySet(target, previous);
+      const previousFiles = previous.members.map(member => {
+        const file = automaticBuildPolicyGenerationPath(target, stage.stage, member.policy_generation_id);
+        return { file, bytes: readFileSync(file) };
+      });
+      const current = createAutomaticBuildStagePolicySet({
+        target_ref: target.target_ref, stage: stage.stage, members,
+      });
+      expect(inspectAutomaticBuildStagePolicySet(target, current)).toBe(false);
+      prepareAutomaticBuildPolicyMigrations(target, current);
+      expect(inspectAutomaticBuildStagePolicySet(target, current)).toBe(true);
+      for (const { file, bytes } of previousFiles) {
+        expect(readFileSync(file)).toEqual(bytes);
+      }
+    }
+  });
 });
 
 function sha256(value: string | Uint8Array): string {

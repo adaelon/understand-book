@@ -8,7 +8,6 @@ import type { WorkspaceAuxTab } from "./ReaderWorkspace.vue";
 import type { ReaderSelectionSnapshot } from "../useReaderSelection";
 import type { ResidentGoal } from "../api";
 import ConversationLearningGoal from './ConversationLearningGoal.vue';
-import TutorControl from './TutorControl.vue';
 import type { TutorSession } from '../generated/TutorSession';
 import { renderMarkdown } from '../md';
 import mathAnswer from '../fixtures/agent-math-answer.md?raw';
@@ -28,7 +27,6 @@ const segments: Segment[] = [
 const longChat = new URLSearchParams(location.search).has('long-chat');
 const fixtureParams = new URLSearchParams(location.search);
 const learning = fixtureParams.has('learning');
-const teaching = ref(true);
 const learningSession = ref({ id: 'learning', user_intent: '学懂 1.4 需求如何推动架构设计', status: 'active' } as TutorSession);
 const savedAnswerSelection = ref('');
 const learningAction = ref('');
@@ -167,9 +165,8 @@ function onSelection(snapshot: ReaderSelectionSnapshot | null) {
       <template v-if="learning" #learning-actions><button @click="learningAction = 'understanding'">我的理解</button></template>
       <template v-if="learning" #learning-details><button @click="learningAction = 'details'">学习详情</button></template>
       <template v-if="learning" #learning-goal>
-        <ConversationLearningGoal :session="learningSession" :enabled="teaching" :busy="false" :available="true" :ready="true" :other-session="false" error="" @goal="learningSession = { ...learningSession, user_intent: $event }" @manage="learningAction = 'details'" />
+        <ConversationLearningGoal :session="learningSession" :busy="false" :available="true" :ready="true" :other-session="false" error="" @goal="learningSession = { ...learningSession, user_intent: $event }" @manage="learningAction = 'details'" />
       </template>
-      <template v-if="learning" #tutor-control><TutorControl :enabled="teaching" label="可以开始或继续学习" :busy="false" :unavailable="false" error="" @toggle="teaching = !teaching" /></template>
     </RightRail>
     <output hidden class="fixture-answer-note">{{ savedAnswerSelection }}</output>
     <output hidden class="fixture-learning-action">{{ learningAction }}</output>

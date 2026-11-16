@@ -50,9 +50,12 @@ pub struct ModelRates {
 }
 impl ModelRates {
     pub fn load(path: &std::path::Path) -> Result<Self, SpendStop> {
-        let bytes = std::fs::read(path).map_err(|_| SpendStop::RateUnavailable)?;
-        let rates: Self = serde_json::from_slice(&bytes).map_err(|_| SpendStop::RateUnavailable)?;
-        rates.validate()?;
+        Self::load_diagnostic(path).map_err(|_| SpendStop::RateUnavailable)
+    }
+    pub(crate) fn load_diagnostic(path: &std::path::Path) -> Result<Self, &'static str> {
+        let bytes = std::fs::read(path).map_err(|_| "MODEL_RATE_FILE_UNREADABLE")?;
+        let rates: Self = serde_json::from_slice(&bytes).map_err(|_| "MODEL_RATE_FILE_INVALID_JSON")?;
+        rates.validate().map_err(|_| "MODEL_RATE_CONFIGURATION_INVALID")?;
         Ok(rates)
     }
     pub fn validate(&self) -> Result<(), SpendStop> {

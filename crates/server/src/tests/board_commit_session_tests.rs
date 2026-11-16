@@ -20,7 +20,7 @@ fn fixture(logged: bool) -> (tempfile::TempDir, AppState, AgentTurnRef, crate::b
     }
     let book_id=state.workspace.book.base.book_id.clone();
     let turn = precommit_agent_turn_with_goal(&mut state,&book_id,"分两段解释平均速度。".into(),None,None,None,None,None,None,None,
-        Some(crate::session_event::TurnDomain {board_context:Some(frozen),..Default::default()}),None,NOW).unwrap();
+        Some(crate::session_event::TurnDomain {board_context:Some(frozen),..Default::default()}),None,false,NOW).unwrap();
     let part = crate::board_author::CommittedPart {
         delivery: memory::boards::BoardDelivery {commit_id:Some("candidate-local-first".into()),board_id:follow_up.board_id,
             before_revision:follow_up.board_revision,after_revision:follow_up.board_revision+1,item_ids:vec!["explanation-first".into()],

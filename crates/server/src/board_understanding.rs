@@ -285,6 +285,10 @@ mod tests {
         assert_eq!(current.session_id, session);
         let mut binding = original_fact.binding.clone();
         binding.turn_id = current.turn_id.clone();
+        state.user.learning_store().unwrap().append_teaching(&memory::teaching::TeachingEvent {
+            event_id:format!("binding:{}",current.turn_id),binding:binding.clone(),kind:TeachingFact::TurnBound,
+            causal_refs:vec![],payload:json!({"status":"observing","binding":binding,"workspace_goal_revision":null}),occurred_at:NOW.into(),
+        }).unwrap();
         let mut unrelated = original.clone();
         unrelated.evidence_id = "interpretation:not-accepted-this-run".into();
         state.user.learning_store().unwrap().append_evidence(&unrelated).unwrap();

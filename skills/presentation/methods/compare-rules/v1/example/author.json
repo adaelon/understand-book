@@ -1,0 +1,16 @@
+{
+  "title": "同一对向量，三条等距线",
+  "initial_state": {
+    "metric": "l2"
+  },
+  "state_contract": {
+    "metric": "量距规则：l1、l2 或 linf"
+  },
+  "readable_content": "甲 (3,4) 与乙 (0,5) 在 L1 尺度下长 7、5，在 L2 下均为 5，在 L∞ 下为 4、5。固定向量，用半径 5 的菱形、圆、正方形观察端点与边界的关系。",
+  "assumptions": [
+    "二维实向量和给定的三个范数；示例对照不能代替一般证明。"
+  ],
+  "source_ref_ids": [],
+  "libraries": [],
+  "asset_refs": []
+}

@@ -2,6 +2,7 @@ import { t as uiText } from './i18n';
 import type { VideoSourceRef } from "../../core/src/generated/VideoSourceRef";
 import type { VideoImportStage } from "../../core/src/generated/VideoImportStage";
 export type PreparingVideo = { video: VideoSourceRef; title: string; stage: VideoImportStage;
+  timeline_origin_ms?: number;
   copied_bytes: number; total_bytes: number; duration_ms: number | null;
   playable: boolean; qa_ready: false; failure: string | null; english_ready?: boolean;
   publication?: { book_id: string; publication_id: string } | null;
@@ -16,7 +17,7 @@ export async function videoGet<T>(url: string): Promise<T> {
 }
 export const videoCatalog = () => videoGet<{ videos: PreparingVideo[]; active?: VideoSourceRef | null }>("/api/videos");
 
-export type PublishedVideo = { time_base: [number, number]; publication: import('../../core/src/generated/PublishedBookRef').PublishedBookRef;
+export type PublishedVideo = { time_base: [number, number]; timeline_origin_ms?: number; publication: import('../../core/src/generated/PublishedBookRef').PublishedBookRef;
   material: import('../../core/src/generated/VideoMaterial').VideoMaterial;
   source: import('../../core/src/generated/VideoSourceAsset').VideoSourceAsset;
   map: import('../../core/src/generated/TranscriptMap').TranscriptMap;
@@ -24,6 +25,6 @@ export type PublishedVideo = { time_base: [number, number]; publication: import(
   translations?: import('../../core/src/generated/TranscriptTranslation').TranscriptTranslation[];
   translation_progress?: { tasks: { id: string; segment_ids: string[]; status: 'pending' | 'running' | 'accepted' | 'failed'; attempts: number; failure: string | null }[] } | null };
 
-export type VideoPlayback = Pick<PublishedVideo, 'time_base' | 'publication' | 'material' | 'source'> & {
+export type VideoPlayback = Pick<PublishedVideo, 'time_base' | 'timeline_origin_ms' | 'publication' | 'material' | 'source'> & {
   hls: boolean; title?: string; cover_url?: string | null;
 };

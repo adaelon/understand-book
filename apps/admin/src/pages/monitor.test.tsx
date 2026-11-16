@@ -7,6 +7,9 @@ import { session } from '@/lib/api';
 import type { MonitorReport } from '@/lib/monitor';
 import { MonitorPage } from './monitor';
 
+// These cases exercise the monitor sampler; the operations panel has its own query.
+vi.mock('./operations-panel', () => ({ OperationsPanel: () => null }));
+
 let root: Root | undefined, host: HTMLDivElement;
 let client: QueryClient;
 afterEach(async () => {

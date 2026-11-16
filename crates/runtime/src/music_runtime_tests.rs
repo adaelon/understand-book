@@ -90,3 +90,30 @@ fn music_review_keeps_cited_and_target_snapshots_without_superseded_passages() {
     let pages=vec![json!({"text":format!("Page source [[source:{first_ref}]]")})];
     assert_eq!(teaching_review_source_bindings(ledger.bindings(),&Value::Null,&json!({}),&pages)[0].source_ref_id,first_ref);
 }
+
+#[test]
+fn music_budget_returns_complete_prefix_and_observes_only_delivered_sources() {
+    let book = Book::load(concat!(env!("CARGO_MANIFEST_DIR"),"/../book-tool-contracts/fixtures/example-book")).unwrap();
+    let mut first = source(); first.material["read"] = json!({"returned_count":1,"events":[{"explanation":"A".repeat(1200)}]});
+    let mut second = first.clone(); second.target.event_ids = vec!["later".into()];
+    let result = read_tools::music::MusicReadResult { publication:first.target.publication.clone(), recording:first.target.audio.recording.clone(),
+        observation_kind:"prepared_music_material".into(), heard_audio:false,
+        body:json!({"view":"events","offset":0,"returned_count":2,"total":2,"next_offset":null}), sources:vec![first.clone(),second] };
+    let mut prefix = result.clone(); prefix.sources.truncate(1); prefix.body["returned_count"] = json!(1); prefix.body["next_offset"] = json!(1);
+    let budget = serde_json::to_vec(&prefix).unwrap().len();
+    let policy = crate::tool_registry::ToolOutputPolicy { result_policy:crate::tool_registry::ToolResultPolicy::EvidenceProjection,max_model_body_bytes:budget };
+    let delivered = crate::tool_result::project_tool_result("music.read",r#"{"view":"events","query":"theme","limit":2}"#, &serde_json::to_string(&result).unwrap(),policy,budget,&book);
+    assert!(delivered.truncated);
+    assert!(delivered.model_body_json().len() <= budget);
+    assert_eq!(delivered.model_body["body"]["next_offset"], 1);
+    match delivered.continuation.as_ref().unwrap() {
+        crate::tool_result::ToolContinuation::ToolCursor { tool, arguments } => {
+            assert_eq!(tool,"music.read"); assert_eq!(arguments["offset"],1); assert_eq!(arguments["query"],"theme");
+        }, _ => panic!("Expected a usable next page"),
+    }
+    let mut ledger = TurnEvidenceLedger::default();
+    observe_tool_evidence(&mut ledger,"music.read","{}",&delivered.model_body_json(),&book);
+    assert_eq!(ledger.music_observed,vec![first.clone()]);
+    assert!(ledger.present_music(&first.target,"revision").is_ok());
+    assert!(ledger.present_music(&result.sources[1].target,"revision").is_err());
+}

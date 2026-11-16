@@ -559,7 +559,7 @@ impl ToolExposurePlan {
                     // These images are included in the next request. A source call
                     // executes only after that request successfully observed them.
                     (ToolExposureDisposition::Direct, ToolExposureReason::EvidenceAvailable)
-                } else if matches!(registration.handler, ToolHandlerId::MusicRead | ToolHandlerId::MusicInteract) && !state.music_available {
+                } else if matches!(registration.handler, ToolHandlerId::MusicRead | ToolHandlerId::MusicExample | ToolHandlerId::MusicInteract) && !state.music_available {
                     (ToolExposureDisposition::Hidden, ToolExposureReason::ProfileMismatch)
                 } else if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio) && !state.video_available {
                     (ToolExposureDisposition::Hidden, ToolExposureReason::ProfileMismatch)
@@ -1012,7 +1012,7 @@ pub fn resolve_capabilities(
             .expect("sampled exposure plan must cover every registered tool");
         // A text publication has no video backend. Its absent media tools must
         // not change the actionable locator/recovery path for ordinary reading.
-        if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio | ToolHandlerId::MusicRead | ToolHandlerId::MusicInteract)
+        if matches!(registration.handler, ToolHandlerId::VideoReadFrames | ToolHandlerId::VideoSearch | ToolHandlerId::VideoReviewAudio | ToolHandlerId::MusicRead | ToolHandlerId::MusicExample | ToolHandlerId::MusicInteract)
             && entry.reason == ToolExposureReason::ProfileMismatch
         {
             continue;
@@ -1500,7 +1500,7 @@ fn classify(
     match handler {
         Handler::BookTextBatch => (Disposition::Hidden, Reason::RuntimeOwned),
         Handler::BoardAuthor => (Disposition::Direct, Reason::RuntimeOwned),
-        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (Disposition::Deferred, Reason::CapabilityDeferred),
+        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicExample | Handler::MusicInteract => (Disposition::Deferred, Reason::CapabilityDeferred),
         Handler::ToolSearch => (Disposition::Direct, Reason::Discovery),
         Handler::AgentProgress => (Disposition::Direct, Reason::RuntimeOwned),
         Handler::GoalUpdate | Handler::WorkspaceGoalUpdate | Handler::WorkspaceRecordsRead | Handler::WorkspaceNotes => (Disposition::Direct, Reason::RuntimeOwned),

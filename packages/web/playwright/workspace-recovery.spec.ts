@@ -120,10 +120,10 @@ for (const width of [1440, 390]) test(`workspace recovery restores reading, chat
   await page.screenshot({ path: info.outputPath(`recovered-chat-${width}.png`) });
   if (width === 390) {
     await page.getByRole('button', { name: '返回阅读', exact: true }).click();
-    await page.getByRole('button', { name: '菜单', exact: true }).click();
   }
   failBoard = true;
-  await page.getByRole('button', { name: '画板', exact: true }).first().click();
+  await page.locator('.topbar .tools-toggle').click();
+  await page.getByRole('button', { name: '当前资料的画板', exact: true }).click();
   await page.getByRole('button', { name: new RegExp(board.document.title) }).click();
   await expect(page.getByRole('textbox', { name: '画板名称', exact: true })).toHaveValue(board.document.title);
   expect(boardReads).toBe(2);

@@ -8,6 +8,35 @@ import type { VideoQuestionContext } from '../../../core/src/generated/VideoQues
 const initial: PreparingVideo = { video: { media_id: 'lecture', media_revision: '1' }, title: 'Lecture',
   stage: 'awaiting_transcript', copied_bytes: 10, total_bytes: 10, duration_ms: 10000, playable: true, qa_ready: false, failure: null };
 afterEach(() => { vi.restoreAllMocks(); vi.unstubAllGlobals(); localStorage.clear(); });
+it('maps native MP4 timestamps to logical subtitles, seeks, frame questions and saved positions', async () => {
+  let callback: VideoFrameRequestCallback = () => {};
+  vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} });
+  const video = initial.video, transcript = { transcript_id: 't', transcript_revision: '1', video };
+  const wrapper = mount(VideoReaderPane, { props: { initial: { ...initial, timeline_origin_ms: 4936 }, owner: 'local', published: {
+    timeline_origin_ms: 4936, time_base: [1, 10240], publication: { book_id: 'b', publication_id: 'p' }, material: { book_id: 'b', video, transcript },
+    source: { video, duration_ms: 3064, width: 160, height: 90, imported_path: 'media/original.mp4', original_path: 'offset.mp4' },
+    map: { transcript, raw_result_path: 'raw.json', machine_transcription: { engine: 'fixture', model: 'fixture', language: 'en' }, segments: [
+      { segment_id: 'relative', text: 'Relative subtitle', location: { video, start_ms: 500, end_ms: 1000 }, text_range: { lid: '1', range: { start: 0, end: 17 } }, words: [] },
+    ] },
+  } } });
+  const player = wrapper.get('video');
+  player.element.requestVideoFrameCallback = fn => { callback = fn; return 1; };
+  player.element.cancelVideoFrameCallback = () => {};
+  Object.defineProperties(player.element, { readyState: { value: 4 }, videoWidth: { value: 160 }, videoHeight: { value: 90 }, duration: { value: 8 } });
+  player.element.currentTime = 4.936;
+  await player.trigger('loadedmetadata');
+  callback(0, { mediaTime: 5.5 } as VideoFrameCallbackMetadata);
+  player.element.currentTime = 5.5; await player.trigger('timeupdate');
+  expect(wrapper.get('[data-segment="relative"]').attributes('aria-current')).toBe('true');
+  expect((wrapper.vm as any).captureQuestion('draft').frame.actual_pts_ms).toBe(563.96484375);
+  await player.trigger('pause');
+  expect(JSON.parse(localStorage.getItem('video-position:local:lecture:1')!).time).toBeCloseTo(.564, 6);
+  (wrapper.vm as any).seek(2900);
+  expect(player.element.currentTime).toBeCloseTo(7.836, 6);
+  (wrapper.vm as any).seek(500);
+  expect(player.element.currentTime).toBeCloseTo(5.436, 6);
+  wrapper.unmount();
+});
 it('searches both subtitle languages, seeks results, and follows playback only until the reader browses', async () => {
   const v = initial.video, t = { transcript_id: 't', transcript_revision: '1', video: v };
   const segments = ['Overview', 'Compute budget', 'Training efficiency'].map((text, i) => ({ segment_id: `s${i}`, text, location: { video: v, start_ms: i * 1000, end_ms: (i + 1) * 1000 }, text_range: { lid: `${i}`, range: { start: 0, end: text.length } }, words: [] }));

@@ -20,7 +20,7 @@ This extractor sees one deterministic model-input slice of one existing leaf LID
 engine-private and must never become LIDs.
 
 Input begins with `PASS1_SOURCE_FRAGMENT` and supplies `content_profile_id`, `parent_lid`,
-`source_slice_ordinal`, `core_sha256`, stable spans, and the three context partitions.
+`source_slice_ordinal`, stable spans, and the three context partitions.
 
 Output exactly one closed object:
 
@@ -29,7 +29,6 @@ Output exactly one closed object:
   "version": "pass1_source_fragment_output.v1",
   "parent_lid": "1.7.2",
   "source_slice_ordinal": 0,
-  "core_sha256": "<copy exactly from input>",
   "nodes": [
     {"id":"concept:bounded_example","type":"concept","name":"Bounded example","occurrences":["1.7.2"],"source_lid":null},
     {"id":"claim:1.7.2:bounded-claim","type":"claim","name":"A claim stated by CORE","occurrences":[],"source_lid":"1.7.2"}
@@ -42,7 +41,7 @@ Output exactly one closed object:
 
 Rules:
 
-- Copy `parent_lid`, `source_slice_ordinal`, and `core_sha256` exactly.
+- Copy `parent_lid` and `source_slice_ordinal` exactly.
 - Every `occurrences` and non-null `source_lid` value must equal `parent_lid`.
 - Claims use one `source_lid` and empty `occurrences`; entities/concepts use `occurrences` and a
   null `source_lid`.

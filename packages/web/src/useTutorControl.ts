@@ -31,7 +31,7 @@ export function useTutorControl() {
   // The server resolves the saved stage for this source and learning workspace.
   // Readiness is independent: a preparing source must still show its saved goal.
   const current = computed(() => state.value?.sessions[state.value.control.current_tutor_session_id ?? ''] ?? null);
-  const label = computed(() => !state.value ? uiText('连续教学状态未加载') : !state.value.control.enabled ? uiText('围绕你的目标逐步学')
+  const label = computed(() => !state.value ? uiText('学习状态未加载')
     : readinessError.value ? uiText('学习就绪状态读取失败')
     : !readiness.value ? uiText('正在读取学习状态')
     : current.value?.status === 'ended' ? uiText('本次学习已结束')

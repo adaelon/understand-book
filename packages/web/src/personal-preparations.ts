@@ -39,11 +39,11 @@ export const preparations={
   act:(workspace:string,input:Record<string,unknown>)=>networkFetch<Preparation>('POST',endpoint(workspace),{operation_id:crypto.randomUUID(),...input}),
   async upload(workspace:string,file:PreparationSource,progress:(received:number)=>void,session=preparationUpload()) {
     const {upload_id}=session;
-    session.cancelled=false;
     while(session.received<file.size) {
       if(session.cancelled)throw new DOMException(uiText('上传已停止'),'AbortError');
       const offset=session.received;
       const bytes=new Uint8Array(await file.slice(offset,offset+32*1024).arrayBuffer());
+      if(session.cancelled)throw new DOMException(uiText('上传已停止'),'AbortError');
       let binary='';for(let start=0;start<bytes.length;start+=8192) binary+=String.fromCharCode(...bytes.subarray(start,start+8192));
       const result=await networkFetch<{received:number}>('POST',endpoint(workspace),{action:'upload',upload_id,filename:file.name,total:file.size,offset,chunk_base64:btoa(binary)});
       session.received=result.received;

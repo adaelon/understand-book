@@ -32,6 +32,16 @@ describe('music recording timeline', () => {
     expect(musicNoteOpacity(tied, 2100, true)).toBeGreaterThan(0);
     expect(musicNoteOpacity(tied, 900, true)).toBe(0);
   });
+  it('asks about the selected material after its end rather than the next measure', () => {
+    const manifest = { coverage: [{ status: 'accepted', granularity: 'measure', start_ms: 0, end_ms: 6000 }], recording: { source: { recording_id: 'take', revision: 'r1' }, duration_ms: 6000 }, score: { source: { score_id: 'edition', revision: 'e1' } }, occurrences: [{ occurrence_id: 'next', order: 1, measure: '2', start_ms: 3000, end_ms: 6000, score_object_ids: ['next-note'] }] } as MusicSourceManifest;
+    const selected = { event_id: 'exercise', title: 'Exercise', explanation: '', listen_for: 'Listen', start_ms: 1000, end_ms: 3000, roles: [], relations: [], concept_tags: [], evidence: [{ provenance_id: 'score', score_object_ids: ['selected-note', 'selected-note'], audio: null }] };
+    const publication = { book_id: 'music', publication_id: 'pub-1' };
+    const question = musicQuestion(manifest, publication, 3000, ['violin'], 'selected', [], selected);
+    expect(question.audio).toMatchObject({ start_ms: 1000, end_ms: 3000 });
+    expect(question.score?.source_ids).toEqual(['selected-note']);
+    expect(question.occurrence_id).toBeNull();
+    expect(musicQuestion(manifest, publication, 3000, [], 'free').occurrence_id).toBe('next');
+  });
   it('keeps a reviewed unobserved score tone silent during playback, pauses and seeks', () => {
     const note = { start_ms: 1000, end_ms: 2000, attack: false, unobserved: true } as MusicNoteAlignment;
     for (const playing of [true, false]) for (const ms of [900, 1000, 1500, 2100]) {

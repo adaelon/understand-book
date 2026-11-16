@@ -49,10 +49,14 @@ pub fn projection(dir: &Path) -> Result<Value, ToolError> {
     let build: Option<Value> = fs::read(dir.join("video_build.json")).ok().and_then(|b|serde_json::from_slice(&b).ok());
     let linked = linked_publication(dir).ok();
     let transcript = linked.as_ref().map(|(_, directory)| transcript_projection(directory)).transpose()?;
+    let probe: Option<Value> = fs::read(dir.join("media/probe.json")).ok().and_then(|bytes| serde_json::from_slice(&bytes).ok());
+    let timeline_origin_ms = probe.as_ref().and_then(|p| p["format"]["start_time"].as_str())
+        .and_then(|s| s.parse::<f64>().ok()).filter(|n| n.is_finite()).unwrap_or(0.0) * 1000.0;
     Ok(
         json!({"video":state.video,"title":state.title,"stage":state.stage,
         "copied_bytes":state.copied_bytes,"total_bytes":state.total_bytes,
         "duration_ms":state.source.as_ref().map(|s|s.duration_ms),
+        "timeline_origin_ms":timeline_origin_ms,
         "playable":playable,"qa_ready":false,"english_ready":transcript.is_some(),
         "publication":linked.as_ref().map(|(reference,_)|reference),
         "transcript_progress":build.as_ref().map(|b|json!({"stage":b["stage"],"chunks":b["chunks"],"failure":b["failure"]})),

@@ -3,21 +3,47 @@ import { applicationOverlayTarget } from "../application-overlay";
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
 import { ArrowUpRight, BookOpen, LoaderCircle, X } from '@lucide/vue';
 import { t as uiText } from '../i18n';
-import type { SourcePopupView } from '../api';
+import { api as sharedApi, type SourcePopupView, type SourceWindowLoader } from '../api';
+import { bindSceneApi } from '../network-context';
 import type { BoardSourceRequest } from '../board-workspace';
 import MediaSourcePreview from './MediaSourcePreview.vue';
 import MusicSourcePreview from './MusicSourcePreview.vue';
 import SourceExcerpt from './SourceExcerpt.vue';
 import BoardSourceReader from './BoardSourceReader.vue';
 
-const props = withDefaults(defineProps<{ source: SourcePopupView | null; sourceRequest?: BoardSourceRequest; loading?: boolean; opening?: boolean; error?: string; canOpenInReader?: boolean; context?: 'board' | 'note'; canOpen?: boolean }>(), { canOpenInReader: true, context: 'board' });
+const props = withDefaults(defineProps<{
+  source: SourcePopupView | null;
+  sourceRequest?: BoardSourceRequest;
+  readWindow?: SourceWindowLoader;
+  trigger?: HTMLElement | null;
+  loading?: boolean;
+  opening?: boolean;
+  error?: string;
+  canOpenInReader?: boolean;
+  context?: 'board' | 'note' | 'answer' | 'reader' | 'course';
+  canOpen?: boolean;
+}>(), { canOpenInReader: true, context: 'board' });
 const emit = defineEmits<{ (event: 'close'): void; (event: 'open-reader', lid?: string): void; (event: 'retry'): void; (event: 'open'): void }>();
+const api = bindSceneApi(sharedApi);
 const dialog = ref<HTMLElement>(), closeButton = ref<HTMLButtonElement>();
 const readingLid = ref<string>();
 const titleId = useId();
 let origin: HTMLElement | null = null;
-const continuous = computed(() => !!props.sourceRequest && !!props.source && !props.source.stale && !props.source.media && !props.source.music);
-watch(() => [props.sourceRequest?.board_id, props.sourceRequest?.item_id, props.sourceRequest?.source_ref_id], () => { readingLid.value = undefined; });
+const readWindow = computed<SourceWindowLoader | undefined>(() => {
+  const request = props.sourceRequest;
+  return props.readWindow ?? (request ? options => api.boardSourceRead({ ...request, ...options }) : undefined);
+});
+const continuous = computed(() => !!readWindow.value && !!props.source && !props.source.stale && !props.source.media && !props.source.music);
+watch(readWindow, () => { readingLid.value = undefined; });
+const labels = computed(() => {
+  switch (props.context) {
+    case 'note': return { dialog: uiText('笔记原文'), kicker: uiText('笔记来源'), close: uiText('关闭来源预览，返回笔记'), back: uiText('返回笔记') };
+    case 'answer': return { dialog: uiText('回答来源'), kicker: uiText('回答来源'), close: uiText('关闭来源'), back: uiText('返回问答') };
+    case 'reader': return { dialog: uiText('引用来源'), kicker: uiText('来源预览'), close: uiText('关闭来源预览'), back: uiText('关闭') };
+    case 'course': return { dialog: uiText('本课来源'), kicker: uiText('本课来源'), close: uiText('关闭来源预览'), back: uiText('返回当前活动') };
+    default: return { dialog: uiText('画板原文'), kicker: uiText('画板来源'), close: uiText('关闭来源预览，返回画板'), back: uiText('返回画板') };
+  }
+});
 const readerCanOpen = computed(() => !!props.source && !props.source.stale && props.source.can_open_in_reader && props.canOpenInReader !== false);
 const notice = computed(() => {
   if (!props.source) return '';
@@ -39,7 +65,7 @@ function keydown(event: KeyboardEvent) {
   else if (!event.shiftKey && (document.activeElement === last || !dialog.value.contains(document.activeElement))) { event.preventDefault(); first.focus(); }
 }
 onMounted(async () => {
-  origin = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  origin = props.trigger ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
   // Loading can temporarily disable the focused control and return focus to body.
   // Keep modal keyboard controls available throughout a chapter change.
   document.addEventListener('keydown', keydown, true);
@@ -50,9 +76,10 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', keydown, true); 
 
 <template>
   <Teleport :to="applicationOverlayTarget()">
-    <div class="board-source-backdrop" @click.self="close">
-      <section ref="dialog" class="board-source-dialog" :class="{ 'board-source-dialog-reader': continuous }" role="dialog" aria-modal="true" :aria-label="context === 'note' ? uiText('笔记原文') : uiText('画板原文')" tabindex="-1">
-        <header class="board-source-heading"><div><span class="board-source-kicker"><BookOpen :size="14" aria-hidden="true" />{{ continuous ? uiText('临时阅读') : context === 'note' ? uiText('笔记来源') : uiText('画板来源') }}<span v-if="source?.stale" class="board-source-snapshot">{{ uiText('引用时的快照') }}</span></span><h2 :id="titleId">{{ (continuous ? source?.material_title || source?.label : source?.label) || uiText('原文来源') }}</h2><p v-if="!continuous && source?.material_title && source.material_title !== source.label">{{ source.material_title }}</p><p v-if="!continuous && source?.heading_path?.length" class="board-source-path">{{ source.heading_path.join(' › ') }}</p></div><button ref="closeButton" type="button" class="board-source-close" :aria-label="context === 'note' ? uiText('关闭来源预览，返回笔记') : uiText('关闭来源预览，返回画板')" @click="close"><X :size="19" aria-hidden="true" /></button></header>
+    <div class="board-source-backdrop" :class="{ 'answer-source-backdrop': context === 'answer' }" @click.self="close">
+      <section ref="dialog" class="board-source-dialog" :class="{ 'board-source-dialog-reader': continuous, 'agent-source-popup': context === 'answer', 'source-preview-dialog': context === 'reader' }" role="dialog" aria-modal="true" :aria-label="labels.dialog" tabindex="-1">
+        <header class="board-source-heading"><div><span class="board-source-kicker"><BookOpen :size="14" aria-hidden="true" />{{ continuous && context !== 'course' ? uiText('临时阅读') : labels.kicker }}<span v-if="source?.stale" class="board-source-snapshot">{{ uiText('引用时的快照') }}</span></span><h2 :id="titleId">{{ (continuous ? source?.material_title || source?.label : source?.label) || uiText('原文来源') }}</h2><p v-if="!continuous && source?.material_title && source.material_title !== source.label">{{ source.material_title }}</p><p v-if="!continuous && source?.heading_path?.length" class="board-source-path">{{ source.heading_path.join(' › ') }}</p></div><button ref="closeButton" type="button" class="board-source-close" :aria-label="labels.close" @click="close"><X :size="19" aria-hidden="true" /></button></header>
+        <slot name="sources" />
         <div class="board-source-content" :class="{ 'board-source-content-reader': continuous }" :aria-busy="loading || opening">
           <p v-if="loading" class="board-source-loading" role="status"><LoaderCircle :size="18" aria-hidden="true" />{{ uiText('正在加载原文…') }}</p>
           <div v-if="error" class="board-source-error" role="alert"><p>{{ error }}</p><button type="button" :disabled="loading || opening" @click="emit('retry')">{{ uiText('重试') }}</button></div>
@@ -60,11 +87,18 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', keydown, true); 
           <template v-if="source">
             <MusicSourcePreview v-if="source.music" :key="source.source_ref_id" :source="source" />
             <MediaSourcePreview v-else-if="source.media" :key="source.source_ref_id" :source="source" />
-            <BoardSourceReader v-else-if="continuous && sourceRequest" :request="sourceRequest" :source="source" @position="readingLid = $event" />
+            <BoardSourceReader v-else-if="continuous && readWindow" :read-window="readWindow" :source="source" @position="readingLid = $event" />
             <SourceExcerpt v-else :source="source" />
           </template>
         </div>
-        <footer><p v-if="continuous" class="board-source-return-note">{{ uiText('关闭后继续画板中的讨论') }}</p><button type="button" @click="close">{{ context === 'note' ? uiText('返回笔记') : uiText('返回画板') }}</button><button v-if="context === 'note' && canOpen" type="button" class="board-source-open" @click="stopMedia(); emit('open')">{{ uiText('打开原资料') }}</button><button v-if="context !== 'note' && readerCanOpen" type="button" class="board-source-open-reader" :disabled="opening" @click="stopMedia(); emit('open-reader', readingLid)">{{ opening ? uiText('正在打开…') : uiText('在阅读器中打开') }}<ArrowUpRight :size="14" aria-hidden="true" /></button></footer>
+        <footer>
+          <p v-if="continuous && context === 'board'" class="board-source-return-note">{{ uiText('关闭后继续画板中的讨论') }}</p>
+          <button type="button" @click="close">{{ labels.back }}</button>
+          <slot name="actions">
+            <button v-if="context === 'note' && canOpen" type="button" class="board-source-open" @click="stopMedia(); emit('open')">{{ uiText('打开原资料') }}</button>
+            <button v-if="context !== 'note' && readerCanOpen" type="button" class="board-source-open-reader" :disabled="opening" @click="stopMedia(); emit('open-reader', readingLid)">{{ opening ? uiText('正在打开…') : context === 'reader' ? uiText('在阅读区打开') : uiText('在阅读器中打开') }}<ArrowUpRight :size="14" aria-hidden="true" /></button>
+          </slot>
+        </footer>
       </section>
     </div>
   </Teleport>
@@ -77,13 +111,17 @@ onBeforeUnmount(() => { document.removeEventListener('keydown', keydown, true); 
 </style>
 
 <style scoped>
-.board-source-dialog-reader{width:min(1800px,100%);height:calc(var(--app-content-height, 100dvh) - 56px)}
-.board-source-dialog-reader .board-source-heading{align-items:center;gap:16px;padding:17px 26px 15px}
-.board-source-dialog-reader .board-source-heading h2{margin-top:5px;font-size:18px;line-height:1.45}
+.board-source-backdrop:has(.board-source-dialog-reader){padding:12px}
+.board-source-dialog-reader{width:min(1800px,100%);height:calc(var(--app-content-height, 100dvh) - 24px);max-height:calc(var(--app-content-height, 100dvh) - 24px)}
+.answer-source-backdrop{z-index:1250}
+.board-source-dialog-reader .board-source-heading{align-items:center;gap:16px;padding:8px 16px}
+.board-source-dialog-reader .board-source-heading>div{display:flex;align-items:baseline;gap:14px}
+.board-source-dialog-reader .board-source-kicker{flex-shrink:0}
+.board-source-dialog-reader .board-source-heading h2{margin:0;font-size:17px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .board-source-content-reader{display:flex;flex:1;flex-direction:column;overflow:hidden;padding:0}
 .board-source-content-reader>.board-source-error,.board-source-content-reader>.board-source-notice{flex-shrink:0;margin:12px 24px}
 .board-source-return-note{flex:1;margin:0;align-self:center;color:var(--stone);font-size:11px;line-height:1.7}
-.board-source-dialog-reader>footer{align-items:center;padding:12px 24px}
-@media(max-width:850px){.board-source-dialog-reader{height:calc(var(--app-content-height, 100dvh) - 28px)}.board-source-backdrop:has(.board-source-dialog-reader){padding:14px}}
-@media(max-width:600px){.board-source-backdrop:has(.board-source-dialog-reader){padding:0}.board-source-dialog-reader{width:100%;height:var(--app-content-height, 100dvh);max-height:var(--app-content-height, 100dvh);border-radius:0;border:0}.board-source-dialog-reader .board-source-heading{padding:14px 17px 12px}.board-source-dialog-reader .board-source-heading h2{font-size:16px}.board-source-return-note{display:none}.board-source-dialog-reader>footer{padding:11px 15px max(11px,env(safe-area-inset-bottom));gap:8px}.board-source-dialog-reader>footer button{padding:9px 11px;font-size:11px}.board-source-content-reader>.board-source-error,.board-source-content-reader>.board-source-notice{margin:10px 15px}}
+.board-source-dialog-reader>footer{align-items:center;padding:7px 16px}
+.board-source-dialog-reader>footer button{padding:7px 12px}
+@media(max-width:600px){.board-source-backdrop:has(.board-source-dialog-reader){padding:0}.board-source-dialog-reader{width:100%;height:var(--app-content-height, 100dvh);max-height:var(--app-content-height, 100dvh);border-radius:0;border:0}.board-source-dialog-reader .board-source-heading{padding:7px 12px}.board-source-dialog-reader .board-source-heading>div{align-items:flex-start;flex-direction:column;gap:2px}.board-source-dialog-reader .board-source-heading h2{font-size:15px}.board-source-return-note{display:none}.board-source-dialog-reader>footer{padding:7px 12px max(7px,env(safe-area-inset-bottom));gap:8px}.board-source-dialog-reader>footer button{min-height:36px;padding:7px 10px;font-size:11px}.board-source-content-reader>.board-source-error,.board-source-content-reader>.board-source-notice{margin:10px 15px}}
 </style>

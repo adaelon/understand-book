@@ -46,7 +46,7 @@ export async function setup(page: Page, surface: 'markdown' | 'pdf', ready: bool
     const body = route.request().method() === 'POST' ? route.request().postDataJSON() : {};
     let result: unknown;
     if (path === '/api/desktop/status') result = {desktop_host:false,reader_only:true,active_book:true};
-    else if (path === '/api/book/video_playback') result = null;
+    else if (path === '/api/book/video_playback' || path === '/api/book/music_context') result = null;
     else if (path === '/api/book/build_workbench') result = {book_id:scenario.book_id,readiness:{route:'reader'},input:{manifest:null},source_review:{unresolved:[]}};
     else if (path === '/api/book/manifest') result = {tree:[
       {lid:'1',kind:'chapter',children:['1.1','1.2'],span:{start:0,end:source.length},title:scenario.title},
@@ -68,10 +68,17 @@ export async function setup(page: Page, surface: 'markdown' | 'pdf', ready: bool
     else if (path === '/api/reader/pdf_selection.resolve') result = {status:'resolved',resolution_basis:'exact',
       ranges:[{lid:'1.1',range:{start:0,end:scenario.quote.length},source_span:{start:firstStart,end:firstStart+scenario.quote.length},quote_markdown:scenario.quote}],quote_markdown:scenario.quote};
     else if (path === '/api/reader/pdf_lid.project') result = {lid:body.lid,status:'unmapped',rects:[]};
-    else if (path === '/api/book/text') { const lid=url.searchParams.get('lid'); result={lid,text:paragraphs[lid === '1' ? 0 : lid === '1.1' ? 1 : 2]}; }
+    else if (path === '/api/book/text') {
+      const lid=url.searchParams.get('lid'), end=url.searchParams.get('end');
+      const startParagraph=paragraphs[lid === '1' ? 0 : lid === '1.1' ? 1 : 2];
+      const endParagraph=paragraphs[end === '1' ? 0 : end === '1.1' ? 1 : 2];
+      result={lid,text:end ? source.slice(source.indexOf(startParagraph),source.indexOf(endParagraph)+endParagraph.length) : startParagraph};
+    }
     else if (path === '/api/profile/manifest') result = profile;
     else if (path === '/api/reader/state') result = reader;
+    else if (path === '/api/learning-task') result = route.request().method() === 'GET' ? {tasks:[]} : {};
     else if (path === '/api/memory/recall') result = [];
+    else if (path === '/api/me/notes/attachments') result = {items:[]};
     else if (path === '/api/book/library') result = {root:'',books:[]};
     else if (path === '/api/profile/memory') result = {facts:[],pending_candidates:[],evidence:[],collection_rules:[],status:{pending_sensitive_confirmation:false},snapshot:{revision:0,facts:[]}};
     else if (path === '/api/profile/backfill') result = {jobs:[],sessions:[]};
@@ -79,6 +86,7 @@ export async function setup(page: Page, surface: 'markdown' | 'pdf', ready: bool
     else if (path === '/api/build_intent/usage.event' || path === '/api/reader/viewport') result = {};
     else if (path === '/api/agent/history') result = {active_session_id:'tc0-chat',sessions:[],current:{id:'tc0-chat',book_id:scenario.book_id,turns,goals:[]}};
     else if (path === '/api/tutor/state') result = tutorState;
+    else if (path === '/api/tutor/closed-book') result = null;
     else if (path === '/api/tutor/mutate') { mutations.push(body); tutorState.control.enabled = body.action.enabled; tutorState.control.revision++; result = tutorState; }
     else if (path === '/api/tutor/readiness') result = {status:ready?'ready':'preparing',source_id:scenario.book_id,source_revision:'tc0-source',limitations:[],
       reason:ready?'可用':'缺少 book_structure.json',blocked_stage:ready?null:'book_structure',teaching_assets:{status:'preparing',teaching_map_revision:null,limitations:[],reason:'无可选教具'}};
@@ -108,10 +116,11 @@ export async function setup(page: Page, surface: 'markdown' | 'pdf', ready: bool
     else return route.fulfill({status:404,json:{message:`Unused TC0 fixture route: ${path}`}});
     await route.fulfill({json:result});
   });
-  await page.route('**/tc0-fixture', route => route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><meta charset="utf-8"></head><body><div id="app"></div><script type="module">
+  await page.route('**/tc0-fixture', route => route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head><body><div id="app"></div><script type="module">
     import {createApp} from '/node_modules/.vite/deps/vue.js';import App from '/src/App.vue';import '/src/style.css';createApp(App).mount('#app');
   </script></body></html>`}));
   await page.setViewportSize({width:1440,height:960});
+  await page.addInitScript(() => localStorage.setItem('understand-book.product-tour.v1.local.reader', 'done'));
   await page.goto('/tc0-fixture');
   await expect(page.locator('.app-loading')).toHaveCount(0);
   await expect(page.locator('.agent-input textarea')).toBeVisible();

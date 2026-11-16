@@ -111,6 +111,7 @@ pub(super) fn context(
             fact.payload["assessment_ref"].as_str().map(|id|store.assessment(id)).transpose()?.flatten()
         } else { None };
         delivered_support.push(json!({"delivery_ref":fact.event_id,"kind":fact.kind,"occurred_at":fact.occurred_at,
+            "original_ref":{"kind":"chat_turn","session_id":fact.binding.chat_session_id,"turn_id":fact.binding.turn_id},
             "answer":fact.payload["answer"],"text":fact.payload["text"],"move":fact.payload["move"],
             "presentation":readable["content"]["presentation"],"presentations":readable["presentations"],
             "scene":readable["scene"],"feedback":feedback,"actor":fact.payload["actor"],

@@ -39,6 +39,8 @@ fn open_beta_allowance(
     let mutation = Mutation::Period(Period {
         starts_at: now,
         expires_at: BETA_ALLOWANCE_END,
+        initial_grant_micro_cny: None,
+        reason: None,
         basis: Some(AllowanceBasis {
             // A cost reference for per-task budgets, not an allowance grant.
             version: "beta-cost-reference-v1".into(),

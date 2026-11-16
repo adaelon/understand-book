@@ -28,9 +28,19 @@ export async function pdfRangeSource(
   range.abort = () => controller.abort();
   range.requestDataRange = (begin, end) => {
     void (async () => {
-      const response = await read(begin, end);
-      if (response.status !== 206) throw new Error(uiText('PDF 分段读取失败（{0}）', [response.status]));
-      const bytes = new Uint8Array(await response.arrayBuffer());
+      // PDF.js coalesces adjacent chunks into larger ranges. The native reader
+      // bounds each response, so assemble the complete requested range here.
+      const bytes = new Uint8Array(end - begin);
+      let cursor = begin;
+      while (cursor < end) {
+        const response = await read(cursor, Math.min(end, cursor + CHUNK_SIZE));
+        if (response.status !== 206) throw new Error(uiText('PDF 分段读取失败（{0}）', [response.status]));
+        const part = new Uint8Array(await response.arrayBuffer());
+        if (controller.signal.aborted) return;
+        if (!part.length || part.length > end - cursor) throw new Error(uiText('PDF 分段响应不完整'));
+        bytes.set(part, cursor - begin);
+        cursor += part.length;
+      }
       if (!controller.signal.aborted) range.onDataRange(begin, bytes);
     })().catch(error => {
       if (!controller.signal.aborted) {

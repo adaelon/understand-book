@@ -6,6 +6,7 @@ import { bandwidth, bytes, monitorTime, trendSegments, uptime, type Capacity, ty
 import { chartColors, Disclosure, Metric, Notice, StatusBadge } from '@/components/analytics';
 import { Button } from '@/components/ui/button';
 import './monitor.css';
+import { OperationsPanel } from './operations-panel';
 
 type Series = { label: string; color: string; read: (sample: MonitorSample) => number | null | undefined };
 
@@ -58,6 +59,7 @@ function ResourceCard({ title, value, icon, detail }: { title: string; value: Ca
 }
 
 export function MonitorPage() {
+  const [operationsRefresh, setOperationsRefresh] = useState(0);
   const [paused, setPaused] = useState(false);
   const [clock, setClock] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setClock(Date.now()), 1000); return () => clearInterval(timer); }, []);
@@ -75,19 +77,20 @@ export function MonitorPage() {
   return <section className="space-y-6">
     <div className="flex flex-wrap items-start justify-between gap-4">
       <div><div className="flex flex-wrap items-center gap-3"><h1>实时监控</h1><StatusBadge tone={pausedOrStale ? 'amber' : 'green'}>{status}</StatusBadge></div><p className="mt-2 text-sm text-muted-foreground">服务器资源与全站对话，一眼了解当前运行情况。</p></div>
-      <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => { setPaused(!paused); if (paused) void query.refetch(); }}>{paused ? <Play className="size-4" /> : <Pause className="size-4" />}{paused ? '恢复更新' : '暂停更新'}</Button><Button variant="outline" disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw className={`size-4 ${query.isFetching ? 'animate-spin' : ''}`} />立即刷新</Button></div>
+      <div className="flex flex-wrap gap-2"><Button variant="outline" onClick={() => { setPaused(!paused); if (paused) { void query.refetch(); setOperationsRefresh(n=>n+1); } }}>{paused ? <Play className="size-4" /> : <Pause className="size-4" />}{paused ? '恢复更新' : '暂停更新'}</Button><Button variant="outline" disabled={query.isFetching} onClick={() => { void query.refetch(); setOperationsRefresh(n=>n+1); }}><RefreshCw className={`size-4 ${query.isFetching ? 'animate-spin' : ''}`} />立即刷新</Button></div>
     </div>
     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-muted-foreground"><span className="inline-flex items-center gap-2"><Activity className="size-3.5" />每 5 秒刷新 · 隐藏页面时暂停</span><span>香港时间 {current ? monitorTime(current.sampled_at) : '—'}</span>{current && <span>服务已运行 {uptime(current.service_uptime_seconds)}</span>}</div>
     {query.error && <div role="alert"><Notice warning>刷新失败：{query.error.message}。{current ? '下方保留上次采样，连接恢复后自动更新。' : '连接恢复后自动重试，也可以点击立即刷新。'}</Notice></div>}
     {stale && !query.error && <Notice warning>{paused ? '自动更新已暂停，当前显示暂停前的数据。' : '尚未收到最新采样，当前数值可能已变化。'}</Notice>}
+    <OperationsPanel paused={paused} clock={clock} refresh={operationsRefresh} />
     {query.isPending && !query.error && <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4" role="status" aria-label="正在读取监控数据">{[0,1,2,3].map(item => <div key={item} className="h-32 animate-pulse rounded-xl bg-muted" />)}</div>}
     {current && report && <>
       {current.issues.length > 0 && <Notice warning>{current.issues.join(' ')}</Notice>}
       <dl className="metric-grid">
         <Metric label="在线人数" value={current.activity.online_users.toLocaleString()} detail={`最近 ${report.online_window_seconds} 秒内有可见页面心跳的账号`} tone="green" />
         <Metric label="正在进行的 AI 对话" value={current.activity.active_runs.toLocaleString()} detail={`排队 ${current.activity.queued_runs} 轮 · 并发上限 ${current.activity.active_run_limit}`} tone="violet" />
-        <Metric label="今日对话轮次" value={current.activity.today_turns.toLocaleString()} detail="香港时间今日受理的提问与继续" />
-        <Metric label="今日完成交付" value={current.activity.today_completed_turns.toLocaleString()} detail="今日成功保存并交付的对话轮次" tone="muted" />
+        <Metric label="今日对话轮次" value={current.activity.today_turns.toLocaleString()} detail="今日受理的用户提问与继续 · 运维测试另计" />
+        <Metric label="今日完成交付" value={current.activity.today_completed_turns.toLocaleString()} detail="今日成功保存并交付的用户对话 · 运维测试另计" tone="muted" />
       </dl>
       <div className="grid gap-4 lg:grid-cols-3">
         <ResourceCard title="服务器内存" value={current.memory} icon={<MemoryStick className="size-5" />} detail="整台服务器的内存；可回收缓存计入可用。" />

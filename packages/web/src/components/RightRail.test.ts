@@ -1,8 +1,9 @@
 // @vitest-environment happy-dom
 import { flushPromises, mount, enableAutoUnmount } from "@vue/test-utils";
-import { nextTick, reactive } from 'vue';
+import { nextTick, reactive, ref } from 'vue';
+import { readingGuidanceKey, type ReadingGuidanceRequest } from '../reading-guidance';
 import { readFileSync } from "node:fs";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RightRail from "./RightRail.vue";
 import YeyeMascot from './YeyeMascot.vue';
 import { yeyeAssets } from '../yeye-assets';
@@ -13,6 +14,9 @@ import { network, installIdentity, installWorkspace } from '../network-context';
 import type { RecapTarget, SessionRecap } from '../session-recap';
 
 enableAutoUnmount(afterEach);
+// Note placement has its own component suite. Its requests must not consume the
+// source-popup HTTP fixtures in these conversation tests.
+vi.mock('./MessageThoughts.vue', () => ({ default: { template: '<div><slot /></div>' } }));
 
 const baseProps = {
   chat: [],
@@ -36,6 +40,21 @@ const baseProps = {
   effectSecondaryLabel: () => "undo",
   gotoBack: () => "1.1",
 };
+
+it('offers an explicit presentation page switch without sending or rewriting the question', async () => {
+  const wrapper = mount(RightRail, { props: { ...baseProps, agentInput: '解释一下这里' }, shallow: true });
+  const toggle = wrapper.get('.presentation-request');
+  expect(toggle.attributes('aria-checked')).toBe('false');
+  await toggle.trigger('click');
+  expect(wrapper.emitted('update:presentationRequested')).toEqual([[true]]);
+  expect(wrapper.emitted('send-agent')).toBeUndefined();
+  expect(wrapper.emitted('update:agentInput')).toBeUndefined();
+  expect(wrapper.get('.presentation-request-hint').text()).toBe('本次回答制作演示页');
+  await toggle.trigger('click');
+  expect(toggle.attributes('aria-checked')).toBe('false');
+  await wrapper.setProps({ sending: true });
+  expect(toggle.attributes('disabled')).toBeDefined();
+});
 
 it('allows sending an image-only video question and locks sending while an upload is in progress', async () => {
   const video = { media_id: 'v', media_revision: '1' };
@@ -85,6 +104,25 @@ it('requests formula details when the panel opens, selection changes or a read i
   wrapper.unmount();
 });
 
+it('shows first-visit ghost text and accepts it without sending', async () => {
+  const draft = '我想先弄清这一节讨论的主要问题。';
+  const load = vi.fn(async () => ({ question: '读这一节，你最想弄清什么？', draft }));
+  const wrapper = mount(RightRail, { props: { ...baseProps, learningPurposeAvailable: true }, shallow: true,
+    global: { provide: { [readingGuidanceKey as symbol]: { load, context: ref({ key: 'book:chat', title: '当前材料',
+      scopes: [{ value: 'section', label: '当前小节', lid: '1.2' }], selection: null, intent: '', medium: 'text' }) } } } });
+  await flushPromises();
+  const input = wrapper.get<HTMLTextAreaElement>('.agent-input textarea');
+  expect(input.element.value).toBe(''); expect(input.attributes('placeholder')).toBe(draft);
+  expect(wrapper.get('.send-agent').attributes('disabled')).toBeDefined();
+  await input.trigger('keydown', { key: 'Tab' });
+  expect(wrapper.emitted('update:agentInput')).toEqual([[draft]]);
+  expect(wrapper.emitted('send-agent')).toBeUndefined();
+  await wrapper.setProps({ agentInput: '我有自己的问题' });
+  await input.trigger('keydown', { key: 'Tab' });
+  expect(wrapper.emitted('update:agentInput')).toHaveLength(1);
+  expect(load).toHaveBeenCalledTimes(1);
+});
+
 it('puts the first-question learning entry in the conversation', () => {
   const wrapper = mount(RightRail, { props: baseProps, shallow: true,
     global: { stubs: { Teleport: false } },
@@ -94,14 +132,108 @@ it('puts the first-question learning entry in the conversation', () => {
   wrapper.unmount();
 });
 
+function guidanceChat(user = '我觉得只应该算行驶时间', answer = '平均速度要用总路程除以全过程的总时间。') {
+  return { turnId: 'discussion-1', user, pending: false,
+    outcome: { ...sourceOutcome(), answer, answer_view: { parts: [{ kind: 'markdown' as const, text: answer }], sources: [] } },
+    questionAnchorLid: '1.1', questionQuote: { label: '原文', quote: '平均速度是总路程除以总时间。', status: 'resolved' as const },
+    questionSelection: null, effectLabels: [] };
+}
+function discussionGuidance(load: ReturnType<typeof vi.fn>, props = {}) {
+  return mount(RightRail, { props: { ...baseProps, learningPurposeAvailable: true, chat: [guidanceChat()], ...props }, shallow: true,
+    global: { provide: { [readingGuidanceKey as symbol]: { load, context: ref({ key: 'book:chat', title: '平均速度',
+      scopes: [{ value: 'selection', label: '所选原文' }, { value: 'material', label: '整份材料' }],
+      selection: { lid: '1.2', quote: '停留时间也计入总时间。' }, intent: '', medium: 'text' }) } } } });
+}
+
+it('invites a reason for the actual user thought using the last two delivered exchanges', async () => {
+  const guide = { question: '你原来只算行驶时间，是怎么考虑的？', draft: '我原来只算行驶时间，是因为……' };
+  const load = vi.fn(async (_request: ReadingGuidanceRequest) => guide);
+  const old = { ...guidanceChat('更早的问题', '更早的解释'), turnId: 'old' };
+  const previous = { ...guidanceChat('请解释平均速度', '平均速度描述全程。'), turnId: 'previous' };
+  const wrapper = discussionGuidance(load, { chat: [old, previous, guidanceChat()] });
+  await flushPromises();
+  expect(load.mock.calls[0][0]).toMatchObject({ purpose: 'followup', scope: 'material', recent_turns: [
+    { turn_id: 'previous', user: '请解释平均速度', assistant: '平均速度描述全程。' },
+    { turn_id: 'discussion-1', user: '我觉得只应该算行驶时间', assistant: '平均速度要用总路程除以全过程的总时间。' },
+  ] });
+  expect(wrapper.get('.reading-input-invitation').text()).toBe(guide.question);
+  const input = wrapper.get<HTMLTextAreaElement>('.agent-input textarea');
+  expect(input.element.value).toBe(''); expect(input.attributes('placeholder')).toBe(guide.draft);
+  await input.trigger('keydown', { key: 'Tab' });
+  expect(wrapper.emitted('update:agentInput')).toEqual([[guide.draft]]);
+  expect(wrapper.emitted('send-agent')).toBeUndefined();
+  await wrapper.setProps({ agentInput: '因为停留时没有走过路程，但我不确定。' });
+  expect(wrapper.find('.reading-input-invitation').exists()).toBe(false);
+  expect(load).toHaveBeenCalledTimes(1);
+});
+
+it('prioritizes a new source selection even when a conversation already exists', async () => {
+  const load = vi.fn(async () => ({ question: '关于停留时间，你想追问什么？', draft: '关于这段话，我想说的是……' }));
+  const wrapper = discussionGuidance(load, { askDraft: { lid: '1.2', quote: '停留时间也计入总时间。', status: 'resolved' } });
+  await flushPromises();
+  expect(load).toHaveBeenCalledWith(expect.objectContaining({ purpose: 'selection', scope: 'selection', lid: '1.2', quote: '停留时间也计入总时间。' }));
+  expect(wrapper.get('.agent-input textarea').attributes('placeholder')).toBe('关于这段话，我想说的是……');
+});
+
+it('leaves manual input and normal Tab navigation available when the model chooses silence', async () => {
+  const load = vi.fn(async () => null), wrapper = discussionGuidance(load);
+  await flushPromises();
+  expect(wrapper.find('.reading-input-invitation').exists()).toBe(false);
+  expect(wrapper.findComponent({ name: 'InputSuggestionHint' }).exists()).toBe(false);
+  const event = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+  wrapper.get('.agent-input textarea').element.dispatchEvent(event);
+  expect(event.defaultPrevented).toBe(false);
+  await wrapper.setProps({ agentInput: '我的新问题' });
+  await wrapper.get('.send-agent').trigger('click');
+  expect(wrapper.emitted('send-agent')).toHaveLength(1);
+  expect(load).toHaveBeenCalledTimes(1);
+});
+
+it('waits for teaching activities and stays quiet while a response or choice is open', async () => {
+  const load = vi.fn(async () => ({ question: '想继续讨论哪一点？', draft: '我想补充……' }));
+  const wrapper = discussionGuidance(load, { chat: [{ ...guidanceChat(), hasTeaching: true }] });
+  await flushPromises(); expect(load).not.toHaveBeenCalled();
+  const activity = wrapper.getComponent({ name: 'TutorActivities' });
+  activity.vm.$emit('response-available', true); activity.vm.$emit('guidance-available', false);
+  await flushPromises(); expect(load).not.toHaveBeenCalled();
+  activity.vm.$emit('response-available', false); activity.vm.$emit('guidance-available', true);
+  await flushPromises(); expect(load).toHaveBeenCalledTimes(1);
+  wrapper.getComponent({ name: 'TutorContinuation' }).vm.$emit('available', true);
+  await flushPromises(); expect(wrapper.find('.reading-input-invitation').exists()).toBe(false);
+});
+
+it.each([
+  { agentInput: '我已经有一个具体问题' }, { sending: true }, { canStop: true },
+  { chat: [{ ...guidanceChat(), pending: true }] },
+  { chat: [{ ...guidanceChat(), error: '失败' }] },
+  { askDraft: { lid: '1.2', quote: '未定位完整的原文', status: 'partial' } },
+])('does not request a new guide during an existing draft, run or unresolved state: %j', async props => {
+  const load = vi.fn(async () => null), wrapper = discussionGuidance(load, props);
+  await flushPromises(); expect(load).not.toHaveBeenCalled();
+  expect(wrapper.find('.reading-input-invitation').exists()).toBe(false);
+});
+
+it('discards an old discussion result after a selection change or a newly typed draft', async () => {
+  const pending: ((value: { question: string; draft: string }) => void)[] = [];
+  const load = vi.fn(() => new Promise(resolve => pending.push(resolve)));
+  const wrapper = discussionGuidance(load); await flushPromises();
+  await wrapper.setProps({ askDraft: { lid: '1.2', quote: '停留时间也计入总时间。', status: 'resolved' } });
+  pending[0]({ question: '旧问题', draft: '旧建议' }); await flushPromises();
+  expect(wrapper.find('.reading-input-invitation').exists()).toBe(false);
+  await wrapper.setProps({ agentInput: '我刚写出的想法' });
+  pending[1]({ question: '晚到的问题', draft: '晚到的建议' }); await flushPromises();
+  expect(wrapper.get<HTMLTextAreaElement>('.agent-input textarea').element.value).toBe('我刚写出的想法');
+  expect(wrapper.find('.reading-input-invitation').exists()).toBe(false);
+});
+
 it('exchanges the welcome illustration for a compact identity without replacing the focused draft', async () => {
   const wrapper = mount(RightRail, { props: baseProps, attachTo: document.body });
   try {
     const input = wrapper.get<HTMLTextAreaElement>('.agent-input textarea');
-    expect(wrapper.get('.conversation-welcome h3').text()).toBe('这一节，想先弄明白什么？');
+    expect(wrapper.get('.conversation-welcome h3').text()).toBe('想从哪里开始？');
     expect(wrapper.get('.welcome-mascot img').attributes('src')).toBe(yeyeAssets.idle);
     expect(wrapper.get('.welcome-mascot').attributes('aria-hidden')).toBe('true');
-    await wrapper.findAll('.purpose-other button').find(button => button.text().includes('自己描述目标'))!.trigger('click');
+    input.element.focus();
     expect(document.activeElement).toBe(input.element);
     expect(wrapper.emitted('send-agent')).toBeUndefined();
     await wrapper.setProps({ agentInput: '帮我梳理当前这一节的核心概念。' });
@@ -167,36 +299,33 @@ it('uses a full reading pose only for the current pending wait in a wide convers
   } finally { wrapper.unmount(); match.mockRestore(); }
 });
 
-it('keeps learning actions in the chat and the teaching switch next to the composer', async () => {
+it('keeps learning records and practice options beside the composer without a teaching switch', async () => {
   const wrapper = mount(RightRail, { props:baseProps, shallow:true, global: { stubs: { Teleport: false } }, slots:{
     'learning-actions':'<button>我的理解</button><button>学习详情</button>',
-    'tutor-control':'<button role="switch">连续教学</button>',
+    'tutor-control':'<button>练习设置</button>',
   } });
   expect(wrapper.get('#reader-panel-agent .conversation-learning-actions').text()).toContain('我的理解');
   expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
-  expect(wrapper.get('.agent-input [role=switch]').text()).toBe('连续教学');
-  wrapper.getComponent({ name: 'LearningPurposeEntry' }).vm.$emit('choose', 'understand', 'chapter');
-  expect(wrapper.emitted('learning-purpose')).toEqual([['understand', 'chapter']]);
+  expect(wrapper.text()).not.toContain('连续教学');
+  expect(wrapper.get('.agent-input-tools button').text()).toBe('练习设置');
+  expect(wrapper.findComponent({ name: 'LearningPurposeEntry' }).exists()).toBe(false);
   expect(wrapper.emitted('update:agentInput')).toBeUndefined();
   expect(wrapper.emitted('send-agent')).toBeUndefined();
   await wrapper.setProps({agentInput:'已经写下的问题',fullscreen:true});
   expect(wrapper.find('.question-example').exists()).toBe(false);
-  expect(wrapper.findComponent({ name: 'LearningPurposeEntry' }).exists()).toBe(true);
-  expect(wrapper.findAll('[role=switch]')).toHaveLength(1);
+  expect(wrapper.findComponent({ name: 'LearningPurposeEntry' }).exists()).toBe(false);
+  expect(wrapper.findAll('button').filter(control => control.text() === '练习设置')).toHaveLength(1);
   wrapper.unmount();
 });
 
-it('offers video learning purposes and a saved goal continuation in the conversation', async () => {
-  const wrapper = mount(RightRail, { props: { ...baseProps, videoImagesEnabled: true, learningPurposeAvailable: true,
-    learningPurposeReady: true, learningPurposeReason: '', learningScopeOptions: [{ value: 'media', label: '当前播放位置' }] }, shallow: true });
-  const entry = wrapper.getComponent({ name: 'LearningPurposeEntry' });
-  expect(entry.props()).toMatchObject({ videoMode: true, available: true, ready: true });
-  entry.vm.$emit('choose', 'understand', 'media');
-  expect(wrapper.emitted('learning-purpose')).toEqual([['understand', 'media']]);
-  await wrapper.setProps({ learningTitle: '能解释视频中的资源核算', tutorEnabled: false });
-  expect(wrapper.get('.question-example').text()).toContain('开启并继续上次学习');
-  await wrapper.get('.question-example').trigger('click');
-  expect(wrapper.emitted('resume-learning')).toEqual([[]]);
+it('keeps new video conversations focused on input without starter buttons', async () => {
+  const wrapper = mount(RightRail, { props: { ...baseProps, videoImagesEnabled: true, learningPurposeAvailable: true, learningPurposeReady: true }, shallow: true });
+  expect(wrapper.findComponent({ name: 'LearningPurposeEntry' }).exists()).toBe(false);
+  expect(wrapper.find('.question-example').exists()).toBe(false);
+  expect(wrapper.get('.presentation-request').isVisible()).toBe(true);
+  await wrapper.setProps({ learningTitle: '能解释视频中的资源核算' });
+  expect(wrapper.find('.question-example').exists()).toBe(false);
+  expect(wrapper.get('textarea').isVisible()).toBe(true);
 });
 
 it('keeps help bound to the latest delivered answer and focuses the existing draft without sending it', async () => {
@@ -223,6 +352,117 @@ it('keeps help bound to the latest delivered answer and focuses the existing dra
     await wrapper.setProps({ chat: [], activeChatSessionId: 'another-chat' });
     expect(wrapper.find('.learning-dock').exists()).toBe(false);
   } finally { wrapper.unmount(); }
+});
+
+describe('LE3/LE4 learning actions in the current conversation', () => {
+  const readyProps = { learningPurposeAvailable: true, learningPurposeReady: true, closedBookReady: true };
+  const mountLearning = (props = {}) => mount(RightRail, {
+    props: { ...baseProps, ...readyProps, ...props }, shallow: true, attachTo: document.body,
+    global: { stubs: { Teleport: false } },
+  });
+
+  it('starts from the current selection without requiring a new goal or changing the draft', async () => {
+    const wrapper = mountLearning({ agentInput: '还没发出的想法', learningScopeOptions: [
+      { value: 'selection', label: '所选原文', lid: '2.1' }, { value: 'chapter', label: '第二章', lid: '2' },
+    ] });
+    expect(wrapper.emitted('learning-purpose')).toBeUndefined();
+    await wrapper.get('.start-current-learning').trigger('click');
+    expect(wrapper.emitted('learning-purpose')).toEqual([['understand', 'selection', {
+      display: '带我学这一部分', message: expect.stringContaining('一个值得理解的重点'),
+    }]]);
+    expect(wrapper.get<HTMLTextAreaElement>('.agent-input textarea').element.value).toBe('还没发出的想法');
+    expect(wrapper.emitted('update:agentInput')).toBeUndefined();
+    expect(wrapper.emitted('send-agent')).toBeUndefined();
+  });
+
+  it('waits for a usable learning scope and preparation before starting', async () => {
+    const wrapper = mountLearning();
+    expect(wrapper.get('.start-current-learning').attributes('disabled')).toBeDefined();
+    await wrapper.setProps({ learningScopeOptions: [{ value: 'section', label: '当前小节', lid: '2.1' }], learningPurposeReady: false });
+    expect(wrapper.get('.start-current-learning').attributes('disabled')).toBeDefined();
+    await wrapper.get('.start-current-learning').trigger('click');
+    expect(wrapper.emitted('learning-purpose')).toBeUndefined();
+    await wrapper.setProps({ learningPurposeReady: true });
+    await wrapper.get('.start-current-learning').trigger('click');
+    expect(wrapper.emitted('learning-purpose')?.[0].slice(0, 2)).toEqual(['understand', 'section']);
+  });
+
+  it('offers explanation and application for the exact delivered answer with an explicit closed-book notice', async () => {
+    const wrapper = mountLearning({ chat: [guidanceChat()], agentInput: '保留这份草稿' });
+    await nextTick();
+    expect(wrapper.get('.learning-practice-note').text()).toContain('收起资料');
+    expect(wrapper.get('.learning-practice-note').text()).toContain('可随时暂停');
+    expect(wrapper.emitted('explain-answer')).toBeUndefined();
+    expect(wrapper.emitted('practice-answer')).toBeUndefined();
+    await wrapper.get('.learning-explain').trigger('click');
+    await wrapper.get('.learning-apply').trigger('click');
+    expect(wrapper.emitted('explain-answer')).toEqual([['discussion-1']]);
+    expect(wrapper.emitted('practice-answer')).toEqual([['discussion-1']]);
+    expect(wrapper.emitted('update:agentInput')).toBeUndefined();
+    expect(wrapper.emitted('send-agent')).toBeUndefined();
+  });
+
+  it('keeps application available while closed-book state loads and disables both actions during a run', async () => {
+    const wrapper = mountLearning({ chat: [guidanceChat()], closedBookReady: false });
+    await nextTick();
+    expect(wrapper.get('.learning-explain').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('.learning-apply').attributes('disabled')).toBeUndefined();
+    await wrapper.get('.learning-explain').trigger('click');
+    expect(wrapper.emitted('explain-answer')).toBeUndefined();
+    await wrapper.setProps({ closedBookReady: true, canStop: true });
+    expect(wrapper.get('.learning-explain').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('.learning-apply').attributes('disabled')).toBeDefined();
+    await wrapper.get('.learning-apply').trigger('click');
+    expect(wrapper.emitted('practice-answer')).toBeUndefined();
+  });
+
+  it('keeps the existing exercise as the only task until its activity and continuation have ended', async () => {
+    const wrapper = mountLearning({ chat: [{ ...guidanceChat(), hasTeaching: true }] });
+    await nextTick();
+    expect(wrapper.find('.answer-practice-actions').exists()).toBe(false);
+    const activity = wrapper.getComponent({ name: 'TutorActivities' });
+    activity.vm.$emit('response-available', true);
+    activity.vm.$emit('guidance-available', false);
+    await nextTick();
+    expect(wrapper.get('.learning-respond').text()).toContain('回答问题');
+    expect(wrapper.find('.answer-practice-actions').exists()).toBe(false);
+    activity.vm.$emit('response-available', false);
+    activity.vm.$emit('guidance-available', true);
+    await nextTick();
+    expect(wrapper.find('.answer-practice-actions').exists()).toBe(true);
+    wrapper.getComponent({ name: 'TutorContinuation' }).vm.$emit('available', true);
+    await nextTick();
+    expect(wrapper.find('.answer-practice-actions').exists()).toBe(false);
+    expect(wrapper.get('.learning-respond').text()).toContain('查看下一步');
+  });
+
+  it('keeps a delivered Socratic question ready for its own answer', async () => {
+    const turn = guidanceChat();
+    const wrapper = mountLearning({ chat: [{ ...turn, outcome: { ...turn.outcome,
+      answer_view: { parts: [{ kind: 'socratic_question', text: '为什么停留时间也算在内？' }], sources: [] },
+    } }] });
+    await nextTick();
+    expect(wrapper.find('.answer-practice-actions').exists()).toBe(false);
+    expect(wrapper.get('.learning-respond').text()).toContain('回答问题');
+  });
+
+  it.each(['pending', 'error', 'incomplete', 'history'] as const)('does not start a new practice from an unresolved %s answer', async state => {
+    const turn = guidanceChat();
+    const wrapper = mountLearning({ chat: [{ ...turn, pending: state === 'pending', error: state === 'error' ? '失败' : undefined,
+      outcome: { ...turn.outcome, incomplete: state === 'incomplete' },
+    }], historyLoading: state === 'history' });
+    await nextTick();
+    expect(wrapper.find('.answer-practice-actions').exists()).toBe(false);
+  });
+
+  it('leaves course learning actions in the course and retains local help in the conversation', async () => {
+    const wrapper = mountLearning({ chat: [guidanceChat()], courseActive: true });
+    await nextTick();
+    expect(wrapper.find('.answer-practice-actions').exists()).toBe(false);
+    expect(wrapper.find('.learning-respond').exists()).toBe(false);
+    await wrapper.get('.learning-help').trigger('click');
+    expect(wrapper.emitted('clarify-answer')).toEqual([['discussion-1']]);
+  });
 });
 
 describe("RightRail history visibility", () => {
@@ -274,7 +514,7 @@ describe("RightRail history visibility", () => {
     try {
       expect(wrapper.get(".chat-actions .history-button span").text()).toBe(String(count));
       if (count === 0) {
-        expect(wrapper.get(".transcript .empty").text()).toContain("这一节，想先弄明白什么？");
+        expect(wrapper.get(".transcript .empty").text()).toContain("想从哪里开始？");
         expect(wrapper.find(".empty-history-button").exists()).toBe(false);
       } else {
         expect(wrapper.get(".transcript .empty").text()).toContain("1 段历史对话");
@@ -398,6 +638,11 @@ describe("RightRail history recovery", () => {
   });
 });
 
+beforeEach(() => {
+  vi.spyOn(api, 'agentSourceRead').mockResolvedValue({
+    source_ref_id: '', source_lid: '1.1', focus_lid: '1.1', segments: [], previous_lid: null, next_lid: null,
+  });
+});
 afterEach(() => {
   vi.restoreAllMocks();
   network.value = { ...network.value, enabled: false, workspace: null, identity: null };
@@ -961,7 +1206,8 @@ describe("RightRail agent sources", () => {
     expect(wrapper.get(".agent-panel").text()).not.toContain("1.2");
   });
 
-  it("resolves on first click and opens the reader only from the secondary action", async () => {
+  it("reads context on first click and opens the main reader only from the secondary action", async () => {
+    vi.mocked(api.agentSourceRead).mockRestore();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = String(input);
       const body = JSON.parse(String(init?.body ?? "{}"));
@@ -975,6 +1221,15 @@ describe("RightRail agent sources", () => {
           stale: false,
           can_open_in_reader: true,
         }), { status: 200 });
+      }
+      if (url.endsWith("/agent/source.read")) {
+        return Response.json({
+          source_ref_id: body.source.source_ref_id, source_lid: '1.2', focus_lid: '1.2', previous_lid: null, next_lid: null,
+          segments: [
+            { lid: '1.1', kind: 'paragraph', text: 'substantial context before', highlights: [] },
+            { lid: '1.2', kind: 'paragraph', text: 'exact evidence', highlights: [{ start: 0, end: 14 }] },
+          ],
+        });
       }
       return new Response(JSON.stringify({ source_ref_id: body.source_ref_id, opened: true }), { status: 200 });
     });
@@ -1000,21 +1255,22 @@ describe("RightRail agent sources", () => {
     await wrapper.findAll(".agent-source-button")[0].trigger("click");
     await flushPromises();
 
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(String(fetchMock.mock.calls[0][0])).toContain("/agent/source.resolve");
     expect(JSON.parse(String(fetchMock.mock.calls[0][1]?.body))).toEqual({
       turn_id: "turn-a",
       source_ref_id: "source_ref_a",
     });
-    expect(document.body.querySelector(".agent-source-popup")?.textContent).toContain("exact evidence");
-    expect(document.body.querySelector(".source-excerpt")?.textContent).toContain("substantial context before");
+    expect(String(fetchMock.mock.calls[1][0])).toContain("/agent/source.read");
+    expect(document.body.querySelector(".agent-source-popup mark")?.textContent).toBe("exact evidence");
+    expect(document.body.querySelector(".source-reader-page")?.textContent).toContain("substantial context before");
     expect(wrapper.emitted("agent-source-opened")).toBeUndefined();
 
     const open = document.body.querySelector<HTMLButtonElement>(".source-open-reader")!;
     open.click();
     await flushPromises();
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(String(fetchMock.mock.calls[1][0])).toContain("/agent/source.open");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(String(fetchMock.mock.calls[2][0])).toContain("/agent/source.open");
     expect(wrapper.emitted("agent-source-will-open")).toEqual([[
       { turnId: "turn-a", sourceRefId: "source_ref_a" },
     ]]);
@@ -1052,7 +1308,7 @@ describe("RightRail agent sources", () => {
     await wrapper.findAll(".agent-source-button")[0].trigger("click");
     await flushPromises();
 
-    expect(document.body.querySelector(".source-stale")?.textContent).toContain("已失效");
+    expect(document.body.querySelector(".board-source-snapshot")?.textContent).toContain("引用时的快照");
     expect(document.body.querySelector<HTMLButtonElement>(".source-open-reader")?.disabled).toBe(true);
   });
 
@@ -1145,7 +1401,7 @@ describe("RightRail agent sources", () => {
     await flushPromises();
     document.body.querySelector<HTMLButtonElement>(".source-open-reader")!.click();
     await flushPromises();
-    document.body.querySelector<HTMLButtonElement>('.source-popup-head button[aria-label="关闭来源"]')!.click();
+    document.body.querySelector<HTMLButtonElement>('.board-source-heading button[aria-label="关闭来源"]')!.click();
     await flushPromises();
     pendingOpen.resolve(new Response(JSON.stringify({ source_ref_id: "source_ref_a", opened: true }), { status: 200 }));
     await flushPromises();

@@ -37,7 +37,7 @@ function fixture(fragment: boolean) {
     if (task.descriptor.input_basis.kind !== "source_slices") throw new Error("expected source slices");
     const slice = task.descriptor.input_basis.slices[0];
     candidate = { version: "profile_sidecar_discourse_observation.v1", parent_lid: task.route.parent_lid,
-      source_slice_ordinal: slice.ordinal, core_sha256: slice.core_sha256,
+      source_slice_ordinal: slice.ordinal,
       mode_candidates: [{ value: "informative", confidence: 0.9 }], local_function_candidates: [],
       rhetorical_move_candidates: [], summary_fragments: ["A bounded explanation."], relation_candidates: [] };
   }
@@ -56,10 +56,17 @@ describe("profile-sidecar generation writer", () => {
     process.env.UNDERSTAND_BOOK_SIDECAR_SELF = path.join(book.root, "unavailable-child-engine.exe");
     try {
       const result = book.write();
-      expect(JSON.parse(readFileSync(result.artifact_path, "utf8"))).toMatchObject({
+      const artifact = JSON.parse(readFileSync(result.artifact_path, "utf8"));
+      expect(artifact).toMatchObject({
         version: "semantic_task_artifact.v3", stage: "profile_sidecar",
         work_unit_id: book.task.descriptor.work_unit_id, policy_generation_id: book.task.policy_generation_id,
       });
+      if (fragment) {
+        expect(JSON.parse(readFileSync(book.candidatePath, "utf8"))).not.toHaveProperty("core_sha256");
+        const basis = book.task.descriptor.input_basis;
+        if (basis.kind !== "source_slices") throw new Error("expected source slices");
+        expect(artifact.payload.core_sha256).toBe(basis.slices[0].core_sha256);
+      }
       expect(result.output_counts).toBeDefined();
       expect(existsSync(path.join(book.target.workspace_dir, ".build/profile-sidecar"))).toBe(false);
     } finally {
@@ -77,8 +84,8 @@ describe("profile-sidecar generation writer", () => {
     expect(() => book.write(2)).not.toThrow();
   });
 
-  it("still rejects a changed source before publishing", () => {
-    const book = fixture(false);
+  it.each([false, true])("still rejects a changed source before publishing, fragment=%s", fragment => {
+    const book = fixture(fragment);
     writeFileSync(book.sourceFile, "# Source\n\nA changed revision.\n");
     expect(book.write).toThrow("source fingerprint is stale");
   });

@@ -77,6 +77,8 @@ Agent 专属动作测试中，来源跳转为 **0/4**；四道重启任务的保
 
 ## Quick Start
 
+Windows 本地完整运行时 debug 包见[本地 Debug 使用与构建说明](apps/local-debug/README.md)：本机运行 Reader 和 AI 引擎，在设置中配置自己的模型接口，无需连接线上业务服务器。
+
 源码启动需要 **Node.js 22+、pnpm、Rust 工具链**。从仓库根目录执行：
 
 ```powershell
@@ -129,6 +131,8 @@ cargo run -p server --bin server -- .understand-book/quantification-essence
 
 ## 深入项目
 
+- [书籍与成套课程的学习层级](docs/adr/0185-book-and-course-collection-learning-hierarchy.md) · [实施记录](docs/实施记录-书籍与成套课程入口.md)（以书籍／整套课程组织入口、单元目录与原任务归属）
+- [学习主线与课程入口 ADR](docs/adr/0184-task-led-learning-entry-and-continuity.md) · [切片方案](docs/切片方案-学习主线与课程入口.md) · [实施与验收记录](docs/实施记录-学习主线与课程入口.md)（入口、任务与反馈回课已实现；真实模型样本未通过，首次使用者待验收）
 - [云端学习与考试冲刺产品方案](docs/产品方案-云端学习与考试冲刺.md) · [实施计划](docs/实施计划-云端学习与考试冲刺.md) · [运行说明](docs/运行说明-云端学习与考试冲刺.md)（云端账号、套餐、空间与课程实施及验收状态）
 - [完整 Agent 评测方法与复现](evals/semantic/AGENT_EVAL.md)
 - [架构与设计决策](docs/架构.md)

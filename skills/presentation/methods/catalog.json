@@ -1,5 +1,5 @@
 {
-  "revision": 5,
+  "revision": 6,
   "methods": [
     {
       "id": "discrete-update",
@@ -213,6 +213,89 @@
         "runtime.js",
         "adaptations/spring.html",
         "adaptations/spring-author.json"
+      ]
+    },
+    {
+      "id": "compare-rules",
+      "revision": 1,
+      "name": "固定对象，换规则比较结果",
+      "status": "adopted",
+      "obstacle": "同一批对象换度量、计费或移动规则后读数、到达顺序或排名为什么改变",
+      "boundary": "可明确计算和解释的规则；严密证明保留前提和推导，不用演示替代证明",
+      "needs": [
+        "state"
+      ],
+      "root": "skills/presentation/methods/compare-rules/v1",
+      "entrypoint": "example/index.html",
+      "scenes": [
+        {
+          "file": "example/index.html",
+          "metadata": "example/author.json",
+          "when": "关心等值边界或几何位置；在工程蓝图中固定两点，换尺看点在哪条边界上",
+          "appearance": "整块工程图纸作为绘图区，深蓝图底与细网格承托亮色等距线，基准点和量尺标注固定在纸面。"
+        },
+        {
+          "file": "routes/index.html",
+          "metadata": "routes/author.json",
+          "when": "关心过程、谁先到或想亲手走；像素街区里两人消耗相同步数，路程短的先停",
+          "appearance": "低分辨率街区占据主画面，街口、像素人物与走过的路一起记录步数，人物停在真实格点。"
+        },
+        {
+          "file": "prints/index.html",
+          "metadata": "prints/author.json",
+          "when": "只比较读数或排序；用两色印痕在同一标尺上对齐起点、揭示终点",
+          "appearance": "孔版印刷的粗标题、双色网点和套印痕迹构成一张印样。两个印迹由同一条印刷刻度读数。"
+        }
+      ],
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/author.json",
+        "routes/index.html",
+        "routes/author.json",
+        "prints/index.html",
+        "prints/author.json",
+        "example/README.md",
+        "counterexample.md",
+        "checks.md"
+      ]
+    },
+    {
+      "id": "inspect-space",
+      "revision": 1,
+      "name": "拆开或剖切，辨认被遮挡的关系",
+      "status": "adopted",
+      "obstacle": "从外观看不见内部部件顺序、连接或截口，平面列表无法说明空间关系",
+      "boundary": "已有结构依据或明确的教学几何；视角与模型分离，不将示意件当作工程实物或仿真",
+      "needs": [
+        "three",
+        "state"
+      ],
+      "root": "skills/presentation/methods/inspect-space/v1",
+      "entrypoint": "example/index.html",
+      "scenes": [
+        {
+          "file": "example/index.html",
+          "metadata": "example/author.json",
+          "when": "想看实物如何装配；沿装配轴分开真实部件，旋转后仍能对应各自安装位置",
+          "appearance": "产品拆解摄影棚里的大幅立体装配体。材质、轮廓和开孔区分部件，拉开后用随视角定位的引线认件。"
+        },
+        {
+          "file": "sections/index.html",
+          "metadata": "sections/author.json",
+          "when": "想看隐藏截面随位置如何改变；移动真实剖面，用点云和截线保留整体参照",
+          "appearance": "深色扫描空间中保留疏密有别的表面点，半透明水平面和一条亮截线标出当前切口。"
+        }
+      ],
+      "files": [
+        "card.md",
+        "example/index.html",
+        "example/author.json",
+        "sections/index.html",
+        "sections/author.json",
+        "example/README.md",
+        "counterexample.md",
+        "checks.md"
       ]
     }
   ]

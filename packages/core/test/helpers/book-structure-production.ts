@@ -82,6 +82,10 @@ export function structureProductionResponse(task: BookStructureGenerationTaskV1)
     case "outline": return { chapters: p.context.chapters.map(c => ({ unit_lid: c.unit_lid, question: c.overview, progression: c.overview })), themes: [] };
     case "outline_chapters": return { chapters: p.context.chapters.map(c => ({ unit_lid: c.unit_lid, question: c.overview, progression: c.overview })) };
     case "outline_themes": return { kind: "finish" };
+    case "outline_theme_page": {
+      const page = p.body as { chapters: { next_offset: number | null } };
+      return page.chapters.next_offset === null ? { kind: "finish" } : { kind: "browse", offset: page.chapters.next_offset };
+    }
     case "chapter": {
       const candidates = p.context.catalog.candidates.filter(c => c.unit_lid === p.work.unit_lid);
       if (!candidates.length) {

@@ -24,7 +24,7 @@ fn allocation_patch_reuses_long_body_sources_finish_and_cached_prefix() {
         turn_calls(vec![call("revised", "tutor.step", &revision.to_string())]),
     ], vec![]);
     let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active",
+    context.tutor = Some(serde_json::json!({"status":"practice",
         "current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port = ArgumentRecoveryTeachingPort { inner: TeachingPort {
         inner:BorrowedResidentState {store:&mut store,reader:&mut reader}, accepted:vec![],selections:Default::default(),reviews:vec![],
@@ -71,7 +71,7 @@ fn teaching_patch_after_source_repair_preserves_long_body_participation_and_fini
             turn_calls(vec![call("repaired", "tutor.step", &revision.to_string())]),
         ], vec![]);
         let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
-        context.tutor = Some(serde_json::json!({"status":"active",
+        context.tutor = Some(serde_json::json!({"status":"practice",
             "current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
         let mut port = SourcePreflightTeachingPort {
             inner:TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},

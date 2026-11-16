@@ -522,7 +522,7 @@ pub(crate) fn validate_teaching_delivery(
     candidate_text: &str,
 ) -> Result<(), read_tools::ToolError> {
     if tutor
-        .is_none_or(|tutor| tutor["status"] != "active" || tutor["outside_current_request"] == true)
+        .is_none_or(|tutor| tutor["status"] != "practice" || tutor["outside_current_request"] == true)
     {
         return Ok(());
     }
@@ -545,7 +545,7 @@ pub(crate) fn validate_teaching_commit(
     candidate_text: &str,
 ) -> Result<(), read_tools::ToolError> {
     if tutor
-        .is_none_or(|tutor| tutor["status"] != "active" || tutor["outside_current_request"] == true)
+        .is_none_or(|tutor| tutor["status"] != "practice" || tutor["outside_current_request"] == true)
     {
         return Ok(());
     }

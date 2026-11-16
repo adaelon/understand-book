@@ -1,6 +1,7 @@
 import { t as uiText } from './i18n';
 import { shallowReactive, shallowRef } from 'vue';
 import { ApiError } from './api';
+import { discardSubmissionBody } from './submission-body-store';
 
 export interface PublishedBookRef { book_id: string; publication_id: string }
 export interface WorkspaceGoal { text: string; constraints: string[]; revision: number; created_at: number }
@@ -8,11 +9,13 @@ export interface LearningWorkspace {
   learning_workspace_id: string; goal: WorkspaceGoal; goal_history: WorkspaceGoal[];
   members: { published_book_ref: PublishedBookRef; readable: boolean; added_at: number }[];
   archived: boolean; created_at: number; updated_at: number;
+  shared_release?: { release_id: string; version: number };
 }
 export interface ChatDraft {
   message: string;
   quote: import('./api').AskQuote | null;
   goalId: string | null;
+  presentationRequested?: boolean;
 }
 // Admission may outlive its App instance during connection or publication changes.
 // Keep its restorable composer draft in the identity scope, never browser storage.
@@ -101,7 +104,11 @@ export function forgetNetwork() {
   if (owner) {
     for (const storage of [sessionStorage, localStorage]) {
       for (const key of Object.keys(storage)) {
-        if (key.startsWith(`understand-book:pending:${owner}:`) || key.startsWith(`understand-book:learning:${owner}:`)) storage.removeItem(key);
+        if (key.startsWith(`understand-book:pending:${owner}:`)) {
+          const item = JSON.parse(storage.getItem(key)!);
+          if (item.bodyStored) discardSubmissionBody(key);
+          storage.removeItem(key);
+        } else if (key.startsWith(`understand-book:learning:${owner}:`)) storage.removeItem(key);
       }
     }
   }

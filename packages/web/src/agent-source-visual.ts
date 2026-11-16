@@ -1,5 +1,5 @@
 import { createApp, defineComponent, h, ref } from "vue";
-import type { AgentEffect, OuterOutcome } from "./api";
+import type { AgentEffect, BoardSourceReadResponse, OuterOutcome } from "./api";
 import { renderMarkdown } from "./md";
 import RightRail from "./components/RightRail.vue";
 import "./style.css";
@@ -25,6 +25,26 @@ if (new URLSearchParams(window.location.search).get("standalone") === "1") {
         stale: false,
         can_open_in_reader: true,
       }), { status: 200, headers: { "Content-Type": "application/json" } });
+    }
+    if (url.endsWith("/agent/source.read")) {
+      const { source, direction } = JSON.parse(String(init?.body ?? "{}"));
+      const quote = "剪接调控显著改变了疾病相关转录本的构成。";
+      const segment = (lid: string, text: string, highlighted = false): BoardSourceReadResponse['segments'][number] => ({
+        lid, text, kind: 'paragraph', highlights: highlighted ? [{ start: 0, end: text.length }] : [],
+      });
+      const sections = [
+        segment('1.1', '在心肌组织中，选择性剪接受到多层调控。'),
+        segment('1.2', quote, true),
+        segment('1.3', '这些变化随后在独立队列中得到复核。'),
+      ];
+      return Response.json({
+        source_ref_id: source.source_ref_id, source_lid: '1.2', focus_lid: '1.2',
+        segments: direction === 'before' ? [segment('0.1', '研究背景和实验条件。')] :
+          direction === 'after' ? [segment('2.1', '后续工作结合功能实验评估了疾病通路。')] : sections,
+        previous_lid: direction === 'around' ? '1.1' : null,
+        next_lid: direction === 'around' ? '1.3' : null,
+        outline: [{ lid: '1', title: '选择性剪接', depth: 0 }],
+      });
     }
     if (url.endsWith("/agent/source.open")) {
       const request = JSON.parse(String(init?.body ?? "{}")) as { source_ref_id: string };

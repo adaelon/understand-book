@@ -2,20 +2,36 @@ import type { ParsedMusicNote } from './music-score';
 
 export interface MusicDemonstrationRequest { demonstration_id: string; title: string; score_object_ids: string[]; tempo_bpm: number }
 // This version also covers tie joining and sample encoding below.
-export const MUSIC_DEMONSTRATION_PARAMETERS = { processor: 'score-oscillator.v1', sample_rate: 22050, grace_seconds: 0.08,
+export const MUSIC_DEMONSTRATION_PARAMETERS = { processor: 'score-oscillator.v3', sample_rate: 22050, grace_seconds: 0.08,
   release_seconds: 0.08, tail_seconds: 0.15, attack_seconds: 0.012, decay: 0.35, harmonic: 0.18, amplitude: 26000 } as const;
 
 /** A deliberately simple score synthesizer, never an extracted performance stem. */
 export function synthesizeScoreDemonstration(notes: ParsedMusicNote[], tempoBpm: number): { wav: Buffer; duration_ms: number; timings: Array<{ source_id: string; start_ms: number; end_ms: number; attack: boolean }> } {
   if (!Number.isFinite(tempoBpm) || tempoBpm <= 0) throw new Error('A score demonstration needs a positive tempo');
-  const pitched = notes.filter(n => !n.rest && n.midi_pitch !== null);
+  const pitched = notes.filter(n => !n.rest && n.midi_pitch !== null && !(n.notation?.visible === false && n.notation.playback_dynamics === 0));
   if (!pitched.length) throw new Error('A score demonstration needs pitched score objects');
   const earliest = Math.min(...pitched.map(n => n.score_beat));
   const secondsPerBeat = 60 / tempoBpm;
+  const ordered = pitched.sort((a, b) => a.score_beat - b.score_beat);
+  const graceGroups = new Map<string, ParsedMusicNote[][]>();
+  for (const note of ordered.filter(note => note.grace)) {
+    const key = JSON.stringify([note.part_id, note.voice, note.score_beat]);
+    const groups = graceGroups.get(key) ?? [];
+    if (!note.notation?.chord || !groups.length) groups.push([]);
+    groups.at(-1)!.push(note); graceGroups.set(key, groups);
+  }
+  const graceOffsets = new Map<ParsedMusicNote, number>();
+  for (const groups of graceGroups.values()) for (const [index, group] of groups.entries()) {
+    for (const note of group) graceOffsets.set(note, (index - groups.length) * MUSIC_DEMONSTRATION_PARAMETERS.grace_seconds);
+  }
+  const onset = (note: ParsedMusicNote) => (note.score_beat - earliest) * secondsPerBeat + (graceOffsets.get(note) ?? 0);
+  // Opening grace notes need their own lead-in; shift all voices together so the
+  // main chord still lands on one beat instead of colliding with the ornament.
+  const leadIn = -Math.min(0, ...ordered.map(onset));
   const events: Array<{ start: number; end: number; pitch: number; voice: string; part: string }> = [];
   const timings: Array<{ source_id: string; start_ms: number; end_ms: number; attack: boolean }> = [];
-  for (const note of pitched.sort((a, b) => a.score_beat - b.score_beat)) {
-    const start = Math.max(0, (note.score_beat - earliest) * secondsPerBeat - (note.grace ? MUSIC_DEMONSTRATION_PARAMETERS.grace_seconds : 0));
+  for (const note of ordered) {
+    const start = onset(note) + leadIn;
     const end = start + (note.grace ? MUSIC_DEMONSTRATION_PARAMETERS.grace_seconds : note.duration_beats * secondsPerBeat);
     const previous = [...events].reverse().find(e => e.pitch === note.midi_pitch && e.voice === note.voice && e.part === note.part_id && Math.abs(e.end - start) < 0.002);
     timings.push({ source_id: note.source_id, start_ms: start * 1000, end_ms: end * 1000, attack: !((note.tie === 'stop' || note.tie === 'continue') && previous) });

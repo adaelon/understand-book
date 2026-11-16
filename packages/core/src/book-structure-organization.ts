@@ -27,12 +27,16 @@ import { STRUCTURE_ORGANIZATION_PROMPTS } from "./book-structure-organization-pr
 import type { ModelExecutionBudgetBlockedV3 } from "./model-input-budget";
 import { estimateTokens } from "./window";
 import { throwExtractorSchemaError } from "./extractor-contract";
+import {
+  structureOutlineChapterBook, structureOutlineThemePageInput, applyStructureOutlineThemePageAction,
+  type StructureOutlineThemePageContext, type StructureOutlineThemePageWork,
+} from "./book-structure-outline-pages";
 
 const STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS = 20000;
 const STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE = 4;
 
-export type StructureOrganizationKind = "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile";
-export type StructureOrganizationState = StructureOutline | StructureOutlineThemeWork | StructureChapterWork | StructureThemeDirectory;
+export type StructureOrganizationKind = "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_outline_theme_page" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile";
+export type StructureOrganizationState = StructureOutline | StructureOutlineThemeWork | StructureOutlineThemePageWork | StructureChapterWork | StructureThemeDirectory;
 /** Only body is delivered. context/work are the current Core ledger, never a model-authored snapshot. */
 export type StructureOrganizationInput = {
   version: "book_structure_organization_input.v1";
@@ -43,6 +47,7 @@ export type StructureOrganizationInput = {
   | { phase: "outline"; context: StructureOutlineInput }
   | { phase: "outline_chapters"; context: StructureOutlineInput }
   | { phase: "outline_themes"; context: StructureOutlineInput; work: StructureOutlineThemeWork }
+  | { phase: "outline_theme_page"; context: StructureOutlineThemePageContext; work: StructureOutlineThemePageWork }
   | { phase: "chapter"; context: StructureChapterContext; work: StructureChapterWork }
   | { phase: "plan"; context: StructureThemeContext }
   | { phase: "theme"; context: StructureThemeContext; directory: StructureThemeDirectory; ref: string; revision_request?: StructureThemeRevisionRequest }
@@ -50,7 +55,8 @@ export type StructureOrganizationInput = {
 );
 export interface StructureOrganizationAcceptance { version: "book_structure_action.v1"; accepted_action: unknown }
 export function renderStructureOrganizationInput(input: StructureOrganizationInput): string {
-  const indent = input.phase === "plan" && input.context.planning_candidate_refs ? undefined : 2;
+  const compact = input.phase === "outline_theme_page" || (input.phase === "plan" && input.context.planning_candidate_refs);
+  const indent = compact ? undefined : 2;
   const delivery = { phase: input.phase, input: input.body, reference_scope: input.reference_scope };
   const rendered = JSON.stringify(delivery, null, indent) + "\n";
   // Keep fitting inputs byte-stable; compact oversized organization bodies without dropping content.
@@ -64,6 +70,12 @@ export function fitStructureOrganizationExecution(input: Omit<Parameters<typeof 
   let packet = input.packet;
   let rendered = renderStructureOrganizationInput(packet);
   let evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
+  if (evaluation.status !== "within_limit" && packet.phase === "outline_chapters") {
+    const body = packet.body as { book: StructureOutlineInput; requested_unit_lids: string[] };
+    packet = { ...packet, body: { ...body, book: structureOutlineChapterBook(body.book, body.requested_unit_lids) } };
+    rendered = renderStructureOrganizationInput(packet);
+    evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
+  }
   // Browsing ledgers grow across actions. Reduce only a blocked navigation page,
   // and bind acceptance to that exact delivery so unseen candidates stay unseen.
   while (evaluation.status !== "within_limit" && packet.phase === "chapter"
@@ -75,6 +87,30 @@ export function fitStructureOrganizationExecution(input: Omit<Parameters<typeof 
     rendered = renderStructureOrganizationInput(packet);
     evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
   }
+  if (evaluation.status !== "within_limit" && packet.phase === "chapter") {
+    const body = packet.body as ReturnType<typeof structureChapterInput>;
+    // The other chapters orient this read. The current chapter and its complete
+    // requested excerpts remain available for the grounded selection.
+    const outline = body.outline.map(chapter => chapter.unit_lid === body.unit_lid
+      ? chapter : { unit_lid: chapter.unit_lid, title: chapter.title });
+    packet = { ...packet, body: { ...body, outline } };
+    rendered = renderStructureOrganizationInput(packet);
+    evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
+  }
+  while (evaluation.status !== "within_limit" && packet.phase === "outline_theme_page") {
+    const body = structureOutlineThemePageInput(packet.work, packet.context);
+    const chapterTokens = estimateTokens(JSON.stringify(body.chapters.items));
+    const themeTokens = estimateTokens(JSON.stringify(body.themes.items));
+    const shrinkChapters = body.chapters.items.length > 1
+      && (body.themes.items.length <= 1 || chapterTokens >= themeTokens);
+    if (!shrinkChapters && body.themes.items.length <= 1) break;
+    const context = { ...packet.context };
+    if (shrinkChapters) context.chapter_page_size = Math.max(1, Math.floor(context.chapter_page_size / 2));
+    else context.theme_page_size = Math.max(1, Math.floor(context.theme_page_size / 2));
+    packet = { ...packet, context, body: structureOutlineThemePageInput(packet.work, context) };
+    rendered = renderStructureOrganizationInput(packet);
+    evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
+  }
   return { packet, rendered, evaluation };
 }
 export function applyStructureOrganizationAction(input: StructureOrganizationInput, action: unknown): StructureOrganizationState {
@@ -82,6 +118,7 @@ export function applyStructureOrganizationAction(input: StructureOrganizationInp
     case "outline": return acceptStructureOutline(action, input.context);
     case "outline_chapters": return { chapters: acceptStructureOutlineChapters(structureOutlineChapterBatchSchema.parse(action).chapters, input.context), themes: [] };
     case "outline_themes": return applyStructureOutlineThemeAction(input.work, action, input.context);
+    case "outline_theme_page": return applyStructureOutlineThemePageAction(input.work, action, input.context);
     case "chapter": return applyStructureChapterAction(input.work, action, input.context);
     case "plan": return planStructureThemes(action, input.context);
     case "theme": return applyStructureThemeAction(input.directory, input.ref, action, input.context);
@@ -178,16 +215,21 @@ export function routeStructureOrganization(input: {
   const scope: BookStructureReferenceScope = { unit_lids: input.outline.chapters.map(c => c.unit_lid), dependency_target_lids: [], evidence_by_unit: {} };
   // Descriptors bind the actual rendered input. Core dependencies live in the current
   // context and are rechecked by applying the saved action, including unshown candidates.
-  const step = (kind: StructureOrganizationKind, id: string, packet: StructureOrganizationInput,
-    options: { probe?: boolean; whole_theme?: boolean } = {}) => {
+  const fit = (kind: StructureOrganizationKind, packet: StructureOrganizationInput) => {
     const contract = input.contracts[kind];
     const reserve = kind.startsWith("structure_outline") ? 5000 : kind === "structure_chapter" || kind === "structure_chapter_selection" ? 3500 : 6500;
-    const fitted = fitStructureOrganizationExecution({ packet, contract,
+    return fitStructureOrganizationExecution({ packet, contract,
       transport_profile: input.execution_profile.transport_profile,
       budget: { stage_body_limit_tokens: STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS, executor_context_floor_tokens: 32768,
         output_reserve_tokens: reserve, max_candidate_tokens: Math.min(reserve, createCandidateTransportContract(input.execution_profile.transport_profile).candidate_value_max_estimated_tokens), safety_margin_tokens: 512 } });
+  };
+  const step = (kind: StructureOrganizationKind, id: string, packet: StructureOrganizationInput,
+    options: { probe?: boolean; whole_theme?: boolean } = {}) => {
+    const contract = input.contracts[kind];
+    const fitted = fit(kind, packet);
     packet = fitted.packet;
     const { rendered, evaluation: evaluated } = fitted;
+    if (evaluated.status !== "within_limit" && kind === "structure_outline" && options.probe) return undefined;
     if (evaluated.status !== "within_limit") throw new StructureOrganizationBlocked(`BookStructure ${id} input exceeds its execution budget; reduce the requested material before resuming`, evaluated);
     const descriptor = proofBoundBookStructureDescriptor({ target: input.target.target_ref,
       work_unit_id: `${id}-${evaluated.proof.rendered_input_sha256.slice(0, 16)}`, kind, rendered_input: rendered, proof: evaluated.proof,
@@ -213,32 +255,62 @@ export function routeStructureOrganization(input: {
   };
   const packet = { version: "book_structure_organization_input.v1" as const, reference_scope: scope, retrieval_selection: selection };
   try {
-    const boundedOutline = input.outline.chapters.length > STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE;
+    const wholeOutlinePacket: StructureOrganizationInput = { ...packet, phase: "outline", context: input.outline, body: input.outline };
+    const boundedOutline = input.outline.chapters.length > STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE
+      || fit("structure_outline", wholeOutlinePacket).evaluation.status !== "within_limit";
     // Keep an already accepted whole-book outline. New large outlines use separately accepted parts.
-    let outline = step("structure_outline", "structure:outline", { ...packet, phase: "outline", context: input.outline, body: input.outline },
+    let outline = step("structure_outline", "structure:outline", wholeOutlinePacket,
       { probe: boundedOutline }) as StructureOutline | undefined;
     if (!outline && boundedOutline) {
       const chapters: StructureOutline["chapters"] = [];
-      for (let start = 0; start < input.outline.chapters.length; start += STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE) {
-        const batch = input.outline.chapters.slice(start, start + STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE);
-        const part = step("structure_outline_chapters", `structure:outline:chapters:${start}`, {
-          ...packet, phase: "outline_chapters", context: { ...input.outline, chapters: batch },
-          body: { book: input.outline, requested_unit_lids: batch.map(chapter => chapter.unit_lid) },
-        }) as StructureOutline | undefined;
+      for (let start = 0; start < input.outline.chapters.length;) {
+        let size = Math.min(STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE, input.outline.chapters.length - start);
+        const chapterPacket = (): StructureOrganizationInput => {
+          const batch = input.outline.chapters.slice(start, start + size);
+          return { ...packet, phase: "outline_chapters", context: { ...input.outline, chapters: batch },
+            body: { book: input.outline, requested_unit_lids: batch.map(chapter => chapter.unit_lid) } };
+        };
+        let fitted = fit("structure_outline_chapters", chapterPacket());
+        while (fitted.evaluation.status !== "within_limit" && size > 1) {
+          size = Math.max(1, Math.floor(size / 2));
+          fitted = fit("structure_outline_chapters", chapterPacket());
+        }
+        const part = step("structure_outline_chapters", `structure:outline:chapters:${start}`, fitted.packet) as StructureOutline | undefined;
         if (part) chapters.push(...part.chapters);
+        start += size;
       }
       if (pending.length) return { tasks, pending, progress };
       let work: StructureOutlineThemeWork = { themes: [], complete: false };
       for (let ordinal = 0; !work.complete; ordinal++) {
         if (ordinal >= 128) throw new StructureOrganizationBlocked("Outline theme action budget exhausted; accepted work retained");
-        const next = step("structure_outline_themes", `structure:outline:themes:${ordinal}`, {
+        const themePacket: StructureOrganizationInput = {
           ...packet, phase: "outline_themes", context: input.outline, work,
           body: { book: input.outline, accepted_themes: work.themes.map((theme, theme_index) => ({
             theme_index, question: theme.question.text, unit_lids: theme.unit_lids,
           })) },
-        }) as StructureOutlineThemeWork | undefined;
+        };
+        if (fit("structure_outline_themes", themePacket).evaluation.status !== "within_limit") break;
+        const next = step("structure_outline_themes", `structure:outline:themes:${ordinal}`, themePacket) as StructureOutlineThemeWork | undefined;
         if (!next) return { tasks, pending, progress };
         work = next;
+      }
+      if (!work.complete) {
+        const context: StructureOutlineThemePageContext = {
+          source: input.outline, chapters, chapter_page_size: 16, theme_page_size: 16,
+        };
+        let paged: StructureOutlineThemePageWork = {
+          ...work, chapter_offset: 0, theme_offset: 0, covered_unit_lids: [], reading: [],
+        };
+        for (let ordinal = 0; !paged.complete; ordinal++) {
+          if (ordinal >= 128 + chapters.length) throw new StructureOrganizationBlocked("Outline theme page action budget exhausted; accepted work retained");
+          const next = step("structure_outline_theme_page", `structure:outline:theme-page:${ordinal}`, {
+            ...packet, phase: "outline_theme_page", context, work: paged,
+            body: structureOutlineThemePageInput(paged, context),
+          }) as StructureOutlineThemePageWork | undefined;
+          if (!next) return { tasks, pending, progress };
+          paged = next;
+        }
+        work = paged;
       }
       outline = acceptStructureOutline({ chapters, themes: work.themes }, input.outline);
     }

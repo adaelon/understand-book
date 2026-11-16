@@ -241,7 +241,7 @@ fn adm6_tutor_tool_stops_run_before_next_tool_and_leaves_response_unassessed() {
         OuterConfig::default(),
         adapter.model_runtime_profile(),
     );
-    context.tutor = Some(serde_json::json!({"status":"active"}));
+    context.tutor = Some(serde_json::json!({"status":"practice"}));
     let error = run_context(
         &b,
         &mut TutorPort(BorrowedResidentState {

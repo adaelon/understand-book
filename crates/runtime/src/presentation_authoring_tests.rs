@@ -80,14 +80,14 @@ fn teaching_presentation_stable_schema_waits_for_accepted_design() {
     let mut exposure = ToolExposureState::default();
     // A page request or tool search may already have activated this capability.
     exposure.activate("presentation.author");
-    let accepted = |kind| json!({"status":"active","current_design":{
+    let accepted = |kind| json!({"status":"practice","current_design":{
         "design_ref":"design:accepted","design":{"representation":{"kind":kind}}
     }});
     for (label, tutor, expected) in [
-        ("before design", Some(json!({"status":"active","current_design":null})), false),
+        ("before design", Some(json!({"status":"practice","current_design":null})), false),
         ("text design", Some(accepted("text")), false),
         ("accepted presentation", Some(accepted("presentation")), true),
-        ("outside teaching", Some(json!({"status":"active","outside_current_request":true})), true),
+        ("outside teaching", Some(json!({"status":"practice","outside_current_request":true})), true),
         ("ordinary presentation", None, true),
     ] {
         let mut messages = new_session();
@@ -131,7 +131,7 @@ fn teaching_presentation_design_changes_preserve_native_and_react_prefix() {
     messages.push(Message::user("Keep explaining this relationship."));
     let mut previous = None;
     for (index, kind) in [None, Some("text"), Some("presentation"), Some("text")].into_iter().enumerate() {
-        let tutor = json!({"status":"active","current_design":kind.map(|kind| json!({
+        let tutor = json!({"status":"practice","current_design":kind.map(|kind| json!({
             "design_ref":format!("design:{index}"),"design":{"representation":{"kind":kind}}
         }))});
         let (_, plan) = build_sample_request(
@@ -187,7 +187,7 @@ fn teaching_presentation_inspection_before_design_keeps_mutations_blocked() {
                 turn_final("No revised page was delivered."),
             ], vec![]);
             let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(5), ..Default::default() }, adapter.model_runtime_profile());
-            context.tutor = Some(json!({"status":"active","learner_context":{},"current_design":kind.map(|kind|
+            context.tutor = Some(json!({"status":"practice","learner_context":{},"current_design":kind.map(|kind|
                 json!({"design_ref":"design:text","design":{"representation":{"kind":kind}}}))}));
             let _ = execute(&mut port, &b, &adapter, &mut context);
             assert_eq!(port.inspections, ["read", "search"], "{kind:?}: both existing-page operations must reach the host");
@@ -226,7 +226,7 @@ fn teaching_presentation_same_batch_design_cannot_grant_unsampled_operations() {
         ], vec![]);
         // Four author samples plus the current-request coach at prepare.
         let mut context = RunContext::new(new_session(), OuterConfig {max_turns:Some(5), ..Default::default()}, adapter.model_runtime_profile());
-        context.tutor = Some(json!({"status":"active","learner_context":{},"current_design":kind.map(|kind|
+        context.tutor = Some(json!({"status":"practice","learner_context":{},"current_design":kind.map(|kind|
             json!({"design_ref":"design:previous","design":{"representation":{"kind":kind}}}))}));
         let _ = execute(&mut port, &b, &adapter, &mut context);
         assert_eq!(context.tutor.as_ref().unwrap()["current_design"]["design_ref"], "design:author-fixture",
@@ -253,7 +253,7 @@ fn teaching_presentation_reuses_focused_design_and_preserves_review() {
     let b = book();
     let registry = resident_tool_registry();
     let profile = ModelRuntimeProfile::fallback("teaching-local-authoring", ProviderToolProtocol::Native);
-    let tutor = json!({"status":"active","current_design":{"design_ref":"design:clock","design":{
+    let tutor = json!({"status":"practice","current_design":{"design_ref":"design:clock","design":{
         "target":{"learning_focus":"Elapsed time","expected_performance":"Include a stopped interval"},
         "focus_block_refs":["clock"],"blocks":[
             {"block_id":"clock","relation":"The clock continues during the stop.","purpose":"Count the whole interval."},
@@ -313,28 +313,30 @@ fn teaching_presentation_prepare_keeps_local_scope_in_run_state() {
     let b = book();
     let mut port = AuthoringPort::new(&b,"teaching-local-prepare");
     let adapter = RequestPlanRecordingAdapter::new(vec![
+        discover(),
         prepare("global","global","A NEW WHOLE LESSON","Expand every section",json!(["state"])),
         prepare("review","review","ANOTHER WHOLE LESSON","Verify the repaired clock label",json!(["state"])),
         turn_final("The page is not delivered yet."),
     ],vec![]);
     // Three author samples plus the current-request coach at prepare.
-    let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(4),..Default::default()},adapter.model_runtime_profile());
-    context.tutor = Some(json!({"status":"active","current_design":{"design_ref":"design:clock","design":{
+    let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(5),..Default::default()},adapter.model_runtime_profile());
+    context.tutor = Some(json!({"status":"practice","current_design":{"design_ref":"design:clock","design":{
         "target":{"learning_focus":"Elapsed time"},"focus_block_refs":["clock"],
         "blocks":[{"block_id":"clock","relation":"Count stopped time."}],
         "representation":{"kind":"presentation","observation":"The stopped interval remains visible."}
     }},"learner_context":{}}));
     let _ = execute(&mut port,&b,&adapter,&mut context);
     let plans = adapter.seen_plans.borrow();
-    for (id, plan) in [("global", &plans[1]), ("review", &plans[2])] {
+    for (id, plan) in [("global", &plans[2]), ("review", &plans[3])] {
         let result = plan.input.iter().find(|message| message.tool_call_id.as_deref() == Some(id)).unwrap();
         let result: Value = serde_json::from_str(result.content.as_deref().unwrap()).unwrap();
         assert_eq!(result["model_body"]["status"], "authoring_context_prepared", "{id}: {result}");
     }
-    assert_eq!(selection_state(&plans[0]).unwrap()["phase"],"local");
-    assert_eq!(design(&plans[1]).unwrap()["phase"],"local");
-    assert_eq!(design(&plans[1]).unwrap()["focus"],"The stopped interval remains visible.");
-    let current = design(&plans[2]).unwrap();
+    assert!(selection_state(&plans[0]).unwrap()["phase"].is_null(), "authoring starts after explicit discovery");
+    assert_eq!(selection_state(&plans[1]).unwrap()["phase"],"local");
+    assert_eq!(design(&plans[2]).unwrap()["phase"],"local");
+    assert_eq!(design(&plans[2]).unwrap()["focus"],"The stopped interval remains visible.");
+    let current = design(&plans[3]).unwrap();
     assert_eq!(current["phase"],"review");
     assert_eq!(current["focus"],"Verify the repaired clock label");
     assert!(!current["framework"].as_str().unwrap().contains("WHOLE LESSON"));
@@ -610,7 +612,7 @@ fn presentation_teaching_focus_rejects_scope_expansion_before_authoring_mutation
         let max_turns = turns.len();
         let adapter = RequestPlanRecordingAdapter::new(turns, vec![]);
         let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(max_turns), ..Default::default() }, adapter.model_runtime_profile());
-        context.tutor = Some(json!({"status":"active","current_design":current_design,"learner_context":{}}));
+        context.tutor = Some(json!({"status":"practice","current_design":current_design,"learner_context":{}}));
         let unfinished = execute(&mut port, &b, &adapter, &mut context).unwrap_err();
         assert_eq!(unfinished.error_code, TURN_LIMIT_EXCEEDED);
         assert_eq!((port.writes, port.deliveries), (1, 0), "{operation}: only the valid page may mutate host storage");

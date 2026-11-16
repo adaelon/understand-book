@@ -8,6 +8,21 @@ use std::{fs, path::{Path, PathBuf}, process::{Command, Stdio}};
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlaybackInfo {
     pub time_base: [u32; 2],
+    #[serde(default)]
+    timeline: Option<crate::video_frames::PresentationTimeline>,
+    #[serde(default)]
+    timeline_aligned: Option<bool>,
+}
+
+fn timeline_aligned(original: &crate::video_frames::PresentationTimeline, delivery: &crate::video_frames::PresentationTimeline) -> bool {
+    let tick_ms = original.time_base[0] as f64 / original.time_base[1] as f64 * 1000.0;
+    let video_start = ((original.video_start_ms - original.origin_ms) / tick_ms).round() * tick_ms;
+    (video_start - delivery.video_start_ms).abs() <= tick_ms / 2.0
+        && match (original.audio_start_ms, delivery.audio_start_ms) {
+            (Some(a), Some(b)) => (a - original.origin_ms - b).abs() <= 0.1,
+            (None, None) => true,
+            _ => false,
+        }
 }
 
 fn failed(message: impl Into<String>) -> ToolError {
@@ -42,13 +57,13 @@ pub fn prepare(root: &Path, directory: &Path) -> Result<Option<PathBuf>, ToolErr
     fs::create_dir_all(parent).map_err(|e| failed(e.to_string()))?;
     let stage = tempfile::tempdir_in(parent).map_err(|e| failed(e.to_string()))?;
     let original = std::path::absolute(directory.join(&manifest.source.imported_path)).map_err(|e| failed(e.to_string()))?;
-    let info = PlaybackInfo { time_base: crate::video_frames::presentation_time_base(directory, &manifest.source)? };
+    let timeline = crate::video_frames::presentation_timeline(directory, &manifest.source)?;
     let mut command = Command::new(crate::video_media::executable("ffmpeg"));
-    command.current_dir(stage.path()).args(["-nostdin", "-hide_banner", "-loglevel", "error", "-n", "-copyts", "-i"])
+    command.current_dir(stage.path()).args(["-nostdin", "-hide_banner", "-loglevel", "error", "-n", "-copyts", "-start_at_zero", "-i"])
         .arg(original).args(["-map", "0:V:0", "-map", "0:a:0?", "-c", "copy", "-avoid_negative_ts", "disabled",
             "-f", "hls", "-hls_time", "5", "-hls_playlist_type", "vod", "-hls_segment_type", "fmp4",
             "-hls_flags", "single_file+independent_segments", "-hls_segment_options"])
-        .arg(format!("video_track_timescale={}", info.time_base[1]))
+        .arg(format!("video_track_timescale={0}:movie_timescale={0}", timeline.time_base[1]))
         .args(["-hls_segment_filename", "media.mp4", "index.m3u8"])
         .stdin(Stdio::null()).stdout(Stdio::null());
     #[cfg(windows)] {
@@ -59,6 +74,11 @@ pub fn prepare(root: &Path, directory: &Path) -> Result<Option<PathBuf>, ToolErr
     if !output.status.success() { return Err(failed(String::from_utf8_lossy(&output.stderr).trim().to_owned())); }
     let playlist = fs::read_to_string(stage.path().join("index.m3u8")).map_err(|e| failed(e.to_string()))?;
     if !playlist.contains("#EXT-X-MAP:") || !playlist.contains("#EXT-X-ENDLIST") { return Err(failed("Incomplete video playlist")); }
+    // MSE/Hls.js ignores MP4 edit lists. Some FFmpeg versions rebase each fMP4
+    // track separately, losing A/V alignment. In that case use the original Range
+    // endpoint instead of presenting a frame/subtitle on a different timeline.
+    let delivery = crate::video_frames::probe_timeline(&stage.path().join("media.mp4"), true)?;
+    let info = PlaybackInfo { time_base: timeline.time_base, timeline_aligned: Some(timeline_aligned(&timeline, &delivery)), timeline: Some(timeline) };
     fs::write(stage.path().join("info.json"), serde_json::to_vec(&info).unwrap()).map_err(|e| failed(e.to_string()))?;
     // nginx receives only these derived files after HTTP authorization. Original
     // media and private Reader files keep their owner-only permissions.
@@ -79,12 +99,19 @@ pub(crate) fn projection(directory: &Path, cache: &Path, publication: &base_sche
     if !directory.join("video_source_manifest.json").is_file() { return Ok(Value::Null); }
     let manifest = source(directory)?;
     let prepared = ready(cache);
-    let time_base = match &prepared {
-        Some(info) => info.time_base,
-        None => crate::video_frames::presentation_time_base(directory, &manifest.source)?,
+    let timeline = match prepared.as_ref().and_then(|info| info.timeline.clone()) {
+        Some(timeline) => timeline,
+        None => crate::video_frames::presentation_timeline(directory, &manifest.source)?,
+    };
+    let hls = match prepared.as_ref() {
+        Some(info) => match info.timeline_aligned {
+            Some(aligned) => aligned,
+            None => timeline_aligned(&timeline, &crate::video_frames::probe_timeline(&cache.join("media.mp4"), true)?),
+        },
+        None => false,
     };
     Ok(json!({"publication":publication,"material":manifest.material,"source":manifest.source,
-        "time_base":time_base,"hls":prepared.is_some()}))
+        "time_base":timeline.time_base,"timeline_origin_ms":timeline.origin_ms,"hls":hls}))
 }
 
 pub(crate) fn file(cache: &Path, leaf: &str) -> Result<PathBuf, ToolError> {
@@ -96,6 +123,25 @@ pub(crate) fn file(cache: &Path, leaf: &str) -> Result<PathBuf, ToolError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn playback_keeps_hls_when_tracks_share_the_logical_timeline() {
+        let root = tempfile::tempdir().unwrap();
+        let (_, publication, _) = crate::video_frames::tests::fixture(root.path());
+        let status = Command::new(crate::video_media::executable("ffmpeg"))
+            .args(["-nostdin", "-v", "error", "-f", "lavfi", "-i", "testsrc2=size=160x90:rate=10:duration=2",
+                "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=16000:duration=2",
+                "-c:v", "libx264", "-bf", "0", "-pix_fmt", "yuv420p", "-c:a", "aac", "-y"])
+            .arg(root.path().join("media/original.mp4")).status().unwrap();
+        assert!(status.success());
+        let cache = prepare(root.path(), root.path()).unwrap().unwrap();
+        let view = projection(root.path(), &cache, &publication).unwrap();
+        assert_eq!(view["timeline_origin_ms"], 0.0);
+        assert_eq!(view["hls"], true);
+        // Old derived caches have no timeline metadata; inspect their actual bytes.
+        fs::write(cache.join("info.json"), r#"{"time_base":[1,10240]}"#).unwrap();
+        assert_eq!(projection(root.path(), &cache, &publication).unwrap()["hls"], true);
+    }
 
     #[test]
     fn playback_files_require_a_completed_cache_and_known_leaf() {

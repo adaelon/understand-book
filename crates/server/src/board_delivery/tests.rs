@@ -11,7 +11,8 @@ fn wb4_final_and_interrupted_runs_keep_parts_without_copying_the_whole_answer() 
         let original = read_board(&fixture);
         let parts = fixture.outcome.answer_view.as_ref().unwrap().parts.clone();
         let part_text = parts.iter().filter_map(|part| match part {
-            AgentAnswerPart::Markdown { text } => Some(text.as_str()), _ => None,
+            AgentAnswerPart::Markdown { text } => Some(text.as_str()),
+            AgentAnswerPart::MusicExample { example } => Some(example.label.as_str()), _ => None,
         }).collect::<Vec<_>>().join("\n\n");
         let mut item = original.items[0].clone();
         item.item_id = "wb4-formal-part-answer".into();
@@ -171,6 +172,7 @@ fn fixture(logged: bool) -> FollowUpFixture {
             ..Default::default()
         }),
         None,
+        false,
         NOW,
     )
     .unwrap();
@@ -253,6 +255,7 @@ fn wb2_delivery_retains_complete_answer_sources_and_scene_then_reuses_same_recei
         .iter()
         .filter_map(|part| match part {
             AgentAnswerPart::Markdown { text } => Some(text.as_str()),
+            AgentAnswerPart::MusicExample { example } => Some(example.label.as_str()),
             _ => None,
         })
         .collect::<Vec<_>>()

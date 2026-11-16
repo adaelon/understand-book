@@ -89,8 +89,13 @@ export async function importVideo(input: string | undefined, workspace: string, 
       throw new Error("Currently supported: MP4 with H.264 video and AAC audio");
     // Probe and decode the imported bytes, never the provenance path. Ignore attached cover pictures.
     await run(control.ffmpeg ?? videoTool('ffmpeg'), ["-v", "error", "-xerror", "-i", snapshot, "-map", `0:${video.index}`, "-frames:v", "1", "-f", "null", "-"], { windowsHide: true, signal: control.signal });
+    // MP4 start_time is an origin, not part of the playable duration. Stream ends
+    // avoid FFprobe versions that report an absolute container end as duration.
+    const origin = Number(info.format.start_time ?? 0);
+    const ends = [video, audio].map(stream => Number(stream.start_time ?? origin) + Number(stream.duration));
+    const duration = ends.every(Number.isFinite) ? Math.max(...ends) - origin : Number(info.format.duration);
     state.source = VideoSourceAssetZ.parse({ video: state.video, imported_path: importedPath,
-      original_path: state.original_path, duration_ms: Number(info.format.duration) * 1000, width: video.width, height: video.height });
+      original_path: state.original_path, duration_ms: duration * 1000, width: video.width, height: video.height });
     writeFileSync(path.join(workspace, "media/probe.json"), result.stdout);
     state.stage = "awaiting_transcript"; state.failure = null;
     save(workspace, state);

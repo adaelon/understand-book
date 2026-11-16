@@ -62,6 +62,16 @@ fn new_note(
     }
 }
 
+fn restore_source_publications(note: &mut WorkspaceNote) {
+    let Some(origin) = &note.origin else { return };
+    let Some(publication_id) = &origin.publication_id else { return };
+    for binding in &mut note.source_bindings {
+        if binding.book_id == origin.book_id && binding.publication_id.is_none() {
+            binding.publication_id = Some(publication_id.clone());
+        }
+    }
+}
+
 fn execute(
     user: &user_runtime::UserRuntime,
     scope: Option<&str>,
@@ -232,7 +242,8 @@ fn import(
                     view.parts
                         .iter()
                         .filter_map(|part| match part {
-                            AgentAnswerPart::Markdown { text } => Some(text.as_str()),
+                            AgentAnswerPart::Markdown { text } | AgentAnswerPart::SocraticQuestion { text, .. } => Some(text.as_str()),
+            AgentAnswerPart::MusicExample { example } => Some(example.label.as_str()),
                             _ => None,
                         })
                         .collect::<Vec<_>>()
@@ -395,6 +406,9 @@ fn import(
         }
         _ => return Err(invalid("Choose a delivered answer or a reading note")),
     };
+    // Ordinary reading chats can retain implicit bindings without a publication.
+    // Their original material, not the currently open reader, identifies it.
+    restore_source_publications(&mut note);
     if let Some(title) = input["title"].as_str() {
         note.title = title.into();
     }
@@ -416,6 +430,10 @@ pub(crate) fn route(
 ) -> Result<Value, ToolError> {
     if operation == "source.resolve" {
         return resolve_source(user, workspace, input);
+    }
+    if operation == "source.read" {
+        let binding = source_binding(user, workspace, input)?;
+        return crate::board_api::workspace_source_window(workspace, &binding, input);
     }
     if operation == "import" {
         return import(
@@ -547,8 +565,16 @@ pub(crate) fn source_binding(
     workspace: &reader_workspace::ReaderWorkspace,
     input: &Value,
 ) -> Result<SourceBinding, ToolError> {
-    let note = scoped_store(user, workspace.learning_workspace_id.as_deref())?
-        .read(string(input, "note_id")?)?;
+    scoped_source_binding(user, workspace.learning_workspace_id.as_deref(), input)
+}
+
+pub(crate) fn scoped_source_binding(
+    user: &user_runtime::UserRuntime,
+    scope: Option<&str>,
+    input: &Value,
+) -> Result<SourceBinding, ToolError> {
+    let mut note = scoped_store(user, scope)?.read(string(input, "note_id")?)?;
+    restore_source_publications(&mut note);
     let binding = note
         .source_bindings
         .iter()

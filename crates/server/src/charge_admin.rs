@@ -128,7 +128,7 @@ impl ModelSpendStore {
         let mut latest = latest_id.map(|id|crate::allowance_admin::period(&tx, owner, &id)).transpose()?.unwrap_or(Value::Null);
         if !latest.is_null() { latest["validity_state"] = json!(crate::allowance_admin::validity_state(&latest, now)); }
         let status = if !current.is_null() { "active" } else if latest.is_null() { "no_period" } else { crate::allowance_admin::validity_state(&latest, now) };
-        let offers = crate::allowance_offers::list(&tx, current["balance"]["allowance_basis"]["version"].as_str(), true)?;
+        let offers = crate::allowance_offers::list(&tx, !current.is_null() && current["balance"]["unlimited"] != true, true)?;
         Ok(json!({"current_allowance":current,"latest_allowance":latest,"status":status,
             "replenishment":{"offers":offers["items"]}}))
     }

@@ -7,7 +7,6 @@ import MarkdownIt from 'markdown-it';
 import ReaderWorkspace, { type WorkspaceAuxTab } from './ReaderWorkspace.vue';
 import RightRail from './RightRail.vue';
 import ConversationLearningGoal from './ConversationLearningGoal.vue';
-import TutorControl from './TutorControl.vue';
 import MobileLearningSheet from './MobileLearningSheet.vue';
 import type { TutorSession } from '../generated/TutorSession';
 import type { OuterOutcome } from '../api';
@@ -28,7 +27,6 @@ function turn(id: string, user: string, answer: string, teaching = false) {
 }
 const chat = ref([turn('preview-lesson', uiText('接着讲讲 SmartNIC，需求是怎么推动架构变化的？'), lesson, true)]);
 const agentInput = ref('');
-const teaching = ref(true);
 const learningSession = ref({ id: 'preview-learning', user_intent: uiText('学懂 1.4 需求如何推动架构设计'), status: 'active' } as TutorSession);
 const recordedAnswer = ref('');
 const hintSeen = ref(false);
@@ -46,8 +44,9 @@ if (embedded) {
     const url = new URL(input instanceof Request ? input.url : String(input), location.href);
     if (url.origin !== location.origin || !url.pathname.startsWith('/api/')) return realFetch(input, init);
     const body = typeof init?.body === 'string' ? JSON.parse(init.body) : {};
+    if (url.pathname === '/api/me/notes/attachments') return Response.json({ items: [] });
     if (url.pathname === '/api/tutor/activities') return Response.json({ activities: body.turn_id === 'preview-lesson' ? [{
-      delivery_ref: 'preview-response', status: teaching.value ? 'active' : 'paused', attempted: !!recordedAnswer.value, help_seen: hintSeen.value ? ['preview-hint'] : [],
+      delivery_ref: 'preview-response', status: 'active', attempted: !!recordedAnswer.value, help_seen: hintSeen.value ? ['preview-hint'] : [],
       move: { move_id: 'smartnic-response', prompt: uiText('网络带宽和策略复杂度增加时，为什么要把一部分工作交给 SmartNIC？\n\n试着把「需求 → 资源 → 工作去向」连起来。'), actions: ['submit', 'revise', 'request_hint', 'skip'] },
       assessment: recordedAnswer.value ? { status: 'unassessed', action_ref: 'preview-record' } : null,
     }] : [] });
@@ -72,11 +71,6 @@ function clarify() {
   chat.value.push(turn(`preview-${chat.value.length}`, uiText('这一步没跟上'), uiText('我们换个角度看。\n\n把 CPU 想成同时做两件事的人：一边运行应用，一边处理网络数据。现在网络工作越来越多，他花在应用上的时间就会减少。\n\nSmartNIC 像一个能分担网络工作的帮手。重点是**把适合的工作交出去，释放 CPU 的时间**。')));
 }
 function openRecords(title = uiText('我的理解')) { recordsTitle.value = title; recordsOpen.value = true; }
-function toggleTeaching() {
-  teaching.value = !teaching.value;
-  learningSession.value.status = teaching.value ? 'active' : 'paused';
-  window.dispatchEvent(new Event('tutor-state-changed'));
-}
 async function receivePreviewState(event: MessageEvent) {
   if (event.origin !== location.origin || event.source !== window.parent || !event.data?.previewState) return;
   recordsOpen.value = false;
@@ -124,11 +118,10 @@ onBeforeUnmount(() => { if (embedded) window.fetch = realFetch; window.removeEve
       <aside class="left-rail"><p>{{ uiText('1.4 需求如何推动架构设计') }}</p></aside><div class="resize-handle resize-handle-left" />
       <main class="reader-pane preview-original"><span>{{ uiText('AI 基础设施 · 1.4.2') }}</span><h1>SmartNIC</h1><p>{{ uiText('网络带宽提高，虚拟网络策略也日趋复杂。SmartNIC 能够在网卡上执行部分数据处理，让网络工作有了新的分工方式。') }}</p><p>{{ uiText('读到这里，可以打开问答，继续梳理需求、资源与架构之间的联系。') }}</p><button @click="workspace?.showAssistant('agent')">{{ uiText('继续问这本书 →') }}</button></main>
       <div class="resize-handle resize-handle-right" />
-      <RightRail v-model:agent-input="agentInput" :chat="chat" :chat-sessions="[]" active-chat-session-id="preview-chat" :fullscreen="fullscreen" :sending="false" :learning-title="learningSession.user_intent" :learning-attention="teaching ? '' : uiText('连续教学已暂停')" :tutor-enabled="teaching" :requested-tab="requestedTab" :requested-tab-revision="requestedTabRevision" :selected-lid="null" :selected-formula="null" :context-notes="[]" :context-highlights="[]" :render-markdown="text => markdown.render(text)" :eff-label="() => ''" :eff-state="() => undefined" :is-goto="() => false" :show-effect-primary="() => false" :show-effect-secondary="() => false" :effect-primary-label="() => ''" :effect-secondary-label="() => ''" :goto-back="() => ''" :ask-draft="null" @toggle-fullscreen="fullscreen = !fullscreen" @return-reading="fullscreen = false; workspace?.showReader()" @workspace-menu="openRecords(uiText('阅读设置'))" @send-agent="sendQuestion" @clarify-answer="clarify" @new-chat="chat = []; agentInput = ''">
+      <RightRail v-model:agent-input="agentInput" :chat="chat" :chat-sessions="[]" active-chat-session-id="preview-chat" :fullscreen="fullscreen" :sending="false" :learning-title="learningSession.user_intent" :requested-tab="requestedTab" :requested-tab-revision="requestedTabRevision" :selected-lid="null" :selected-formula="null" :context-notes="[]" :context-highlights="[]" :render-markdown="text => markdown.render(text)" :eff-label="() => ''" :eff-state="() => undefined" :is-goto="() => false" :show-effect-primary="() => false" :show-effect-secondary="() => false" :effect-primary-label="() => ''" :effect-secondary-label="() => ''" :goto-back="() => ''" :ask-draft="null" @toggle-fullscreen="fullscreen = !fullscreen" @return-reading="fullscreen = false; workspace?.showReader()" @workspace-menu="openRecords(uiText('阅读设置'))" @send-agent="sendQuestion" @clarify-answer="clarify" @new-chat="chat = []; agentInput = ''">
         <template #learning-actions><button type="button" @click="openRecords()">{{ uiText('我的理解') }}</button></template>
         <template #learning-details><button type="button" @click="openRecords(uiText('学习详情'))">{{ uiText('学习详情') }}</button></template>
-        <template #learning-goal><ConversationLearningGoal :session="learningSession" :enabled="teaching" :busy="false" :available="true" :ready="true" :other-session="false" error="" @goal="learningSession = { ...learningSession, user_intent: $event }" @manage="openRecords(uiText('学习详情'))" /></template>
-        <template #tutor-control><TutorControl :enabled="teaching" :label="teaching ? uiText('围绕你的目标逐步学') : uiText('连续教学已暂停')" :busy="false" :unavailable="false" error="" @toggle="toggleTeaching" /></template>
+        <template #learning-goal><ConversationLearningGoal :session="learningSession" :busy="false" :available="true" :ready="true" :other-session="false" error="" @goal="learningSession = { ...learningSession, user_intent: $event }" @manage="openRecords(uiText('学习详情'))" /></template>
       </RightRail>
     </ReaderWorkspace>
     <MobileLearningSheet :open="recordsOpen" :title="recordsTitle" @close="recordsOpen = false"><div class="preview-record"><small>{{ learningSession.user_intent }}</small><h3>{{ recordedAnswer ? uiText('你刚才的回答') : uiText('让理解慢慢积累') }}</h3><p>{{ recordedAnswer || uiText('回答这节的问题之后，你写下的理解会出现在这里。') }}</p><span v-if="recordedAnswer">{{ uiText('回答已记录，尚未评分。') }}</span></div></MobileLearningSheet>

@@ -9,7 +9,7 @@ import LearningRecordPreview from './LearningRecordPreview.vue';
 import UnderstandingSummaryCard from './UnderstandingSummary.vue';
 import { openPersonalNotes } from '../personal-notes';
 import { continueUnderstanding, type UnderstandingSummary } from '../note-thinking';
-const props = withDefaults(defineProps<{ visible?: boolean }>(), { visible: true });
+const props = withDefaults(defineProps<{ visible?: boolean; evidenceRef?: string }>(), { visible: true });
 const api = bindSceneApi(sharedApi);
 const view = ref<UnderstandingView | null>(null);
 const importedPreview = ref<{ sessionId: string; throughSeq: number } | null>(null);
@@ -52,7 +52,7 @@ let refreshPending = false;
 let notifyingChange = false;
 const capability: Record<string, string> = { recognition:uiText('识别'), recall:uiText('回忆'), explanation:uiText('解释'), relation:uiText('关系理解'), application:uiText('应用'), evaluation:uiText('来源辨析'), production:uiText('构造'), transfer:uiText('迁移') };
 const status: Record<string, string> = { correct:uiText('符合当时标准'), partial:uiText('部分符合当时标准'), incorrect:uiText('尚未符合当时标准'), uncertain:uiText('尚不能形成能力判断'), unassessed:uiText('尚未判定') };
-async function resumeUnderstanding(item:UnderstandingSummary,mode:'discuss'|'practice'){const note=item.note_refs[0];if(!note)return;try{await continueUnderstanding(item,note.note_id,mode);}catch(failure){error.value=(failure as Error).message;}}
+async function resumeUnderstanding(item:UnderstandingSummary,mode:'discuss'|'practice'){try{await continueUnderstanding(item,undefined,mode);}catch(failure){error.value=(failure as Error).message;}}
 const row = computed(() => active.value?.kind === 'object' ? active.value.row : null);
 const locked = computed(() => busy.value || !!pending.value);
 const explanationTitle = computed(() => historicalEvidence.value || row.value?.historical ? uiText('历史解释') : row.value ? uiText('最近解释') : uiText('当前解释'));
@@ -269,6 +269,7 @@ function onUnderstandingChanged() {
   if (canRefresh()) void refreshInBackground();
 }
 watch(() => props.visible, refreshWhenVisible);
+watch(() => props.evidenceRef, id => { if(id) void openItem({kind:'interpretation',id}); });
 onMounted(() => {
   window.addEventListener('tutor-state-changed', onUnderstandingChanged);
   document.addEventListener('visibilitychange', refreshWhenVisible);
@@ -279,7 +280,7 @@ onMounted(() => {
       if (action) { observer?.unobserve(entry.target); void recordFeedback(action); }
     }
   });
-  if (props.visible) void load();
+  if (props.visible) { if(props.evidenceRef) void openItem({kind:'interpretation',id:props.evidenceRef}); else void load(); }
 });
 onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); window.removeEventListener('tutor-state-changed', onUnderstandingChanged); document.removeEventListener('visibilitychange', refreshWhenVisible); });
 </script>
@@ -294,7 +295,7 @@ onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); 
     <p v-if="busy" role="status">{{ uiText('正在读取或保存…') }}</p>
     <p v-if="view?.stale" role="status">{{ uiText('有新的依据尚未合入此视图。') }}<button :disabled="locked" @click="load(true)">{{ uiText('更新理解视图') }}</button></p>
     <div v-show="!active" ref="listing" tabindex="-1" class="listing">
-      <section v-if="view?.current_understanding?.length" class="current-understanding" aria-label="当前理解与卡点"><h4>当前理解与卡点</h4><UnderstandingSummaryCard v-for="item in view.current_understanding" :key="`${item.focus_ref}:${item.capability}`" :item="item" :busy="locked"  @evidence="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @correct="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @note="openPersonalNotes" @discuss="resumeUnderstanding(item,'discuss')" @practice="resumeUnderstanding(item,'practice')" /></section>
+      <section v-if="view?.current_understanding?.length" class="current-understanding" aria-label="当前理解与卡点"><h4>当前理解与卡点</h4><UnderstandingSummaryCard v-for="item in view.current_understanding" :key="`${item.evidence_ref}`" :item="item" :busy="locked"  @evidence="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @correct="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @note="openPersonalNotes" @discuss="resumeUnderstanding(item,'discuss')" @practice="resumeUnderstanding(item,'practice')" /></section>
       <p v-if="view && !view.rows.length && !view.interpretations?.length && !view.current_understanding?.length" class="empty">{{ view.imported_records?.length ? uiText('当前工作区尚无新的理解记录') : uiText('尚无理解记录') }}{{ uiText('；相关提问、回应和活动表现会成为后续讲解的依据。') }}</p>
       <section v-if="view?.imported_records?.length" :aria-label="uiText('带入的原记录')" class="imported-records">
         <h4>{{ uiText('带入的原记录') }}</h4><p>{{ uiText('保留原聊天、解释与来源，作为这个目标的历史参考。新的理解会从当前工作区的交流中形成。') }}</p>

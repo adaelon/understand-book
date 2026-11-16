@@ -61,7 +61,7 @@ fn assert_tool_argument_recovery(case: &str) {
     let mut context = RunContext::new(new_session(), OuterConfig {
         max_turns: Some(if case == "budget" { 3 } else { 8 }), ..Default::default()
     }, adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active", "default_teaching_intent":"guided_inquiry",
+    context.tutor = Some(serde_json::json!({"status":"practice", "default_teaching_intent":"guided_inquiry",
         "current_design":{"design_ref":"design:current","design":design()}, "learner_context":{}}));
     let mut port = ArgumentRecoveryTeachingPort { inner: TeachingPort {
         inner: BorrowedResidentState { store: &mut store, reader: &mut reader },
@@ -179,7 +179,7 @@ fn distinct_argument_feedback_after_syntax_and_semantic_repair_reaches_delivery(
         turn_calls(vec![call("corrected", "tutor.step", &corrected.to_string())]),
     ], vec![]);
     let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active", "default_teaching_intent":"guided_inquiry",
+    context.tutor = Some(serde_json::json!({"status":"practice", "default_teaching_intent":"guided_inquiry",
         "current_design":{"design_ref":"design:current","design":design()}, "learner_context":{}}));
     let mut port = ArgumentRecoveryTeachingPort { inner: TeachingPort {
         inner: BorrowedResidentState { store: &mut store, reader: &mut reader },
@@ -198,7 +198,7 @@ fn distinct_argument_feedback_after_syntax_and_semantic_repair_reaches_delivery(
 
 fn assert_repair_request_prefixes(plans: &[crate::model_runtime::AgentRequestPlan]) {
     use crate::deepseek_messages::{request_projection, MessagesCapabilities, ToolUpdateMode};
-    let bodies: Vec<_> = plans.iter().map(|plan| request_projection("fixture", plan,
+    let bodies: Vec<_> = plans.iter().map(|plan| request_projection(crate::AgentReasoningEffort::default(), "fixture", plan,
         MessagesCapabilities { tool_update: ToolUpdateMode::InHistory, system_in_history: true }).unwrap().0).collect();
     for pair in bodies.windows(2) {
         assert_eq!(pair[0]["system"], pair[1]["system"], "repair must not rewrite the system prefix");
@@ -211,7 +211,7 @@ fn assert_repair_request_prefixes(plans: &[crate::model_runtime::AgentRequestPla
 
 #[test]
 fn tutor_repair_contract_measurement() {
-    let context = serde_json::json!({"status":"active"});
+    let context = serde_json::json!({"status":"practice"});
     let spec = crate::tutor::model_spec_for_context(&context).unwrap();
     let report = serde_json::json!({"schema_chars":spec.parameters.to_string().chars().count(),
         "schema_utf8_bytes":spec.parameters.to_string().len(), "description_chars":spec.description.chars().count(),

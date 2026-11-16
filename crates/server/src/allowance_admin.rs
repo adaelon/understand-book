@@ -16,6 +16,10 @@ pub(crate) struct Period {
     pub expires_at: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub basis: Option<AllowanceBasis>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub initial_grant_micro_cny: Option<MicroCny>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -126,7 +130,13 @@ fn normalized(text: &mut String, required: bool) -> Result<(), ToolError> {
 impl Mutation {
     pub fn normalize(&mut self) -> Result<(), ToolError> {
         match self {
-            Self::Period(p) => if let Some(b) = &mut p.basis { normalized(&mut b.version, true)?; b.validate()?; },
+            Self::Period(p) => {
+                if let Some(amount) = p.initial_grant_micro_cny {
+                    p.basis = Some(AllowanceBasis::for_budget(amount)?);
+                    normalized(p.reason.as_mut().ok_or_else(invalid)?, true)?;
+                }
+                if let Some(b) = &mut p.basis { normalized(&mut b.version, true)?; b.validate()?; }
+            },
             Self::Basis(b) => { normalized(&mut b.basis.version, true)?; b.basis.validate()?; },
             Self::PercentageAdjustment(a) => { normalized(&mut a.reason, true)?; normalized(&mut a.basis_version, true)?; },
             Self::PercentageCorrection(c) => { normalized(&mut c.reason, true)?; normalized(&mut c.basis_version, true)?; },
@@ -191,6 +201,9 @@ impl Mutation {
                 let id = uuid::Uuid::now_v7().to_string();
                 db.execute("INSERT INTO allowance_periods(period_id,user_id,starts_at,expires_at) VALUES(?,?,?,?)", params![id,owner,p.starts_at,p.expires_at]).map_err(storage)?;
                 if let Some(basis) = &p.basis { bind_basis(db, &id, basis)?; }
+                if let Some(amount) = p.initial_grant_micro_cny {
+                    adjust(db, actor, op, owner, &id, amount, p.reason.as_deref().ok_or_else(invalid)?, None, now)?;
+                }
                 id
             }
             Self::Basis(b) => {
@@ -419,6 +432,7 @@ fn adjust(
 pub(crate) fn period(db: &Connection, owner: &str, id: &str) -> Result<Value, ToolError> {
     let mut value = db.query_row("SELECT period_id,starts_at,expires_at,closed_at,revision FROM allowance_periods WHERE user_id=? AND period_id=?",params![owner,id],|r|Ok(json!({"period_id":r.get::<_,String>(0)?,"starts_at":r.get::<_,i64>(1)?,"expires_at":r.get::<_,i64>(2)?,"closed_at":r.get::<_,Option<i64>>(3)?,"revision":r.get::<_,i64>(4)?}))).optional().map_err(storage)?.ok_or_else(crate::authorization::missing)?;
     value["balance"] = json!(crate::account_allowance::balance(db, id)?);
+    value["is_plan"] = json!(db.query_row("SELECT EXISTS(SELECT 1 FROM cloud_plan_entitlements WHERE period_id=?)", [id], |r| r.get::<_, bool>(0)).map_err(storage)?);
     value["basis_status"] = json!(if value["balance"]["allowance_basis"].is_null() { "unbound" } else { "bound" });
     value["validity_state"] = json!(validity_state(&value, crate::multi_user_host::now()));
     Ok(value)

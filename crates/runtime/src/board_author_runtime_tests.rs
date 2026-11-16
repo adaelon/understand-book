@@ -200,7 +200,7 @@ fn native_board_conflict_finishes_with_host_notice_without_selecting_unreviewed_
         let mut port = ReadProgressPort {store:MemoryStore::open(tmp(&format!("board-conflict-notice-{scenario}"))).unwrap(),reader:Reader::new(&b,1),results:VecDeque::from([result]),reads:0};
         let snapshot = default_profile_snapshot(&b,&port.store,"t0");
         let mut context = RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
-        context.tutor=Some(json!({"status":"active","current_design":{"design_ref":"design:unreviewed"}}));
+        context.tutor=Some(json!({"status":"practice","current_design":{"design_ref":"design:unreviewed"}}));
         context.board_candidate_id=Some("board:run:1".into());
         context.teaching_delivery_draft=Some(json!({"text":"UNREVIEWED candidate explanation","moves":[]}));
         context.teaching_delivery_move_refs=vec!["unreviewed-move".into()];
@@ -322,7 +322,7 @@ fn native_delivery_cannot_replace_reviewed_teaching_text_or_stage_before_that_ch
             adapter.model_runtime_profile(),
         );
         context.tutor = Some(
-            serde_json::json!({"status":"active","current_design":{"design_ref":"design:reviewed"}}),
+            serde_json::json!({"status":"practice","current_design":{"design_ref":"design:reviewed"}}),
         );
         context.tutor_resolved = true;
         context.teaching_delivery_draft = Some(serde_json::json!({"text":accepted,"moves":[]}));
@@ -452,7 +452,7 @@ fn native_commit_requires_reviewed_local_scope_before_host_side_effects() {
         adapter.model_runtime_profile(),
     );
     context.tutor = Some(
-        serde_json::json!({"status":"active","current_design":{"design_ref":"design:reviewed"}}),
+        serde_json::json!({"status":"practice","current_design":{"design_ref":"design:reviewed"}}),
     );
     context.tutor_resolved = true;
     context.teaching_delivery_draft = Some(serde_json::json!({"text":accepted,"moves":[]}));
@@ -498,7 +498,7 @@ fn stale_native_draft_is_excluded_after_teaching_selection_changes() {
         OuterConfig::default(),
         adapter.model_runtime_profile(),
     );
-    context.tutor = Some(serde_json::json!({"status":"active"}));
+    context.tutor = Some(serde_json::json!({"status":"practice"}));
     context.tutor_resolved = true;
     context.teaching_delivery_draft =
         Some(serde_json::json!({"text":"Corrected teaching interpretation"}));
@@ -514,4 +514,19 @@ fn stale_native_draft_is_excluded_after_teaching_selection_changes() {
         context.accepted_board_text().is_none(),
         "a later unfinished teaching revision removes delivery eligibility"
     );
+}
+
+#[test]
+fn unavailable_preview_stops_before_another_model_call_and_retains_receipt() {
+    let b=book();
+    let adapter=RequestPlanRecordingAdapter::new(vec![turn_calls(vec![call("preview","board.author",r#"{"operation":"preview","candidate_revision":1}"#)]),turn_final("must not be sampled")],vec![]);
+    let mut port=ReadProgressPort { store:MemoryStore::open(tmp("unavailable-board-preview")).unwrap(),reader:Reader::new(&b,1),reads:0,
+        results:VecDeque::from([json!({"error_code":"BOARD_PREVIEW_UNAVAILABLE","category":"unavailable","message":"browser missing"})]) };
+    let snapshot=default_profile_snapshot(&b,&port.store,"t0");
+    let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+    let error=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+        &mut EphemeralCompactionCheckpointSink::default(),"预览已有画板草稿","t0").unwrap_err();
+    assert_eq!(error.error_code,"BOARD_PREVIEW_UNAVAILABLE");
+    assert_eq!(port.reads,1);assert_eq!(adapter.seen_plans.borrow().len(),1);
+    assert!(context.messages.iter().any(|m|m.tool_call_id.as_deref()==Some("preview") && m.content.as_deref().is_some_and(|s|s.contains("BOARD_PREVIEW_UNAVAILABLE"))));
 }

@@ -100,6 +100,11 @@ impl<P: AppStatePort> ResidentStatePort for RuntimeStatePort<'_, P> {
         let manifest = self.scope.reading_book().load_music_source(&self.scope.book_dir)?;
         read_tools::music::read(&manifest, &declared, &request)
     }
+    fn music_example_source(&mut self, reference: &base_schema::PublishedBookRef) -> Result<base_schema::MusicSourceManifest, ToolError> {
+        self.port.with_app(|state| self.scope.check_owner(state))?;
+        if reference != &crate::music_interact::publication(&self.scope.book_dir)? { return Err(runtime::music::unavailable()); }
+        self.scope.reading_book().load_music_source(&self.scope.book_dir)
+    }
     fn interact_music(&mut self, request: runtime::music::MusicInteractRequest, cancellation: &CancellationToken) -> Result<runtime::music::MusicPlaybackReceipt, ToolError> {
         let stream = self.port.with_app(|state| {
             self.scope.check_workspace(state)?;

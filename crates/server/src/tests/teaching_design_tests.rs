@@ -1,5 +1,6 @@
 //! Delivery and response boundaries for the ordinary teaching loop.
 use super::*;
+use crate::tests::tutor_loop_tests::prepare_activity_chat as prepare_agent_chat;
 use memory::teaching::{TeachingEvent, TeachingFact};
 
 // Relationship identity is added by selection; the inherited teaching meaning
@@ -51,6 +52,62 @@ fn complete(state:&mut AppState,turn:&AgentTurnRef,selected:&Value,incomplete:bo
     output.teaching_delivery_move_refs=serde_json::from_value(selected["delivery_move_refs"].clone()).unwrap();
     output.incomplete=incomplete;
     super::tutor_loop_tests::finish(state,turn,&output);
+}
+
+#[test]
+fn teaching_design_direct_reply_keeps_sources_expression_and_prior_help_without_a_plan() {
+    let (_root,mut state)=fixture();
+    let first=prepare_agent_chat(&mut state,r#"{"message":"Why does stopping count in this trip?"}"#,"first").unwrap_or_else(|e|panic!("{}",e.body));
+    let tutor_session=first.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].as_str().unwrap();
+    let fact_ref=format!("usage:{tutor_session}:user:{}",first.turn_ref.turn_id);
+    let mut reply=select_request("direct","unused",false);
+    reply["move"].as_object_mut().unwrap().remove("design_ref");
+    reply["move"].as_object_mut().unwrap().remove("block_refs");
+    reply["move"]["responds_to"]=json!({"fact_refs":[fact_ref],"disposition":"addressed"});
+    reply["move"]["delivery_text"]=json!("The trip runs from departure to arrival; the stop lies inside this interval.");
+    assert!(teaching::preflight_step(&state.private_context(),&first.turn_ref,&reply,&[],&[]).is_err(),"direct replies must still read their exact source");
+    let mut missing=reply.clone();missing["move"].as_object_mut().unwrap().remove("target");
+    assert!(teaching::preflight_step(&state.private_context(),&first.turn_ref,&missing,&[],&[range()]).is_err());
+    let normalized=teaching::preflight_step(&state.private_context(),&first.turn_ref,&reply,&[],&[range()]).unwrap();
+    assert!(normalized["move"]["design_ref"].is_null());
+    assert!(normalized["learner_grounding"]["expressions"].as_array().unwrap().iter().any(|expression|expression["text"]=="Why does stopping count in this trip?"));
+    let selected=call(&state,&first.turn_ref,normalized);
+    complete(&mut state,&first.turn_ref,&selected,false);
+    let second=prepare_agent_chat(&mut state,r#"{"message":"So the denominator includes the stopped interval?"}"#,"second").unwrap_or_else(|e|panic!("{}",e.body));
+    let context=second.tutor.as_ref().unwrap();
+    assert!(context["current_design"].is_null());
+    let grounding=&context["learner_context"]["learner_grounding"];
+    assert!(grounding["delivered_support"].as_array().unwrap().iter().any(|help|help["answer"]=="The trip runs from departure to arrival; the stop lies inside this interval."));
+    assert!(grounding["expressions"].as_array().unwrap().iter().any(|expression|expression["text"]=="Why does stopping count in this trip?"));
+    assert!(grounding["interpretations"].as_array().unwrap().is_empty(),"delivery alone never establishes understanding");
+}
+
+#[test]
+fn teaching_design_direct_clarification_preserves_plan_and_resolves_pending_invitation() {
+    let (_root,mut state)=fixture();
+    let first=prepare_agent_chat(&mut state,r#"{"message":"Help me compare these trips."}"#,"first").unwrap_or_else(|e|panic!("{}",e.body));
+    let accepted=call(&state,&first.turn_ref,design_request("course",None));
+    let design_ref=accepted["design_ref"].as_str().unwrap();
+    let selection=call(&state,&first.turn_ref,select_request("invite",design_ref,true));
+    complete(&mut state,&first.turn_ref,&selection,false);
+    let second=prepare_agent_chat(&mut state,r#"{"message":"Please first explain why the time must be positive."}"#,"second").unwrap_or_else(|e|panic!("{}",e.body));
+    let pending=second.tutor.as_ref().unwrap()["learner_context"]["pending_response_invitation"]["delivery_ref"].clone();
+    assert!(pending.is_string());
+    let mut local=select_request("clarification",design_ref,false);
+    local["move"].as_object_mut().unwrap().remove("design_ref");
+    local["move"].as_object_mut().unwrap().remove("block_refs");
+    local["move"]["target"]["learning_focus"]=json!("Positive elapsed time");
+    assert!(teaching::preflight_step(&state.private_context(),&second.turn_ref,&local,&[],&[range()]).is_err(),"a direct reply must explicitly handle the existing invitation");
+    local["move"]["responds_to"]=json!({"invitation_ref":pending,"disposition":"deferred"});
+    let normalized=teaching::preflight_step(&state.private_context(),&second.turn_ref,&local,&[],&[range()]).unwrap();
+    assert!(normalized["move"]["design_ref"].is_null());
+    let selection=call(&state,&second.turn_ref,normalized);
+    complete(&mut state,&second.turn_ref,&selection,false);
+    let third=prepare_agent_chat(&mut state,r#"{"message":"Return to the comparison."}"#,"third").unwrap_or_else(|e|panic!("{}",e.body));
+    let context=third.tutor.as_ref().unwrap();
+    assert_eq!(context["current_design"]["design_ref"],design_ref);
+    assert_eq!(context["learner_context"]["current_target"]["learning_focus"],target()["learning_focus"],"a local clarification does not overwrite the continuing plan");
+    call(&state,&third.turn_ref,select_request("resume",design_ref,false));
 }
 
 #[test]
@@ -394,6 +451,27 @@ fn teaching_design_ordinary_support_and_remaining_inference_survive_a_focus_chan
     }
     let original:Value=serde_json::from_str(&full).unwrap();
     assert_eq!(original["content"]["response"],before_quote,"a truncated working preview must retain a readable original fact");
+}
+
+#[test]
+fn socratic_tutor_invitation_stays_in_the_chat_that_delivered_it() {
+    let (_root, mut state) = fixture();
+    let first = prepare_agent_chat(&mut state, r#"{"message":"Explain the time for this trip."}"#, "now").unwrap_or_else(|e| panic!("{}", e.body));
+    let design = call(&state, &first.turn_ref, design_request("socratic", None));
+    let mut invite = select_request("compare", design["design_ref"].as_str().unwrap(), true);
+    invite["move"]["response_expectation"]["socratic"] = json!(true);
+    let selected = call(&state, &first.turn_ref, invite);
+    complete(&mut state, &first.turn_ref, &selected, false);
+    let store = state.user.learning_store().unwrap();
+    let delivery = store.teaching_deliveries(&first.turn_ref.session_id, &first.turn_ref.turn_id).unwrap().remove(0);
+    let binding = &delivery.binding;
+    assert_eq!(delivery.payload["move"]["response_expectation"]["socratic"], true);
+    assert!(delivery.payload["assessment_contract_ref"].is_null());
+    assert!(store.pending_response_invitation_in_chat(binding).unwrap().is_some());
+    drop(store);
+    post(&mut state, "/agent/new", "{}");
+    let other = prepare_agent_chat(&mut state, r#"{"message":"Explain something else."}"#, "now").unwrap_or_else(|e| panic!("{}", e.body));
+    assert!(other.tutor.unwrap()["learner_context"]["pending_response_invitation"].is_null());
 }
 
 #[test]
@@ -756,11 +834,11 @@ fn teaching_select_preserves_immutable_identity_without_content_review() {
         }
         fn chat(&self,request:&AgentRequestPlan)->Result<AssistantTurn,AdapterError> { self.inner.chat(request) }
     }
-    let tool=|id:&str,name:&str,arguments:Value| AssistantTurn {
+    let tool=|id:&str,name:&str,mut arguments:Value| { if name == "tutor.step" && arguments["operation"] == "select" { arguments["move"].as_object_mut().unwrap().remove("capability"); } AssistantTurn {
         provider_continuation:None,text:None,
         tool_calls:vec![ToolCall {id:id.into(),name:name.into(),arguments:arguments.to_string()}],
         usage_total_tokens:Some(5),
-    };
+    }};
     let (_root,mut state)=fixture();
     let run=prepare_agent_chat(&mut state,r#"{"message":"Explain whole-trip speed."}"#,"now").unwrap_or_else(|e|panic!("{}",e.body));
     let turn=run.turn_ref.clone();
@@ -865,56 +943,32 @@ fn teaching_select_validation_errors_identify_the_missing_field_and_invalid_sour
 }
 
 #[test]
-fn teaching_intent_saved_goal_without_mode_repairs_origin_and_delivers_the_same_design() {
-    // Actual video/music start requests use this UI-generated message after saving a goal.
-    // The goal's explanation request must not manufacture a session mode.
+fn saved_learning_goal_keeps_its_intent_without_selecting_a_teaching_mode() {
     for mode in [None, Some("direct_explanation"), Some("guided_inquiry")] {
         let (_root,mut state)=fixture();
         let view=state.user.learning_store().unwrap().state().unwrap();
-        let goal="先讲解一个关系，再根据我的回应继续；保留可回看的来源。";
-        let mutation:memory::learning::TutorMutation=serde_json::from_value(json!({
-            "operation_id":"saved-media-goal","expected_revision":view.control.revision,
+        let goal="Explain one relationship and keep its sources available.";
+        state.user.learning_store().unwrap().mutate(&serde_json::from_value(json!({
+            "operation_id":"saved-goal","expected_revision":view.control.revision,
             "action":{"kind":"start","user_intent":goal,"explicit_constraints":[],
                 "material_scope":[{"source_id":state.workspace.book.base.book_id,"scope_refs":[],"role":"primary"}],
-                "default_teaching_intent":mode}})).unwrap();
-        state.user.learning_store().unwrap().mutate(&mutation,"goal").unwrap();
+                "default_teaching_intent":mode}})).unwrap(),"goal").unwrap();
         let started=teaching::start_request(&state.private_context(),"start").unwrap();
-        let run=prepare_agent_chat(&mut state,&json!({"message":started["message"]}).to_string(),"now")
+        let run=crate::prepare_agent_chat(&mut state,&json!({"message":started["message"]}).to_string(),"now")
             .unwrap_or_else(|error|panic!("{}",error.body));
         let context=run.tutor.as_ref().unwrap();
+        assert_eq!(context["status"],"observing");
         assert_eq!(context["user_intent"],goal);
-        assert_eq!(context["default_teaching_intent"],json!(mode));
-        assert_eq!(context["current_request"],"请继续本次学习，结合当前阅读位置和已有回应，选择一个有依据的教学动作。");
-        let accepted=call(&state,&run.turn_ref,design_request("saved-goal-design",None));
-        let mut request=select_request("saved-goal-explain",accepted["design_ref"].as_str().unwrap(),false);
-        request["move"]["kind"]=json!("explain");
-        request["move"]["intent_origin"]=json!("session_default");
-        request["move"]["interaction_intent"]=json!("neutral");
-        let failure=teaching::preflight_step(&state.private_context(),&run.turn_ref,&request,&[],&[range()]).unwrap_err();
-        assert_eq!(failure.error.error_code,"TEACHING_INVALID");
-        if let Some(expected)=mode {
-            assert!(failure.error.message.contains(&format!("interaction_intent={expected}")),"{}",failure.error.message);
-            request["move"]["interaction_intent"]=json!(expected);
-        } else {
-            assert!(failure.error.message.contains("default_teaching_intent=null"),"{}",failure.error.message);
-            assert!(failure.error.message.contains("intent_origin=neutral"),"{}",failure.error.message);
-            assert!(failure.error.message.contains("kind=explain"),"{}",failure.error.message);
-            // The second real failed attempt changed intent but kept the invalid origin.
-            request["move"]["interaction_intent"]=json!("direct_explanation");
-            let same_failure=teaching::preflight_step(&state.private_context(),&run.turn_ref,&request,&[],&[range()]).unwrap_err();
-            assert_eq!(same_failure.error.message,failure.error.message);
-            request["move"]["interaction_intent"]=json!("neutral");
-            request["move"]["intent_origin"]=json!("neutral");
-        }
-        let normalized=teaching::preflight_step(&state.private_context(),&run.turn_ref,&request,&[],&[range()]).unwrap();
-        assert_eq!(normalized["move"]["design_ref"],accepted["design_ref"]);
-        let selected=call(&state,&run.turn_ref,normalized);
-        complete(&mut state,&run.turn_ref,&selected,false);
-        let delivered=state.user.learning_store().unwrap().teaching_deliveries(&run.turn_ref.session_id,&run.turn_ref.turn_id).unwrap();
-        assert_eq!(delivered.len(),1);
-        assert_eq!(delivered[0].payload["move"]["kind"],"explain");
-        assert_eq!(delivered[0].payload["move"]["intent_origin"],if mode.is_some(){"session_default"}else{"neutral"});
-        assert_eq!(delivered[0].payload["move"]["interaction_intent"],mode.unwrap_or("neutral"));
+        assert!(context["default_teaching_intent"].is_null());
+        assert!(context["current_design"].is_null());
+        assert_eq!(context["current_request"],started["message"]);
+        let turn=run.turn_ref.clone();
+        let answer="Elapsed time runs from departure to arrival, so a stop adds time without adding distance.";
+        let adapter=ChatStubAdapter::scripted(vec![AssistantTurn {provider_continuation:None,text:Some(answer.into()),tool_calls:vec![],usage_total_tokens:Some(5)}]);
+        let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,run,Default::default());
+        let reply:Value=serde_json::from_str(&result.reply.body).unwrap();
+        assert_eq!(reply["answer"],answer);assert_eq!(reply["incomplete"],false);
+        assert!(state.user.learning_store().unwrap().teaching_deliveries(&turn.session_id,&turn.turn_id).unwrap().is_empty());
     }
 }
 
@@ -1168,7 +1222,7 @@ fn purpose_discover_keeps_existing_stage_and_does_not_autostart() {
         post(&mut state,"/agent/new","{}");
         let before = state.user.learning_store().unwrap().state().unwrap();
         let input = purpose_input(&state,"discover","1","discover");
-        let run = prepare_agent_chat(&mut state,&input.to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
+        let run = crate::prepare_agent_chat(&mut state,&input.to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
         assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing");
         assert_eq!(run.tutor.as_ref().unwrap()["learning_purpose"],"discover");
         assert_eq!(run.tutor.as_ref().unwrap()["current_request"],"");
@@ -1177,28 +1231,18 @@ fn purpose_discover_keeps_existing_stage_and_does_not_autostart() {
 }
 
 #[test]
-fn purpose_stage_reuses_only_matching_purpose_scope_and_resumes_explicitly() {
-    let (_root,mut state) = chapter_fixture();
+fn purpose_entries_keep_the_explicit_scope_without_creating_teaching_stages() {
+    let (_root,mut state)=chapter_fixture();
     post(&mut state,"/agent/new","{}");
-    let mut previous = String::new();
-    for (index,purpose,chapter,same) in [(0,"understand","1",false),(1,"understand","1",true),
-        (2,"exam","1",false),(3,"exam","1",true),(4,"exam","2",false)] {
-        if index == 3 {
-            let view = state.user.learning_store().unwrap().state().unwrap();
-            state.user.learning_store().unwrap().mutate(&memory::learning::TutorMutation {
-                operation_id:"pause-purpose".into(),expected_revision:view.control.revision,
-                action:memory::learning::TutorAction::Pause { session_id:previous.clone() },
-            },"later").unwrap();
-        }
-        let input = purpose_input(&state,purpose,chapter,&format!("purpose-{index}"));
-        let run = prepare_agent_chat(&mut state,&input.to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
-        let context = run.tutor.as_ref().unwrap();
-        let current = context["binding"]["tutor_session_id"].as_str().unwrap().to_owned();
-        assert_eq!(context["status"],"active");
+    let before=state.user.learning_store().unwrap().state().unwrap();
+    for (index,purpose,chapter) in [(0,"understand","1"),(1,"understand","1"),(2,"exam","1"),(3,"exam","2")] {
+        let input=purpose_input(&state,purpose,chapter,&format!("purpose-{index}"));
+        let run=crate::prepare_agent_chat(&mut state,&input.to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
+        let context=run.tutor.as_ref().unwrap();
+        assert_eq!(context["status"],"observing");
         assert_eq!(context["learning_purpose"],purpose);
-        assert_eq!(context["chapter_scope"]["chapter_lid"],chapter);
-        assert_eq!(current == previous,same,"purpose {purpose}, chapter {chapter}");
-        previous = current;
+        assert_eq!(context["current_action"]["source_bindings"][0]["start_lid"],chapter);
+        assert_eq!(state.user.learning_store().unwrap().state().unwrap(),before);
         super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
     }
 }
@@ -1225,46 +1269,66 @@ fn chapter_entry_resolves_real_heading_without_claiming_source_evidence() {
 }
 
 #[test]
-fn chapter_scope_is_frozen_before_binding_and_survives_navigation_and_reopen() {
-    let (root,mut state)=chapter_fixture();
-    let run=prepare_agent_chat(&mut state,r#"{"message":"带我读这一章。我知道术语，但不知道用途。"}"#,"now")
-        .unwrap_or_else(|e|panic!("{}",e.body));
-    let context=run.tutor.as_ref().unwrap();
-    assert_eq!(context["chapter_scope"]["chapter_lid"],"1");
-    let first=context["binding"]["tutor_session_id"].clone();
-    assert_eq!(context["material_scope"][0]["scope_refs"],json!(["1"]));
+fn purpose_entry_keeps_a_real_subsection_through_preparation() {
+    use base_schema::{LidNode, NodeKind, Span};
+    let source = "# Material\n## Introduction\nAlpha relation.\n## Other\nBeta relation.\n";
+    let split = source.find("## Other").unwrap();
+    let mut base = sample_base();
+    base.lid_nodes = vec![
+        LidNode { lid:"1".into(), path:vec![1], kind:NodeKind::Chapter, span:Span {start:0,end:source.len()}, children:vec!["1.1".into(),"1.2".into()] },
+        LidNode { lid:"1.1".into(), path:vec![1,1], kind:NodeKind::Section, span:Span {start:11,end:split}, children:vec!["1.1.1".into()] },
+        LidNode { lid:"1.1.1".into(), path:vec![1,1,1], kind:NodeKind::Paragraph, span:Span {start:27,end:split}, children:vec![] },
+        LidNode { lid:"1.2".into(), path:vec![1,2], kind:NodeKind::Section, span:Span {start:split,end:source.len()}, children:vec!["1.2.1".into()] },
+        LidNode { lid:"1.2.1".into(), path:vec![1,2,1], kind:NodeKind::Paragraph, span:Span {start:split+9,end:source.len()}, children:vec![] },
+    ];
+    let (_root, mut state) = super::tutor_loop_tests::fixture_with_book(false, Book::new(base,source), source);
+    post(&mut state, "/agent/new", "{}");
+    let mut input = purpose_input(&state,"understand","1.1","subsection-entry");
+    input["message"] = json!("Why does this relation hold?");
+    let run = crate::prepare_agent_chat(&mut state,&input.to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
+    let context = run.tutor.as_ref().unwrap();
+    assert_eq!(context["status"],"observing");
+    assert_eq!(context["current_action"]["accepted_request"],"带我读懂小节「Introduction」");
+    assert_eq!(context["current_request"],"Why does this relation hold?");
+    assert_eq!(context["current_action"]["source_bindings"][0]["start_lid"],"1.1");
+    assert!(context["current_action"]["source_excerpt"].is_null());
+    assert!(crate::interaction_input::chapter_title(&state.workspace.book,"1.1").is_err());
+}
+
+#[test]
+fn purpose_entry_keeps_each_current_request_in_the_same_source_scope() {
+    let (_root,mut state)=chapter_fixture();post(&mut state,"/agent/new","{}");
+    let before=state.user.learning_store().unwrap().state().unwrap();
+    for (index,message) in ["Understand the basic relation","Explore its limiting conditions"].into_iter().enumerate() {
+        let mut input=purpose_input(&state,"understand","1",&format!("purpose-{index}"));input["message"]=json!(message);
+        let run=crate::prepare_agent_chat(&mut state,&input.to_string(),"now").unwrap_or_else(|e|panic!("{}",e.body));
+        let context=run.tutor.as_ref().unwrap();
+        assert_eq!(context["status"],"observing");assert_eq!(context["current_request"],message);
+        assert_eq!(context["current_action"]["user_supplement"],message);
+        assert_eq!(state.user.learning_store().unwrap().state().unwrap(),before);
+        super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
+    }
+}
+
+#[test]
+fn chapter_entry_scope_survives_navigation_and_answer_continuation() {
+    let (root,mut state)=chapter_fixture();post(&mut state,"/agent/new","{}");
+    let input=purpose_input(&state,"understand","1","chapter-first");
+    let run=crate::prepare_agent_chat(&mut state,&input.to_string(),"first").unwrap_or_else(|e|panic!("{}",e.body));
+    let original=run.tutor.as_ref().unwrap()["current_action"]["source_bindings"].clone();
+    assert_eq!(original[0]["start_lid"],"1");
     super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
     state.workspace.reader.goto_lid(&state.workspace.book,&mut state.user.store,"2.1","later").unwrap();
-    assert_eq!(state.workspace.reader.state().viewport.anchor_lid,"2.1");
     state.user.store=MemoryStore::open(root.path().join("memory.json")).unwrap();
-    {
-        // A fresh SQLite connection rehydrates persisted TutorSession scope.
-        let reopened=memory::learning::LearningStore::open(&root.path().join("learning.db"),false).unwrap();
-        let persisted=reopened.state().unwrap();
-        assert_eq!(persisted.sessions[first.as_str().unwrap()].material_scope[0].scope_refs,vec!["1"]);
-    }
-    let continued=prepare_agent_chat(&mut state,r#"{"message":"继续"}"#,"later")
-        .unwrap_or_else(|e|panic!("{}",e.body));
-    assert_eq!(continued.tutor.as_ref().unwrap()["chapter_scope"]["chapter_lid"],"1");
-    assert_eq!(continued.tutor.as_ref().unwrap()["binding"]["tutor_session_id"],first);
-    let chat=state.user.agent_history.sessions.iter().find(|s| s.id == continued.turn_ref.session_id).unwrap();
-    assert_eq!(chat.goals.last().unwrap().related_goal_id.as_deref(),chat.turns[0].goal_ref.as_ref().map(|r|r.id.as_str()));
-    super::tutor_loop_tests::finish(&mut state,&continued.turn_ref,&super::tutor_loop_tests::outcome(None));
-    let changed=prepare_agent_chat(&mut state,r#"{"message":"带我读这一章"}"#,"later")
-        .unwrap_or_else(|e|panic!("{}",e.body));
-    assert_eq!(changed.tutor.as_ref().unwrap()["chapter_scope"]["chapter_lid"],"2");
-    let second=changed.tutor.as_ref().unwrap()["binding"]["tutor_session_id"].clone();
-    assert_ne!(second,first);
-    super::tutor_loop_tests::finish(&mut state,&changed.turn_ref,&super::tutor_loop_tests::outcome(None));
-    let head=state.user.agent_history.sessions.iter().find(|s|Some(s.id.as_str())==state.workspace.selected_chat.as_deref())
-        .and_then(|s|s.turns.last()).map(|t|&t.turn_id);
-    let ui=json!({"message":"","entry_action":"guide_chapter","chapter_lid":"2","session_id":state.workspace.selected_chat,
-        "client_request_id":"same-chapter","expected_chat_head":head,
-        "source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint()});
-    let same=prepare_agent_chat(&mut state,&ui.to_string(),"later").unwrap_or_else(|e|panic!("{}",e.body));
-    assert_eq!(same.tutor.as_ref().unwrap()["binding"]["tutor_session_id"],second);
-    assert_eq!(same.tutor.as_ref().unwrap()["current_action"]["accepted_request"],"带我读《Second chapter》这一章");
-    assert!(same.agent_message.contains("带我读《Second chapter》这一章"));
+    let input=json!({"message":"","entry_action":"continue_answer","answer_ref":{"turn_id":run.turn_ref.turn_id},
+        "session_id":run.turn_ref.session_id,"expected_chat_head":run.turn_ref.turn_id,"client_request_id":"chapter-continue"});
+    let next=crate::prepare_agent_chat(&mut state,&input.to_string(),"later").unwrap_or_else(|e|panic!("{}",e.body));
+    assert_eq!(next.tutor.as_ref().unwrap()["status"],"observing");
+    assert_eq!(next.tutor.as_ref().unwrap()["current_action"]["source_bindings"],original);
+    super::tutor_loop_tests::finish(&mut state,&next.turn_ref,&super::tutor_loop_tests::outcome(None));
+    let input=purpose_input(&state,"understand","2","chapter-second");
+    let changed=crate::prepare_agent_chat(&mut state,&input.to_string(),"later").unwrap_or_else(|e|panic!("{}",e.body));
+    assert_eq!(changed.tutor.as_ref().unwrap()["current_action"]["source_bindings"][0]["start_lid"],"2");
 }
 
 #[test]
@@ -1277,7 +1341,7 @@ fn chapter_natural_request_while_tutor_off_preserves_ordinary_reading() {
                 memory::learning::TutorAction::Pause { session_id:before.control.current_tutor_session_id.clone().unwrap() }
             } else { memory::learning::TutorAction::SetEnabled { enabled:false } } };
         state.user.learning_store().unwrap().mutate(&action,"now").unwrap();
-        let run=prepare_agent_chat(&mut state,r#"{"message":"带我读这一章"}"#,"later")
+        let run=crate::prepare_agent_chat(&mut state,r#"{"message":"带我读这一章"}"#,"later")
             .unwrap_or_else(|e|panic!("{}",e.body));
         assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing");
         let after=state.user.learning_store().unwrap().state().unwrap();
@@ -1291,26 +1355,17 @@ fn chapter_natural_request_while_tutor_off_preserves_ordinary_reading() {
 }
 
 #[test]
-fn chapter_continuation_does_not_reopen_an_ordinary_completed_goal() {
+fn ordinary_completed_answer_can_be_continued_without_a_teaching_stage() {
     let (_root,mut state)=chapter_fixture();
-    let run=prepare_agent_chat(&mut state,r#"{"message":"Explain average speed."}"#,"now")
-        .unwrap_or_else(|e|panic!("{}",e.body));
-    assert!(run.tutor.as_ref().unwrap()["chapter_scope"].is_null());
+    let run=crate::prepare_agent_chat(&mut state,r#"{"message":"Explain average speed."}"#,"now").unwrap_or_else(|e|panic!("{}",e.body));
     super::tutor_loop_tests::finish(&mut state,&run.turn_ref,&super::tutor_loop_tests::outcome(None));
-    let reply=prepare_agent_chat(&mut state,r#"{"message":"继续"}"#,"later").err().expect("ordinary completed Goal stays completed");
-    let error:Value=serde_json::from_str(&reply.body).unwrap();
-    assert_eq!(error["error_code"],"GOAL_NOT_FOUND");
-    // Starting a chapter does not make an earlier ordinary turn part of it.
-    let mut learning = state.user.learning_store().unwrap();
-    let view = learning.state().unwrap();
-    learning.mutate(&memory::learning::TutorMutation { operation_id:"new-chapter-after-answer".into(),
-        expected_revision:view.control.revision, action:memory::learning::TutorAction::Start {
-            user_intent:"Read first chapter".into(),explicit_constraints:vec![],default_teaching_intent:None,learning_purpose:None,
-            material_scope:vec![memory::learning::TutorMaterial { source_id:state.workspace.book.base.book_id.clone(),
-                scope_refs:vec!["1".into()],role:memory::learning::TutorMaterialRole::Primary }] } },"later").unwrap();
-    let reply=prepare_agent_chat(&mut state,r#"{"message":"继续"}"#,"later").err().expect("previous turn has no binding to this chapter");
-    let error:Value=serde_json::from_str(&reply.body).unwrap();
-    assert_eq!(error["error_code"],"GOAL_NOT_FOUND");
+    let before=state.user.learning_store().unwrap().state().unwrap();
+    let next=crate::prepare_agent_chat(&mut state,r#"{"message":"继续"}"#,"later").unwrap_or_else(|e|panic!("{}",e.body));
+    assert_eq!(next.tutor.as_ref().unwrap()["status"],"observing");
+    assert!(next.tutor.as_ref().unwrap()["current_design"].is_null());
+    assert_eq!(state.user.learning_store().unwrap().state().unwrap(),before);
+    let chat=state.user.agent_history.sessions.iter().find(|s|s.id==next.turn_ref.session_id).unwrap();
+    assert_eq!(chat.goals.last().unwrap().related_goal_id.as_deref(),chat.turns[0].goal_ref.as_ref().map(|g|g.id.as_str()));
 }
 
 #[test]
@@ -1322,9 +1377,12 @@ fn chapter_natural_request_uses_admitted_anchor_before_window_center() {
         assert_eq!(state.workspace.reader.state().viewport.anchor_lid,"1.1");
         let mut input=json!({"message":"带我读这一章"});
         if let Some(anchor)=input_anchor { input["question_anchor_lid"]=json!(anchor); }
-        let run=prepare_agent_chat(&mut state,&input.to_string(),"later")
+        let run=crate::prepare_agent_chat(&mut state,&input.to_string(),"later")
             .unwrap_or_else(|e|panic!("{}",e.body));
-        assert_eq!(run.tutor.as_ref().unwrap()["chapter_scope"]["chapter_lid"],if input_anchor.is_some() { "2" } else { "1" });
+        assert_eq!(run.tutor.as_ref().unwrap()["status"],"observing");
+        assert!(run.tutor.as_ref().unwrap()["chapter_scope"].is_null());
+        let turn=state.user.agent_history.sessions.iter().flat_map(|s|&s.turns).find(|t|t.turn_id==run.turn_ref.turn_id).unwrap();
+        assert_eq!(turn.question_anchor_lid.as_deref(),input_anchor);
     }
 }
 
@@ -1376,7 +1434,7 @@ fn agent_work_review_observing_reopens_without_an_active_course_or_learner_claim
     let before=state.user.learning_store().unwrap().state().unwrap();
     assert!(!before.control.enabled);
     assert!(before.sessions.is_empty());
-    let run=prepare_agent_chat(&mut state,r#"{"message":"Explain whole-trip average speed."}"#,"first")
+    let run=crate::prepare_agent_chat(&mut state,r#"{"message":"Explain whole-trip average speed."}"#,"first")
         .unwrap_or_else(|e|panic!("{}",e.body));
     let context=run.tutor.as_ref().unwrap();
     assert_eq!(context["status"],"observing");
@@ -1410,7 +1468,7 @@ fn agent_work_review_observing_reopens_without_an_active_course_or_learner_claim
     assert_eq!(persisted.kind,TeachingFact::AgentWorkReviewed);
     assert_eq!(persisted.payload,accepted);
     assert_eq!(json!(persisted.binding),context["binding"]);
-    let next=prepare_agent_chat(&mut state,r#"{"message":"So the stop counts too?"}"#,"second")
+    let next=crate::prepare_agent_chat(&mut state,r#"{"message":"So the stop counts too?"}"#,"second")
         .unwrap_or_else(|e|panic!("{}",e.body));
     let context=next.tutor.as_ref().unwrap();
     assert_eq!(context["status"],"observing");
@@ -1556,7 +1614,7 @@ fn om2_continuity_pairs_assessment_with_exact_attempt_and_filters_before_recency
 #[test]
 fn om2_continuity_does_not_rebind_old_source_work_to_a_new_revision() {
     let (_root,mut state)=fixture();
-    let first=prepare_agent_chat(&mut state,r#"{"message":"Words about the original source."}"#,"first").unwrap();
+    let first=crate::prepare_agent_chat(&mut state,r#"{"message":"Words about the original source."}"#,"first").unwrap();
     super::tutor_loop_tests::finish(&mut state,&first.turn_ref,&super::tutor_loop_tests::outcome(None));
     let original=first.tutor.as_ref().unwrap()["binding"]["source_revision"].clone();
     state.workspace.book=Arc::new(Book::new(sample_base(),"A revised source with a different definition."));

@@ -17,6 +17,38 @@ const md = new MarkdownIt({
 });
 md.use(katexPlugin, { throwOnError: false });
 
+// Imported Markdown uses these two attribute-free tags for mathematical notation.
+// Parse them as inline tokens so code/escapes keep their usual literal behavior.
+md.inline.ruler.before('html_inline', 'inline_script', (state, silent) => {
+  if (state.src[state.pos] !== '<') return false;
+  const match = /^<(sub|sup)>([^<>\n]*)<\/\1>/i.exec(state.src.slice(state.pos, state.posMax));
+  if (!match) return false;
+  if (!silent) {
+    const token = state.push('inline_script', match[1].toLowerCase(), 0);
+    token.content = match[2];
+    token.meta = { start: state.pos, end: state.pos + match[0].length };
+  }
+  state.pos += match[0].length;
+  return true;
+});
+md.renderer.rules.inline_script = (tokens, index) => {
+  const token = tokens[index];
+  return `<${token.tag}>${md.renderInline(token.content)}</${token.tag}>`;
+};
+
+/** Exclude only parsed script tags when aligning visible letters to the source. */
+export function inlineScriptSourceSyntax(source: string): Uint8Array | undefined {
+  if (!/<(?:sub|sup)>/i.test(source)) return undefined;
+  let syntax: Uint8Array | undefined;
+  for (const token of md.parseInline(source, {})[0].children ?? []) {
+    if (token.type !== 'inline_script') continue;
+    syntax ??= new Uint8Array(source.length);
+    syntax.fill(1, token.meta.start, token.meta.start + 5);
+    syntax.fill(1, token.meta.end - 6, token.meta.end);
+  }
+  return syntax;
+}
+
 // Answers also use TeX's \(...\) and \[...\] delimiters. Parse these before
 // Markdown's backslash escape rule; code spans and fenced blocks stay literal.
 md.inline.ruler.before("escape", "tex_bracket_math", (state, silent) => {
@@ -212,6 +244,21 @@ md.block.ruler.before('paragraph', 'source_table', (state, startLine, endLine, s
   token.content = renderTableSource(lines.join('\n')) + '\n';
   token.map = [startLine, next];
   state.line = next;
+  return true;
+}, { alt: ['paragraph'] });
+
+// Imported books use standalone empty anchors before headings. Keep their
+// targets without displaying HTML as prose; code and other HTML stay literal.
+md.block.ruler.before('paragraph', 'source_anchor', (state, startLine, _endLine, silent) => {
+  if (!state.env?.sourceExcerpt || state.sCount[startLine] - state.blkIndent >= 4) return false;
+  const line = state.src.slice(state.bMarks[startLine] + state.tShift[startLine], state.eMarks[startLine]);
+  const anchor = /^<a\s+(?:id|name)\s*=\s*(?:"([^"]+)"|'([^']+)')\s*>\s*<\/a>\s*$/i.exec(line);
+  if (!anchor) return false;
+  if (silent) return true;
+  const token = state.push('html_block', '', 0);
+  token.content = `<a id="${escapeHtml(anchor[1] ?? anchor[2])}"></a>\n`;
+  token.map = [startLine, startLine + 1];
+  state.line = startLine + 1;
   return true;
 }, { alt: ['paragraph'] });
 

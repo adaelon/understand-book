@@ -1,6 +1,19 @@
 use super::*;
 use memory::learning::{TutorAction, TutorMaterial, TutorMaterialRole, TutorMutation};
 
+// Real admission persists this binding before scheduling an observation.
+fn ensure_turn(user: &user_runtime::UserRuntime, workspace: Option<&str>, turn: &AgentTurnRef,
+    context: Option<&Value>, timestamp: &str) -> Result<(), ToolError> {
+    if let Some(context) = context {
+        let binding: TeachingBinding = serde_json::from_value(context["binding"].clone()).unwrap();
+        user.learning_store_for_workspace(workspace)?.append_teaching(&memory::teaching::TeachingEvent {
+            event_id:format!("binding:{}",turn.turn_id),binding,kind:TeachingFact::TurnBound,
+            causal_refs:vec![],payload:context.clone(),occurred_at:timestamp.into(),
+        })?;
+    }
+    super::ensure_turn(user,workspace,turn,context,timestamp)
+}
+
 #[test]
 fn coach_media_question_keeps_locator_without_sending_image_pixels_as_text() {
     let original = json!({"publication":{"book_id":"video","publication_id":"v1"},
@@ -37,7 +50,7 @@ fn bound_turn(stage: &str, source: &str, revision: &str, id: &str) -> (AgentTurn
     let binding = TeachingBinding { tutor_session_id: stage.into(), session_revision: 1, control_revision: 1,
         source_id: source.into(), source_revision: revision.into(), map_revision: None,
         chat_session_id: turn.session_id.clone(), turn_id: turn.turn_id.clone() };
-    (turn, json!({"status":"active","binding":binding,"workspace_goal_revision":null}))
+    (turn, json!({"status":"practice","binding":binding,"workspace_goal_revision":null}))
 }
 
 fn dependency_job(user: &user_runtime::UserRuntime, turn: &AgentTurnRef) -> CoachJob {

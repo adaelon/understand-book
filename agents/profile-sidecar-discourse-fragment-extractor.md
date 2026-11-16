@@ -46,7 +46,6 @@ Output exactly one closed object:
   "version": "profile_sidecar_discourse_observation.v1",
   "parent_lid": "1.7.2",
   "source_slice_ordinal": 0,
-  "core_sha256": "<digest supplied by the task contract>",
   "mode_candidates": [{"value":"informative","confidence":0.9}],
   "local_function_candidates": [{"value":"explanation","confidence":0.8}],
   "rhetorical_move_candidates": [{"value":"concept_elaboration","confidence":0.8}],
@@ -57,7 +56,7 @@ Output exactly one closed object:
 
 Rules:
 
-- Copy `parent_lid`, `source_slice_ordinal`, and the task-supplied `core_sha256` exactly.
+- Copy `parent_lid` and `source_slice_ordinal` exactly.
 - Each candidate list contains at most three entries; omit uncertain candidates.
 - `summary_fragments` contains at most eight non-empty strings, each at most 200 characters.
 - Relations are sparse and may cite only the original `parent_lid`; never invent another LID.

@@ -37,7 +37,6 @@ export interface ProfileSidecarDiscourseFragmentRenderInputV1 extends ModelInput
 
 export interface Pass1SourceFragmentRenderInputV1 extends ModelInputSliceRenderContextV1 {
   content_profile_id: string;
-  core_sha256: string;
 }
 
 export interface Pass1LidStitchRenderNodeV1 {
@@ -132,7 +131,7 @@ export type ModelInputRenderRequest =
       >;
     }
   | { kind: "pass2_candidate_batch"; input: Pass2WorkPacket }
-  | { kind: "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_chapter" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"; input: StructureOrganizationInput }
+  | { kind: "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_outline_theme_page" | "structure_chapter" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile"; input: StructureOrganizationInput }
   | { kind: "structure_unit"; input: BookStructureUnitSource }
   | { kind: "structure_fragment"; input: BookStructureFragmentInputV1 }
   | { kind: "structure_reduce"; input: BookStructureReductionInputV1 }
@@ -190,7 +189,6 @@ export function renderPass1SourceFragmentModelInput(
     `content_profile_id: ${input.content_profile_id}`,
     `parent_lid: ${input.parent_lid}`,
     `source_slice_ordinal: ${input.ordinal}`,
-    `core_sha256: ${input.core_sha256}`,
     `boundary_kind: ${input.boundary_kind}`,
     `core_span_utf16: ${JSON.stringify(input.core_span_utf16)}`,
     `context_span_utf16: ${JSON.stringify(input.context_span_utf16)}`,
@@ -360,7 +358,7 @@ export function renderModelInput(request: ModelInputRenderRequest): string {
       return renderPaperLexiconModelInput(request.input);
     case "pass2_candidate_batch":
       return renderPass2ModelInput(request.input);
-    case "structure_outline": case "structure_outline_chapters": case "structure_outline_themes": case "structure_chapter": case "structure_theme_plan": case "structure_theme": case "structure_theme_reconcile":
+    case "structure_outline": case "structure_outline_chapters": case "structure_outline_themes": case "structure_outline_theme_page": case "structure_chapter": case "structure_theme_plan": case "structure_theme": case "structure_theme_reconcile":
       return renderStructureOrganizationInput(request.input);
     case "structure_unit":
     case "structure_stitch":

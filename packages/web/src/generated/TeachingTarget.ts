@@ -7,7 +7,7 @@ import type { TeachingSourceBinding } from "./TeachingSourceBinding";
 /**
  * A source-grounded focus; formal object identity is optional.
  */
-export type TeachingTarget = {
+export type TeachingTarget = { 
 /**
  * Private relationship identity. Reuse an offered candidate only for the same relationship.
  */

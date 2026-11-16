@@ -410,7 +410,8 @@ fn to9_context_selection_coverage_survives_resident_delivery() {
     assert_eq!(delivered["model_body"]["truncated"], true);
     let receipt: crate::tool_result::HistoricalToolReceipt =
         serde_json::from_value(delivered["receipt"].clone()).unwrap();
-    assert!(receipt.accepted_evidence.is_empty());
+    assert!(!receipt.accepted_evidence.is_empty(), "Resident prefetch delivers canonical source separately from pointers");
+    assert!(!delivered["model_body"]["context_cache"]["inline"].as_array().unwrap().is_empty());
     for wire in [crate::native_chat_request_projection("test", &plans[1]).0,
         crate::react_chat_request_projection("test", &plans[1])] {
         assert!(wire.to_string().contains("total_candidates"));
@@ -704,4 +705,36 @@ fn to11_structure_and_context_recovery_execute_on_actual_collections() {
     if let Ok(path) = std::env::var("TO11_COLLECTIONS") {
         std::fs::write(path, serde_json::to_vec_pretty(&snapshots).unwrap()).unwrap();
     }
+}
+
+#[test]
+fn video_search_locations_authorize_only_the_matching_source_read() {
+    let b = book_leaves(3);
+    let mut locators = TurnLocatorLedger::default();
+    let mut result = serde_json::json!({"publication":{"book_id":b.base.book_id,"publication_id":"video"},
+        "source_revision":b.source_fingerprint(),"discourse":{"candidates":[{"text_reads":[
+            {"text_range":{"lid":"1.2","range":{"start":0,"end":23}}},
+            {"text_range":{"lid":"1.3","range":{"start":0,"end":12}}}]}]}});
+    assert!(authorize_book_text(r#"{"lid":"1.2"}"#, &locators).is_err());
+    let before_batch = locators.clone();
+    locators.observe_tool_result("video.search", &result.to_string(), &b);
+    assert!(authorize_book_text(r#"{"lid":"1.2","end_lid":"1.3"}"#, &locators).is_ok());
+    assert!(authorize_book_text(r#"{"lid":"1.2"}"#, &before_batch).is_err());
+    let mut evidence = TurnEvidenceLedger::default();
+    observe_tool_evidence(&mut evidence,"video.search","{}",&result.to_string(),&b);
+    assert!(evidence.evidence_ranges().is_empty());
+    for mismatch in ["revision", "book"] {
+        let mut foreign = TurnLocatorLedger::default();
+        if mismatch == "revision" { result["source_revision"]=serde_json::json!("other"); }
+        else { result["source_revision"]=serde_json::json!(b.source_fingerprint());result["publication"]["book_id"]=serde_json::json!("other"); }
+        foreign.observe_tool_result("video.search", &result.to_string(), &b);
+        assert!(authorize_book_text(r#"{"lid":"1.2"}"#, &foreign).is_err());
+    }
+}
+
+#[test]
+fn environment_failure_stops_but_content_preview_failure_can_be_revised() {
+    assert!(non_retryable_environment_failure(r#"{"error_code":"BOARD_PREVIEW_UNAVAILABLE","category":"unavailable","message":"browser missing"}"#).is_some());
+    assert!(non_retryable_environment_failure(r#"{"error_code":"BOARD_PREVIEW_FAILED","category":"unavailable","message":"layout overflow"}"#).is_none());
+    assert!(non_retryable_environment_failure(r#"{"status":"succeeded"}"#).is_none());
 }

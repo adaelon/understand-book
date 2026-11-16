@@ -6,6 +6,7 @@ import "katex/dist/katex.min.css"; // agent 答案 LaTeX 公式样式
 import "./style.css";
 import { initializeLanguage } from './i18n';
 import { initializeDesktopLanguage } from './desktop-language';
+import { initializeNoteDraftStorage } from './personal-notes';
 
 initializeLanguage(uiText('understand-book 阅读器'));
 initializeDesktopLanguage();
@@ -20,6 +21,7 @@ async function mountReader() {
     style.rel = "stylesheet";
   })));
   styles.forEach(style => { style.media = "all"; });
+  await initializeNoteDraftStorage();
   const stopViewportHeightFallback = installAppViewportHeightFallback();
   createApp(ApplicationShell).mount("#app");
   if (import.meta.hot) import.meta.hot.dispose(stopViewportHeightFallback);

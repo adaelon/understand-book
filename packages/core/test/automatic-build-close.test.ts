@@ -104,7 +104,6 @@ describe("BR9 publication-aware stage close", () => {
     ]));
     expect(outcome.postcondition.coverage_digest).toMatch(/^[a-f0-9]{64}$/u);
     expect(outcome.postcondition.freshness_digest).toMatch(/^[a-f0-9]{64}$/u);
-    expect(outcome.postcondition.public_artifact_set_digest).toMatch(/^[a-f0-9]{64}$/u);
     expect(readFileSync(automaticBuildStageCloseResultPath(
       value.target,
       "pass1",
@@ -209,6 +208,22 @@ describe("BR9 publication-aware stage close", () => {
     const first = closePass1(value);
     const second = closePass1(value);
     expect(first).toEqual(second);
+  });
+
+  it("reuses an existing V2 close receipt with the retired artifact-set digest without rewriting it", () => {
+    const value = fixture();
+    const first = closePass1(value);
+    if (first.version !== "automatic_build_stage_close_result.v2") throw new Error("expected close result");
+    const resultPath = automaticBuildStageCloseResultPath(
+      value.target, "pass1", first.publication.transaction_id, first.postcondition.freshness_digest,
+    );
+    const oldBytes = JSON.stringify({
+      ...first,
+      postcondition: { ...first.postcondition, public_artifact_set_digest: sha256("old artifacts") },
+    });
+    writeFileSync(resultPath, oldBytes);
+    expect(closePass1(value)).toEqual(first);
+    expect(readFileSync(resultPath, "utf8")).toBe(oldBytes);
   });
 
   it("leaves a V1 predecessor read-only and returns bounded recovery", () => {

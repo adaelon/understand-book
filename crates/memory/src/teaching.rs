@@ -132,6 +132,10 @@ pub enum TeachingFact {
     EvidenceInterpreted,
     /// The teacher's reviewed work and corrections, never learner evidence.
     AgentWorkReviewed,
+    /// A sourced correction of the teacher's own statement; never learner evidence.
+    TeacherCorrectionRecorded,
+    /// The main teacher's applicability decision for a historical correction.
+    TeacherCorrectionUsed,
     /// A coach's future guidance, never a delivered activity or learner evidence.
     CoachGuided,
     DesignRevised,
@@ -146,6 +150,8 @@ pub enum TeachingFact {
     ContinuationChosen,
     /// An after-delivery soundness verdict on a practice problem; never learner evidence.
     PracticeChecked,
+    ClosedBookChanged,
+    ClosedBookProposed,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
@@ -243,6 +249,16 @@ impl LearningStore {
 
     /// Only delivered moves resolve or replace an invitation. Candidate selections do not.
     pub fn pending_response_invitation(&self, session: &str, source: &str, revision: &str) -> Result<Option<TeachingEvent>, ToolError> {
+        self.find_response_invitation(session, source, revision, None)
+    }
+
+    /// A Socratic question belongs to the conversation that delivered it.
+    /// Existing stage-wide invitations retain their original scope.
+    pub fn pending_response_invitation_in_chat(&self, binding: &TeachingBinding) -> Result<Option<TeachingEvent>, ToolError> {
+        self.find_response_invitation(&binding.tutor_session_id, &binding.source_id, &binding.source_revision, Some(&binding.chat_session_id))
+    }
+
+    fn find_response_invitation(&self, session: &str, source: &str, revision: &str, chat: Option<&str>) -> Result<Option<TeachingEvent>, ToolError> {
         let mut query = self.connection.prepare("SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.binding.source_revision')=? ORDER BY seq DESC").map_err(storage)?;
         let rows = query.query_map(params![self.workspace_scope, session,source,revision], |r|r.get::<_,String>(0)).map_err(storage)?;
         let mut closed = std::collections::BTreeSet::new();
@@ -251,7 +267,11 @@ impl LearningStore {
             if let Some(id) = event.payload["move"]["responds_to"]["invitation_ref"].as_str() {
                 if matches!(event.payload["move"]["responds_to"]["disposition"].as_str(), Some("addressed" | "deferred")) { closed.insert(id.to_owned()); }
             }
-            if event.payload["move"]["response_expectation"].is_object() && !closed.contains(&event.event_id) { return Ok(Some(event)); }
+            let expectation = &event.payload["move"]["response_expectation"];
+            if expectation.is_object() && !closed.contains(&event.event_id)
+                && (expectation["socratic"] != true || chat.is_none_or(|id| id == event.binding.chat_session_id)) {
+                return Ok(Some(event));
+            }
         }
         Ok(None)
     }
@@ -260,6 +280,15 @@ impl LearningStore {
         let event: Option<String> = self.connection.query_row(
             "SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.payload.assistance_for') IS NULL ORDER BY seq DESC LIMIT 1",
             params![self.workspace_scope, session,source], |r|r.get(0)).optional().map_err(storage)?;
+        event.map(|event|serde_json::from_str(&event).map_err(storage)).transpose()
+    }
+
+    /// An unfinished question belongs to its chat, independent of the legacy
+    /// account-wide teaching control or the currently displayed learning goal.
+    pub fn latest_chat_teaching_activity(&self, chat: &str, source: &str) -> Result<Option<TeachingEvent>, ToolError> {
+        let event: Option<String> = self.connection.query_row(
+            "SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND json_extract(event,'$.kind')='message_delivered' AND json_extract(event,'$.binding.chat_session_id')=? AND json_extract(event,'$.binding.source_id')=? AND json_extract(event,'$.payload.assessment_contract_ref') IS NOT NULL AND json_extract(event,'$.payload.assistance_for') IS NULL ORDER BY seq DESC LIMIT 1",
+            params![self.workspace_scope,chat,source], |r|r.get(0)).optional().map_err(storage)?;
         event.map(|event|serde_json::from_str(&event).map_err(storage)).transpose()
     }
 
@@ -516,6 +545,15 @@ impl LearningStore {
     }
 
     pub fn append_teaching(&mut self, event: &TeachingEvent) -> Result<TeachingEvent, ToolError> {
+        let tx = self.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+        let result = append_in(&tx, &self.workspace_scope, event)?;
+        tx.commit().map_err(storage)?;
+        Ok(result)
+    }
+}
+
+// Shared by course progression so facts and the course receipt commit together.
+pub(crate) fn append_in(db: &rusqlite::Connection, scope: &str, event: &TeachingEvent) -> Result<TeachingEvent, ToolError> {
         if event.event_id.trim().is_empty() {
             return Err(invalid("缺少教学事件身份"));
         }
@@ -533,14 +571,10 @@ impl LearningStore {
                 return Err(invalid("教学动作与目标能力不一致"));
             }
         }
-        let transaction = self
-            .connection
-            .transaction_with_behavior(TransactionBehavior::Immediate)
-            .map_err(storage)?;
-        let previous: Option<String> = transaction
+        let previous: Option<String> = db
             .query_row(
                 "SELECT event FROM teaching_trace WHERE learning_workspace_id=? AND event_id=?",
-                params![self.workspace_scope,event.event_id],
+                params![scope,event.event_id],
                 |r| r.get(0),
             )
             .optional()
@@ -552,10 +586,10 @@ impl LearningStore {
         }
         // Causal edges always stay inside the same private teaching session.
         for id in &event.causal_refs {
-            let owner: Option<String> = transaction
+            let owner: Option<String> = db
                 .query_row(
                     "SELECT session_id FROM teaching_trace WHERE learning_workspace_id=? AND event_id=?",
-                    params![self.workspace_scope,id],
+                    params![scope,id],
                     |r| r.get(0),
                 )
                 .optional()
@@ -564,20 +598,19 @@ impl LearningStore {
                 return Err(invalid("教学因果引用不属于此会话"));
             }
         }
-        transaction
+        db
             .execute(
                 "INSERT INTO teaching_trace(learning_workspace_id,event_id,session_id,event) VALUES (?,?,?,?)",
                 params![
-                    self.workspace_scope,
+                    scope,
                     event.event_id,
                     event.binding.tutor_session_id,
                     serde_json::to_string(event).map_err(storage)?
                 ],
             )
             .map_err(storage)?;
-        transaction.commit().map_err(storage)?;
         Ok(event.clone())
-    }
+
 }
 
 #[cfg(test)]

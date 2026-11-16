@@ -10,6 +10,7 @@ import type { NoteDiscussion } from './generated/NoteDiscussion';
 import type { NoteLink } from './generated/NoteLink';
 import type { NoteSearchHit } from './generated/NoteSearchHit';
 import { placeThought, type NoteDestination } from './note-placements';
+import { createLocalNoteDraftWriter } from './local-note-drafts';
 export type { NoteContent, NoteContext, PersonalNoteView, NoteRevision, NoteRef, NoteLink };
 
 export const notesOwner = () => network.value.enabled ? network.value.identity?.user_id ?? null : 'local';
@@ -84,23 +85,82 @@ export interface NoteDraft {
 }
 const drafts = reactive(new Map<string, NoteDraft>());
 export const draftStorageError = ref('');
-const keyPrefix = (owner: string) => `understand-book:thought-draft:${encodeURIComponent(owner)}:`;
+const draftKeyPrefix = 'understand-book:thought-draft:';
+const keyPrefix = (owner: string) => `${draftKeyPrefix}${encodeURIComponent(owner)}:`;
+let nativeDrafts = false;
+let nativeWriter: ReturnType<typeof createLocalNoteDraftWriter> | null = null;
+let draftInitialization: Promise<void> | null = null;
+function browserNoteDrafts(owner?: string): Record<string, NoteDraft> {
+  const saved: Record<string, NoteDraft> = {};
+  for (const key of Object.keys(localStorage).filter(key => key.startsWith(owner ? keyPrefix(owner) : draftKeyPrefix))) {
+    const draft = JSON.parse(localStorage.getItem(key)!);
+    if (typeof draft?.draft_id === 'string' && typeof draft.owner === 'string' && typeof draft.value?.content === 'string'
+      && (owner === undefined || draft.owner === owner)) saved[draft.draft_id] = draft;
+  }
+  return saved;
+}
+/** Restore the Local Debug device store before any capture UI can create a draft. */
+export function initializeNoteDraftStorage(): Promise<void> {
+  return draftInitialization ??= (async () => {
+    if (import.meta.env.VITE_LOCAL_DEBUG !== '1') return;
+    const { invoke, isTauri } = await import('@tauri-apps/api/core');
+    if (!isTauri()) return;
+    nativeDrafts = true;
+    nativeWriter = createLocalNoteDraftWriter(
+      (draftId, draft) => invoke('write_local_note_draft', { draftId, draft }),
+      message => { draftStorageError.value = message; },
+    );
+    try {
+      const initialDrafts = browserNoteDrafts();
+      const saved = await invoke<Record<string, NoteDraft>>('load_local_note_drafts', { initialDrafts });
+      drafts.clear();
+      for (const draft of Object.values(saved)) drafts.set(draft.draft_id, draft);
+      draftStorageError.value = '';
+    } catch {
+      draftStorageError.value = '设备草稿暂时无法读取；请重新打开应用重试，已打开的文字仍保留在这里。';
+    }
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      if (nativeWriter?.hasPending()) { event.preventDefault(); event.returnValue = ''; }
+    };
+    window.addEventListener('beforeunload', beforeUnload);
+    try {
+      const { getCurrentWindow } = await import('@tauri-apps/api/window');
+      const stop = await getCurrentWindow().onCloseRequested(async event => {
+        try { await flushNoteDrafts(); }
+        catch { event.preventDefault(); notesPanel.open = true; }
+      });
+      if (import.meta.hot) import.meta.hot.dispose(() => { stop(); window.removeEventListener('beforeunload', beforeUnload); });
+    } catch {
+      draftStorageError.value = '暂时无法在关闭窗口前确认草稿保存；请保持窗口并重试。';
+    }
+  })();
+}
+export async function flushNoteDrafts(): Promise<void> { await nativeWriter?.flush(); }
 export function readNoteDrafts(): NoteDraft[] {
   const owner = notesOwner(); if (!owner) return [];
-  try {
-    for (const key of Object.keys(localStorage).filter(key => key.startsWith(keyPrefix(owner)))) {
-      const saved = JSON.parse(localStorage.getItem(key)!);
-      if (saved?.owner === owner && typeof saved.value?.content === 'string' && !drafts.has(saved.draft_id)) drafts.set(saved.draft_id, saved);
-    }
-  } catch { draftStorageError.value = '设备草稿暂时无法读取；已打开的文字仍保留在这里。'; }
+  if (!nativeDrafts) {
+    try {
+      for (const saved of Object.values(browserNoteDrafts(owner))) if (!drafts.has(saved.draft_id)) drafts.set(saved.draft_id, saved);
+    } catch { draftStorageError.value = '设备草稿暂时无法读取；已打开的文字仍保留在这里。'; }
+  }
   return [...drafts.values()].filter(draft => draft.owner === owner).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 export function keepNoteDraft(draft: NoteDraft) {
   draft.updated_at = new Date().toISOString(); drafts.set(draft.draft_id, draft);
+  if (nativeWriter) {
+    nativeWriter.queue(draft.draft_id, draft);
+    try { localStorage.setItem(keyPrefix(draft.owner) + draft.draft_id, JSON.stringify(draft)); } catch { /* The native data directory is authoritative. */ }
+    return;
+  }
   try { localStorage.setItem(keyPrefix(draft.owner) + draft.draft_id, JSON.stringify(draft)); draftStorageError.value = ''; }
   catch { draftStorageError.value = '设备空间不足，草稿暂未写入设备；请保持此页面并尝试保存。'; }
 }
 export function discardNoteDraft(draft: NoteDraft) {
+  if (nativeWriter) {
+    drafts.delete(draft.draft_id); nativeWriter.queue(draft.draft_id, null);
+    try { localStorage.removeItem(keyPrefix(draft.owner) + draft.draft_id); } catch { /* A stale origin mirror is never reimported. */ }
+    return;
+  }
   localStorage.removeItem(keyPrefix(draft.owner) + draft.draft_id); drafts.delete(draft.draft_id);
 }
 export function startThought(context: Partial<NoteContext> = currentThoughtContext() ?? {}, text = '', value?: NoteContent): NoteDraft {
@@ -123,9 +183,11 @@ export async function captureUserThought(sessionId: string, turnId: string) {
 export async function saveThought(draft: NoteDraft): Promise<PersonalNoteView> {
   if (!draft.pending) { draft.pending = { operation_id: crypto.randomUUID(), value: JSON.parse(JSON.stringify(draft.value)), base_revision: draft.base_revision }; keepNoteDraft(draft); }
   try {
+    await flushNoteDrafts();
     const note = draft.saved_note ?? await noteRequest<PersonalNoteView>(draft.note_id ? 'revise' : 'create', { note_id: draft.note_id, ...draft.pending });
     if (draft.destination) {
       draft.saved_note = note; keepNoteDraft(draft);
+      await flushNoteDrafts();
       try { await placeThought(note.note_id, draft.destination); }
       catch (failure) { throw new Error(`想法已保存，放置未完成：${(failure as Error).message}`); }
     }

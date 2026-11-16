@@ -65,7 +65,9 @@ pub(crate) fn save_state(state: &PrivateBookContext<'_>, body: &str) -> Reply {
         let request: SaveRequest = serde_json::from_str(body).map_err(|_| invalid())?;
         let observation = json!({"session_id":request.session_id,"turn_id":request.turn_id,"reference":request.reference,
             "text":request.state.observed_result,"source_ref_ids":request.state.source_ref_ids});
-        let checked = route(state, &observation.to_string(), true);
+        // Validate the incoming public observation without restoring an older
+        // state. Storage failures belong to the subsequent save operation.
+        let checked = route_with_restore(state, &observation.to_string(), true, false);
         if checked.status != 200 {
             return Err(invalid());
         }

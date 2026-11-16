@@ -104,7 +104,7 @@ describe("BR7 automatic build recovery envelope", () => {
     })).toThrow();
   });
 
-  it("summarizes work-unit and LID overflow with only a count and digest", () => {
+  it("summarizes work-unit and LID overflow with their omitted counts", () => {
     const workUnitCount = AUTOMATIC_BUILD_RECOVERY_LIMITS.max_affected_work_units + 3;
     const lidCount = AUTOMATIC_BUILD_RECOVERY_LIMITS.max_evidence_lids_per_work_unit + 2;
     const envelope = createAutomaticBuildRecoveryEnvelope({
@@ -120,14 +120,12 @@ describe("BR7 automatic build recovery envelope", () => {
     );
     expect(envelope.omitted_affected_work_units).toEqual({
       count: 3,
-      digest: expect.stringMatching(/^[a-f0-9]{64}$/u),
     });
     expect(envelope.affected_work_units[0].evidence_lids).toHaveLength(
       AUTOMATIC_BUILD_RECOVERY_LIMITS.max_evidence_lids_per_work_unit,
     );
     expect(envelope.affected_work_units[0].omitted_evidence_lids).toEqual({
       count: 2,
-      digest: expect.stringMatching(/^[a-f0-9]{64}$/u),
     });
     expect(parseAutomaticBuildRecoveryEnvelope(envelope)).toEqual(envelope);
   });

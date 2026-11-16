@@ -31,6 +31,7 @@ export interface AutomaticBuildDispatchLimitsV1 {
 }
 
 export const AUTOMATIC_BUILD_DISPATCH_LIMITS: Record<WorkUnitKind, AutomaticBuildDispatchLimitsV1> = {
+  course_task: { max_units: 1, max_input_tokens: 32768, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   formal_object_set: { max_units: 1, max_input_tokens: 6000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   cognitive_step: { max_units: 1, max_input_tokens: 6000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   teaching_source_review: { max_units: 1, max_input_tokens: 6000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
@@ -50,6 +51,7 @@ export const AUTOMATIC_BUILD_DISPATCH_LIMITS: Record<WorkUnitKind, AutomaticBuil
   structure_outline: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_outline_chapters: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_outline_themes: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_outline_theme_page: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_chapter: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_chapter_selection: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_theme_plan: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },

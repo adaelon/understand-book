@@ -1,7 +1,7 @@
 //! Pure presentation guidance selection; RunContext owns the current selection.
 use crate::InstructionModule;
 
-pub const REVISION: &str = "coach-handoff.v2";
+pub const REVISION: &str = "coach-handoff.v3";
 const COMMON: &str = include_str!("../../../../skills/presentation/SKILL.md");
 const ENGINEERING: &str = include_str!("../../../../skills/presentation/engineering.md");
 const DIRECTORY: &str = include_str!("../../../../skills/presentation/capabilities.md");
@@ -31,6 +31,26 @@ pub enum PresentationNeed {
 pub struct PresentationGuidance {
     pub phase: PresentationPhase,
     pub needs: Vec<PresentationNeed>,
+}
+
+impl PresentationGuidance {
+    /// A local proposal can predate the coach's choice of a spatial scene.
+    /// Make that scene's implementation guidance available at the next sampling.
+    pub(crate) fn include_scene_needs(&mut self, choices: &serde_json::Value) {
+        let Some(choices) = choices.as_array() else { return };
+        if self.phase == PresentationPhase::Global || choices.is_empty() { return; }
+        for method in crate::presentation_methods::catalog()["methods"].as_array().expect("compiled catalog") {
+            if method["scenes"].is_array() && choices.iter().any(|c|
+                c["method_id"] == method["id"] && c["revision"] == method["revision"]
+            ) {
+                if let Some(needs) = method["needs"].as_array() {
+                    self.needs.extend(needs.iter().filter_map(|v| serde_json::from_value::<PresentationNeed>(v.clone()).ok()));
+                }
+            }
+        }
+        self.needs.sort_unstable();
+        self.needs.dedup();
+    }
 }
 
 const REFERENCES: &[(PresentationNeed, &str, &str)] = &[
@@ -87,8 +107,9 @@ pub(super) fn modules(guidance: Option<&PresentationGuidance>) -> Vec<Instructio
 }
 
 pub(crate) fn is_sampling_module(module: &InstructionModule) -> bool {
-    module.asset_id.starts_with("resident-agent.presentation.phase.")
-        || module.asset_id.starts_with("resident-agent.presentation.reference.")
+    module.asset_id.starts_with("resident-agent.presentation.")
+        || module.asset_id == "resident-agent.skill.presentation-method"
+        || module.asset_id == "resident-agent.policy.presentation-authoring"
 }
 
 fn common_modules() -> Vec<InstructionModule> {

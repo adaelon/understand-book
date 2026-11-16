@@ -231,11 +231,7 @@ impl TutorState {
                     TutorSession {
                         id: id.clone(),
                         revision: 1,
-                        status: if self.control.enabled {
-                            TutorSessionStatus::Active
-                        } else {
-                            TutorSessionStatus::Paused
-                        },
+                        status: TutorSessionStatus::Active,
                         user_intent: user_intent.trim().into(),
                         explicit_constraints: explicit_constraints.clone(),
                         current_focus: TutorFocus::default(),
@@ -250,9 +246,6 @@ impl TutorState {
                 self.control.current_tutor_session_id = Some(id);
             }
             TutorAction::Resume { session_id } => {
-                if !self.control.enabled {
-                    return Err(invalid("请先开启 Tutor。"));
-                }
                 if !self.sessions.contains_key(session_id) {
                     return Err(invalid("教学会话不存在。"));
                 }
@@ -361,8 +354,8 @@ impl LearningStore {
         let mut connection = Connection::open(path).map_err(storage)?;
         let version: i64 = connection.pragma_query_value(None, "user_version", |r| r.get(0)).map_err(storage)?;
         let application: i64 = connection.pragma_query_value(None, "application_id", |r| r.get(0)).map_err(storage)?;
-        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection','linked_learning_records','teaching_coach_jobs','teaching_coach_turns','learning_map_nodes','learning_map_sources','learning_map_chains','learning_map_coverage','learning_map_note_removals','understanding_focus','understanding_note_evidence')", [], |r| r.get(0)).map_err(storage)?;
-        if !(0..=6).contains(&version) || unknown_tables != 0
+        let unknown_tables: i64 = connection.query_row("SELECT count(*) FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' AND name NOT IN ('tutor_events','tutor_projection','teaching_trace','teaching_assessments','learning_evidence','learner_projection','linked_learning_records','teaching_coach_jobs','teaching_coach_turns','learning_map_nodes','learning_map_sources','learning_map_chains','learning_map_coverage','learning_map_note_removals','understanding_focus','understanding_note_evidence','course_runs','course_operations')", [], |r| r.get(0)).map_err(storage)?;
+        if !(0..=7).contains(&version) || unknown_tables != 0
             || (version == 0 && application != 0) || (version > 0 && application != 0x55424c4e) {
             return Err(failure("LEARNING_SCHEMA_INCOMPATIBLE", "conflict", "Learning schema requires a compatible binary"));
         }
@@ -409,6 +402,16 @@ impl LearningStore {
             tx.pragma_update(None, "user_version", 6).map_err(storage)?;
             tx.commit().map_err(storage)?;
         }
+        if version < 7 {
+            let tx = connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+            tx.execute_batch(crate::course::SCHEMA).map_err(storage)?;
+            tx.pragma_update(None, "user_version", 7).map_err(storage)?;
+            tx.commit().map_err(storage)?;
+        }
+        // Correction discovery runs at turn preparation. Avoid parsing unrelated
+        // historical context payloads merely to discover available teacher cases.
+        connection.execute_batch("CREATE INDEX IF NOT EXISTS teaching_trace_correction_source ON teaching_trace(learning_workspace_id,
+            json_extract(event,'$.binding.source_id'),json_extract(event,'$.binding.source_revision'),json_extract(event,'$.kind'),json_extract(event,'$.binding.turn_id'))").map_err(storage)?;
         Ok(Self { connection, writer_lease: None, workspace_scope: String::new(), source_scope: None })
     }
 
@@ -829,7 +832,7 @@ mod tests {
             let store=LearningStore::open(&path,false).unwrap();
             assert!(store.state().unwrap().control.enabled);
             assert_eq!(store.state().unwrap(),store.replay(None).unwrap());
-            assert_eq!(store.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),6);
+            assert_eq!(store.connection.pragma_query_value(None,"user_version",|r|r.get::<_,i64>(0)).unwrap(),7);
             assert_eq!(store.connection.pragma_query_value(None,"journal_mode",|r|r.get::<_,String>(0)).unwrap(),"delete");
             store.connection.pragma_update(None,"application_id",12345).unwrap();
             drop(store);
@@ -899,13 +902,13 @@ mod tests {
     }
 
     #[test]
-    fn mode_is_separate_from_enable_and_empty_intent_is_rejected() {
+    fn goals_start_without_the_legacy_switch_and_empty_intent_is_rejected() {
         let directory = tempfile::tempdir().unwrap();
         let mut store = LearningStore::open(&directory.path().join("learning.db"), false).unwrap();
         let paused = change(&mut store, "first", start("学习"));
         assert_eq!(
             paused.sessions["tutor-first"].status,
-            TutorSessionStatus::Paused
+            TutorSessionStatus::Active
         );
         let changed = change(
             &mut store,

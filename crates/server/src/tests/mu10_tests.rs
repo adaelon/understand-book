@@ -205,9 +205,10 @@ fn mu10_kill_host_child() {
     let (w, mut input, path) = scene(&f);
     if std::env::var("MU10_KILL_POINT").as_deref() == Ok("teaching_receipt") {
         use memory::teaching::{TeachingBinding, TeachingEvent, TeachingFact};
-        f.ok(&f.a, "POST", "/api/tutor/mutate", json!({"operation_id":"on","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
         let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
         let user = handle.lock().unwrap();
+        user.learning_store().unwrap().mutate(&serde_json::from_value(json!({"operation_id":"historical-on","expected_revision":0,
+            "action":{"kind":"set_enabled","enabled":true}})).unwrap(),"before-upgrade").unwrap();
         let publication = f.access.library.lock().unwrap().load("A", &f.x).unwrap();
         teaching::start_request(
             &PrivateBookContext { learning_workspace_id:None,
@@ -704,7 +705,10 @@ fn p95(values: &mut [f64]) -> f64 {
 #[test]
 #[ignore = "MU10 five-minute 10-user/20-workspace frozen load, isolated service and fake Provider"]
 fn mu10_capacity_five_minutes() {
-    let f = limits(Fixture::new(), json!({"user_queued_runs":2}));
+    let f = limits(
+        Fixture::new(),
+        json!({"active_runs":4,"model_slots":2,"user_queued_runs":2}),
+    );
     let probe = Probe {
         delay: Duration::from_secs(10),
         ..Default::default()
@@ -738,7 +742,7 @@ fn mu10_capacity_five_minutes() {
             .unwrap();
         users.push((owner, token));
     }
-    // Limits are frozen at MU0; configure before opening the registry in production.
+    // Keep the original MU0 workload independent of later default capacity changes.
     assert_eq!(f.access.resources.limits.model_slots, 2);
     let server = start(&f.access);
     let mut clients = vec![];

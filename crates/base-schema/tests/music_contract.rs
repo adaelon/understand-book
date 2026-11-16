@@ -5,6 +5,66 @@ fn fixture() -> MusicSourceManifest {
 }
 
 #[test]
+fn optional_original_notation_round_trips_without_changing_published_score_identity() {
+    let mut manifest = fixture();
+    let original = manifest.clone();
+    manifest.score_objects[0].notation = Some(MusicNoteNotation {
+        written_pitch: Some(MusicWrittenPitch { step:"E".into(), alter:-1.0, octave:4 }),
+        note_type:Some("32nd".into()), dots:0, visible:false, playback_dynamics:Some(0.0), chord:false, grace:false,
+        rhythm:Some(MusicRhythmNotation { time_modification:Some(MusicTimeModification {
+            actual_notes:6, normal_notes:4, normal_type:Some("16th".into()), normal_dots:0,
+        }), tremolos:vec![MusicTremolo { kind:"single".into(), marks:2 }] }),
+    });
+    manifest.validate_successor(&original).unwrap();
+    let roundtrip: MusicSourceManifest = serde_json::from_value(serde_json::to_value(&manifest).unwrap()).unwrap();
+    assert_eq!(roundtrip, manifest);
+    let mut invalid = manifest.clone();
+    invalid.score_objects[0].notation.as_mut().unwrap().rhythm.as_mut().unwrap().time_modification.as_mut().unwrap().normal_notes = 0;
+    assert!(invalid.validate().unwrap_err().contains("note notation"));
+    assert!(roundtrip.score_objects[0].is_hidden_muted());
+    manifest.score_objects[0].notation.as_mut().unwrap().playback_dynamics = None;
+    assert!(!manifest.score_objects[0].is_hidden_muted());
+    manifest.score_objects[0].notation.as_mut().unwrap().written_pitch.as_mut().unwrap().step = "H".into();
+    assert!(manifest.validate().unwrap_err().contains("note notation"));
+}
+
+#[test]
+fn pdf_score_pages_are_sources_without_fabricated_note_objects() {
+    let mut m = fixture();
+    m.score.musicxml_path = None;
+    m.score.pdf_path = Some("score/original.pdf".into());
+    m.score_objects.clear(); m.score_marks.clear(); m.occurrences.clear();
+    m.note_alignments.clear(); m.coverage.clear(); m.demonstrations.clear(); m.structure.clear();
+    m.events.truncate(1);
+    m.events[0].relations.clear(); m.events[0].occurrence_ids.clear();
+    for evidence in &mut m.events[0].evidence {
+        evidence.score_object_ids.clear(); evidence.audio = None;
+        evidence.score_page_ids = vec![m.pages[0].page_id.clone()];
+    }
+    m.validate().unwrap();
+    assert!(m.capabilities().contains(&"music_score".into()));
+    assert!(!m.capabilities().contains(&"music_note_alignment".into()));
+    m.events[0].evidence[0].score_page_ids = vec!["absent".into()];
+    assert!(m.validate().unwrap_err().contains("event evidence"));
+    m.events.clear(); m.score.pdf_path = None;
+    assert!(m.validate().unwrap_err().contains("score source"));
+}
+
+#[test]
+fn unpitched_percussion_has_an_attack_without_becoming_a_rest_or_pitched_tone() {
+    let mut m = fixture();
+    m.score_objects[0].midi_pitch = None;
+    m.score_objects[0].unpitched = true;
+    m.validate().unwrap();
+    let mut changed = m.clone();
+    changed.score_objects[0].unpitched = false;
+    changed.score_objects[0].midi_pitch = Some(60);
+    assert!(changed.validate_successor(&m).unwrap_err().contains("immutable score location"));
+    m.score_objects[0].rest = true;
+    assert!(m.validate().unwrap_err().contains("score object"));
+}
+
+#[test]
 fn music_score_facts_require_real_score_anchors_and_tonality_provenance() {
     let mut m = fixture();
     let note = m.score_objects[0].clone();
@@ -109,7 +169,7 @@ fn music_successor_preserves_sources_while_layout_and_alignment_can_change() {
     let mut next = old.clone();
     next.pages[0].width = 800.0;
     next.score_objects[0].svg_element_id = "new-render-id".into();
-    next.score.musicxml_path = "repacked/score.musicxml".into();
+    next.score.musicxml_path = Some("repacked/score.musicxml".into());
     next.recording.media_path = "repacked/original.flac".into();
     next.note_alignments[2].start_ms = 2100.0;
     next.events[1].explanation = "Updated teaching annotation.".into();

@@ -38,6 +38,7 @@ pub enum ToolHandlerId {
     VideoReadFrames,
     VideoSearch,
     MusicRead,
+    MusicExample,
     MusicInteract,
     WebSearch,
     WebFetch,
@@ -62,7 +63,7 @@ pub enum ToolHandlerId {
 }
 
 impl ToolHandlerId {
-    pub const ALL: [ToolHandlerId; 55] = [
+    pub const ALL: [ToolHandlerId; 56] = [
         ToolHandlerId::LibraryList,
         ToolHandlerId::LibrarySearch,
         ToolHandlerId::LibraryRead,
@@ -90,6 +91,7 @@ impl ToolHandlerId {
         ToolHandlerId::VideoReadFrames,
         ToolHandlerId::VideoSearch,
         ToolHandlerId::MusicRead,
+        ToolHandlerId::MusicExample,
         ToolHandlerId::MusicInteract,
         ToolHandlerId::WebSearch,
         ToolHandlerId::WebFetch,
@@ -146,6 +148,7 @@ impl ToolHandlerId {
             ToolHandlerId::VideoReviewAudio => "video.review_audio",
             ToolHandlerId::VideoSearch => "video.search",
             ToolHandlerId::MusicRead => "music.read",
+            ToolHandlerId::MusicExample => "music.example",
             ToolHandlerId::MusicInteract => "music.interact",
             ToolHandlerId::WebSearch => "web.search",
             ToolHandlerId::WebFetch => "web.fetch",
@@ -616,6 +619,7 @@ impl ToolRegistration {
             "reader.gotoLid" | "reader.scroll" => "调整阅读位置",
             "reader.state" => "查看阅读状态",
             "music.read" => "查看音乐与乐谱",
+            "music.example" => "准备可试听谱例",
             "music.interact" => "调整伴听播放",
             name if name.starts_with("artifact.") => "读取学习成果",
             name if name.starts_with("memory.") || name.starts_with("profile.") => "处理阅读记忆",
@@ -710,7 +714,7 @@ impl ToolRegistration {
                     movement["required"]
                 ));
                 if properties.contains_key("delivery_text") {
-                    message.push_str(" For a full select, preserve the complete body. With a retained draft_ref, prefer revise with edits/move_changes for the supported corrections; unnamed fields are preserved.");
+                    message.push_str(" For a full select, preserve the complete body. A schema-rejected call does not create an editable draft; use only the recovery operation explicitly supplied by the runtime.");
                 }
             }
         }
@@ -1023,7 +1027,7 @@ fn registration_for(spec: ToolSpec, handler: ToolHandlerId) -> ToolRegistration 
             ResultPolicy::MemoryReceipt,
             Parallelism::SequentialOnly,
         ),
-        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::BoardAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicInteract => (
+        Handler::WebSearch | Handler::WebFetch | Handler::PresentationInteract | Handler::PresentationAuthor | Handler::BoardAuthor | Handler::VideoReadFrames | Handler::VideoSearch | Handler::VideoReviewAudio | Handler::MusicRead | Handler::MusicExample | Handler::MusicInteract => (
             ToolValidatorId::JsonSchema,
             ResultPolicy::EvidenceProjection,
             Parallelism::SequentialOnly,
@@ -1168,7 +1172,7 @@ fn capability_migration(handler: ToolHandlerId) -> CapabilityMigration {
         Handler::GoalUpdate | Handler::WorkspaceGoalUpdate => migration(vec![], vec![Capability::GoalManagement]),
         Handler::VideoReadFrames | Handler::VideoReviewAudio => migration(vec![Legacy::BookRead], vec![Capability::SourceRead]),
         Handler::VideoSearch => migration(vec![Legacy::BookSearch], vec![Capability::LexicalLocate]),
-        Handler::MusicRead => migration(vec![Legacy::BookRead, Legacy::BookSearch], vec![Capability::SourceRead, Capability::LexicalLocate, Capability::StructuralIndex]),
+        Handler::MusicRead | Handler::MusicExample => migration(vec![Legacy::BookRead, Legacy::BookSearch], vec![Capability::SourceRead, Capability::LexicalLocate, Capability::StructuralIndex]),
         Handler::MusicInteract => migration(vec![Legacy::ReaderWrite], vec![Capability::PresentationInteraction, Capability::ReaderRead]),
         Handler::WebSearch => migration(vec![], vec![Capability::WebSearch]),
         Handler::WebFetch => migration(vec![], vec![Capability::WebRead]),
@@ -1494,7 +1498,7 @@ fn routing_shape(handler: ToolHandlerId) -> RoutingShape {
         Handler::VideoSearch => shape(vec![Scope::Passage, Scope::Section, Scope::Document],
             vec![Operation::LocateLiteral, Operation::Compare], Effect::ReadOnly,
             vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
-        Handler::MusicRead => shape(vec![Scope::Selection, Scope::Passage, Scope::Section, Scope::Document],
+        Handler::MusicRead | Handler::MusicExample => shape(vec![Scope::Selection, Scope::Passage, Scope::Section, Scope::Document],
             vec![Operation::ReadSource, Operation::LocateLiteral, Operation::Explain, Operation::Compare, Operation::Summarize],
             Effect::ReadOnly, vec![Precondition::BookAvailable], all_profiles(), Cost::Low),
         Handler::MusicInteract => shape(vec![Scope::Selection, Scope::Passage, Scope::Section, Scope::Document],
@@ -1755,6 +1759,7 @@ fn non_book_routing_guidance(handler: ToolHandlerId) -> (&'static str, &'static 
         Handler::VideoReviewAudio => ("Review short original audio and uncertain spoken words with Whisper. 原音频、听核、复核、讲者措辞、听不清、underflow、overflow。", "Machine recognition with uncertainties; compare saved transcript and actual frames; never edit source text or claim the main model heard audio."),
         Handler::VideoReadFrames => ("Read actual video frames, crops, original PTS and corresponding English transcript. 视频画面、代码、公式、取帧、裁剪。", "Samples only; paths and descriptions do not establish a visual observation."),
         Handler::VideoSearch => ("Locate visual units and source-backed teaching roles; follow explanations, examples and limitations to supporting material. 视频视觉检索、讲解结构、解释、示例、反例、条件限定、前文图示、代码、概念、重复画面、覆盖缺口。", "Candidates only; read discourse text_reads with book.text and read_hints with video.read_frames before source.present. Search unindexed current frames directly with the frame reader."),
+        Handler::MusicExample => ("Create inline playable piano examples from exact score objects or explicit teaching pitches. 音乐 钢琴 试听 音阶 和弦", "Read score endpoints first and insert returned listen markers in the final answer. Registration never starts playback."),
         Handler::MusicRead => ("Read prepared music, score notation, part roles, events, provenance, alignment and coverage. 音乐 乐谱 乐器 声部 主题 伴奏 贝多芬 舒伯特 伴听", "Prepared material is not live audio observation. Bind original recording and score revisions; preserve uncertainty and coverage."),
         Handler::MusicInteract => ("Observe and control the current music player: play, pause, seek, loop, focus, speed or labelled synthesis. 音乐 播放 暂停 循环 声部 高亮", "Observe before acting; only an applied browser receipt confirms completion. Playback is not proof of learner understanding or model hearing."),
         Handler::PresentationInteract => ("Observe and operate a declared action in the currently open presentation, then read its saved result.", "Do not use to modify content or claim learner understanding; use only the returned actions and exact observation receipt."),
@@ -1978,7 +1983,7 @@ fn has_duplicates<T: PartialEq>(values: &[T]) -> bool {
         .any(|(index, value)| values[..index].contains(value))
 }
 
-fn validate_schema(schema: &Value, value: &Value, path: &str) -> Result<(), ToolArgumentError> {
+pub(crate) fn validate_schema(schema: &Value, value: &Value, path: &str) -> Result<(), ToolArgumentError> {
     let fail = |message: String| ToolArgumentError { message };
     if schema == &Value::Bool(false) { return Err(fail(format!("{path} is not allowed"))); }
     if let Some(expected) = schema.get("type") {
@@ -2315,6 +2320,7 @@ mod tests {
             ("video.review_audio", &["book_read"], &["source_read"]),
             ("video.search", &["book_search"], &["lexical_locate"]),
             ("music.read", &["book_read", "book_search"], &["source_read", "lexical_locate", "structural_index"]),
+            ("music.example", &["book_read", "book_search"], &["source_read", "lexical_locate", "structural_index"]),
             ("music.interact", &["reader_write"], &["presentation_interaction", "reader_read"]),
             ("web.search", &[], &["web_search"]),
             ("web.fetch", &[], &["web_read"]),
@@ -2593,7 +2599,7 @@ mod tests {
     #[test]
     fn tutor_argument_recovery_points_misplaced_fields_to_the_current_move() {
         let registry = resident_tool_registry().with_tutor_context(Some(&json!({
-            "status":"active", "native_board_candidate_pending":true
+            "status":"practice", "native_board_candidate_pending":true
         })));
         let registration = registry.registration("tutor.step").unwrap();
         for (field, payload) in [
@@ -2624,7 +2630,7 @@ mod tests {
     #[test]
     fn tutor_argument_recovery_does_not_reintroduce_host_owned_fields() {
         let registry = resident_tool_registry().with_tutor_context(Some(&json!({
-            "status":"active", "native_board_candidate_pending":true,
+            "status":"practice", "native_board_candidate_pending":true,
             "native_selection_intent_resolved":true
         })));
         let registration = registry.registration("tutor.step").unwrap();

@@ -4,7 +4,7 @@
   "user_active_runs": 1,
   "queued_runs": 128,
   "user_queued_runs": 4,
-  "model_slots": 16,
+  "model_slots": 8,
   "user_model_slots": 1,
   "model_request_timeout_seconds": 600,
   "background_model_request_timeout_seconds": 180,

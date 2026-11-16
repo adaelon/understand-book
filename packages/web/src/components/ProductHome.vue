@@ -161,7 +161,7 @@ const questions = [
   },
   {
     title: uiText('我可以只读书、自由提问吗？'),
-    answer: uiText('可以。你可以围绕原文自由阅读和提问，也可以开启持续教学，让它结合你的目标带着往下学。你仍然可以直接要求解释、补充例子，或改变当前的学习方向。'),
+    answer: uiText('可以。你可以围绕原文自由阅读和提问，也可以从课程开始，或在讲解后选择表达和练习。需要帮助时可以直接要求解释、补充例子，也可以暂停或改变学习方向。'),
   },
   {
     title: uiText('现在怎样开始使用？'),
@@ -179,14 +179,15 @@ const questions = [
         <span>Understand <i>Book</i></span>
       </a>
       <nav class="home-nav-links" :aria-label="uiText('首页导航')">
-        <a href="#workspace">{{ uiText('学习工作区') }}</a>
-        <a href="#experience">{{ uiText('阅读、视频与音乐') }}</a>
-        <a href="#learning-story">{{ uiText('动手体验') }}</a>
-        <a href="#questions">{{ uiText('常见问题') }}</a>
+        <a class="home-primary-entry" href="./index.html?view=learning">{{ uiText('学习') }}</a>
+        <a class="home-primary-entry" href="./index.html?view=materials">{{ uiText('学习资料') }}</a>
+        <a class="home-primary-entry home-board-entry" href="./index.html?view=boards">{{ uiText('学习画板') }}</a>
+        <a class="home-section-entry" href="#learning-story">{{ uiText('动手体验') }}</a>
+        <a class="home-section-entry" href="#questions">{{ uiText('常见问题') }}</a>
       </nav>
       <div class="home-nav-actions">
         <LanguageSwitcher />
-        <a href="./?account=login" class="home-login">{{ uiText('登录') }}</a>
+        <a href="./index.html?view=learning&amp;account=login" class="home-login">{{ uiText('登录') }}</a>
       </div>
     </header>
 
@@ -198,8 +199,8 @@ const questions = [
           <p class="home-hero-description"><span>{{ uiText('从一本书、一节视频课，到一段音乐。') }}</span><span>{{ uiText('把材料、问题与笔记放进同一个工作区，') }}</span><span>{{ uiText('让每次探索，都能接着上次继续。') }}</span></p>
           <p class="home-hero-label">{{ uiText('一个目标，多种材料，一路积累的理解。') }}</p>
           <div class="home-hero-actions">
-            <a class="home-button home-button-dark" href="#experience">{{ uiText('看看怎样学') }} <ArrowDown :size="17" /></a>
-            <a class="home-text-link" href="#begin">{{ uiText('参与内测') }} <ArrowUpRight :size="16" /></a>
+            <a class="home-button home-button-dark" href="./index.html?view=learning">{{ uiText('选一本书或一套课程，开始学习') }} <ArrowRight :size="17" /></a>
+            <a class="home-text-link" href="#experience">{{ uiText('看看怎样学') }} <ArrowDown :size="16" /></a>
           </div>
           <div class="home-hero-notes"><span>{{ uiText('对照材料') }}</span><span>{{ uiText('动手探索') }}</span><span>{{ uiText('接着往下学') }}</span></div>
         </div>
@@ -282,8 +283,8 @@ const questions = [
           </div>
           <div class="home-begin-actions">
             <p class="home-beta-notice">{{ uiText('内测期间 AI Token 免费使用，不限额度。') }}</p>
-            <a class="home-button home-button-light" href="./?account=register">{{ uiText('已有内测码，开始注册') }} <ArrowUpRight :size="18" /></a>
-            <a class="home-begin-login" href="./?account=login">{{ uiText('已经有账号？继续阅读') }} <ArrowRight :size="16" /></a>
+            <a class="home-button home-button-light" href="./index.html?view=learning&amp;account=register">{{ uiText('已有内测码，开始注册') }} <ArrowUpRight :size="18" /></a>
+            <a class="home-begin-login" href="./index.html?view=learning&amp;account=login">{{ uiText('已经有账号？继续学习') }} <ArrowRight :size="16" /></a>
             <p>{{ uiText('使用内测码注册，验证邮箱后即可开始。') }}</p>
           </div>
         </div>

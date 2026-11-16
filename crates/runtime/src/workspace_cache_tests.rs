@@ -160,7 +160,7 @@ fn tutor_state(step: usize, request: &str, book: &Book) -> Value {
     }).unwrap();
     let pending = if step == 1 { json!(["learner:comparison-1"]) } else { json!([]) };
     let facts = if step == 0 { json!([]) } else { json!([format!("learner:question-{step}")]) };
-    json!({"status":"active","outside_current_request":false,"current_request":request,
+    json!({"status":"practice","outside_current_request":false,"current_request":request,
         "agent_working_state":{"open_questions":["Which explanation resolves the learner's current confusion?"]},
         "current_design":{"design_ref":format!("design:generalization-{step}"),"design":design},
         "learner_context":{"current_request":request,"pending_assessment_refs":pending,"uninterpreted_fact_refs":facts,

@@ -11,6 +11,9 @@ pub struct ResidentGoal {
     pub user_message_refs: Vec<String>,
     pub interpretation: String,
     pub requirements: Vec<GoalRequirement>,
+    /// An output selection is authoritative; wording alone is only an initial inference.
+    #[serde(default)]
+    pub presentation_selection_turn_id: Option<String>,
     #[serde(default)]
     pub working: GoalWorkingState,
     #[serde(default)]
@@ -69,7 +72,7 @@ pub struct GoalWorkingState {
     pub items: Vec<GoalWorkItem>,
 }
 
-pub(crate) const PLANNED_WORK_GUIDANCE: &str = "Use the complete current request to determine the delivery scope. When the request needs several evidence or authoring steps, begin by recording a few concrete outcomes through goal.update operation=working; do this before substantive work, in the same tool batch as the first independent read when possible. Include the completion basis in important item descriptions. An agent.progress message or a teaching design does not save this execution plan. Do not use generic search/analyze/answer placeholders. Simple local follow-ups need no planning call. Before final selection, update the completed outcomes and any real remaining gap; retain supported results and stable item IDs at meaningful intermediate stages; combine independent reads and do not add a planning round for every tool action. Record useful conclusions in focus or item descriptions, remaining conditions in open_questions, and the specific next action in next_move. New evidence may reorder, split, merge or reopen work without changing the user's requirements.\nDistinguish source uncertainty from unknown learner understanding. Missing knowledge requires the relevant original text, conditions or calculation; search hits and a plan are not evidence. Unknown understanding requires support appropriate to the actual expression and help already received, not more source reading or a compulsory quiz. Invite a response only when it affects the next teaching decision and fits the request. TeachingDesign organizes learning relationships; Goal items execute the reads, comparisons, calculations, authoring, observations and delivery. Use only ready, applicable coach advice; the current request and new evidence take priority.\nBefore selecting delivery, establish the required facts and conditions, explain the necessary connections and inspect actual visual results. Preserve the complete requested scope, including a whole-book explanation when requested. When work is ready, deliver the exact result through the host's selection and completion contract; unresolved work remains explicit. Completed work items, teacher explanations and successful tools never establish learner mastery.";
+pub(crate) const PLANNED_WORK_GUIDANCE: &str = "Use the complete current request to determine the delivery scope. When the request has several deliverables, a broad comparison or substantial authoring work, begin by recording a few concrete outcomes through goal.update operation=working; do this before substantive work, in the same tool batch as the first independent read when possible. Include the completion basis in important item descriptions. An agent.progress message or a teaching design does not save this execution plan. Do not use generic search/analyze/answer placeholders. An ordinary explanation or local follow-up needs no planning call, even if it requires a search and several passages. The host already tracks tool activity, evidence counts and delivery status; do not repeat those facts through goal.update. Before final selection of a task with an existing work plan, update the completed outcomes and any real remaining gap; retain supported results and stable item IDs at meaningful intermediate stages; combine independent reads and do not add a planning round for every tool action. Record useful conclusions in focus or item descriptions, remaining conditions in open_questions, and the specific next action in next_move. New evidence may reorder, split, merge or reopen work without changing the user's requirements.\nDistinguish source uncertainty from unknown learner understanding. Missing knowledge requires the relevant original text, conditions or calculation; search hits and a plan are not evidence. Unknown understanding requires support appropriate to the actual expression and help already received, not more source reading or a compulsory quiz. Invite a response only when it affects the next teaching decision and fits the request. TeachingDesign organizes learning relationships; Goal items execute the reads, comparisons, calculations, authoring, observations and delivery. Use only ready, applicable coach advice; the current request and new evidence take priority.\nBefore selecting delivery, establish the required facts and conditions, explain the necessary connections and inspect actual visual results. Preserve the complete requested scope, including a whole-book explanation when requested. When work is ready, deliver the exact result through the host's selection and completion contract; unresolved work remains explicit. Completed work items, teacher explanations and successful tools never establish learner mastery.";
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "operation", rename_all = "snake_case", deny_unknown_fields)]
@@ -95,33 +98,53 @@ pub enum GoalUpdate {
 }
 
 const PRESENTATION_TERMS: &[&str] = &[
-    "富文本演示", "演示页", "网页", "页面", "html", "web page", "interactive page",
+    "富文本演示", "演示页", "网页", "页面", "交互页", "html", "web page", "webpage", "interactive page",
 ];
 const PRESENTATION_VERBS: &[&str] = &[
-    "做", "制作", "生成", "创建", "演示", "展示", "修改", "make", "create", "show", "present", "edit",
+    "做", "制作", "生成", "创建", "演示", "展示", "修改", "make", "create", "build", "generate", "show", "present", "edit",
 ];
 
 fn request_clauses(request: &str) -> impl Iterator<Item = &str> {
     request.split(['，', ',', '。', '.', '；', ';', '！', '!', '？', '?', '\n'])
+        .flat_map(|clause| clause.split(" but "))
+        .flat_map(|clause| clause.split(" and "))
+        .flat_map(|clause| clause.split('并'))
+        .flat_map(|clause| clause.split("而是"))
+}
+
+fn first_phrase(request: &str, phrases: &[&str]) -> Option<usize> {
+    phrases.iter().filter_map(|phrase| {
+        request.match_indices(*phrase).find(|(index, _)| {
+            !phrase.is_ascii()
+                || (request[..*index].chars().next_back().map_or(true, |c| !c.is_ascii_alphanumeric())
+                    && request[*index + phrase.len()..].chars().next().map_or(true, |c| !c.is_ascii_alphanumeric()))
+        }).map(|(index, _)| index)
+    }).min()
 }
 
 fn text_only_clause(request: &str) -> bool {
-    ["只要文字", "只用文字", "改成文字", "不需要演示", "不要演示", "不用网页", "无需页面", "text only", "no page"]
-        .iter().any(|phrase| request.contains(phrase))
-        || ["不要", "不需要", "不用", "无需", "不必", "别"].iter().any(|negation| {
-            ["", "做", "制作", "生成", "创建", "展示", "演示"].iter().any(|verb| {
-                ["富文本演示", "演示页", "网页", "页面", "交互页面", "交互页", "html"].iter()
-                    .any(|object| request.contains(&format!("{negation}{verb}{object}")))
-            })
-        })
+    if first_phrase(request, &["只要文字", "只用文字", "改成文字", "不需要演示", "不要演示", "text only", "no page"]).is_some() {
+        return true;
+    }
+    let Some(object) = first_phrase(request, PRESENTATION_TERMS) else { return false; };
+    let action = first_phrase(request, PRESENTATION_VERBS).unwrap_or(object);
+    first_phrase(&request[..object.max(action)], &[
+        "不要", "不需要", "不用", "无需", "不必", "别", "不想", "不要再",
+        "do not", "don't", "don’t", "not", "no", "without", "avoid", "skip", "never",
+    ]).is_some()
 }
 
 fn presentation_requested(request: &str) -> bool {
     // Scope a refusal to its clause so a separate positive request remains deliverable.
     request_clauses(request).any(|clause| {
-        !text_only_clause(clause)
-            && PRESENTATION_TERMS.iter().any(|term| clause.contains(term))
-            && PRESENTATION_VERBS.iter().any(|verb| clause.contains(verb))
+        let Some(action) = first_phrase(clause, PRESENTATION_VERBS) else { return false; };
+        let explanation = first_phrase(clause, &[
+            "为什么", "为何", "如何", "怎样", "怎么", "解释", "说明", "讲解", "介绍",
+            "演示如何", "展示如何", "演示怎么", "展示怎么",
+            "why", "how", "what", "explain", "describe", "tell me", "show me how", "show how",
+        ]);
+        !text_only_clause(clause) && first_phrase(clause, PRESENTATION_TERMS).is_some()
+            && explanation.map_or(true, |explanation| explanation > action)
     })
 }
 
@@ -131,6 +154,24 @@ fn explicit_text_only(request: &str) -> bool {
 }
 
 impl ResidentGoal {
+    /// Record the reader's explicit output selection, independently of wording.
+    pub fn require_presentation(&mut self, turn_id: &str) {
+        let already_required = self.requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery);
+        if already_required && self.presentation_selection_turn_id.as_deref() == Some(turn_id) {
+            return;
+        }
+        self.presentation_selection_turn_id = Some(turn_id.into());
+        if !already_required {
+            self.requirements.push(GoalRequirement {
+                id: format!("{turn_id}:presentation"),
+                description: "制作并交付本次问题的演示页".into(),
+                basis_turn_id: turn_id.into(),
+                verification: GoalVerification::PresentationDelivery,
+            });
+        }
+        self.revision += 1;
+    }
+
     pub fn objective_gap(&self, delivered_presentations: usize, reader_effects: usize) -> Option<&'static str> {
         if self.status != GoalStatus::Open { return None; }
         if self.requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery)
@@ -160,6 +201,7 @@ impl ResidentGoal {
                 basis_turn_id: turn_id,
                 verification: if presentation { GoalVerification::PresentationDelivery } else { GoalVerification::Content },
             }],
+            presentation_selection_turn_id: None,
             working: GoalWorkingState::default(),
             result_refs: Vec::new(),
             status: GoalStatus::Open,
@@ -192,7 +234,7 @@ impl ResidentGoal {
                 if self.origin_turn_id != current_turn_id {
                     return Err("refine is limited to the goal's origin turn".into());
                 }
-                if self.requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery)
+                if self.presentation_selection_turn_id.is_some()
                     && !requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery) {
                     return Err("refine cannot remove the user's explicit presentation request".into());
                 }
@@ -203,11 +245,18 @@ impl ResidentGoal {
                     return Err("revision must quote the current user message".into());
                 }
                 if self.requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery)
-                    && !requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery)
-                    && !explicit_text_only(current_user) {
-                    return Err("removing presentation delivery needs an explicit text-only user request".into());
+                    && !requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery) {
+                    if self.presentation_selection_turn_id.as_deref() == Some(current_turn_id) {
+                        return Err("revise cannot remove the current turn's explicit presentation selection".into());
+                    }
+                    if !explicit_text_only(current_user) {
+                        return Err("removing presentation delivery needs an explicit text-only user request".into());
+                    }
                 }
                 self.replace_requirements(interpretation, requirements, current_turn_id)?;
+                if !self.requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery) {
+                    self.presentation_selection_turn_id = None;
+                }
                 if !self.user_message_refs.contains(&basis_turn_id) {
                     self.user_message_refs.push(basis_turn_id);
                 }
@@ -237,11 +286,13 @@ impl ResidentGoal {
     pub fn projection(&self, observed_passages: usize, pending_candidates: usize, delivered_presentations: usize) -> String {
         let delivery_required = self.requirements.iter().any(|r| r.verification == GoalVerification::PresentationDelivery);
         format!(
-            "resident_goal.v1\nid={} revision={} status={:?}\nOrigin turn: {}. Current request turn: {}.\nUser task: {}\nRequirements: {}\nActual results in this run: observed passages={observed_passages}, uncommitted presentation candidates={pending_candidates}, delivered presentations={delivered_presentations}.\nSaved result references: {}\nRemaining delivery: {}\nWorking focus: {}\nOpen questions: {}\nNext move: {}\nWork items (method/progress only): {}\nThis current Goal revision is authoritative over historical active_goal summaries. Work items may change without changing requirements; completed items do not prove delivery or content completeness. A source receipt or candidate is not a delivered page. An old tool activation or candidate cannot be reused in a new run. Work completion never proves learner understanding.",
+            "resident_goal.v1\nid={} revision={} status={:?}\nOrigin turn: {}. Current request turn: {}.\nUser task: {}\nRequirements: {}\nActual results in this run: observed passages={observed_passages}, uncommitted presentation candidates={pending_candidates}, delivered presentations={delivered_presentations}.\nSaved result references: {}\nRemaining delivery: {}\nDelivery classification: {}\nWorking focus: {}\nOpen questions: {}\nNext move: {}\nWork items (method/progress only): {}\nThis current Goal revision is authoritative over historical active_goal summaries. Work items may change without changing requirements; completed items do not prove delivery or content completeness. A source receipt or candidate is not a delivered page. An old tool activation or candidate cannot be reused in a new run. Work completion never proves learner understanding.",
             self.id, self.revision, self.status, self.origin_turn_id, self.user_message_refs.last().map(String::as_str).unwrap_or(&self.origin_turn_id), self.interpretation,
             self.requirements.iter().map(|r| format!("{} [{:?}]", r.description, r.verification)).collect::<Vec<_>>().join("; "),
             self.result_refs.join(", "),
             if delivery_required && delivered_presentations == 0 { "presentation delivery still required" } else { "no objective presentation gap recorded" },
+            if self.presentation_selection_turn_id.is_some() { "explicit reader output selection; refine must retain presentation delivery" }
+                else { "initially inferred from wording; origin-turn refine may correct its verification while preserving every requested outcome" },
             self.working.focus, self.working.open_questions.join("; "), self.working.next_move,
             serde_json::to_string(&self.working.items).expect("goal work items serialize"),
         )
@@ -364,6 +415,7 @@ mod tests {
         use serde_json::json;
         let mut goal = ResidentGoal::new("g".into(), "t1".into(), "做网页".into());
         let mut old = serde_json::to_value(&goal).unwrap();
+        old.as_object_mut().unwrap().remove("presentation_selection_turn_id");
         old["working"].as_object_mut().unwrap().remove("items");
         assert_eq!(serde_json::from_value::<ResidentGoal>(old.clone()).unwrap(), goal);
         old.as_object_mut().unwrap().remove("working");
@@ -400,6 +452,7 @@ mod tests {
         let text = ResidentGoal::new("g2".into(), "t2".into(), "只用文字概述这一节，不需要演示页".into());
         assert_eq!(text.requirements[0].verification, GoalVerification::Content);
         let mut page = page;
+        page.require_presentation("t1");
         let content = GoalRequirement { id: "text".into(), description: "只回答文字".into(), basis_turn_id: "t1".into(), verification: GoalVerification::Content };
         assert!(page.apply_update(GoalUpdate::Refine { interpretation: "Text".into(), requirements: vec![content.clone()] }, "t1", "可以把这一章的内容富文本演示给我看吗").is_err());
         page.user_message_refs.push("t3".into());
@@ -432,11 +485,111 @@ mod tests {
             "不要先做诊断，请制作交互页面解释这道题。",
             "不要制作交互页面，改为制作静态网页。",
             "不要演示，给我创建一个网页。",
+            "Please create a web page explaining why the text is bold.",
+            "Can you build an HTML page showing how this works?",
+            "Don't create an interactive page, create a static web page instead.",
+            "Do not make an interactive page but create a static web page.",
+            "Explain how HTML works and create a web page with an example.",
+            "解释 HTML 的用途并创建一个示例网页。",
         ] {
             let goal = ResidentGoal::new("g".into(), "t1".into(), request.into());
             assert_eq!(goal.requirements[0].verification, GoalVerification::PresentationDelivery, "{request}");
             assert!(goal.objective_gap(0, 0).is_some(), "{request}");
             assert!(!explicit_text_only(request), "{request}");
+        }
+    }
+
+    #[test]
+    fn page_negations_and_questions_about_authoring_are_content_requests() {
+        for request in [
+            "do not create a web page",
+            "Don't create a web page; just explain it.",
+            "I do not want you to build an HTML page.",
+            "Please avoid creating an interactive page.",
+            "不要给我创建一个网页。",
+            "不必制作任何交互页面。",
+            "Why does HTML make this text bold?",
+            "How do I create an HTML page?",
+            "Please explain how to build a web page.",
+            "Show me how to make an interactive page.",
+            "解释书里如何创建网页",
+            "请说明如何生成 HTML 页面。",
+            "网页应该如何创建？",
+            "展示如何创建网页的步骤。",
+        ] {
+            let goal = ResidentGoal::new("g".into(), "t1".into(), request.into());
+            assert_eq!(goal.requirements[0].verification, GoalVerification::Content, "{request}");
+            assert_eq!(goal.objective_gap(0, 0), None, "{request}");
+        }
+    }
+
+    fn content_refinement(request: &str, turn: &str) -> GoalUpdate {
+        GoalUpdate::Refine {
+            interpretation: request.into(),
+            requirements: vec![GoalRequirement {
+                id: "content".into(), description: request.into(), basis_turn_id: turn.into(),
+                verification: GoalVerification::Content,
+            }],
+        }
+    }
+
+    #[test]
+    fn wording_inference_can_be_corrected_without_removing_the_requested_content() {
+        let request = "Show the HTML that makes this text bold";
+        let mut goal = ResidentGoal::new("g".into(), "t1".into(), request.into());
+        assert!(goal.objective_gap(0, 0).is_some(), "the initial wording classification is ambiguous");
+        assert!(goal.projection(0, 0, 0).contains("origin-turn refine may correct"));
+        assert!(goal.apply_update(content_refinement(request, "t1"), "t1", request).unwrap());
+        assert_eq!(goal.requirements[0].description, request);
+        assert_eq!(goal.objective_gap(0, 0), None);
+        assert!(!goal.apply_update(content_refinement(request, "t1"), "t1", request).unwrap());
+        assert!(goal.apply_update(content_refinement(request, "t2"), "t2", request).is_err());
+    }
+
+    #[test]
+    fn restored_keyword_misclassification_can_be_refined() {
+        for request in ["do not create a web page", "Why does HTML make this text bold?", "解释书里如何创建网页"] {
+            let goal = ResidentGoal::new("g".into(), "t1".into(), request.into());
+            // Persisted goals from the old keyword classifier have no output-selection source.
+            let mut stored = serde_json::to_value(goal).unwrap();
+            stored.as_object_mut().unwrap().remove("presentation_selection_turn_id");
+            stored["requirements"][0]["verification"] = serde_json::json!("presentation_delivery");
+            let mut restored: ResidentGoal = serde_json::from_value(stored).unwrap();
+            assert!(restored.objective_gap(0, 0).is_some());
+            assert!(restored.apply_update(content_refinement(request, "t1"), "t1", request).unwrap());
+            assert_eq!(restored.objective_gap(0, 0), None, "{request}");
+            assert_eq!(restored.requirements[0].description, request);
+        }
+    }
+
+    #[test]
+    fn explicit_output_selection_survives_storage_and_cannot_be_refined_away() {
+        for request in ["解释一下这里", "Please create a web page", "do not create a web page"] {
+            let mut goal = ResidentGoal::new("g".into(), "t1".into(), request.into());
+            let initial_revision = goal.revision;
+            goal.require_presentation("t1");
+            assert_eq!(goal.revision, initial_revision + 1);
+            let mut goal: ResidentGoal = serde_json::from_value(serde_json::to_value(goal).unwrap()).unwrap();
+            let before = goal.clone();
+            goal.require_presentation("t1");
+            assert_eq!(goal, before, "repeating the same output selection is a no-op");
+            assert!(goal.apply_update(content_refinement(request, "t1"), "t1", request).is_err());
+            assert_eq!(goal, before);
+            assert!(goal.projection(0, 0, 0).contains("explicit reader output selection"));
+            let GoalUpdate::Refine { interpretation, requirements } = content_refinement(request, "t1") else { unreachable!() };
+            let revise = GoalUpdate::Revise {
+                basis_turn_id: "t1".into(), basis_quote: request.into(), interpretation, requirements,
+            };
+            assert!(goal.apply_update(revise, "t1", request).is_err());
+            assert_eq!(goal, before);
+            let refusal = "Do not create a web page; text only.";
+            let GoalUpdate::Refine { interpretation, requirements } = content_refinement(refusal, "t2") else { unreachable!() };
+            let revise = GoalUpdate::Revise {
+                basis_turn_id: "t2".into(), basis_quote: refusal.into(), interpretation, requirements,
+            };
+            assert!(goal.apply_update(revise, "t2", refusal).unwrap());
+            assert_eq!(goal.presentation_selection_turn_id, None);
+            assert_eq!(goal.objective_gap(0, 0), None);
         }
     }
 

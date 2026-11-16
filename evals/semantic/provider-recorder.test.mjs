@@ -3,6 +3,53 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { startProviderRecorder, measuredUsage, requestPurpose, usageByPurpose } from './provider-recorder.mjs';
 
+test('model discovery is forwarded without consuming generation budget or adding missing usage', async () => {
+  const listing = { data: [{ id: 'test-model', api_capabilities: { anthropic_messages: { tool_update: 'in-history' } } }] };
+  let seen;
+  const upstream = http.createServer((req, res) => { seen = [req.method, req.url]; res.end(JSON.stringify(listing)); });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const recorder = await startProviderRecorder(`http://127.0.0.1:${upstream.address().port}`, { tokenLimit: 0 });
+  try {
+    const response = await fetch(recorder.url + '/models');
+    assert.deepEqual(await response.json(), listing);
+    assert.deepEqual(seen, ['GET', '/models']);
+    assert.equal(recorder.records.length, 0);
+    assert.equal(recorder.metadataRequests.length, 1);
+    assert.equal(recorder.budgetRejections.length, 0);
+  } finally { await recorder.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
+test('native Messages preserves wire bytes, tools and cumulative cached usage without saving reasoning or keys', async () => {
+  const events = [
+    { type: 'message_start', message: { id: 'native', model: 'test-model', usage: { input_tokens: 7, cache_read_input_tokens: 90, cache_creation_input_tokens: 3, output_tokens: 0 } } },
+    { type: 'content_block_start', index: 0, content_block: { type: 'thinking', thinking: 'PRIVATE_REASONING' } },
+    { type: 'content_block_start', index: 1, content_block: { type: 'tool_use', id: 't1', name: 'music_read', input: {} } },
+    { type: 'content_block_delta', index: 1, delta: { type: 'input_json_delta', partial_json: '{"measure":"1"}' } },
+    { type: 'message_delta', delta: { stop_reason: 'tool_use' }, usage: { output_tokens: 9 } },
+    { type: 'message_stop' },
+  ];
+  const wire = events.map(event => `data: ${JSON.stringify(event)}\n\n`).join('');
+  let received;
+  const upstream = http.createServer(async (req, res) => {
+    const chunks = []; for await (const chunk of req) chunks.push(chunk);
+    received = { body: Buffer.concat(chunks).toString(), beta: req.headers['anthropic-beta'], key: req.headers['x-api-key'] };
+    res.writeHead(200, { 'content-type': 'text/event-stream' }); res.end(wire);
+  });
+  await new Promise(resolve => upstream.listen(0, '127.0.0.1', resolve));
+  const recorder = await startProviderRecorder(`http://127.0.0.1:${upstream.address().port}`);
+  const body = JSON.stringify({ model: 'test-model', messages: [{ role: 'assistant', content: [{ type: 'thinking', thinking: 'PRIVATE_PRIOR_REASONING' }] }] });
+  try {
+    const response = await fetch(recorder.url + '/messages', { method: 'POST', body, headers: { 'x-api-key': 'PRIVATE_KEY', 'anthropic-beta': 'updates' } });
+    assert.equal(await response.text(), wire);
+    assert.deepEqual(received, { body, beta: 'updates', key: 'PRIVATE_KEY' });
+    const record = recorder.records[0];
+    assert.equal(record.usage.total_tokens, 109);
+    assert.equal(record.response_complete, true);
+    assert.equal(record.response.choices[0].message.tool_calls[0].function.arguments, '{"measure":"1"}');
+    assert(!JSON.stringify(recorder.records).includes('PRIVATE_'));
+  } finally { await recorder.stop(); upstream.closeAllConnections(); await new Promise(resolve => upstream.close(resolve)); }
+});
+
 test('cost purposes follow system signatures, preserve unknown and missing usage', () => {
   const request = content => ({ messages: [{ role: 'system', content }] });
   assert.equal(requestPurpose(request('source_answer_repair.v3\ncontract')), 'source_repair');

@@ -1,5 +1,31 @@
 // Semantic prompts shared by the formal router and both executor hosts.
 const BASE_PROMPTS = {
+  structure_outline_theme_page: `# BookStructure paged provisional themes
+
+Organize distinct questions that develop across the book from accepted anchored chapter explanations.
+The book directory provides canonical order and titles. chapters.items and reading provide evidence.
+themes.items is a page of accepted themes with stable zero-based theme_index values.
+Return one strict JSON action per call.
+{"kind":"browse","offset":16}
+{"kind":"inspect","unit_lids":["..."]}
+{"kind":"browse_themes","offset":0}
+{"kind":"append","themes":[{"question":{"text":"...","evidence_lids":["..."]},"unit_lids":["..."]}]}
+{"kind":"extend","theme_index":0,"unit_lids":["..."],"evidence_lids":["..."]}
+{"kind":"finish"}
+
+Use chapters.next_offset to browse until all chapters have been delivered. Its stride follows the
+actual page capacity. inspect reads up to four units from anywhere in the book, including earlier
+pages, so a theme can connect distant chapters. Use themes.next_offset or another valid theme offset
+to inspect the accepted directory before appending a potentially overlapping theme.
+Each new member must cite its question or progression evidence delivered in this call's chapters.items
+or reading. Request an inspection first when those cards are absent. extend requires the theme's
+directory entry on the current theme page and adds only new members with their delivered evidence.
+Core retains previous members and citations. Keep distinct questions distinct and extend existing
+themes when the same question develops in later chapters. A theme can begin with one grounded member.
+Submit a small number of concise themes or members within output_contract.transport per action.
+Finish only after every chapter has been delivered and the justified cross-chapter questions are
+represented. An empty theme directory is valid. Use the book's language. Output the action only.
+`,
   structure_outline_chapters: `# BookStructure bounded chapter outline
 
 Read the delivered whole-book outline for orientation. Explain only the units in requested_unit_lids,

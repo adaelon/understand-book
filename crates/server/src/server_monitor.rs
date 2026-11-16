@@ -130,7 +130,7 @@ impl ServerMonitor {
                 ).map_err(api_storage)?;
                 let today_start = (now + 28800).div_euclid(86400) * 86400 - 28800;
                 let (today_turns, today_completed_turns) = tx.query_row(
-                    "SELECT count(CASE WHEN kind='question' THEN 1 END),count(CASE WHEN kind='completed' THEN 1 END) FROM admin_usage_events WHERE occurred_at>=? AND occurred_at<?",
+                    "SELECT count(CASE WHEN kind='question' THEN 1 END),count(CASE WHEN kind='completed' THEN 1 END) FROM admin_usage_events e WHERE occurred_at>=? AND occurred_at<? AND NOT EXISTS(SELECT 1 FROM operational_outcomes o WHERE o.user_id=e.user_id AND o.turn_id=e.event_ref AND o.is_probe=1)",
                     [today_start, today_start + 86400], |r| Ok((r.get(0)?, r.get(1)?)),
                 ).map_err(api_storage)?;
                 Activity { online_users: self.online_users(&tx, now, instant)?, active_runs, queued_runs,

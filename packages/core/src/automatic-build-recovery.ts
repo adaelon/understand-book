@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { z } from "zod";
 import { canonicalBuildJson } from "./build-intent";
 import type { AutomaticBuildStage, BuildTargetRefV2 } from "./build-orchestrator";
@@ -46,15 +45,9 @@ const AUTOMATIC_BUILD_STAGES = [
   "profile_sidecar",
   "pass2",
   "book_structure",
-  "formal_objects", "cognitive_materials", "teaching_publish",
+  "formal_objects", "cognitive_materials", "teaching_publish", "course",
   "paper_reading_guide",
 ] as const satisfies readonly AutomaticBuildStage[];
-
-const SHA256 = /^[a-f0-9]{64}$/u;
-
-function sha256(value: string): string {
-  return createHash("sha256").update(value, "utf8").digest("hex");
-}
 
 function boundedUtf8String(maxBytes: number) {
   return z.string()
@@ -63,7 +56,6 @@ function boundedUtf8String(maxBytes: number) {
     .refine((value) => Buffer.byteLength(value, "utf8") <= maxBytes, `must not exceed ${maxBytes} UTF-8 bytes`);
 }
 
-const Sha256Z = z.string().regex(SHA256);
 const NonNegativeSafeIntegerZ = z.number().int().nonnegative().safe();
 const PositiveSafeIntegerZ = z.number().int().positive().safe();
 const BoundedStringZ = boundedUtf8String(AUTOMATIC_BUILD_RECOVERY_LIMITS.max_string_bytes);
@@ -71,7 +63,6 @@ const InputFingerprintZ = boundedUtf8String(AUTOMATIC_BUILD_RECOVERY_LIMITS.max_
 
 const OmittedValuesZ = z.object({
   count: PositiveSafeIntegerZ,
-  digest: Sha256Z,
 }).strict();
 
 const AffectedWorkUnitZ = z.object({
@@ -160,7 +151,6 @@ function omissionSummary<T>(values: T[]): AutomaticBuildRecoveryOmittedValuesV1 
   if (!values.length) return undefined;
   return {
     count: values.length,
-    digest: sha256(canonicalBuildJson(values)),
   };
 }
 

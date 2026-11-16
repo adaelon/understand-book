@@ -61,7 +61,7 @@ fn unavailable() -> ToolError {
         "联网服务尚未配置有效费率，暂不能启动付费请求",
     )
 }
-pub(crate) fn rate(root: &Path, kind: WebServiceKind, now: i64) -> Result<WebRate, ToolError> {
+fn load_rates(root: &Path) -> Result<Rates, ToolError> {
     let bytes = std::fs::read(root.join("web-rates.json")).map_err(|_| unavailable())?;
     let rates: Rates = serde_json::from_slice(&bytes).map_err(|_| unavailable())?;
     for (i, r) in rates.rates.iter().enumerate() {
@@ -79,11 +79,31 @@ pub(crate) fn rate(root: &Path, kind: WebServiceKind, now: i64) -> Result<WebRat
             return Err(unavailable());
         }
     }
-    rates
-        .rates
-        .into_iter()
+    Ok(rates)
+}
+pub(crate) fn rate(root: &Path, kind: WebServiceKind, now: i64) -> Result<WebRate, ToolError> {
+    load_rates(root)?.rates.into_iter()
         .find(|r| r.service_kind == kind && r.starts_at <= now && now < r.expires_at)
         .ok_or_else(unavailable)
+}
+
+pub(crate) fn health(root: &Path, now: i64) -> Value {
+    let loaded = load_rates(root);
+    json!([WebServiceKind::Search, WebServiceKind::Fetch].map(|kind| {
+        let unavailable = || json!({"service_kind":kind,"status":"unavailable","code":"WEB_RATE_UNAVAILABLE",
+            "message":"联网服务没有有效费率，付费请求已停止","coverage_until":null});
+        let Ok(rates) = &loaded else { return unavailable(); };
+        let mut matching: Vec<_> = rates.rates.iter().filter(|r|r.service_kind==kind).collect();
+        matching.sort_by_key(|r|r.starts_at);
+        let Some(index) = matching.iter().position(|r|r.starts_at<=now && now<r.expires_at) else { return unavailable(); };
+        let mut until = matching[index].expires_at;
+        for next in &matching[index+1..] { if next.starts_at!=until { break; } until=next.expires_at; }
+        let remaining=until-now;
+        let (status,code,message)=if remaining<=86400 { ("critical","WEB_RATE_EXPIRES_WITHIN_DAY","联网服务费率将在 24 小时内到期") }
+            else if remaining<=7*86400 { ("warning","WEB_RATE_EXPIRES_WITHIN_WEEK","联网服务费率将在 7 天内到期") }
+            else { ("ready","WEB_RATE_READY","联网服务费率有效") };
+        json!({"service_kind":kind,"status":status,"code":code,"message":message,"coverage_until":until,"remaining_seconds":remaining})
+    }))
 }
 
 pub(crate) fn charge(db: &Connection, id: &str) -> Result<Option<Value>, ToolError> {

@@ -374,6 +374,23 @@ fn http(
 }
 
 #[test]
+fn mu4_http_image_questions_accept_base64_size_and_report_oversized_requests() {
+    let f = Fixture::unseeded();
+    let server = f.start();
+    // Authentication is reached only after the HTTP body has been read. No
+    // provider is called, and normal requests retain their existing limit.
+    let image = json!({"music_context":{"image":{"png_base64":"A".repeat(5_592_408)}}});
+    for path in ["/api/workspaces/w/agent/runs", "/api/workspaces/w/reader/video_draft"] {
+        assert_eq!(http(&server.url, "POST", path, None, None, Some(image.clone())).status(), 401, "{path}");
+        let response = http(&server.url, "POST", path, None, None, Some(json!({"image":"A".repeat(6 * 1024 * 1024)})));
+        assert_eq!(response.status(), 413);
+        assert_eq!(response.into_json::<Value>().unwrap()["error_code"], "REQUEST_TOO_LARGE");
+    }
+    assert_eq!(http(&server.url, "POST", "/api/workspaces", None, None, Some(json!({"text":"A".repeat(65536)}))).status(), 413);
+    server.shutdown();
+}
+
+#[test]
 fn w1_learning_workspace_http_keeps_goal_history_exact_members_and_account_ownership() {
     let f = Fixture::unseeded();
     let input = tempfile::tempdir().unwrap();

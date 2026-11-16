@@ -49,7 +49,7 @@ test('mobile QA gives long answers the screen and preserves reading through menu
   await page.getByRole('button', { name: '学习与会话', exact: true }).click();
   await page.getByRole('button', { name: '阅读设置', exact: true }).click();
   await expect(page.locator('.topbar').getByRole('button', { name: '新对话', exact: true })).toBeVisible();
-  await page.locator('.topbar-mobile-close').click();
+  await page.locator('.topbar').getByRole('button', { name: '更多阅读工具' }).click();
   const input = page.locator('.agent-input textarea');
   await expect(input).toHaveValue('未发送草稿');
   await input.fill('第一行\n第二行\n第三行\n第四行\n第五行\n第六行');

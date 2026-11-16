@@ -2,11 +2,11 @@
 
 在 DeepSeek Harness 中确认并执行 Understand Book 的标准预构建计划。DSH 提供模型和原生 child；Build Engine 负责计划、预算、候选接纳、质量门和发布。
 
-当前提供 Windows x64 预发布包 `0.1.0-rc.2`，固定宿主为官方 DSH Desktop `0.1.7-rc.2`。插件与 Engine 分开交付，运行时不需要源码仓库或全局 Node/Bun/Cargo。真实模型完整构建与语义质量验收仍属于 DH6 后续工作。
+当前提供 Windows x64 预发布包 `0.1.0-rc.3`，增加课程构建入口，支持合同仍为官方 DSH Desktop `0.1.7-rc.2`。插件与 Engine 分开交付，运行时不需要源码仓库或全局 Node/Bun/Cargo。课程流程已通过受控候选验证，详见[课程构建记录](../../docs/evidence/course-build-20261112/README.md)。真实模型完整构建与语义质量验收仍属于 DH6 后续工作。
 
 ## Windows Desktop 安装
 
-发布目录包含插件 `understand-book-dsh-plugin-0.1.0-rc.2.tgz`、`engine/understand-book-build.exe`、相邻的 `engine/resources/`、本说明和 `release.json`。整个 `engine` 目录可保存在任意固定位置，支持中文和空格；升级时保留原 Engine 和 registry。音乐构建需要随附的可替换谱面库与许可资料，部署时保留整个目录。
+发布目录包含插件 `understand-book-dsh-plugin-0.1.0-rc.3.tgz`、`engine/understand-book-build.exe`、相邻的 `engine/resources/`、本说明和 `release.json`。整个 `engine` 目录可保存在任意固定位置，支持中文和空格；升级时保留原 Engine 和 registry。音乐构建需要随附的可替换谱面库与许可资料，部署时保留整个目录。
 
 1. 配置 Engine：已安装的兼容 Reader 可通过 `HKCU\Software\UnderstandBook\InstallDir` 自动发现；独立 Engine 可通过环境变量 `UNDERSTAND_BOOK_DSH_ENGINE` 指定完整 exe 路径，然后启动 Desktop。也可以在 Desktop 的插件配置中设置 `executable`。
 2. 打开 Desktop 的「插件 → 添加插件」，输入 tarball 的完整路径，点击「安装」，安装成功后点击「立即启用」。插件详情应显示 `understand-book-build` 正在运行。
@@ -82,7 +82,7 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 
 `video` 是上方运营配置的一个字段；所有路径均为本机绝对路径。`publicationServiceRoot` 可省略，默认使用 `driverRoot/video-publications/<task_id>`。它是构建专用的暂存发布目录，不能指向正在运行的 Reader 服务目录；视频语义执行需要阶段性不可变证据，最终成果由 Reader 服务自己的导入接口接纳。FFmpeg/FFprobe 默认按现有安装规则定位，也可在 `video` 中指定 `ffmpegExecutable`、`ffprobeExecutable`。
 
-视频在已安装 Build Engine 内运行原有媒体执行链路。宿主把临时费用连接通过进程输入交给 Engine，收到进度后先保存到后台再确认推进；取消同样通过进程输入传递，等待当前执行器收尾和费用回执。进度来自实际复制字节、转写分段、解码位置和已接纳候选；阶段未知总量时不显示伪造百分比。默认生成转写、双语字幕、画面索引、图谱及原讲解结构，不生成额外 Tutor 教学材料。书籍的默认准备计划也不生成额外的正式教学对象、认知材料和教学发布，仍保留原文理解与全书结构；明确设置 `build_tutor:true` 才纳入额外教学阶段。
+视频在已安装 Build Engine 内运行原有媒体执行链路。宿主把临时费用连接通过进程输入交给 Engine，收到进度后先保存到后台再确认推进；取消同样通过进程输入传递，等待当前执行器收尾和费用回执。进度来自实际复制字节、转写分段、解码位置和已接纳候选；阶段未知总量时不显示伪造百分比。默认生成转写、双语字幕、画面索引、图谱及原讲解结构，不生成额外 Tutor 教学材料。书籍的默认准备计划也不生成额外的正式教学对象、认知材料和教学发布，仍保留原文理解与全书结构；选择“构建课程”（`build_course:true`）后，在全书结构完成后编排课程、逐课制作、独立解题与回读来源核验；可用 `course_goal` 限定章节或主题。留空按章节组织。课程任务沿同一预算、暂停恢复和费用回执运行，成果导入后可随所选材料发布到共享工作区。历史教学阶段仍按原冻结计划恢复。
 
 只有原引擎返回 DONE，宿主才请求服务使用既有发布导入器接纳成果；随后后台选择本任务的确切成果、填写公共编排并发布共享工作区。费用观察仍是部分或未知，完整供应商费用缺失时持续显示待核算。原引擎遇到需要额外决定的边界时，后台显示等待决定的原因；运营者在已连接的 DSH 根会话原问答中选择后继续。换用新的根 Agent id 不会静默接管旧 invocation。
 
@@ -119,6 +119,8 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 根结果只包含控制投影，候选、分片和字段修正反馈留在 child 与 Engine 路径。正文及候选经所选模型路由处理，并可能保留在 DSH child 会话日志中；日志保留由宿主管理。
 
 ## 验证与限制
+
+2026-11-12 核对到本机 Desktop 已为 `0.2.1-rc.2`，其 spawn 合同不再提供本适配器要求的 `toolFilter`、`persona` 能力，准备计划返回 `build_harness_unsupported`。本次已恢复该 Desktop profile 的原 rc.2 插件和启动配置，rc.3 仅保留为候选包；不能把旧合同的受控候选测试称为 0.2.1 安装态可用。Codex 维护插件及独立 Engine 的更新不依赖该宿主。
 
 维护者构建与独立发布验证：
 

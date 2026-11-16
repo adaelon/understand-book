@@ -36,7 +36,7 @@ fn math_structure_source_reading_reaches_author_and_delivery() {
     ],vec![accepted_review()]);
     let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(8),..Default::default()},adapter.model_runtime_profile());
     context.tool_exposure_state.activate("book.text");
-    context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":plan},
+    context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":plan},
         "learner_context":{"current_request":question}}));
     let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
     let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
@@ -296,7 +296,7 @@ fn native_board_candidate_is_the_complete_public_delivery() {
 
 #[test]
 fn pending_native_board_exposes_only_the_candidate_selection_contract() {
-    let pending = serde_json::json!({"status":"active","native_board_candidate_pending":true});
+    let pending = serde_json::json!({"status":"practice","native_board_candidate_pending":true});
     for spec in [crate::tutor::spec_for_context(&pending).unwrap(), crate::tutor::model_spec_for_context(&pending).unwrap()] {
         assert!(spec.parameters["properties"].get("delivery_move_refs").is_none());
         let movement = &spec.parameters["properties"]["move"];
@@ -308,14 +308,14 @@ fn pending_native_board_exposes_only_the_candidate_selection_contract() {
         assert!(movement["properties"].get("delivery_text").is_none(), "A second public body must not be an advertised native input");
         assert!(movement.get("anyOf").is_none());
     }
-    let resolved = serde_json::json!({"status":"active","native_board_candidate_pending":true,"current_action":{
+    let resolved = serde_json::json!({"status":"practice","native_board_candidate_pending":true,"current_action":{
         "action":{"origin":"ui_entry","entry_action":"explain_selection"},"user_supplement":"","accepted_request":"Explain this selection.",
         "answer_ref":null,"answer_text":null,"source_excerpt":null,"source_bindings":[],"target":null,"expected_chat_head":null,"presentation_follow_up":null}});
     for spec in [crate::tutor::spec_for_context(&resolved).unwrap(), crate::tutor::model_spec_for_context(&resolved).unwrap()] {
         assert_eq!(spec.parameters["properties"]["move"]["required"], serde_json::json!(["board_candidate_revision"]));
         assert!(spec.parameters["properties"]["move"]["properties"].get("interaction_intent").is_none());
     }
-    let committed = serde_json::json!({"status":"active","native_board_candidate_pending":false});
+    let committed = serde_json::json!({"status":"practice","native_board_candidate_pending":false});
     assert!(crate::tutor::model_spec_for_context(&committed).unwrap().parameters["properties"]["move"]["properties"].get("delivery_text").is_some(),
         "After committing a part, ordinary final teaching text is available again");
 }
@@ -530,7 +530,7 @@ fn native_board_preview_reaches_teaching_selection_before_any_commit() {
         current_design["representation"] = serde_json::json!({"kind":"presentation",
             "reason":"Keep the catalog and route visible together.","observation":"B stays in the catalog while the route changes."});
     }
-    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":current_design},"learner_context":{}}));
+    context.tutor = Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":current_design},"learner_context":{}}));
     if mode == "resolved_reference" {
         context.tutor.as_mut().unwrap()["current_action"] = serde_json::json!({"action":{"origin":"ui_entry","entry_action":"explain_selection"},
             "user_supplement":"","accepted_request":"Explain this selection.","answer_ref":null,"answer_text":null,"source_excerpt":null,
@@ -635,7 +635,7 @@ fn teaching_writing_rules_reach_each_enabled_main_request_once() {
     let b = book();
     let profile = ModelRuntimeProfile::fallback("shared-writing", ProviderToolProtocol::Native);
     let writing = include_str!("tutor_writing_rules.md");
-    for status in ["active", "observing", "reference", "paused", "inactive"] {
+    for status in ["practice", "observing", "reference", "paused", "inactive"] {
         let tutor = serde_json::json!({"status":status,"learner_context":{"current_request":"Explain this relation."}});
         let registry = resident_tool_registry().with_tutor_context(Some(&tutor));
         let mut exposure = ToolExposureState::default();
@@ -645,7 +645,7 @@ fn teaching_writing_rules_reach_each_enabled_main_request_once() {
             &mut ActiveToolResultLedger::default(), None, COMPACTION_CONSUMPTION_WRAPPER, &registry, &profile,
             ToolPermissions::default(), &exposure, ArtifactExposureContext::no_overlay(), EvidenceState::UserProvided,
             &[], None, false, Some(&tutor), None, None, None).unwrap();
-        let enabled = usize::from(matches!(status, "active" | "observing" | "reference"));
+        let enabled = usize::from(matches!(status, "practice" | "observing" | "reference"));
         let occurrences: usize = plan.ordered_messages().iter().filter_map(|message|message.content.as_deref())
             .map(|content|content.matches(writing).count()).sum();
         assert_eq!(occurrences, enabled, "{status}: the shared body must reach the actual main request once");
@@ -947,6 +947,32 @@ fn select_args() -> String {
 }
 
 #[test]
+fn teaching_design_loop_direct_reply_does_not_adopt_or_require_a_saved_plan() {
+    for saved_plan in [serde_json::Value::Null,serde_json::json!({"design_ref":"design:current","design":design()})] {
+        let b=book();
+        let mut store=MemoryStore::open(tmp("teaching-direct-reply")).unwrap();
+        let mut reader=Reader::new(&b,DEFAULT_RADIUS);
+        let snapshot=default_profile_snapshot(&b,&store,"t0");
+        let text="The card remains available even when this route omits it.";
+        let mut selection=selected_body("direct",text);
+        selection["move"].as_object_mut().unwrap().remove("design_ref");
+        selection["move"].as_object_mut().unwrap().remove("block_refs");
+        selection["finish"]=serde_json::json!(true);
+        let adapter=ReviewedTeachingAdapter::new(vec![turn_calls(vec![call("direct-select","tutor.step",&selection.to_string())])],vec![]);
+        let mut context=RunContext::new(new_session(),OuterConfig{max_turns:Some(3),..Default::default()},adapter.model_runtime_profile());
+        context.tutor=Some(serde_json::json!({"status":"practice","current_design":saved_plan,"learner_context":{"current_request":"Explain whether the card remains."}}));
+        let mut port=TeachingPort{inner:BorrowedResidentState{store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
+        let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+            &mut EphemeralCompactionCheckpointSink::default(),"Explain whether the card remains.","t0").unwrap();
+        assert!(!outcome.incomplete);
+        assert_eq!(outcome.answer.as_deref(),Some(text));
+        assert_eq!(port.accepted,["select"]);
+        assert!(port.selections["selected:direct"]["design_ref"].is_null());
+        assert!(adapter.seen_reviews.borrow().is_empty());
+    }
+}
+
+#[test]
 fn teaching_design_loop_consumes_design_before_selection_and_holds_unready_stream() {
     let b = book();
     let mut store = MemoryStore::open(tmp("teaching-design-stream")).unwrap();
@@ -961,7 +987,7 @@ fn teaching_design_loop_consumes_design_before_selection_and_holds_unready_strea
     let sink = std::sync::Arc::new(TeachingStreamSink::default());
     let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(8), ..Default::default() }, adapter.model_runtime_profile());
     context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-    context.tutor = Some(serde_json::json!({"status":"active","learner_context":{"current_request":"FROZEN_INPUT_STAYS_ONCE"}}));
+    context.tutor = Some(serde_json::json!({"status":"practice","learner_context":{"current_request":"FROZEN_INPUT_STAYS_ONCE"}}));
     let mut port = TeachingPort { inner: BorrowedResidentState { store: &mut store, reader: &mut reader }, accepted: Vec::new(), selections:Default::default(),reviews:Vec::new() };
     let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
         &mut EphemeralCompactionCheckpointSink::default(), "为什么没选到的材料还在？", "t0").unwrap();
@@ -994,7 +1020,7 @@ fn teaching_design_loop_reuses_frozen_design_and_outside_does_not_require_design
         let args = if outside { serde_json::json!({"operation":"outside"}).to_string() } else { select_args() };
         let adapter = RequestPlanRecordingAdapter::new(vec![turn_calls(vec![call("resolve", "tutor.step", &args)]), turn_final("继续回应当前请求。")], vec![]);
         let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
-        context.tutor = Some(if outside { serde_json::json!({"status":"active","learner_context":{}}) } else { serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}) });
+        context.tutor = Some(if outside { serde_json::json!({"status":"practice","learner_context":{}}) } else { serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}) });
         let mut port = TeachingPort { inner: BorrowedResidentState { store: &mut store, reader: &mut reader }, accepted: Vec::new(), selections:Default::default(),reviews:Vec::new() };
         let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
             &mut EphemeralCompactionCheckpointSink::default(), "请完整说明。", "t0").unwrap();
@@ -1034,7 +1060,7 @@ fn teaching_design_loop_refreshes_interpretation_after_same_batch_design_and_rev
         turn_final("继续使用保存的材料，比较不同路线的选择。"),
     ], vec![]);
     let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(8), ..Default::default() }, adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active","learner_context":{
+    context.tutor = Some(serde_json::json!({"status":"practice","learner_context":{
         "current_request":"FROZEN_INPUT_STAYS_ONCE", "recent_facts":[{"assistance_refs":["help:before-input"]}],
         "interpretations":[{"interpretation":"OUTDATED_INITIAL_INTERPRETATION"}],"evidence_watermark":0,
         "learning_opportunity":{"interpretation_refs":["OUTDATED_OPPORTUNITY"]},
@@ -1096,7 +1122,7 @@ fn teaching_delivery_consumes_accepted_text_and_keeps_reasoning_private() {
     let sink = std::sync::Arc::new(TeachingStreamSink::default());
     let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
     context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+    context.tutor = Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port = TeachingPort { inner: BorrowedResidentState { store: &mut store, reader: &mut reader }, accepted:Vec::new(), selections:Default::default(),reviews:Vec::new() };
     let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
         &mut EphemeralCompactionCheckpointSink::default(), "I can only follow A so far.", "t0").unwrap();
@@ -1123,7 +1149,7 @@ fn teaching_selection_automatically_binds_the_current_private_coach_guidance() {
     impl ResidentStatePort for CoachedTeachingPort<'_> {
         fn tutor_coach_context(&mut self) -> Result<Option<serde_json::Value>, ToolError> {
             Ok(Some(serde_json::json!({"status":"ready","coach_ref":"coach:source-turn",
-                "source_turn_ref":"turn:prior","guidance":{"sentinel":"private-coach-guidance"}})))
+                "source_turn_ref":"turn:prior","guidance":{"sentinel":"private-coach-guidance","observation_receipts":[{"evidence_ref":"private-observation-receipt","fact_ref":"prior-expression"}]}})))
         }
         fn tutor_step(&mut self, request: serde_json::Value, evidence: &[SourceBinding], ranges: &[read_tools::EvidenceRange]) -> Result<serde_json::Value, ToolError> {
             self.inner.tutor_step(request, evidence, ranges)
@@ -1147,7 +1173,7 @@ fn teaching_selection_automatically_binds_the_current_private_coach_guidance() {
     let sink = std::sync::Arc::new(TeachingStreamSink::default());
     let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
     context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+    context.tutor = Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port = CoachedTeachingPort { inner: TeachingPort {
         inner: BorrowedResidentState { store: &mut store, reader: &mut reader },
         accepted:Vec::new(), selections:Default::default(), reviews:Vec::new(),
@@ -1158,7 +1184,9 @@ fn teaching_selection_automatically_binds_the_current_private_coach_guidance() {
     assert_eq!(port.inner.selections["selected:coached"]["coach_ref"], "coach:source-turn");
     assert_eq!(outcome.answer.as_deref(), selection["move"]["delivery_text"].as_str());
     let plans = adapter.0.seen_plans.borrow();
-    assert!(serde_json::to_string(&plans[0].ordered_messages()).unwrap().contains("private-coach-guidance"));
+    let sampled=serde_json::to_string(&plans[0].ordered_messages()).unwrap();
+    assert!(!sampled.contains("private-coach-guidance"));
+    assert!(sampled.contains("private-observation-receipt"));
     let public = serde_json::to_string(&context.messages).unwrap();
     let patches = serde_json::to_string(&*sink.0.lock().unwrap()).unwrap();
     for private in ["coach:source-turn", "private-coach-guidance"] {
@@ -1193,7 +1221,7 @@ fn teaching_delivery_reselection_design_and_outside_replace_the_accepted_draft()
         turns.push(turn_final("ORDINARY_FINAL_TEXT"));
         let adapter = RequestPlanRecordingAdapter::new(turns, vec![]);
         let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(8), ..Default::default() }, adapter.model_runtime_profile());
-        context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+        context.tutor = Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
         let mut port = TeachingPort { inner: BorrowedResidentState { store:&mut store, reader:&mut reader }, accepted:Vec::new(), selections:Default::default(),reviews:Vec::new() };
         let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
             &mut EphemeralCompactionCheckpointSink::default(), "Only this part is clear.", "t0").unwrap();
@@ -1232,7 +1260,7 @@ fn teaching_delivery_budget_finalization_delivers_the_accepted_body() {
     let sink = std::sync::Arc::new(TeachingStreamSink::default());
     let mut context = RunContext::new(new_session(), OuterConfig { max_turns:Some(1), ..Default::default() }, adapter.model_runtime_profile());
     context.events = crate::run_events::RunEvents::new(Some(sink.clone()));
-    context.tutor = Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+    context.tutor = Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port = TeachingPort { inner: BorrowedResidentState { store:&mut store, reader:&mut reader }, accepted:Vec::new(), selections:Default::default(),reviews:Vec::new() };
     let outcome = run_context(&b, &mut port, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
         &mut EphemeralCompactionCheckpointSink::default(), "The route leaves B out, but I am unsure what that means.", "t0").unwrap();
@@ -1264,7 +1292,7 @@ fn teaching_selection_preserves_the_explicit_retained_set_even_after_a_replaceme
         turn_final("Do not expand the accepted composition."),
     ],vec![accepted_review(),accepted_review(),accepted_review()]);
     let mut context = RunContext::new(new_session(),OuterConfig {max_turns:Some(10),..Default::default()},adapter.model_runtime_profile());
-    context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+    context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:Vec::new(),selections:Default::default(),reviews:Vec::new()};
     let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
         &mut EphemeralCompactionCheckpointSink::default(),"I can follow only the first premise.","t0").unwrap();
@@ -1289,7 +1317,7 @@ fn teaching_preflight_missing_read_recovers_before_saving_the_normalized_move() 
         turn_final("Use the accepted explanation."),
     ],vec![accepted_review()]);
     let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(8),..Default::default()},adapter.model_runtime_profile());
-    context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+    context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
     let mut port=SourcePreflightTeachingPort {
         inner:TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:Vec::new(),selections:Default::default(),reviews:Vec::new()},
         observed_reads:RefCell::new(Vec::new()),
@@ -1333,7 +1361,7 @@ fn teaching_design_missing_read_after_early_authoring_is_real_locator_progress()
         turn_final("Deliver the accepted explanation."),
     ],vec![accepted_review()]);
     let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(10),..Default::default()},adapter.model_runtime_profile());
-    context.tutor=Some(serde_json::json!({"status":"active","learner_context":{}}));
+    context.tutor=Some(serde_json::json!({"status":"practice","learner_context":{}}));
     let mut port=SourcePreflightTeachingPort {
         inner:TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:Vec::new(),selections:Default::default(),reviews:Vec::new()},
         observed_reads:RefCell::new(Vec::new()),
@@ -1369,7 +1397,7 @@ fn teaching_unknown_reference_never_select_the_candidate() {
         let sink=std::sync::Arc::new(TeachingStreamSink::default());
         let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(8),..Default::default()},adapter.model_runtime_profile());
         context.events=crate::run_events::RunEvents::new(Some(sink.clone()));
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
+        context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":design()},"learner_context":{}}));
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:Vec::new(),selections:Default::default(),reviews:Vec::new()};
         let result=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"Only this fragment is clear.","t0");
@@ -1410,14 +1438,14 @@ fn teaching_representation_activates_authoring_without_a_user_demo_request() {
         turns.push(turn_final("The separate request is complete."));
         let adapter=RequestPlanRecordingAdapter::new(turns,vec![]);
         let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":current.map(|design|serde_json::json!({"design_ref":"design:current","design":design})),"learner_context":{}}));
+        context.tutor=Some(serde_json::json!({"status":"practice","current_design":current.map(|design|serde_json::json!({"design_ref":"design:current","design":design})),"learner_context":{}}));
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
         run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"I can follow B in one list, but lose it in the other.","t0").unwrap();
         let plans=adapter.seen_plans.borrow();
-        assert_eq!(plans[usize::from(create)].tools.iter().any(|tool|tool.name=="presentation.author"),label!="text");
+        assert_eq!(plans[usize::from(create)].tools.iter().any(|tool|tool.name=="presentation.author"),create);
         if create { assert!(!plans[0].tools.iter().any(|tool|tool.name=="presentation.author")); }
-        if label!="text" {
+        if create {
             let instructions=serde_json::to_string(&plans[usize::from(create)].ordered_messages()).unwrap();
             assert!(instructions.contains("resident-agent.presentation.phase.local"),"an accepted teaching design supplies the framework for local authoring");
             assert!(!instructions.contains("resident-agent.presentation.phase.global"));
@@ -1437,7 +1465,7 @@ fn teaching_presentation_requirement_uses_actual_prior_delivery_not_saved_versio
         turns.push(turn_final("Only the selected support is delivered."));
         let adapter=ReviewedTeachingAdapter::new(turns,if delivered {vec![accepted_review()]} else {vec![]});
         let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":presentation_design()},
+        context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":presentation_design()},
             "learner_context":{"learning_opportunity":{"delivered_support":if delivered {serde_json::json!([{"design_ref":"design:current","presentation":{"presentation_id":"prior","revision":1}}])} else {serde_json::json!([])}}}}));
         context.delivered_presentations.push(crate::presentation::PresentationRef {presentation_id:"saved-only".into(),revision:1});
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
@@ -1470,9 +1498,10 @@ fn teaching_page_observation_and_exact_selected_revision_survive_both_finish_pat
             turns.push(turn_calls(vec![call(&format!("select-{revision}"),"tutor.step",&selection.to_string())]));
         }
         turns.push(turn_final("FREE_FINAL_MUST_NOT_REINTRODUCE_THE_OLD_PAGE"));
+        turns.insert(0,turn_calls(vec![call("discover-page","tool.search",r#"{"task":"author the presentation for this request","required_capabilities":["presentation_authoring"],"scope":"passage","operation":"explain","effect_mode":"read_only","max_results":3}"#)]));
         let adapter=ReviewedTeachingAdapter::new(turns,vec![Ok(serde_json::json!({"decision":"revise","revision":"The page changes two conditions at once. Keep one route fixed and revise the page."})),accepted_review()]);
-        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(if budget {8} else {16}),..Default::default()},adapter.model_runtime_profile());
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":presentation_design()},"learner_context":{}}));
+        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:Some(if budget {9} else {16}),..Default::default()},adapter.model_runtime_profile());
+        context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":presentation_design()},"learner_context":{}}));
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
         let outcome=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"B seems gone from this route, but I can't follow where it went.","t0").unwrap();
@@ -1482,7 +1511,7 @@ fn teaching_page_observation_and_exact_selected_revision_survive_both_finish_pat
         assert!(!outcome.incomplete);
         assert_eq!(context.delivered_presentations.len(),2,"both versions really were saved before selection");
         let plans=adapter.inner.0.seen_plans.borrow();
-        let saved=tool_result(&plans[3].input,"save-1");
+        let saved=tool_result(&plans[4].input,"save-1");
         assert!(saved.contains("tutor.step") && saved.contains("operation select") && saved.contains("cards"),
             "the delivered-page receipt must direct the next sampling to teaching selection: {saved}");
         assert!(adapter.seen_reviews.borrow().is_empty() && port.reviews.is_empty());
@@ -1494,7 +1523,7 @@ fn teaching_page_observation_and_exact_selected_revision_survive_both_finish_pat
             let observations=&context.presentation_delivery_observations[&serde_json::to_string(&reference).unwrap()];
             assert_eq!(observations[0]["observations"][0]["dom"]["text"],format!("ACTUAL_PREVIEW_c{revision}"));
         }
-        if !budget { assert_eq!(plans.len(),8,"page finish needs no copy-only author sampling"); }
+        if !budget { assert_eq!(plans.len(),9,"page finish needs no copy-only author sampling"); }
         if budget { assert!(adapter.inner.0.seen_plans.borrow().last().unwrap().tools.is_empty()); }
     }
 }
@@ -1502,7 +1531,7 @@ fn teaching_page_observation_and_exact_selected_revision_survive_both_finish_pat
 #[test]
 fn historical_design_requires_a_live_representation_choice_before_generation() {
     let mut old=design(); old.as_object_mut().unwrap().remove("representation");
-    let tutor=serde_json::json!({"status":"active","current_design":{"design_ref":"old","design":old}});
+    let tutor=serde_json::json!({"status":"practice","current_design":{"design_ref":"old","design":old}});
     let error=require_sampled_teaching_design(Some(&tutor),Some("old"),Some("old")).unwrap_err();
     assert!(error.message.contains("representation"));
 }
@@ -1532,9 +1561,10 @@ fn teaching_embedding_page_focus_then_missing_operation_gets_one_real_repair() {
             let mut invalid=missing.clone();invalid["title"]=serde_json::json!("still missing operation");
             turns.push(turn_calls(vec![call("still-invalid","presentation.author",&invalid.to_string())]));
         }
+        turns.insert(0,turn_calls(vec![call("discover-page","tool.search",r#"{"task":"author the presentation for this request","required_capabilities":["presentation_authoring"],"scope":"passage","operation":"explain","effect_mode":"read_only","max_results":3}"#)]));
         let adapter=ReviewedTeachingAdapter::new(turns,if repair {vec![accepted_review()]} else {vec![]});
         let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":"design:current","design":presentation_design()},"learner_context":{}}));
+        context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":"design:current","design":presentation_design()},"learner_context":{}}));
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
         let result=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"那Embedding在哪里会被用到呢，怎么用呢，给我个演示页吧","t0");
@@ -1583,9 +1613,10 @@ fn teaching_page_patch_inherits_saved_binding_but_not_a_replaced_design() {
             turns.push(turn_calls(vec![call("select","tutor.step",&select.to_string())]));
             turns.push(turn_final("Deliver the inspected page."));
         }
+        turns.insert(0,turn_calls(vec![call("discover-page","tool.search",r#"{"task":"author the presentation for this request","required_capabilities":["presentation_authoring"],"scope":"passage","operation":"explain","effect_mode":"read_only","max_results":3}"#)]));
         let adapter=ReviewedTeachingAdapter::new(turns,if replaced {vec![]} else {vec![accepted_review()]});
-        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:if replaced {Some(1)} else {None},..Default::default()},adapter.model_runtime_profile());
-        context.tutor=Some(serde_json::json!({"status":"active","current_design":{"design_ref":if replaced {"design:new"} else {"design:current"},"design":presentation_design()},"learner_context":{}}));
+        let mut context=RunContext::new(new_session(),OuterConfig {max_turns:if replaced {Some(2)} else {None},..Default::default()},adapter.model_runtime_profile());
+        context.tutor=Some(serde_json::json!({"status":"practice","current_design":{"design_ref":if replaced {"design:new"} else {"design:current"},"design":presentation_design()},"learner_context":{}}));
         let mut port=TeachingPort {inner:BorrowedResidentState {store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:Vec::new()};
         let result=run_context(&b,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
             &mut EphemeralCompactionCheckpointSink::default(),"Fix the page layout and show the same relationship.","t0");
@@ -1593,7 +1624,7 @@ fn teaching_page_patch_inherits_saved_binding_but_not_a_replaced_design() {
             let error=result.unwrap_err();
             assert_eq!(error.error_code,TURN_LIMIT_EXCEEDED);
             assert!(error.message.contains("TEACHING_DESIGN_REQUIRES_NEXT_SAMPLING"));
-            assert_eq!(adapter.inner.0.seen_plans.borrow().len(), 1);
+            assert_eq!(adapter.inner.0.seen_plans.borrow().len(), 2);
             assert!(port.accepted.is_empty());
         } else {
             let outcome=result.unwrap();
@@ -1630,7 +1661,7 @@ fn export_explanation_review_probe() {
         inputs.push(json!({"id":id,"expected":case["expected"],"packet_file":packet_file,
             "frozen_system_file":"text-review-system.txt"}));
     }
-    let context = json!({"status":"active","learner_context":{}});
+    let context = json!({"status":"practice","learner_context":{}});
     let teacher = explanation_probe_instructions(Some(&context));
     std::fs::write(directory.join("teacher-system.txt"), teacher).unwrap();
     std::fs::write(directory.join("inputs.json"), serde_json::to_vec_pretty(&json!({"cases":inputs})).unwrap()).unwrap();
@@ -1666,7 +1697,7 @@ fn export_independent_explanation_review_probe() {
             "factual":{"packet_file":factual_file,"frozen_system_file":"factual-review-system.txt"},
             "explanation":{"packet_file":explanation_file,"frozen_system_file":"explanation-review-system.txt"}}));
     }
-    let context = json!({"status":"active","learner_context":{}});
+    let context = json!({"status":"practice","learner_context":{}});
     let teacher = explanation_probe_instructions(Some(&context));
     std::fs::write(output.join("teacher-system.txt"), teacher).unwrap();
     std::fs::write(output.join("ordinary-system.txt"), explanation_probe_instructions(None)).unwrap();
@@ -1688,7 +1719,7 @@ include!("teaching_patch_tests.rs");
 
 #[test]
 fn exam_explanations_use_the_same_author_loop_without_teacher_content_review() {
-    for status in ["active", "observing"] {
+    for status in ["practice", "observing"] {
         for calendar_revision in [2, 3] {
             let b=book();
             let mut store=MemoryStore::open(tmp(&format!("exam-author-{status}-{calendar_revision}"))).unwrap();
@@ -1697,7 +1728,7 @@ fn exam_explanations_use_the_same_author_loop_without_teacher_content_review() {
             let answer="The route selects retained cards; an omitted card can remain in the catalog.";
             let mut selection=selected_body("exam",answer);
             selection["finish"]=serde_json::json!(true);
-            let turns=if status=="active" {
+            let turns=if status=="practice" {
                 vec![turn_calls(vec![call("select","tutor.step",&selection.to_string())])]
             } else { vec![turn_final(answer)] };
             let adapter=ReviewedTeachingAdapter::new(turns,vec![]);

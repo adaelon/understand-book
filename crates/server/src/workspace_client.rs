@@ -49,6 +49,9 @@ pub(crate) fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspac
             let get = |k: &str| input[k].as_str().map(str::to_owned);
             Ok(json!(user.store.recall(&RecallQuery { book_id: Some(workspace.book.base.book_id.clone()), lid: get("lid"), mem_type: get("type"), layer: get("layer"), text: get("text") })))
         }
+        "knowledge/tree" => crate::knowledge_tree::view(user, workspace, input),
+        "knowledge/resume" => crate::knowledge_tree::resume(user, input),
+        "knowledge/retry" => crate::knowledge_tree::retry(user, workspace, input, now),
         "agent/source.resolve" => (|| {
             let request = parse_agent_source_request(&input.to_string()).map_err(|r| reply(r).unwrap_err())?;
             let binding = workspace_source_binding(user, workspace, &request)?;
@@ -61,7 +64,7 @@ pub(crate) fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspac
                 Err(_) => json!({"source_ref_id":binding.source_ref_id,"label":binding.label_snapshot,"material_title":material_title,"highlighted_quote":binding.preview_snapshot,"context_before":"","context_after":"","stale":true,"can_open_in_reader":false}),
             })
         })(),
-        "tutor/understanding" | "tutor/evidence" | "tutor/timeline" | "tutor/evidence-list" | "tutor/correct" | "tutor/start" | "tutor/activities" | "tutor/continuation-displayed" | "tutor/display" | "tutor/action" | "tutor/help-displayed" | "tutor/feedback-displayed" => {
+        "tutor/closed-book" | "tutor/understanding" | "tutor/evidence" | "tutor/timeline" | "tutor/evidence-list" | "tutor/correct" | "tutor/start" | "tutor/activities" | "tutor/continuation-displayed" | "tutor/display" | "tutor/action" | "tutor/help-displayed" | "tutor/feedback-displayed" => {
             reply(teaching::route(&private, Req { method: "POST", url: &format!("/{action}"), body: &input.to_string(), now }))
         }
         _ => return None,

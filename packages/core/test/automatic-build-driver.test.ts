@@ -923,6 +923,32 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     } finally { progress.mockRestore(); vi.unstubAllEnvs(); }
   });
 
+  it("preserves migration recovery details without exposing source evidence", async () => {
+    const driver = expectedDriver(), value = fixture("routing-recovery-details");
+    vi.stubEnv("UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT", path.join(value.root, "registry"));
+    const invocation = await createInvocation(driver, value);
+    const target = resolveAutomaticBuildTarget(value.source, value.root);
+    const prepare = vi.spyOn(buildOrchestrator, "prepareAutomaticBuildSnapshot").mockReturnValue({
+      status: "blocked", recovery: { version: "automatic_build_recovery.v1", phase: "migration",
+        code: "policy_generation_migration_required", stage: "pass1", target: {
+          book_id: target.book_id, profile_id: target.profile_id, input_fingerprint: target.target_ref.input_fingerprint },
+        affected_work_units: [{ work_unit_id: "PRIVATE_WORK_UNIT", evidence_lids: ["PRIVATE_LID"],
+          estimated_tokens: 5195, limit_tokens: 6000 }], retryable: false, recovery_actions: ["migrate_policy"] },
+    });
+    try {
+      const request = { version: "automatic_build_step_request.v1" as const,
+        invocation_ref: invocation.invocation_ref, available_agent_slots: 1 as const };
+      const response = await driver.automaticBuildStep(request);
+      expect(response.action).toMatchObject({ kind: "NEEDS_USER", reason: "routing_blocked", choices: [],
+        projection: { category: "routing_blocked", code: "policy_generation_migration_required", phase: "migration",
+          stage: "pass1", work_unit_count: 1, recovery_actions: ["migrate_policy"], retryable: false } });
+      for (const privateText of ["PRIVATE_WORK_UNIT", "PRIVATE_LID", value.root]) {
+        expect(JSON.stringify(response)).not.toContain(privateText);
+      }
+      expect((await driver.automaticBuildStep(request)).action).toEqual(response.action);
+    } finally { prepare.mockRestore(); vi.unstubAllEnvs(); }
+  });
+
   it.each(["structure_execution_budget_exceeded", "structure_preparation_incomplete", "quality_gate_failed"])(
     "preserves the distinct %s boundary and bounded recovery diagnostics", async reason => {
       const driver = expectedDriver(), value = fixture(`structure-boundary-${reason}`);

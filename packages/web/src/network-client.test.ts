@@ -2,13 +2,118 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { api, ApiError } from './api';
 import { network, installIdentity, installWorkspace, forgetNetwork, bindSceneApi, readerKey, type NetworkWorkspace } from './network-context';
-import { admissionSnapshot, networkFetch, recoverSubmissions, pendingSubmissions, workspaceAction, retrySubmission, recoverWorkspaceBinding } from './network-client';
+import { admissionSnapshot, networkFetch, recoverSubmissions, pendingSubmissions, unconfirmedSubmissions, workspaceAction, retrySubmission, recoverWorkspaceBinding } from './network-client';
 import { readReaderSurfacePreference, writeReaderSurfacePreference } from './reader-surface';
 const scene = { workspace_id: 'w', generation: 2, revision: 3, selected_chat: 'chat', published_book_ref: { book_id: 'b', publication_id: 'p' }, reader: {} } as NetworkWorkspace;
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status });
 beforeEach(() => { sessionStorage.clear(); localStorage.clear(); installIdentity({ user_id: 'A', csrf_token: 'csrf-A' }); installWorkspace(scene); });
 afterEach(() => { vi.unstubAllGlobals(); network.value = { ...network.value, enabled: false }; });
 describe('MU8 authorized browser context', () => {
+  it('reads learning tasks with GET and selects through the stamped workspace write while returning only its task result', async () => {
+    const task = { learning_workspace_id: 'learning', published_book_ref: scene.published_book_ref,
+      course_run_id: 'course-run', chat_session_id: 'chat', selected_at: 10, kind: 'course', title: '继续原问题',
+      status: 'active', lesson_id: 'lesson', stage: 'explanation', closed_book_id: null, question: '为什么？', message: null };
+    const tasks = { tasks: [task] }, selected = { task }, fresh = { ...scene, revision: 7 };
+    const fetch = vi.fn(async (url: string, options: RequestInit) => {
+      if (url === '/api/workspaces/w/learning-task' && options.method === 'GET') return json(tasks);
+      if (url === '/api/workspaces/w' && options.method === 'GET') return json(fresh);
+      if (url === '/api/workspaces/w/learning-task' && options.method === 'POST') return json({ ...fresh, result: selected });
+      throw new Error(`Unexpected ${options.method} ${url}`);
+    });
+    vi.stubGlobal('fetch', fetch);
+
+    await expect(api.learningTasks()).resolves.toEqual(tasks);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch.mock.calls[0][1]).toMatchObject({ method: 'GET' });
+    expect(fetch.mock.calls[0][1].body).toBeUndefined();
+    expect(network.value.workspace?.revision).toBe(3);
+
+    await expect(api.selectLearningTask({ course_run_id: 'course-run', chat_session_id: 'chat' })).resolves.toEqual(selected);
+    expect(fetch.mock.calls.map(([url, options]) => `${options.method} ${url}`)).toEqual([
+      'GET /api/workspaces/w/learning-task', 'GET /api/workspaces/w', 'POST /api/workspaces/w/learning-task',
+    ]);
+    const write = fetch.mock.calls[2][1];
+    expect(JSON.parse(String(write.body))).toEqual({ course_run_id: 'course-run', chat_session_id: 'chat',
+      attachment_id: network.value.attachment, generation: 2, expected_revision: 7 });
+    expect(write.headers).toMatchObject({ 'X-CSRF-Token': 'csrf-A' });
+    expect(network.value.workspace?.revision).toBe(7);
+  });
+
+  it('does not submit when the browser cannot retain the recovery key', async () => {
+    const setItem = sessionStorage.setItem.bind(sessionStorage);
+    vi.spyOn(sessionStorage, 'setItem').mockImplementation((key, value) => {
+      if (key.startsWith('understand-book:pending:')) throw new DOMException('full', 'QuotaExceededError');
+      setItem(key, value);
+    });
+    const fetch = vi.fn(async () => json(scene));
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.agentRunCreate('原问题仍可编辑')).rejects.toMatchObject({ status: 400, errorCode: 'SUBMISSION_STORAGE_FAILED' });
+    expect(fetch.mock.calls).toHaveLength(1);
+    expect(pendingSubmissions()).toEqual([]);
+    vi.restoreAllMocks();
+  });
+  it('clears an HTML 413 rejection and allows the next question', async () => {
+    let rejectImage = true;
+    const fetch = vi.fn(async (url: string) => {
+      if (url.endsWith('/agent/runs')) {
+        if (rejectImage) return new Response('<html><h1>413 Request Entity Too Large</h1></html>', { status: 413 });
+        return json({ turn_id: 'next-answer', session_id: 'chat', book_id: 'b', dispatch_state: 'completed' });
+      }
+      if (url.includes('client_request_id=')) return json({ error_code: 'OBJECT_NOT_FOUND' }, 404);
+      return json(scene);
+    });
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.agentRunCreate('这里做一个和声分析', { music_question: { image: { png_base64: 'large-image' } } as never }))
+      .rejects.toMatchObject({ status: 413, errorCode: 'HTTP_413', message: '图片或附件过大，请缩小后重新发送。' });
+    expect(pendingSubmissions()).toEqual([]);
+    rejectImage = false;
+    await expect(api.agentRunCreate('问另一个问题')).resolves.toMatchObject({ turn_id: 'next-answer' });
+    expect(pendingSubmissions()).toEqual([]);
+  });
+  it('recovers an HTML gateway failure by the original key without duplicating the question', async () => {
+    const fetch = vi.fn(async (url: string) => {
+      if (url.includes('client_request_id=')) return json({ turn_id: 'accepted', session_id: 'chat', book_id: 'b', dispatch_state: 'completed' });
+      if (url.endsWith('/agent/runs')) return new Response('<html>502 Bad Gateway</html>', { status: 502 });
+      return json(scene);
+    });
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.agentRunCreate('原问题')).resolves.toMatchObject({ turn_id: 'accepted' });
+    expect(fetch.mock.calls.filter(([url]) => url.endsWith('/agent/runs'))).toHaveLength(1);
+    expect(pendingSubmissions()).toEqual([]);
+  });
+  it('clears a previously stuck image submission when its explicit retry is rejected', async () => {
+    sessionStorage.setItem('understand-book:pending:A:old-image', JSON.stringify({ key: 'old-image', workspace: 'w', body: { session_id: 'chat', message: '原问题' } }));
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.includes('client_request_id=')
+      ? json({ error_code: 'OBJECT_NOT_FOUND' }, 404)
+      : new Response('<html>413 Request Entity Too Large</html>', { status: 413 })));
+    await expect(retrySubmission('old-image')).rejects.toMatchObject({ status: 413 });
+    expect(pendingSubmissions()).toEqual([]);
+  });
+  it('transcribes with current scene authority and an abort signal without changing the workspace revision', async () => {
+    const fetch = vi.fn(async () => json({ result: { text: '我的思路', duration_ms: 1200 } }));
+    vi.stubGlobal('fetch', fetch);
+    const controller = new AbortController();
+    await expect(api.voiceTranscribe({ audio: 'YXVkaW8=', mime_type: 'audio/webm', locale: 'zh-CN' }, controller.signal)).resolves.toMatchObject({ text: '我的思路' });
+    const [url, init] = vi.mocked(fetch).mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toContain('/workspaces/w/reader/voice-transcribe');
+    expect(JSON.parse(String(init.body))).toMatchObject({ generation: 2, expected_revision: 3, attachment_id: network.value.attachment });
+    expect(init.signal).toBe(controller.signal);
+    expect(network.value.workspace?.revision).toBe(3);
+  });
+  it('preserves an intentional null guidance result without returning the workspace envelope', async () => {
+    const fetch = vi.fn(async () => json({ result: null }));
+    vi.stubGlobal('fetch', fetch);
+    await expect(api.readingGuidance({ purpose: 'followup', scope: 'material', quote: '', material_title: '当前材料',
+      scope_label: '整份材料', known_intent: '', medium: 'text', locale: 'zh-CN' })).resolves.toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(network.value.workspace?.revision).toBe(3);
+  });
+  it('keeps an absent closed-book practice null when a first learner opens a course', async () => {
+    const fetch=vi.fn(async(url:string)=>url.endsWith('/tutor/closed-book') ? json({...scene,revision:4,result:null}) : json(scene));
+    vi.stubGlobal('fetch',fetch);
+    await expect(api.closedBook({action:'state',chat_session_id:'chat'})).resolves.toBeNull();
+    expect(network.value.workspace?.revision).toBe(4);
+  });
   it('admits the first whole-board question once into the chat created for it', async () => {
     installWorkspace({ ...scene, selected_chat: null });
     let current = { ...scene, selected_chat: null } as NetworkWorkspace;
@@ -168,20 +273,23 @@ describe('MU8 authorized browser context', () => {
     expect(network.value.workspace?.revision).toBe(4);
     expect(fetch.mock.calls.filter(([url]) => url.endsWith('/boards/source.read'))).toHaveLength(1);
   });
-  it('does not put selection translation in the reader write queue', async () => {
+  it.each(['selection.translate', 'guidance'])('does not put %s in the reader write queue', async action => {
     let release!: (value: Response) => void;
     const fetch = vi.fn(async (url: string) => {
-      if (url.endsWith('/reader/selection.translate')) return new Promise<Response>(resolve => { release = resolve; });
+      if (url.endsWith(`/reader/${action}`)) return new Promise<Response>(resolve => { release = resolve; });
       return json(scene);
     });
     vi.stubGlobal('fetch', fetch);
-    const translation = api.pdfSelectionTranslate({ status: 'resolved', raw_quote: 'X', resolved_quote: 'X', ranges: [{ lid: '1.1', range: { start: 0, end: 1 } }] });
+    const translation = action === 'guidance'
+      ? api.readingGuidance({ purpose: 'welcome', scope: 'material', quote: '', material_title: 'Book', scope_label: 'Book', known_intent: '', medium: 'text', locale: 'zh-CN' })
+      : api.pdfSelectionTranslate({ status: 'resolved', raw_quote: 'X', resolved_quote: 'X', ranges: [{ lid: '1.1', range: { start: 0, end: 1 } }] });
     await vi.waitFor(() => expect(release).toBeTypeOf('function'));
     expect(fetch).toHaveBeenCalledTimes(1);
     const write = workspaceAction('checkpoint');
     await vi.waitFor(() => expect(fetch.mock.calls.some(([url]) => url.endsWith('/checkpoint'))).toBe(true));
-    release(json({ result: { translation_markdown: '译文', target_locale: 'zh-CN' } }));
-    await expect(translation).resolves.toMatchObject({ translation_markdown: '译文' });
+    const result = action === 'guidance' ? { question: '想读什么？', draft: '我想读懂这一节。' } : { translation_markdown: '译文', target_locale: 'zh-CN' };
+    release(json({ result }));
+    await expect(translation).resolves.toMatchObject(result);
     await write;
   });
   it('preserves reader commands across a chat change while rejecting old responses and old chat commands', async () => {
@@ -296,6 +404,42 @@ describe('MU8 authorized browser context', () => {
     await expect(old).rejects.toMatchObject({ errorCode: 'CLIENT_CONTEXT_STALE' });
     expect(() => bound.recall()).toThrow('阅读现场已切换');
   });
+  it('reads the exact question snapshot without restoring it; only explicit restore writes', async () => {
+    const receipt = { session_id: 'chat', turn_id: 't', reference: { presentation_id: 'p', revision: 2 }, state_revision: 3, saved_state_ref: 'saved' };
+    const calls: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit) => {
+      calls.push(url.replace('/api/workspaces/w', '') || 'workspace');
+      if (options.method === 'GET') return json(scene);
+      expect(JSON.parse(String(options.body)).saved_state).toEqual(receipt);
+      return json({ ...scene, result: { restored_state: { visible_step: '尾声' } } });
+    }));
+    expect((await api.presentationRead('chat', 't', receipt.reference, receipt)).restored_state?.visible_step).toBe('尾声');
+    expect(calls).toEqual(['/presentation/read']);
+    calls.length = 0;
+    await api.presentationRestore(receipt);
+    expect(calls).toEqual(['workspace', '/presentation/restore', '/presentation/read']);
+  });
+  it('only exposes a recovery action after both the original POST and its receipt lookup fail', async () => {
+    let failPost!: (error: Error) => void;
+    const post = new Promise<Response>((_, reject) => { failPost = reject; });
+    const requests: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, options: RequestInit) => {
+      requests.push(`${options.method} ${url}`);
+      if (url === '/api/workspaces/w') return json(scene);
+      if (options.method === 'POST') return post;
+      return json({ error_code: 'OBJECT_NOT_FOUND' }, 404);
+    }));
+    const rejected = expect(api.agentRunCreate('啊')).rejects.toThrow('response lost');
+    await vi.waitFor(() => expect(pendingSubmissions()).toHaveLength(1));
+    const [original] = pendingSubmissions();
+    expect(unconfirmedSubmissions()).toEqual([]);
+    await recoverSubmissions();
+    expect(requests).toHaveLength(2);
+    failPost(new TypeError('response lost'));
+    await rejected;
+    expect(unconfirmedSubmissions()).toEqual([original]);
+    expect(requests.at(-1)).toBe(`GET /api/agent/runs?client_request_id=${original.key}`);
+  });
   it('saves the key before POST, discovers a lost response by exact key, never POSTs again', async () => {
     const requests: string[] = [];
     let requestKey = '';
@@ -320,7 +464,7 @@ describe('MU8 authorized browser context', () => {
   it('keeps an unconfirmed key across refresh, and logout removes it', async () => {
     sessionStorage.setItem('understand-book:pending:A:key', JSON.stringify({ key: 'key', body: { message: 'original' }, workspace: 'w' }));
     vi.stubGlobal('fetch', vi.fn(async () => json({ error_code: 'OBJECT_NOT_FOUND' }, 404)));
-    await recoverSubmissions(); expect(pendingSubmissions()).toHaveLength(1);
+    await recoverSubmissions(); expect(unconfirmedSubmissions()).toHaveLength(1);
     forgetNetwork(); expect(sessionStorage.getItem('understand-book:pending:A:key')).toBeNull();
   });
   it('explicitly retries the original key and clears a definite rejection', async () => {

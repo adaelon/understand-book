@@ -112,7 +112,7 @@ describe("BSR5 current-input preparation and action recovery", () => {
     expect(f.get(formal).retrieval_preparation).toBeUndefined();
     expect(buildRetrievalReview(f.plan)).toContain("结构投影");
     expect(buildRetrievalReview(f.plan)).not.toContain("正式对象投影：");
-    expect(buildRetrievalScope(f.plan)).toBe("book_structure_and_formal_object_projections_and_queries");
+    expect(buildRetrievalScope(f.plan)).toBe("book_structure_projections_and_queries");
   }, 120000);
 
   it("replays accepted actions against an unshown changed candidate, keeping other chapter selections and old receipts", () => {

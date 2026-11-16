@@ -142,13 +142,17 @@ impl RunAdmissions {
             let has_input = frozen_input(&user, &row)?.is_some();
             if find_turn(&user, &row).is_some()
                 && self
-                    .end_pending(&mut user, &row, "ADMISSION_FAILED", false)
+                    .end_pending(&mut user, &row, &e.error_code, false)
                     .is_err()
             {
                 self.mark_unsaved(&row);
                 return Err(storage());
             }
             self.update(&row, "admission_failed", !has_input)?;
+            if let Err(error) = crate::operations::write_turn(&self.state.lock().unwrap().control.connection,
+                &row.owner, &row.turn, "failed", "admission", Some(&e.error_code), multi_user_host::now()) {
+                eprintln!("operations preparation write failed: {}", error.error_code);
+            }
             return Err(e);
         }
         Ok(descriptor(&self.by_turn(&row.owner, &row.turn)?))

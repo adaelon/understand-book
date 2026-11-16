@@ -13,6 +13,29 @@ impl ResidentStatePort for PauseAfterFirstSample<'_> {
 }
 
 #[test]
+fn course_pause_preserves_the_scene_and_can_finish_a_local_reply_without_select() {
+    let b=book();
+    let mut store=MemoryStore::open(tmp("course-frozen-pause")).unwrap();
+    let mut reader=Reader::new(&b,DEFAULT_RADIUS);
+    let snapshot=default_profile_snapshot(&b,&store,"t0");
+    let adapter=RequestPlanRecordingAdapter::new(vec![turn_calls(vec![call("manifest","book.manifest","{}")]),turn_final("这里的下界只给出至少需要的时间。")],vec![]);
+    let mut context=RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+    context.tutor=Some(serde_json::json!({"status":"course","inquiry_course":{"lesson":{"progress":{"run_id":"course:1","stage":"experiment"}}},"learner_context":{"current_request":"COURSE_FROZEN_SCENE"}}));
+    context.tutor_resolved=true;
+    let mut state=PauseAfterFirstSample { inner:BorrowedResidentState{store:&mut store,reader:&mut reader},checks:0 };
+    let result=run_context(&b,&mut state,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+        &mut EphemeralCompactionCheckpointSink::default(),"解释下界","t0").unwrap();
+    assert!(!result.incomplete);
+    let plans=adapter.seen_plans.borrow();
+    assert_eq!(plans.len(),2);
+    let text=serde_json::to_string(&plans[1].ordered_messages()).unwrap();
+    assert_eq!(text.matches("COURSE_FROZEN_SCENE").count(),1);
+    assert!(text.contains("Course tutoring is not active now"));
+    assert!(plans[1].tools.iter().any(|tool|tool.name=="tutor.step"));
+    assert!(!plans[1].instruction_assets.iter().any(|asset|asset.asset_id=="resident-agent.tutor.select"));
+}
+
+#[test]
 fn tutor_pause_overrides_frozen_context_at_next_sample() {
     let b = book();
     let mut store = MemoryStore::open(tmp("tutor-frozen-pause")).unwrap();
@@ -20,7 +43,7 @@ fn tutor_pause_overrides_frozen_context_at_next_sample() {
     let snapshot = default_profile_snapshot(&b, &store, "t0");
     let adapter = RequestPlanRecordingAdapter::new(vec![turn_calls(vec![call("manifest", "book.manifest", "{}")]), turn_final("已暂停。")], vec![]);
     let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active", "learner_context":{"current_request":"PAUSE_FROZEN_SENTINEL"}}));
+    context.tutor = Some(serde_json::json!({"status":"practice", "learner_context":{"current_request":"PAUSE_FROZEN_SENTINEL"}}));
     context.tutor_resolved = true;
     let mut state = PauseAfterFirstSample { inner: BorrowedResidentState { store: &mut store, reader: &mut reader }, checks: 0 };
     run_context(&b, &mut state, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
@@ -29,7 +52,7 @@ fn tutor_pause_overrides_frozen_context_at_next_sample() {
     assert_eq!(plans.len(), 2);
     let text = serde_json::to_string(&plans[1].ordered_messages()).unwrap();
     assert_eq!(text.matches("PAUSE_FROZEN_SENTINEL").count(), 1);
-    assert!(text.rfind("Current Tutor status: paused").unwrap() > text.rfind("Current Tutor status: active").unwrap());
+    assert!(text.rfind("Current Tutor status: paused").unwrap() > text.rfind("Current Tutor status: practice").unwrap());
     assert!(!plans[1].tools.iter().any(|tool| tool.name == "tutor.step"));
     assert!(!plans[1].instruction_assets.iter().any(|asset| asset.asset_id == "resident-agent.tutor.select"));
 }
@@ -38,7 +61,7 @@ fn tutor_pause_overrides_frozen_context_at_next_sample() {
 fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
     let b = book();
     let profile = ModelRuntimeProfile::fallback("tb2-guidance", ProviderToolProtocol::Native);
-    for status in ["active", "observing", "reference", "paused", "inactive"] {
+    for status in ["practice", "observing", "reference", "paused", "inactive"] {
         let tutor = serde_json::json!({"status":status,"default_teaching_intent":"guided_inquiry",
             "learner_context":{"current_request":"Explain this fully; do not ask me to answer first."}});
         let registry = resident_tool_registry().with_tutor_context(Some(&tutor));
@@ -52,8 +75,8 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
             &[], None, false, Some(&tutor), None, None, None).unwrap();
         let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
         let ids: Vec<_> = plan.instruction_assets.iter().map(|a| a.asset_id.as_str()).collect();
-        assert_eq!(text.matches("Tutor mission:").count(), usize::from(status == "active"), "{status}");
-        assert_eq!(ids.contains(&"resident-agent.tutor.select"), status == "active");
+        assert_eq!(text.matches("Tutor mission:").count(), usize::from(status == "practice"), "{status}");
+        assert_eq!(ids.contains(&"resident-agent.tutor.select"), status == "practice");
         // Question design and explanation quality also apply to ordinary
         // conversation; the shared guidance does not enable active teaching.
         for rule in ["Before writing a question to establish independent application",
@@ -63,28 +86,24 @@ fn tutor_tb2_final_request_keeps_mission_scoped_to_active_teaching() {
             "When a solution explanation is requested or feedback is permitted",
             "A designed distractor is not evidence that this learner holds that misconception"] {
             assert_eq!(text.matches(rule).count(),
-                usize::from(matches!(status, "active" | "observing" | "reference")), "{status}: {rule}");
+                usize::from(matches!(status, "practice" | "observing" | "reference")), "{status}: {rule}");
         }
         for irrelevant in ["resident-agent.tutor.presentation", "resident-agent.tutor.assessment"] {
             assert!(!ids.contains(&irrelevant), "{status}: {irrelevant}");
         }
         assert_eq!(text.matches("Recent facts and interpretations are bounded views").count(),
-            usize::from(matches!(status,"active"|"observing")),"{status}");
-        // Generation is active-only; interpreting an ordinary answer still needs
-        // the evidence boundary when active teaching is disabled.
+            0,"{status}");
+        // Ordinary replies do not load the explicit understanding-update workflow.
         assert_eq!(text.matches("To establish independent relationship understanding").count(),
-            usize::from(status == "active"), "{status}");
+            usize::from(status == "practice"), "{status}");
         assert_eq!(text.matches("a correct answer alone cannot distinguish recall from independent relationship use").count(),
-            usize::from(matches!(status,"active"|"observing")), "{status}");
+            0, "{status}");
         assert_eq!(text.matches("Ask a discriminating follow-up only when the next teaching step depends").count(),
-            usize::from(matches!(status,"active"|"observing")), "{status}");
-        if matches!(status,"active"|"observing") {
-            assert!(text.contains("An empty assistance list does not mean independent performance"));
-            assert!(text.contains("compare earlier and later expressions under their own help conditions before adopting an interpretation"));
+            0, "{status}");
+        if status == "practice" {
             assert!(text.contains("Historical current_target, expected_performance and teaching_implication are revisable assistant-authored plans"));
-            assert!(text.contains("omission or different wording alone does not establish a misconception"));
         }
-        if status == "active" {
+        if status == "practice" {
             assert_eq!(text.matches("After a learner response, first address the pending invitation and the relationships actually expressed").count(),1);
             assert!(text.contains("An omitted detail remains unconfirmed, not automatically misunderstood"));
             assert!(text.contains("change the entry point or representation using their feedback"));
@@ -137,7 +156,7 @@ fn tutor_tc2a_navigation_discovery_loads_workflow_on_next_sample() {
 #[test]
 fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
     let b = book();
-    let tutor = serde_json::json!({"status":"active","learner_context":{"current_request":""}});
+    let tutor = serde_json::json!({"status":"practice","learner_context":{"current_request":""}});
     let registry = resident_tool_registry().with_tutor_context(Some(&tutor));
     let mut exposure = ToolExposureState::default();
     exposure.activate_tutor();
@@ -160,7 +179,7 @@ fn tutor_tc2a_presentation_guidance_follows_discovery_phase_and_delivery() {
     assert!(inspection.ordered_messages().iter().any(|message| message.content.as_deref()
         .is_some_and(|text| text.starts_with("presentation_guidance_state.v1\n") && text.contains(PRESENTATION_DESIGN_REQUIRED))));
     assert!(!inspection.instruction_assets.iter().any(|a| a.asset_id == "resident-agent.tutor.presentation"));
-    let accepted_tutor = serde_json::json!({"status":"active", "learner_context":{"current_request":""},
+    let accepted_tutor = serde_json::json!({"status":"practice", "learner_context":{"current_request":""},
         "current_design":{"design_ref":"tb4-design", "design":{
             "target":"TB4 relationship and learner judgment", "focus_block_refs":["relation"],
             "blocks":[{"block_id":"relation"}],
@@ -282,7 +301,7 @@ fn tutor_turn_context_appears_once_across_five_samples() {
     turns.push(turn_final("教学内容。"));
     let adapter = RequestPlanRecordingAdapter::new(turns, vec![]);
     let mut context = RunContext::new(new_session(), OuterConfig { max_turns: Some(8), ..Default::default() }, adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active", "learner_context":{"current_request":"FROZEN_LEARNER_SENTINEL"}}));
+    context.tutor = Some(serde_json::json!({"status":"practice", "learner_context":{"current_request":"FROZEN_LEARNER_SENTINEL"}}));
     context.tutor_resolved = true;
     run_context(&b, &mut BorrowedResidentState {store: &mut store, reader: &mut reader}, &adapter,
         &mut context, &snapshot, &ResidentTurnResources::default(), None,
@@ -296,7 +315,7 @@ fn tutor_turn_context_appears_once_across_five_samples() {
 }
 
 #[test]
-fn tutor_coach_guidance_is_private_and_present_from_the_first_sample() {
+fn tutor_coach_observations_are_private_and_present_from_the_first_sample() {
     struct CoachPort<'a> {
         inner: BorrowedResidentState<'a>,
         reads: usize,
@@ -305,7 +324,10 @@ fn tutor_coach_guidance_is_private_and_present_from_the_first_sample() {
         fn tutor_coach_context(&mut self) -> Result<Option<serde_json::Value>, ToolError> {
             self.reads += 1;
             Ok(Some(serde_json::json!({"status":"ready","coach_ref":"coach:source-turn",
-                "source_turn_ref":"turn:prior","guidance":{"sentinel":"private-coach-guidance"}})))
+                "source_turn_ref":"turn:prior","guidance":{
+                    "observation_receipts":[{"evidence_ref":"private-coach-observation"}],
+                    "next_step":{"reason":"old-coach-plan","participation":"recall"}
+                }})))
         }
         fn submit_private<R>(&mut self, operation: impl FnOnce(&mut MemoryStore) -> R) -> Result<R, ToolError> { self.inner.submit_private(operation) }
         fn read_live_reader<R>(&mut self, operation: impl FnOnce(&Reader) -> R) -> Result<R, ToolError> { self.inner.read_live_reader(operation) }
@@ -323,22 +345,23 @@ fn tutor_coach_guidance_is_private_and_present_from_the_first_sample() {
         turn_final("先解释条件为什么必要。"),
     ], vec![]);
     let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
-    context.tutor = Some(serde_json::json!({"status":"active","learner_context":{}}));
+    context.tutor = Some(serde_json::json!({"status":"practice","learner_context":{}}));
     context.tutor_resolved = true;
     let mut state = CoachPort { inner: BorrowedResidentState { store: &mut store, reader: &mut reader }, reads: 0 };
     run_context(&b, &mut state, &adapter, &mut context, &snapshot, &ResidentTurnResources::default(), None,
         &mut EphemeralCompactionCheckpointSink::default(), question, "t0").unwrap();
     let plans = adapter.seen_plans.borrow();
     assert_eq!(plans.len(), 3);
-    assert_eq!(state.reads, 1, "the admitted guidance stays frozen while the teacher executes this turn");
+    assert_eq!(state.reads, 1, "the admitted observations stay frozen while the teacher executes this turn");
     for (index, plan) in plans.iter().enumerate() {
         let text = serde_json::to_string(&plan.ordered_messages()).unwrap();
-        assert_eq!(text.matches("private-coach-guidance").count(), 1, "sample {index}");
+        assert_eq!(text.matches("private-coach-observation").count(), 1, "sample {index}");
+        assert!(!text.contains("old-coach-plan"), "the previous plan must not direct sample {index}");
         assert!(text.contains("coach:source-turn") && text.contains("turn:prior"), "sample {index}");
-        assert!(text.contains(question), "the latest user request must accompany the prior guidance at sample {index}");
+        assert!(text.contains(question), "the latest user request must accompany the historical observation at sample {index}");
     }
     let public = serde_json::to_string(&context.messages).unwrap();
-    assert!(!public.contains("private-coach-guidance") && !public.contains("coach:source-turn"));
+    assert!(!public.contains("private-coach-observation") && !public.contains("coach:source-turn"));
 }
 
 #[test]

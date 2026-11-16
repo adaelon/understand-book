@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { t as uiText } from '../i18n';
+import { getLocale, t as uiText } from '../i18n';
+import QuestionWork from './QuestionWork.vue';
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { MessageCircle } from '@lucide/vue';
@@ -13,13 +14,15 @@ import type { PresentationRef } from '../generated/PresentationRef';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';
 const props = withDefaults(defineProps<{ sessionId: string; turnId: string; reference?: PresentationRef;
   snapshot?: () => Promise<PresentationFollowUp>; ready?: boolean; sources?: AgentAnswerSource[];
-  answerText?: string; answerTarget?: () => HTMLElement | undefined; responseActionsTarget?: HTMLElement | null;
+  answerText?: string; answerTarget?: () => HTMLElement | undefined; socraticTarget?: (prompt: string) => HTMLElement | undefined; responseActionsTarget?: HTMLElement | null;
   presentationTarget?: () => HTMLElement | undefined;
   hostedPresentations?: PresentationRef[]; busy?: boolean; beforeResponse?: () => Promise<void> }>(), { ready: true, sources: () => [], hostedPresentations: () => [] });
 const emit = defineEmits<{ (e: 'source', id: string, anchor: HTMLElement): void; (e: 'response-available', available: boolean): void; (e: 'editing-response', editing: boolean): void;
+  (e: 'guidance-available', available: boolean): void;
   (e: 'locate-presentation', reference: PresentationRef): void; (e: 'goto', lid: string): void }>();
 const root = ref<HTMLElement>();
 const activities = ref<TutorActivity[]>([]);
+const activitiesReady = ref(false);
 // Actionless moves are delivered through this turn's final answer. The saved
 // candidate can differ in wording or formatting; observe the answer's exposure.
 function usesAnswer(activity: TutorActivity) {
@@ -37,9 +40,21 @@ const visibleActivities = computed(() => activities.value.filter(activity => !us
 function invitationOpen(activity: TutorActivity) {
   return !!activity.move.response_expectation && (!activity.response_invitation_status || activity.response_invitation_status === 'open');
 }
+const editingDelivery = ref<string | null>(null);
+function usesChatComposer(activity: TutorActivity) {
+  const invitation = activity.move.response_expectation;
+  return invitation?.socratic && invitationOpen(activity) && activity.status === 'active'
+    && editingDelivery.value !== activity.delivery_ref && !!props.socraticTarget?.(invitation.public_prompt);
+}
 const responseActivity = computed(() => visibleActivities.value.find(activity => activity.status === 'active'
-  && (invitationOpen(activity) || activity.move.actions.some(action => action === 'self_report' || action === (activity.attempted ? 'revise' : 'submit')))));
+  && !usesChatComposer(activity) && (invitationOpen(activity) || activity.move.actions.some(action => action === 'self_report' || action === (activity.attempted ? 'revise' : 'submit')))));
 watch(responseActivity, activity => emit('response-available', !!activity), { immediate: true });
+// Wait for the actual activity data; an initial empty array is not an empty task.
+const guidanceAvailable = computed(() => activitiesReady.value && !activities.value.some(activity =>
+  (activity.status === 'active' && (invitationOpen(activity)
+    || activity.move.actions.some(action => ['submit', 'revise', 'self_report'].includes(action))))
+  || ['eligible', 'offered'].includes(activity.continuation?.availability.status ?? '')));
+watch(guidanceAvailable, available => emit('guidance-available', available), { immediate: true });
 function focusResponse() {
   const activity = responseActivity.value;
   if (!activity) return false;
@@ -57,6 +72,11 @@ function renderText(text: string) {
     .map(part => part.kind === 'html' ? part.html : '').join('');
 }
 function invitationAnswerHost(activity: TutorActivity): HTMLElement | undefined {
+  const expectation = activity.move.response_expectation;
+  if (expectation?.socratic) {
+    const question = props.socraticTarget?.(expectation.public_prompt);
+    if (question) return question;
+  }
   if (!activity.move.response_expectation || props.reference || activity.move.presentation || !props.answerText?.trim()) return;
   const answer = props.answerTarget?.();
   // The final answer is the delivered wording, even when it revises the saved
@@ -76,10 +96,32 @@ function openSource(text: string, event: MouseEvent) {
   emit('source', part.source_ref_ids[0], button);
 }
 const responses = ref<Record<string, string>>({});
+const reasoning = ref<Record<string, string>>({});
+const askingId = ref('');
+const gradingId = ref('');
+const exposedSteps = new Set<string>(), seenSteps = new Set<string>();
+const stepReceipts = new Map<string, Promise<void>>();
+function markStep(id: string) {
+  if (seenSteps.has(id)) return Promise.resolve();
+  const pending = stepReceipts.get(id); if (pending) return pending;
+  const task = api.tutorHelpDisplayed(id).then(() => { seenSteps.add(id); exposedSteps.delete(id); }).finally(() => stepReceipts.delete(id));
+  stepReceipts.set(id, task); return task;
+}
+function updateAnswer(activity: TutorActivity, answer: string, thought: string) {
+  if (activity.move.answer_input) responses.value[activity.delivery_ref] = answer;
+  reasoning.value[activity.delivery_ref] = thought;
+}
+async function ensureDisplayed(activity: TutorActivity) {
+  // An explicit action inside the card is also evidence of display before the observer's first frame.
+  visible.add(activity.delivery_ref); await markDisplayed();
+  if (!displayed.has(activity.delivery_ref)) {
+    await api.tutorDisplay(activity.delivery_ref, await props.snapshot?.());
+    displayed.add(activity.delivery_ref);
+  }
+}
 // Keep supplied wording even if the user edits it. Editing is not evidence that
 // the learner independently constructed an explanation they were already shown.
 const responseOrigins = ref<Record<string, TeachingResponseOrigin>>({});
-const editingDelivery = ref<string | null>(null);
 function beginResponseEditing(deliveryRef: string) { editingDelivery.value = deliveryRef; emit('editing-response', true); }
 function endResponseEditing() {
   if (root.value?.contains(document.activeElement)) (document.activeElement as HTMLElement)?.blur();
@@ -114,6 +156,8 @@ function toggleCard(activity: TutorActivity, id: string) {
   responseOrigins.value[activity.delivery_ref] = { kind: 'user_text' };
 }
 function actionLabel(activity: TutorActivity, action: string) {
+  if (activity.move.answer_input && action === 'submit') return activity.move.answer_input.kind === 'worked_solution' ? uiText('提交解答') : uiText('提交选项');
+  if (activity.move.answer_input && action === 'revise') return uiText('提交改答');
   if (!activity.move.practice) return labels[action];
   if (action === 'reveal') return uiText('看解答');
   if (action === 'request_hint') return uiText('提示（还有 {0} 条）', [String(hintsLeft(activity))]);
@@ -135,6 +179,7 @@ const labels: Record<string, string> = { submit: uiText('提交回答'), revise:
 const assessmentLabels: Record<string,string> = { correct: uiText('本次回答符合标准'), partial: uiText('本次回答部分符合标准'), incorrect: uiText('本次回答未符合标准'), uncertain: uiText('目前依据不足，暂不能判断'), unassessed: uiText('回答已记录，尚未评分。') };
 async function load() {
   const current = ++generation;
+  activitiesReady.value = false;
   try {
     const result = await api.tutorActivities(props.sessionId, props.turnId, props.reference);
     if (current !== generation) return;
@@ -145,6 +190,7 @@ async function load() {
         && previous && previous.assessment?.status !== 'correct') concludePractice(activity.delivery_ref);
     }
     activities.value = result.activities;
+    activitiesReady.value = true;
     await observeVisibleContent();
     await markDisplayed();
   } catch (failure) { error.value = uiText('学习内容读取失败：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
@@ -167,6 +213,8 @@ async function markDisplayed() {
 function focusActivity(moveId: string, response?: string) {
   const activity = activities.value.find(a => a.move.move_id === moveId);
   if (!activity) return;
+  // An explicit page action can still open its scene-bound editor and prefill.
+  if (usesChatComposer(activity)) beginResponseEditing(activity.delivery_ref);
   if (typeof response === 'string') {
     responses.value[activity.delivery_ref] = response;
     responseOrigins.value[activity.delivery_ref] = { kind: 'presentation_prefill', prefill_text: response,
@@ -226,14 +274,18 @@ async function acknowledgeHelp(id: string) {
   await api.tutorHelpDisplayed(help.event_id);
 }
 async function act(activity: TutorActivity, action: string) {
-  if (busy.value || props.busy || pending) return;
+  if (busy.value || props.busy || pending || askingId.value) return;
   busy.value = true; error.value = '';
   try {
     await props.beforeResponse?.();
     await waitForHelp();
+    await ensureDisplayed(activity);
+    await Promise.all([...exposedSteps].map(markStep));
     const scene = await props.snapshot?.();
     pending = { operation_id: crypto.randomUUID(), delivery_ref: activity.delivery_ref, action,
       response: ['submit', 'revise', 'self_report'].includes(action) ? responses.value[activity.delivery_ref] ?? '' : null,
+      ...(activity.move.answer_input && activity.move.answer_input.kind !== 'worked_solution' && ['submit','revise'].includes(action)
+        ? { reasoning: reasoning.value[activity.delivery_ref] ?? '' } : {}),
       response_origin: responseOrigins.value[activity.delivery_ref], scene };
     await send();
   } catch (failure) { if (failure instanceof ApiError && failure.status < 500) pending = null; error.value = uiText('操作未确认：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
@@ -244,6 +296,8 @@ async function send() {
   const request = pending;
   const result = await api.tutorAction(request);
   pending = null;
+  const activity = activities.value.find(a => a.delivery_ref === request.delivery_ref);
+  const formal = ['submit', 'revise'].includes(request.action);
   // A concluded practice problem lets an active warm-up offer its next problem.
   if (activities.value.some(a => a.delivery_ref === request.delivery_ref && a.move.practice)
     && (result.assessment === 'correct' || ['skip', 'reveal'].includes(request.action))) {
@@ -255,11 +309,24 @@ async function send() {
     await acknowledgeHelp(request.delivery_ref);
   }
   // A correct practice answer also releases its solution; the answer still gets a reply.
-  if (!result.help || ['submit', 'revise'].includes(request.action)) {
+  if (formal && activity?.move.answer_input) {
+    await load();
+    if (activity.move.answer_input.kind === 'worked_solution' && result.assessment === 'unassessed') {
+      await grade(activity, result.event_id);
+    }
+    return;
+  }
+  if (!result.help || formal) {
     endResponseEditing();
     continueLearning(result.event_id, request.response || uiText('我跳过了这个活动，请调整接下来的讲法。'), request.scene, request.response_origin);
   }
   await load();
+}
+async function grade(activity: TutorActivity, actionRef: string) {
+  gradingId.value = activity.delivery_ref; error.value = '';
+  try { await api.tutorGrade(actionRef, getLocale()); await load(); }
+  catch (failure) { error.value = uiText('答案已保存，可重新批改这次提交。{0}', [failure instanceof Error ? failure.message : '']); }
+  finally { gradingId.value = ''; }
 }
 async function retry() {
   busy.value = true; error.value = '';
@@ -273,6 +340,7 @@ async function retry() {
 }
 watch(() => [props.sessionId, props.turnId, props.reference?.presentation_id, props.reference?.revision], () => {
   visible.clear(); visibleHelp.clear(); displayed.clear(); answerDeliveries.clear(); observer?.disconnect();
+  exposedSteps.clear(); seenSteps.clear(); stepReceipts.clear(); reasoning.value = {}; askingId.value = ''; gradingId.value = '';
   pending = null; activities.value = []; helps.value = {}; concluded.clear(); responses.value = {}; responseOrigins.value = {}; void load();
 }, { immediate: true });
 watch(() => props.ready, () => { void markDisplayed(); });
@@ -296,12 +364,17 @@ async function observeVisibleContent() {
     answerDeliveries.set(answerEnd.value, invitations);
     observer?.observe(answerEnd.value);
   }
-  root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref], [data-help-for], [data-feedback-ref]').forEach(node => observer?.observe(node));
+  root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref], [data-help-for], [data-feedback-ref], [data-step-help]').forEach(node => observer?.observe(node));
 }
 onMounted(() => {
   observer = new IntersectionObserver(entries => {
     for (const entry of entries) {
       const node = entry.target as HTMLElement;
+      const step = node.dataset.stepHelp;
+      if (step && entry.isIntersecting && !seenSteps.has(step)) {
+        exposedSteps.add(step);
+        void markStep(step).catch(() => { error.value = uiText('引导的阅读记录暂未保存。'); });
+      }
       const deliveries = answerDeliveries.get(node);
       if (deliveries) {
         for (const id of deliveries) { if (entry.isIntersecting) visible.add(id); else visible.delete(id); }
@@ -325,7 +398,7 @@ onMounted(() => {
   void observeVisibleContent();
   window.addEventListener('tutor-state-changed', load);
 });
-onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', load); emit('response-available', false); });
+onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', load); emit('response-available', false); emit('guidance-available', false); });
 </script>
 <template>
   <section ref="root" class="tutor-activities" :aria-label="uiText('教学活动')">
@@ -333,7 +406,7 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
       <span ref="answerEnd" class="answer-delivery-end" aria-hidden="true"></span>
     </Teleport>
     <p v-if="error" role="alert">{{ error }} <button :disabled="busy" @click="retry">{{ uiText('重试') }}</button></p>
-    <article v-for="activity in visibleActivities" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref" :class="{ interactive: activity.move.actions.length && !activity.move.response_expectation, invitation: !!activity.move.response_expectation }">
+    <article v-for="activity in visibleActivities" v-show="!usesChatComposer(activity)" :key="activity.delivery_ref" :data-delivery-ref="activity.delivery_ref" :class="{ interactive: activity.move.actions.length && !activity.move.response_expectation, invitation: !!activity.move.response_expectation }">
       <template v-if="activity.move.response_expectation">
         <div v-if="!invitationAnswerHost(activity)" class="activity-text md" v-html="renderText(activity.move.response_expectation.public_prompt)" @click="openSource(activity.move.response_expectation.public_prompt, $event)"></div>
         <button v-if="activity.move.presentation && !reference" class="scene-link" @click="emit('locate-presentation', activity.move.presentation)">{{ uiText('回到这个演示') }}</button>
@@ -365,14 +438,17 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
           :aria-pressed="(pickedCards[activity.delivery_ref] ?? []).includes(card.id)" :disabled="busy || activity.status !== 'active'"
           @click="toggleCard(activity, card.id)">{{ card.text }}</button>
       </div>
-      <textarea v-if="!activity.move.practice?.cards?.length && activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" :aria-label="uiText('活动回答')" :placeholder="uiText('写下你的理解，或还不确定的地方…')" rows="3" @focus="beginResponseEditing(activity.delivery_ref)" />
+      <textarea v-if="!activity.move.answer_input && !activity.move.practice?.cards?.length && activity.move.actions.some(a => ['submit', 'revise', 'self_report'].includes(a))" v-model="responses[activity.delivery_ref]" data-workspace-input="tutor" :aria-label="uiText('活动回答')" :placeholder="uiText('写下你的理解，或还不确定的地方…')" rows="3" @focus="beginResponseEditing(activity.delivery_ref)" />
+      <QuestionWork v-if="activity.move.actions.includes('submit')"
+        :activity="activity" :busy="busy || !!props.busy || !!gradingId" :ensure-displayed="() => ensureDisplayed(activity)"
+        @asking="askingId = $event ? activity.delivery_ref : ''" @change="(answer, thought) => updateAnswer(activity, answer, thought)" @reload="load" />
       <Teleport :to="responseActionsTarget || 'body'" :disabled="!responseActionsTarget || editingDelivery !== activity.delivery_ref">
       <div v-if="activity.move.actions.length" class="activity-actions">
       <template v-for="action in activity.move.actions" :key="action">
         <button v-if="!(action === 'submit' && activity.attempted) && !(action === 'revise' && !activity.attempted)"
           :class="{ primary: ['submit', 'revise', 'self_report'].includes(action) }"
           :data-help-action="['request_hint', 'reveal'].includes(action) ? action : undefined"
-          :disabled="busy || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action)) || (action === 'request_hint' && hintsLeft(activity) === 0)"
+          :disabled="busy || props.busy || !!askingId || !!gradingId || !!pending || (activity.status !== 'active' && ['submit', 'revise', 'skip'].includes(action)) || (action === 'request_hint' && hintsLeft(activity) === 0) || (!!activity.move.answer_input && ['submit','revise'].includes(action) && !responses[activity.delivery_ref]?.trim())"
           @click="act(activity, action)">{{ actionLabel(activity, action) }}</button>
       </template>
       </div>
@@ -384,12 +460,19 @@ onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEvent
         <button v-if="helps[activity.delivery_ref].note_ref" class="hint-link" @click="openPersonalNotes(helps[activity.delivery_ref].note_ref!)">{{ uiText('打开这条想法') }}</button>
         <button v-for="lid in helps[activity.delivery_ref].source_lids ?? []" :key="lid" class="hint-link" @click="emit('goto', lid)">{{ uiText('打开原文') }}</button>
       </div>
-      <small v-if="activity.move.actions.length && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">{{ uiText('当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。') }}</small>
+      <small v-if="activity.move.actions.length && !activity.move.actions.includes('submit') && !activity.move.actions.some(a => ['request_hint', 'reveal'].includes(a))">{{ uiText('当前题目未提供提示或直接讲解，可保留题目并返回原文阅读。') }}</small>
       <small v-if="activity.help_seen.length">{{ uiText('此活动已展示过帮助；重开页面会保留这项记录。') }}</small>
-      <small v-if="activity.attempted" role="status">{{ assessmentLabels[activity.assessment?.status ?? 'unassessed'] }}</small>
+      <small v-if="activity.attempted" role="status">{{ gradingId === activity.delivery_ref ? uiText('正在逐项批改…') : assessmentLabels[activity.assessment?.status ?? 'unassessed'] }}</small>
+      <button v-if="activity.move.answer_input?.kind === 'worked_solution' && activity.assessment?.status === 'unassessed' && activity.assessment.action_ref && !gradingId"
+        :disabled="busy || props.busy || activity.status !== 'active'" @click="grade(activity, activity.assessment!.action_ref!)">{{ uiText('批改这次提交') }}</button>
       <small v-if="activity.assessment?.assistance_count">{{ uiText('本次回答前已展示帮助。') }}</small>
       <small v-if="(activity.assessment?.attempt ?? 0) > 1">{{ uiText('这是第') }} {{ activity.assessment?.attempt }} {{ uiText('次作答。') }}</small>
-      <ul v-if="activity.assessment?.items?.length" :data-feedback-ref="activity.assessment.action_ref"><li v-for="item in activity.assessment.items" :key="item.id"><div class="activity-text md" v-html="renderText(item.reason)" @click="openSource(item.reason, $event)"></div></li></ul>
+      <ul v-if="activity.assessment?.items?.length" :data-feedback-ref="activity.assessment.action_ref"><li v-for="item in activity.assessment.items" :key="item.id">
+        <template v-if="item.retry && item.verdict === 'supported'">{{ uiText('这一步成立：{0}', [item.response_quote]) }}</template>
+        <template v-else-if="item.retry && item.verdict === 'uncertain'">{{ uiText('这项依据还不充分，可以补充说明。') }}</template>
+        <template v-else-if="item.retry && !item.reason">{{ uiText('请对照题目补全这项要求。') }}</template>
+        <div v-else class="activity-text md" v-html="renderText(item.reason)" @click="openSource(item.reason, $event)"></div>
+      </li></ul>
       </template>
     </article>
   </section>

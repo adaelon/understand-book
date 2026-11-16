@@ -32,6 +32,7 @@ mod presentation_coach_prepare {
 
     enum CoachResult {
         Ready,
+        WithPlan(Value),
         ProviderFailure,
         SpendStop,
         Cancel(CancellationToken),
@@ -64,6 +65,7 @@ mod presentation_coach_prepare {
             self.coach_requests.borrow_mut().push(request);
             match &self.coach_result {
                 CoachResult::Ready => Ok(selected_plan()),
+                CoachResult::WithPlan(plan) => Ok(plan.clone()),
                 CoachResult::ProviderFailure => Err(AdapterError {
                     spend_stop: None,
                     message: "scripted provider unavailable".into(),
@@ -265,6 +267,49 @@ mod presentation_coach_prepare {
             "the complete private plan must be supplied once, not duplicated into tool receipts"
         );
         serde_json::from_str(handoffs[0]).unwrap()
+    }
+
+    #[test]
+    fn presentation_coach_spatial_choice_supplies_three_to_a_local_author() {
+        let catalog = crate::presentation_methods::catalog();
+        let Some(method) = catalog["methods"].as_array().unwrap().iter().find(|m|
+            m["scenes"].is_array() && m["needs"].as_array().is_some_and(|needs| needs.contains(&json!("three")))
+        ) else { return }; // Isolated candidate catalogs can omit spatial methods.
+        let mut plan = selected_plan();
+        plan["methods"] = json!([{"method_id": method["id"], "revision": method["revision"],
+            "adaptation": "用实际对象重做装配，在第二视角检查内部零件"}]);
+        let book = book();
+        let mut port = Port::new(&book, "spatial-scene-guidance");
+        let adapter = Adapter::new(vec![discover(), prepare("local-without-three"), turn_final("已取得立体制作依据。")], CoachResult::WithPlan(plan));
+        let mut context = context(&adapter);
+        execute(&mut port, &book, &adapter, &mut context).unwrap();
+        let plans = adapter.plans.borrow();
+        assert_eq!(sampled_body(&plans[2], "local-without-three")["needs"], json!([]));
+        let three = include_str!("../../../skills/presentation/references/three.md").trim();
+        let includes_three = |plan: &AgentRequestPlan| plan.ordered_messages().iter()
+            .any(|m| m.content.as_deref().is_some_and(|body| body.contains(three)));
+        assert!(!includes_three(&plans[1]));
+        assert!(includes_three(&plans[2]));
+    }
+
+    #[test]
+    fn learning_quality_old_presentation_does_not_reopen_authoring_for_a_question() {
+        let book=book();
+        let mut port=Port::new(&book,"learning-quality-followup");
+        let adapter=Adapter::new(vec![turn_final("先核对之前那句话的依据。")],CoachResult::Ready);
+        let mut context=context(&adapter);
+        context.tutor=Some(json!({"status":"practice","learner_context":{},
+            "current_design":{"design_ref":"design:previous-turn","design":{
+                "representation":{"kind":"presentation","observation":"此前的杠杆演示"},
+                "focus_block_refs":["leverage"],"blocks":[{"block_id":"leverage"}]}}}));
+        // Only the first sample is under inspection; the scripted final answer
+        // intentionally does not complete the active tutor's delivery protocol.
+        let _=execute(&mut port,&book,&adapter,&mut context);
+        let plans=adapter.plans.borrow();
+        let first=plans.first().expect("ordinary follow-up was sampled");
+        assert!(!first.tools.iter().any(|tool|tool.name=="presentation.author"));
+        assert!(!first.instruction_assets.iter().any(|asset|asset.asset_id.contains("presentation")));
+        assert!(first.tools.iter().any(|tool|tool.name=="tool.search"),"authoring can still be discovered when needed");
     }
 
     #[test]

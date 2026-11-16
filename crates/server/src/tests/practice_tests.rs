@@ -1,7 +1,84 @@
 //! Retrieval practice on the existing formal-activity path (ADR-0178, P1).
 use super::*;
 use super::tutor_loop_tests::{finish, fixture_with_book, outcome, step_with_design};
+
+use super::tutor_loop_tests::prepare_practice_chat as prepare_agent_chat;
+
 use memory::teaching::TeachingFact;
+
+const OPTIMIZATION_QUESTIONS: &str = include_str!("../../../../examples/optimization-practice/questions.json");
+
+#[test]
+fn question_formats_match_their_frozen_contracts() {
+    for q in serde_json::from_str::<Vec<Value>>(OPTIMIZATION_QUESTIONS).unwrap() {
+        let input: runtime::tutor::AnswerInput = serde_json::from_value(q["answer_input"].clone()).unwrap();
+        let mut contract: memory::assessment::AssessmentContract = serde_json::from_value(json!({
+            "rule":q["rule"],"source_lids":[q["section"]],"source_sufficient":true,"feedback":"after_submit"})).unwrap();
+        assert!(input.matches_assessment(Some(&contract)));
+        contract.rule = memory::assessment::ScoringRule::ChoiceSet { choices:vec!["X".into()],correct:vec!["X".into()] };
+        assert!(!input.matches_assessment(Some(&contract)));
+    }
+}
+
+/// Seed real question cards through the same teaching selection and delivery as the Reader.
+/// Both the book path and the new, isolated learner directory are supplied explicitly.
+#[test]
+#[ignore = "requires a built optimization book and a fresh private directory for interactive browser acceptance"]
+fn seed_optimization_question_walkthrough() {
+    let book_dir = std::path::PathBuf::from(std::env::var_os("UB_QUESTION_BOOK").unwrap());
+    let private = std::path::PathBuf::from(std::env::var_os("UB_QUESTION_DEMO_DIR").unwrap());
+    std::fs::create_dir(&private).expect("Choose a new, empty learner directory");
+    let book = Book::load(book_dir.to_str().unwrap()).unwrap();
+    assert_eq!(book.base.book_id,"optimization-modeling-algorithms-theory");
+    let mut state = state_named("optimization-question-demo");
+    state.workspace.book = Arc::new(book);
+    state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
+    state.workspace.book_dir = book_dir;
+    state.user.store = MemoryStore::open(private.join("memory.json")).unwrap();
+    state.user.history_path = Some(private.join("agent-history.json"));
+    (state.user.agent_history, state.user.session_store) = crate::session_store::load_chat_storage(&state.user.history_path).unwrap();
+    let session = crate::new_agent_session(&state.workspace.book.base.book_id, "optimization-review", 0);
+    state.workspace.selected_chat = Some(session.id.clone());
+    state.user.session_store.as_mut().unwrap().create(&mut state.user.agent_history, session).unwrap();
+    json_post(&mut state, "/tutor/mutate", json!({"operation_id":"on","expected_revision":0,"action":{"kind":"set_enabled","enabled":true}}));
+    let started = teaching::start_request(&state.private_context(), "now").unwrap();
+    assert_eq!(started["started"], true, "{started}");
+    let questions: Vec<Value> = serde_json::from_str(OPTIMIZATION_QUESTIONS).unwrap();
+    let ranges: Vec<_> = ["1.11.7.17", "1.7.9.12"].into_iter().map(|lid| EvidenceRange{start_lid:lid.into(),end_lid:lid.into(),ranges:vec![]}).collect();
+    let sources = json!(ranges.iter().map(|r| json!({"start_lid":r.start_lid,"end_lid":r.end_lid})).collect::<Vec<_>>());
+    let target = json!({"learning_focus":"从可行性判断最优值","expected_performance":"能用题中给出的信息说明一个界或最优值的根据。",
+        "capability":"explanation","object_refs":[],"source_bindings":sources});
+    let design = json!({"operation":"design","operation_id":"optimization-review","design":{
+        "target":target,"organizing_model":"原可行点提供候选值；下界与可行值相遇可以证明最优性。",
+        "representation":{"kind":"text","reason":"用短题逐项练习。"},"blocks":[{"block_id":"bounds","relation":"把候选点放回原可行集比较。",
+            "purpose":"用题面数据判断能成立的结论。","source_bindings":sources}],"connections":[],"focus_block_refs":["bounds"],
+        "basis_refs":[],"open_question_refs":[],"revision_reason":"期末练习","previous_ref":null}});
+    let mut design_ref = Value::Null;
+    for (q, title) in questions.into_iter().zip(["对偶界 · 单选题","最优性证书 · 多选题","约束最小值 · 计算题"]) {
+        let turn = prepare_agent_chat(&mut state, &json!({"message":format!("期末冲刺：{title}")}).to_string(), "now")
+            .unwrap_or_else(|r|panic!("{}",r.body)).turn_ref;
+        if design_ref.is_null() { design_ref = teaching::step(&state.private_context(), &turn, design.clone(), &[], &ranges).unwrap()["design_ref"].clone(); }
+        let lid = &q["section"];
+        let mut local_target = target.clone();
+        local_target["learning_focus"] = q["focus"].clone();
+        local_target["source_bindings"] = json!([{"start_lid":lid,"end_lid":lid}]);
+        let mut request = json!({"operation":"select","move":{"move_id":q["id"],"design_ref":design_ref,
+            "block_refs":["bounds"],"target":local_target,"object_ids":[],"capability":"explanation","kind":"question",
+            "interaction_intent":"neutral","intent_origin":"neutral","prompt":q["prompt"],"answer_input":q["answer_input"],
+            "actions":["submit","revise","request_hint","reveal","skip"],"explanation":q["solution"],
+            "assessment":{"rule":q["rule"],"source_lids":[lid],"source_sufficient":true,
+                "feedback":if q["answer_input"]["kind"] == "worked_solution" {"after_submit"} else {"on_reveal"}},
+            "practice":{"entry":q["entry"],"mode":"discriminate","distance":"adjacent","hints":[{"kind":"structure","text":q["hint"]}]}}});
+        super::tutor_loop_tests::fixture_participation(&mut request["move"]);
+        teaching::step(&state.private_context(), &turn, request, &[], &ranges).unwrap();
+        let mut result = outcome(None);
+        result.answer = Some(title.into());
+        result.answer_view.as_mut().unwrap().parts = vec![AgentAnswerPart::Markdown{text:title.into()}];
+        finish(&mut state,&turn,&result);
+        let list = json_post(&mut state,"/tutor/activities",json!({"session_id":turn.session_id,"turn_id":turn.turn_id}));
+        assert_eq!(list["activities"].as_array().unwrap().len(),1, "{list}");
+    }
+}
 
 fn fixture() -> (tempfile::TempDir, AppState) {
     let source = "Average speed is total distance divided by total time. Equal distances need not take equal times. The total time must be positive. ".repeat(3);
@@ -56,6 +133,56 @@ fn hint(state: &mut AppState, id: &str, operation: &str) -> Value {
     let help = json_post(state, "/tutor/action", json!({"operation_id":operation,"delivery_ref":id,"action":"request_hint"}))["help"].clone();
     json_post(state, "/tutor/help-displayed", json!({"help_ref":help["event_id"]}));
     help
+}
+
+#[test]
+fn unified_practice_keeps_questions_help_and_grading_with_legacy_control_off() {
+    let (_root, mut state) = fixture();
+    let view = state.user.learning_store().unwrap().state().unwrap();
+    state.user.learning_store().unwrap().mutate(&serde_json::from_value(json!({
+        "operation_id":"legacy-off", "expected_revision":view.control.revision,
+        "action":{"kind":"set_enabled","enabled":false}})).unwrap(), "before-upgrade").unwrap();
+    let id = delivered(&mut state, warmup(hints()));
+    let original = state.user.learning_store().unwrap().teaching_event(&id).unwrap();
+    let activities = json_post(&mut state, "/tutor/activities", json!({"session_id":original.binding.chat_session_id,"turn_id":original.binding.turn_id}));
+    assert_eq!(activities["activities"][0]["status"], "active");
+    assert!(!state.user.learning_store().unwrap().state().unwrap().control.enabled);
+
+    let ordinary = super::prepare_agent_chat(&mut state, r#"{"message":"Explain why a rest counts as time."}"#, "now").unwrap_or_else(|reply| panic!("{}", reply.body));
+    assert_eq!(ordinary.tutor.as_ref().unwrap()["status"], "observing", "a pending practice question must not take over ordinary conversation");
+    finish(&mut state, &ordinary.turn_ref, &outcome(None));
+    let help = json!({"message":"", "entry_action":"continue_answer", "answer_ref":{"turn_id":original.binding.turn_id},
+        "client_request_id":"original-question-help", "session_id":original.binding.chat_session_id, "expected_chat_head":ordinary.turn_ref.turn_id});
+    let reply = super::prepare_agent_chat(&mut state, &help.to_string(), "later").err().expect("continue the original unanswered question through its help");
+    assert_eq!(reply.status, 200, "{}", reply.body);
+    assert_eq!(serde_json::from_str::<Value>(&reply.body).unwrap()["kind"], "activity_help");
+    assert_eq!(hint(&mut state, &id, "off-hint")["hint_kind"], "in_problem");
+    let result = json_post(&mut state, "/tutor/action", json!({"operation_id":"off-answer", "delivery_ref":id,"action":"submit","response":"[\"A\",\"B\"]"}));
+    assert_eq!(result["assessment"], "correct");
+}
+
+#[test]
+fn unified_practice_continuity_is_scoped_to_the_chat_and_never_activates_ordinary_questions() {
+    let (_root,mut state)=fixture();
+    let id=delivered(&mut state,warmup(hints()));
+    let delivery=state.user.learning_store().unwrap().teaching_event(&id).unwrap();
+    let ordinary=crate::prepare_agent_chat(&mut state,r#"{"message":"Explain why stopped time belongs in elapsed time."}"#,"ordinary")
+        .unwrap_or_else(|reply|panic!("{}",reply.body));
+    assert_eq!(ordinary.tutor.as_ref().unwrap()["status"],"observing");
+    assert!(ordinary.tutor.as_ref().unwrap()["current_design"].is_null());
+    finish(&mut state,&ordinary.turn_ref,&outcome(None));
+    let again=prepare_agent_chat(&mut state,r#"{"message":"Give me another practice problem."}"#,"again")
+        .unwrap_or_else(|reply|panic!("{}",reply.body));
+    let context=again.tutor.as_ref().unwrap();
+    assert_eq!(context["status"],"practice");
+    assert_eq!(context["binding"]["tutor_session_id"],delivery.binding.tutor_session_id);
+    assert_eq!(context["current_design"]["design_ref"],delivery.payload["move"]["design_ref"]);
+    finish(&mut state,&again.turn_ref,&outcome(None));
+    post(&mut state,"/agent/new","{}");
+    let separate=prepare_agent_chat(&mut state,r#"{"message":"Practice in a new conversation."}"#,"separate")
+        .unwrap_or_else(|reply|panic!("{}",reply.body));
+    assert_ne!(separate.tutor.as_ref().unwrap()["binding"]["tutor_session_id"],delivery.binding.tutor_session_id);
+    assert!(separate.tutor.as_ref().unwrap()["current_design"].is_null());
 }
 
 #[test]
