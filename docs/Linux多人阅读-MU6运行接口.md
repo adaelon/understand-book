@@ -1,6 +1,6 @@
 # Linux 多人阅读 MU6 运行接口
 
-MU6a–MU6d 在 MU5 的授权现场上接通持久接单、按用户公平并发、恢复、指定取消、聊天删除和连续观察。账号、Cookie、CSRF、Origin 沿 [MU4](Linux多人阅读-MU4候选入口.md)，现场创建和版本沿 [MU5](Linux多人阅读-MU5现场接口.md)。实现与验证见 [MU6a–MU6b 记录](performance/linux-multi-reader-mu6ab-20260930.md)和 [MU6c–MU6d 记录](performance/linux-multi-reader-mu6cd-20260930.md)。
+MU6a–MU6d 在 MU5 的授权现场上接通持久接单、按用户公平并发、恢复、指定取消、聊天删除和连续观察。账号、Cookie、CSRF、Origin 沿 [MU4](Linux多人阅读-MU4候选入口.md)，现场创建和版本沿 [MU5](Linux多人阅读-MU5现场接口.md)。实现与验证见 [MU6a–MU6b 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu6ab-20260930.md)和 [MU6c–MU6d 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu6cd-20260930.md)。
 
 ## 接单与请求恢复
 
@@ -106,7 +106,7 @@ GET events -> queued snapshot -> run.started -> run.resource / activity / answer
 
 例如 Linux 冻结容量验收负载可设 `{"user_queued_runs":2}`，沿 MU0 的每用户 2 未结接单、2 个全局模型槽运行。闲置回收沿原用户 30 分钟、现场 15 分钟，现场维护周期 60 秒。
 
-面向 200 名同时在线读者的待验证配置见 [`service-limits.200-users.json.example`](../scripts/linux/service-limits.200-users.json.example)。它需要包含上述新字段的新版本服务，适用于扩容后的单实例；保存示例不会改变线上配置。适用负载、实施状态与限制见 [200 人配置准备记录](performance/capacity-200-20261027/implementation.md)。
+面向 200 名同时在线读者的待验证配置见 [`service-limits.200-users.json.example`](../scripts/linux/service-limits.200-users.json.example)。它需要包含上述新字段的新版本服务，适用于扩容后的单实例；保存示例不会改变线上配置。适用负载、实施状态与限制见 [200 人配置准备记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/capacity-200-20261027/implementation.md)。
 
 运行领取按用户轮转，同用户内部按接单顺序。模型许可只覆盖一次实际调用，调用退出后才释放；工具、画像判断、教学评估、嵌套查询、压缩和修复使用相同受限 adapter，不在整个 Run 期间占住模型槽。暂停/取消不会提前释放仍在网络调用中的槽。每次真正发起新调用前复验原用户与原材料授权。
 

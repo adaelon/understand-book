@@ -47,7 +47,7 @@ Linux 独立候选根 `acceptance/inv9-20261009/{candidate-root,binding-root}` �
 
 真实公共 DNS 和 TLS 下，原管理员登录、`/admin/invites` 深链接与刷新、静态资源 MIME/404、注册/找回页面、书架及打开原书通过。页面错误 0，模型调用 0：[production-browser.json](performance/inv9-20261009/production-browser.json)、[Reader 截图](performance/inv9-20261009/production-reader.png)。
 
-T15–T18 后端与前端均已上线。现有 10 个封存发布均缺少新版 `publication.json.tutor_readiness`，公网实际返回“当前发布缺少 Tutor 必要接纳回执”。此次未改书籍版本、默认选择或授权。后续用户明确要求直接使用已有基础成品；源码已改为检查 Pass1、discourse 与 BookStructure，缺回执无需重建或重新导入，此修复已于 20:32:02 HKT 部署并通过公网复核，见 [Tutor 上线记录](performance/tutor-artifacts-deployment-20261009/README.md)。T19 真实教学体验、学习效果和成本验收仍待实施，见 [Tutor 方案](切片方案-Tutor预构建不阻塞教学.md)与 [T18 验证](performance/tutor-t18-20261009.md)。
+T15–T18 后端与前端均已上线。现有 10 个封存发布均缺少新版 `publication.json.tutor_readiness`，公网实际返回“当前发布缺少 Tutor 必要接纳回执”。此次未改书籍版本、默认选择或授权。后续用户明确要求直接使用已有基础成品；源码已改为检查 Pass1、discourse 与 BookStructure，缺回执无需重建或重新导入，此修复已于 20:32:02 HKT 部署并通过公网复核，见 [Tutor 上线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-artifacts-deployment-20261009/README.md)。T19 真实教学体验、学习效果和成本验收仍待实施，见 [Tutor 方案](切片方案-Tutor预构建不阻塞教学.md)与 [T18 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t18-20261009.md)。
 
 ## 恢复点与已知限制
 

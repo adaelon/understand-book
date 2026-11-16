@@ -6,4 +6,4 @@
 4. Reader 在相同三环境使用鼠标/触摸及键盘操作，保存 2+.35、7+.999、8+0 后重启存储宿主并重开，检查精确位置、参数、图形与暂停状态。错误时修正恢复路径，不能把进度吸附到整步。
 5. 只在测试副本中将运动点冻结在 x₀，保持读数和 scene 正确；独立图形检查必须拒绝坏例，并接受好例。坏例漏检时修正检查，不把正确读数视为图形证据。
 
-测试入口、命令与实际结果见 [SE1 实验记录](../../../../../docs/performance/explanation-evolution/se1/README.md)。这些检查证明该作品的工程与数学性质，迁移和采用证据另行形成。
+测试入口、命令与实际结果见 [SE1 实验记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se1/README.md)。这些检查证明该作品的工程与数学性质，迁移和采用证据另行形成。

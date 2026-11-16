@@ -1,7 +1,7 @@
 # LID 底座与 Agent 可靠交付切片方案
 
 状态：LA0–LA6 实现与确定性验证完成；LA1–LA6 定向真模结果见[实施与验收](LA1-LA6实施与验收.md)，LA7–LA10 实现与实测交付完成，完整产品质量目标未全通过，见[结果与裁决](LA7-LA10实施与验收.md)。2026-09-08。
-决策：[ADR-0123](adr/0123-lid-foundation-and-reliable-agent-completion.md)。当前工作记录：[完整 Agent 评测](agent-loop-eval-worklog.md)。
+决策：[ADR-0123](adr/0123-lid-foundation-and-reliable-agent-completion.md)。当前工作记录：[完整 Agent 评测](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/agent-loop-eval-worklog.md)。
 
 ## 0. 目标与对齐
 
@@ -17,7 +17,7 @@
 
 ## 1. 已知基线
 
-来自 [2026-09-08 完整报告](../evals/semantic/results/2026-09-08-agent-v1/report.md)，协议见 [AGENT_EVAL](../evals/semantic/AGENT_EVAL.md)。
+来自 [2026-09-08 完整报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-agent-v1/report.md)，协议见 [AGENT_EVAL](../evals/semantic/AGENT_EVAL.md)。
 
 | 观测 | 实测 | 对应工作 |
 | --- | --- | --- |
@@ -188,7 +188,7 @@ LA0 文档
 
 LA1–LA6 的实际实现、回归和独立模型结果见[实施与验收](LA1-LA6实施与验收.md)。LA7 完整32题、LA9 同环72样本和 LA10 连续阅读已完成；见[LA7–LA10 实施与验收](LA7-LA10实施与验收.md)。未达质量目标的失败按报告返回对应切片，不用不同版本拼接成绩。
 
-每刀收口记录触达文件、实际测试结果、失败分层与下一刀到本方案或 [工作记录](agent-loop-eval-worklog.md)。`docs/代码链路.md` 只追加该刀真实变更；实际结构变化时才更新架构图。各次模型运行均使用独立结果目录；固定全量与后续修复复验分离。
+每刀收口记录触达文件、实际测试结果、失败分层与下一刀到本方案或 [工作记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/agent-loop-eval-worklog.md)。`docs/代码链路.md` 只追加该刀真实变更；实际结构变化时才更新架构图。各次模型运行均使用独立结果目录；固定全量与后续修复复验分离。
 
 ## 5. 当前限制
 

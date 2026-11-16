@@ -6,4 +6,4 @@
 
 `export.mjs` 从矢量母版生成 Web 使用的同形 SVG、32px 浏览器图标、180px Apple touch icon 与 192/512px 应用图标。方形图标使用 `#F7F3EB` 纸色背景，母版留白保持一致。在可用 sharp 的 Node 环境运行 `node assets/brand/logo/v1/export.mjs` 即可重建。
 
-产品身份位使用此标识。首页情境、书架接续、助手身份与状态反馈继续使用页页角色资源。规范见 [ADR-0165 §7](../../../../docs/adr/0165-yeye-reading-companion-and-brand-integration.md#7-主标识)，上线记录见[品牌版本发布](../../../../docs/performance/logo-brand-release-20261013/README.md)。
+产品身份位使用此标识。首页情境、书架接续、助手身份与状态反馈继续使用页页角色资源。规范见 [ADR-0165 §7](../../../../docs/adr/0165-yeye-reading-companion-and-brand-integration.md#7-主标识)，上线记录见[品牌版本发布](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/logo-brand-release-20261013/README.md)。

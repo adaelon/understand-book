@@ -1,6 +1,6 @@
 # MU10 隔离、故障与容量验收
 
-MU10 在独立服务根执行验收并产出发布门槛记录。冻结条件见 [MU0](performance/linux-multi-reader-mu0-20260930.md)，逐项结果见 [MU10 记录](performance/linux-multi-reader-mu10-20260930.md)。真实入口切换使用 MU11 运行单。
+MU10 在独立服务根执行验收并产出发布门槛记录。冻结条件见 [MU0](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu0-20260930.md)，逐项结果见 [MU10 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu10-20260930.md)。真实入口切换使用 MU11 运行单。
 
 ## 故障入口
 

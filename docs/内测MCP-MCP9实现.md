@@ -28,7 +28,7 @@ Codex CLI **0.162.0-alpha.2**，沿用户配置的 `gpt-6-astra`，协议 **2025
 
 耗尽账号仅执行免费的 `book_list`，从随结果返回的免费／已购零余额中停止内容请求，说明 2026-11-01 香港时间恢复与购买入口。它没有取得正文、编造实验结论或产生消费。
 
-两项新增集成／并发用例通过；87 项既有 Server 受影响回归通过；Web 126 项、Admin 30 项及两端类型检查／生产构建通过。本机 MCP 过时 nullable schema 断言已修复并通过。引用校验、原始客户端记录、账本、命令和并发数据见 [验收记录](performance/beta-mcp/README.md)。
+两项新增集成／并发用例通过；87 项既有 Server 受影响回归通过；Web 126 项、Admin 30 项及两端类型检查／生产构建通过。本机 MCP 过时 nullable schema 断言已修复并通过。引用校验、原始客户端记录、账本、命令和并发数据见 [验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/beta-mcp/README.md)。
 
 ## 已知限制
 

@@ -2,7 +2,7 @@
 
 正式目录 revision 6 收录 11 种解释方法、12 个登记版本。每个版本提供方法卡、可运行作品、改写说明、制作元数据和预期观察。新增的两种方法共含五个场景。同一个范数问题可以画等值边界、按步行走或对齐读数。观察内部空间可以拆开装配件，也可以移动截面。
 
-[打开可操作总览](index.html) · [机器目录](catalog.json) · [来源与许可](SOURCES.md) · [制作与验证记录](../../../docs/performance/presentation-method-library-v1/README.md)
+[打开可操作总览](index.html) · [机器目录](catalog.json) · [来源与许可](SOURCES.md) · [制作与验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-method-library-v1/README.md)
 
 ## 按理解障碍选择
 
@@ -30,13 +30,13 @@ author.json 是示例的内容元数据，HTML 单独读取后填入 write；met
 
 ## 三维联动模板
 
-`spatial-linked-views@1` 将三维渲染、稳定相机取景、指针与键盘旋转、拆解、同源多图更新、时间定位、现场恢复抽成同一份运行核心。改主题时替换公式、部件、图解和文字，保留同步和生命周期机制。完整的 Agent 改写入口见 [适配说明](spatial-linked-views/v1/example/README.md)，实际验证见 [三维模板记录](../../../docs/performance/presentation-spatial-template-v1/README.md)。
+`spatial-linked-views@1` 将三维渲染、稳定相机取景、指针与键盘旋转、拆解、同源多图更新、时间定位、现场恢复抽成同一份运行核心。改主题时替换公式、部件、图解和文字，保留同步和生命周期机制。完整的 Agent 改写入口见 [适配说明](spatial-linked-views/v1/example/README.md)，实际验证见 [三维模板记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-spatial-template-v1/README.md)。
 
 本地维护执行 `node scripts/build-spatial-method.mjs` 生成两套自包含 HTML；`node scripts/verify-spatial-method.mjs` 检查真实 WebGL、独立数学和几何、正式状态桥重开、静态导出及无 WebGL 的二维回退。总验证脚本也会调用该专用检查器。
 
 ## 场景参照与维护
 
-相机与剖层各有一份场景源码 `scene.html`，只共用轨道相机和取景。修改后运行 `node scripts/build-inspection-scenes.mjs`。总览使用 `node scripts/build-method-gallery.mjs` 从正式目录刷新。二维的三份作品可直接改写各自的 HTML。五个场景、29 个视频时间点和实际验证结果见[场景制作记录](../../../docs/performance/presentation-scenes-20261103/README.md)。
+相机与剖层各有一份场景源码 `scene.html`，只共用轨道相机和取景。修改后运行 `node scripts/build-inspection-scenes.mjs`。总览使用 `node scripts/build-method-gallery.mjs` 从正式目录刷新。二维的三份作品可直接改写各自的 HTML。五个场景、29 个视频时间点和实际验证结果见场景制作记录。
 
 ## 本批采用记录
 
@@ -48,8 +48,8 @@ discrete-update@2 沿用 @1 的 HTML、公式和交互，补充机器可读的 A
 
 ## 八单元联动升级
 
-同日按用户要求登记 discrete-update@3 和其余七项 @2。保留旧版本与原验证记录。新作品共享二维状态、播放、恢复和布局机制，每个主题有独立模型、主图、细节图、直接操作与三段探索。生成入口为 `node scripts/build-linked-methods.mjs`；验证入口为 `node scripts/verify-linked-methods.mjs`；[本批记录](../../../docs/performance/presentation-method-library-v2/README.md)。
+同日按用户要求登记 discrete-update@3 和其余七项 @2。保留旧版本与原验证记录。新作品共享二维状态、播放、恢复和布局机制，每个主题有独立模型、主图、细节图、直接操作与三段探索。生成入口为 `node scripts/build-linked-methods.mjs`；验证入口为 `node scripts/verify-linked-methods.mjs`；[本批记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-method-library-v2/README.md)。
 
 ## 已知限制
 
-三维联动模板的齿轮与弹簧，以及新场景的自然请求，分别有各自的验证记录。案例能说明当次制作和操作结果。自然选型的稳定性及读者学习效果仍需更多实例。本批改动已于 2026-11-03 21:03 HKT 随 Reader 发布。[上线记录](../../../docs/performance/presentation-scenes-20261103/deployment/README.md)
+三维联动模板的齿轮与弹簧，以及新场景的自然请求，分别有各自的验证记录。案例能说明当次制作和操作结果。自然选型的稳定性及读者学习效果仍需更多实例。本批改动已于 2026-11-03 21:03 HKT 随 Reader 发布。上线记录

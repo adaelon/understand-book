@@ -1,6 +1,0 @@
-{
-  "qa_service_copy_removed": true,
-  "private_baseline_removed": true,
-  "qa_listener_stopped": true,
-  "production_snapshot_retained": "/opt/understand-book/backups/note-thinking-20261101/snapshot"
-}

@@ -4,7 +4,7 @@
 
 ## 制作范围
 
-用户已观看并认可这份作品。三维观察与图解联动已提取为 [spatial-linked-views@1](../../skills/presentation/methods/spatial-linked-views/v1/card.md)，附齿轮主例、弹簧振子改写和正式 Author / Reader 接入。本目录保留完整讲解作品；模板的维护与验收见 [三维模板记录](../../docs/performance/presentation-spatial-template-v1/README.md)。
+用户已观看并认可这份作品。三维观察与图解联动已提取为 [spatial-linked-views@1](../../skills/presentation/methods/spatial-linked-views/v1/card.md)，附齿轮主例、弹簧振子改写和正式 Author / Reader 接入。本目录保留完整讲解作品；模板的维护与验收见 [三维模板记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-spatial-template-v1/README.md)。
 
 模型：20° 标准压力角、相同模数、主动轮 20 齿、从动轮 20/30/40/60 齿；理想刚性无损传动。正面从主动轮看，主动轮逆时针、从动轮顺时针。
 

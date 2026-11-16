@@ -1,15 +1,15 @@
 # 切片方案：解释能力库与 Agent 自进化
 
 日期：2026-10-15。  
-状态：SE0–SE7 完成；2026-10-16 转入首批模板库，SE8 收益对照暂缓，SE9 的首批登记由下述现行路线完成，SE10 按真实漏检触发。SE1 交付和验收见 [记录](performance/explanation-evolution/se1/README.md)，SE2 读取与输入证据见 [记录](performance/explanation-evolution/se2/README.md)，SE3 使用追溯见 [记录](performance/explanation-evolution/se3/README.md)，SE4 版本反馈合同见 [记录](performance/explanation-evolution/se4/README.md)，SE5 读者入口见 [记录](performance/explanation-evolution/se5/README.md)，SE6 案例整理与真实修复重放见 [记录](performance/explanation-evolution/se6/README.md)，SE7 现有方法覆盖结论见 [记录](performance/explanation-evolution/se7/README.md)。  
-决策：[ADR-0168](adr/0168-executable-explanation-methods-and-evidence-based-evolution.md)。接手入口：[自进化工作线 checkpoint](../SESSION_CHECKPOINT_SELF_EVOLUTION.md)。  
+状态：SE0–SE7 完成；2026-10-16 转入首批模板库，SE8 收益对照暂缓，SE9 的首批登记由下述现行路线完成，SE10 按真实漏检触发。SE1 交付和验收见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se1/README.md)，SE2 读取与输入证据见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se2/README.md)，SE3 使用追溯见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se3/README.md)，SE4 版本反馈合同见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se4/README.md)，SE5 读者入口见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se5/README.md)，SE6 案例整理与真实修复重放见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se6/README.md)，SE7 现有方法覆盖结论见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se7/README.md)。  
+决策：[ADR-0168](adr/0168-executable-explanation-methods-and-evidence-based-evolution.md)。接手入口：[自进化工作线 checkpoint](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/SESSION_CHECKPOINT_SELF_EVOLUTION.md)。  
 承接：[可探索解释方法库](切片方案-可探索解释方法库与连续视觉演示.md)、[EX14 视觉方法与关键时刻](切片方案-EX14-视觉方法指导与关键解释时刻检查.md)、[Agent 分层评测与诊断闭环](切片方案-Agent分层评测与诊断闭环.md)。
 
 后续设计（2026-10-20）：[交互教学与学习接续](切片方案-交互教学与学习接续.md)在既有方法资产与保存回执上增加语义现场及教师实时操作；OpenMAIC 的固定源码依据另见[参考索引](参考实现-OpenMAIC交互教学与学习记忆.md)。实施进度以该切片方案为准，以下 SE 历史状态保留。
 
 ## 当前路线：首批语法模板库
 
-按 2026-10-16 用户要求，参考 huashu-art-motion 先建立可用模板库。[正式库](../skills/presentation/methods/README.md)包含 8 个完整能力单元及[可操作总览](../skills/presentation/methods/index.html)。以具体模型的计算、图形、交互恢复和正式读取完成本批登记；跨任务收益与学习效果由后续真实使用材料支持。依据见 [ADR-0168 §8](adr/0168-executable-explanation-methods-and-evidence-based-evolution.md#8-首批模板库登记)，验证与当前落点见 [首批库记录](performance/presentation-method-library-v1/README.md)。
+按 2026-10-16 用户要求，参考 huashu-art-motion 先建立可用模板库。[正式库](../skills/presentation/methods/README.md)包含 8 个完整能力单元及[可操作总览](../skills/presentation/methods/index.html)。以具体模型的计算、图形、交互恢复和正式读取完成本批登记；跨任务收益与学习效果由后续真实使用材料支持。依据见 [ADR-0168 §8](adr/0168-executable-explanation-methods-and-evidence-based-evolution.md#8-首批模板库登记)，验证与当前落点见 [首批库记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-method-library-v1/README.md)。
 
 下文保留原 SE0–SE10 路线及历史完成记录；SE8 不再是当前下一步。SE1–SE7 的旧版本证据保持原身份。
 
@@ -84,7 +84,7 @@ SE1 首次制作一个完整单元；当前首批库已扩展为八类解释关�
 
 ### 2.3 资产组织与运行合同
 
-SE1 的历史目录如下；候选清单与验证材料见 [SE1](performance/explanation-evolution/se1/README.md)。当前正式 catalog revision 2 已登记八个单元，统一增加 example/author.json；完整清单见 [模板库](../skills/presentation/methods/README.md)：
+SE1 的历史目录如下；候选清单与验证材料见 [SE1](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se1/README.md)。当前正式 catalog revision 2 已登记八个单元，统一增加 example/author.json；完整清单见 [模板库](../skills/presentation/methods/README.md)：
 
 ~~~text
 skills/presentation/methods/
@@ -181,7 +181,7 @@ reference: presentation_id + revision
 
 现场采集与选择保存分开：先保存反馈，再尝试使用既有快照与保存协议附上现场。现场附加必须匹配原内容版本和反馈修订号；改选、撤回或切页后的迟到快照不写到另一条选择。采集失败保留有效反馈并标记“无现场”，不补造参数，也不拿较新的现场替代。该约束对应页面快照等待期间用户确实可以继续操作的使用方式。
 
-SE4 的空读返回修订号 0、空选择与空现场；有效改选或原因/补充变更推进修订号并移除旧现场，撤回保留空选择及新修订号。现场附加保持选择修订号，重复同一回执原样返回，另一现场回执拒绝覆盖。接口覆盖本地、多人对话别名、工作区及附属窗口；多人路径核对原出版授权，工作区再核对当前对话与 attachment。反馈不改变 Reader 或工作区 revision。确切字段、原因取值和调用顺序见 [SE4 API](performance/explanation-evolution/se4/README.md#api-与-se5-接入)。
+SE4 的空读返回修订号 0、空选择与空现场；有效改选或原因/补充变更推进修订号并移除旧现场，撤回保留空选择及新修订号。现场附加保持选择修订号，重复同一回执原样返回，另一现场回执拒绝覆盖。接口覆盖本地、多人对话别名、工作区及附属窗口；多人路径核对原出版授权，工作区再核对当前对话与 attachment。反馈不改变 Reader 或工作区 revision。确切字段、原因取值和调用顺序见 [SE4 API](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se4/README.md#api-与-se5-接入)。
 
 私人反馈、原评论、演示内容及书源仍归原用户。原聊天删除后沿既有访问和保留关系处理；不借方法库读取失效的原聊天。进入共享能力库的是经整理的通用方法与可分享的独立例子，私人原文和评论保留在其获准的案例空间。
 
@@ -228,7 +228,7 @@ SE4 的空读返回修订号 0、空选择与空现场；有效改选或原因/�
 
 SE6 已实现 `evals/semantic/explanation-case.mjs`：从明确选定的授权导出整理私有案例，核对原交付/修复及方法读取/继承关系，记录反馈导出时刻和确切现场。事实、原因解释与假设分别保存；缺失/不可用不以旧票或较新现场填补，页面反馈不分配给方法。公开索引只输出状态、数量和用量。输入和复现见 [案例合同](../evals/semantic/EXPLANATION_CASE.md)。
 
-SE7 已对 D2 完成诊断，结论为“已有方法已覆盖”，不产生新版本；诊断另存为私有后续记录并连接 SE6 原案例，原始导出状态保持不变。当前四文件与 SE3 实际输入、HTML 与 SE1 最终交付逐字一致，已有精确恢复证据可沿用。SE1 候选仍待 SE8 独立比较，详见 [SE7](performance/explanation-evolution/se7/README.md)。
+SE7 已对 D2 完成诊断，结论为“已有方法已覆盖”，不产生新版本；诊断另存为私有后续记录并连接 SE6 原案例，原始导出状态保持不变。当前四文件与 SE3 实际输入、HTML 与 SE1 最终交付逐字一致，已有精确恢复证据可沿用。SE1 候选仍待 SE8 独立比较，详见 [SE7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se7/README.md)。
 
 ### 5.3 自动化边界
 
@@ -287,7 +287,7 @@ SE7 已对 D2 完成诊断，结论为“已有方法已覆盖”，不产生新
 
 ### 7.1 历史案例的用途
 
-[EX11.8 真实修订记录](performance/explorable-explanation-ex11-8-live-20260929.md)提供两个已归档例子：
+[EX11.8 真实修订记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-8-live-20260929.md)提供两个已归档例子：
 
 - 学习率案例中，指定可见句子和 315 组数值/图形检查通过，readable_content 仍遗漏 η=0 的静止边界。它说明应按实际受影响内容核对页面与可读说明。
 - 圆盘案例中，滑块端点的首修通过 84 组数值/几何检查及普通 Reader 操作，但把输入端点吸附用于精确现场恢复，导致合法的 7+.999 重开后变成整圈。后续修订恢复路径后通过，既有数学实现未改，原 84 组检查没有重复执行。
@@ -336,7 +336,7 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 **验收**：从空页面运行、前后步骤、暂停/回退、非零小数定位和重开均符合定义；图形与独立计算一致。标签正确但图形不动的受控坏例应被检查识别。  
 **失败后的动作**：修复示例或澄清配方；通过后进入 SE2，不以此宣称跨题收益。
 
-**状态**：2026-10-16 完成。[最终候选与证据](performance/explanation-evolution/se1/README.md)包含 250 组独立计算/几何检查、21 批三环境 Author 预览和交付、Reader 三环境实际操作及 9 次存储重开。受控“读数正确但图形冻结”坏例被识别。候选尚未进入正式编译目录，下一刀为 SE2。
+**状态**：2026-10-16 完成。[最终候选与证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se1/README.md)包含 250 组独立计算/几何检查、21 批三环境 Author 预览和交付、Reader 三环境实际操作及 9 次存储重开。受控“读数正确但图形冻结”坏例被识别。候选尚未进入正式编译目录，下一刀为 SE2。
 
 ### SE2 — 正式目录和源码读取
 
@@ -346,7 +346,7 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 **验收**：注册目录与返回正文一致；缺失版本/文件明确失败；普通无 Author 回答不加载目录；实际后续模型输入包含所读卡和代码。多文件或范围读取能读完当前小例子。  
 **失败后的动作**：修正装配或工具结果投影，避免出现“文件存在但 Agent 读不到”。保留未选择其他卡的载荷证据。
 
-**状态**：2026-10-16 完成。[SE2 记录](performance/explanation-evolution/se2/README.md)保留候选/正式组合各 6 项通过、102 项演示回归、17 项工具合同及 3 项源码操作回归。候选组合 8 次实际 Provider 入口请求完成 6 次读取，四文件正文逐字一致；仅目录和仅卡片阶段未加载未选正文，900 字节预算续读无遗漏。默认正式构建验证为 0 方法；下一刀为 SE3。
+**状态**：2026-10-16 完成。[SE2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se2/README.md)保留候选/正式组合各 6 项通过、102 项演示回归、17 项工具合同及 3 项源码操作回归。候选组合 8 次实际 Provider 入口请求完成 6 次读取，四文件正文逐字一致；仅目录和仅卡片阶段未加载未选正文，900 字节预算续读无遗漏。默认正式构建验证为 0 方法；下一刀为 SE3。
 
 ### SE3 — 演示版本的能力使用记录
 
@@ -356,7 +356,7 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 **验收**：D1 通过正式读取、适配、预览、交付；小修继承引用，替换局部按声明更新；旧版本不被覆盖，无历史记录的页面可正常读取。评测能区分“看见目录”“读了代码”“声明使用”。  
 **失败后的动作**：修正版本绑定或记录遗漏；不把声明使用计作实测收益。
 
-**状态**：2026-10-16 完成。[SE3 记录](performance/explanation-evolution/se3/README.md)保留引用/输入范围合同、继承与整页重写、旧页及不可变版本测试。D1 经 13 次实际 Provider 请求、6 段四文件读取、η=0.5 适配、三环境真实预览、交付和存储重开；确切版本保留 discrete-update@1 的声明及读取依据。后续入口为 SE4。
+**状态**：2026-10-16 完成。[SE3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se3/README.md)保留引用/输入范围合同、继承与整页重写、旧页及不可变版本测试。D1 经 13 次实际 Provider 请求、6 段四文件读取、η=0.5 适配、三环境真实预览、交付和存储重开；确切版本保留 discrete-update@1 的声明及读取依据。后续入口为 SE4。
 
 ### SE4 — 版本级反馈存储
 
@@ -366,7 +366,7 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 **验收**：保存、重读、改选、撤回后有效状态正确；重试不增加票数；不同用户与内容 revision 分开；不属于该用户/交付的引用不能写入；迟到现场不能覆盖改选或撤回。  
 **失败后的动作**：修正归属或写入语义；保持现有学习证据、画像及内容版本不受影响。
 
-**状态**：2026-10-16 完成。[SE4 记录](performance/explanation-evolution/se4/README.md)保留本地/多人/工作区/附属窗口接口、确切回执、当前记录替换及额度语义。5 项定向验收、4 项类型导出及 27 项相关回归最终通过；两项旧追问组运行冲突与隔离重跑记录均保留。下一入口为 SE5。
+**状态**：2026-10-16 完成。[SE4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se4/README.md)保留本地/多人/工作区/附属窗口接口、确切回执、当前记录替换及额度语义。5 项定向验收、4 项类型导出及 27 项相关回归最终通过；两项旧追问组运行冲突与隔离重跑记录均保留。下一入口为 SE5。
 
 ### SE5 — 读者反馈入口
 
@@ -376,7 +376,7 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 **验收**：三环境可操作且可键盘访问；选填原因不阻断投票；保存失败可重试；快照超时仍保留投票；切换内容/版本后不会显示另一版的选择；投票不自动发起模型调用。  
 **失败后的动作**：修正宿主交互或状态绑定，保留读者正在操作的现场。独立笔记回看暂沿原入口范围。
 
-**状态**：2026-10-16 完成。[SE5 记录](performance/explanation-evolution/se5/README.md)保留三入口操作、选填补充、确切现场重试与主动追问合同；113 项组件/传输相关测试、16 项浏览器用例最终通过，前端类型检查通过。快照超时保留投票，已有快照或回执按原值重试；迟到读取、保存及现场回执不会覆盖当前版本。下一入口为 SE6。
+**状态**：2026-10-16 完成。[SE5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se5/README.md)保留三入口操作、选填补充、确切现场重试与主动追问合同；113 项组件/传输相关测试、16 项浏览器用例最终通过，前端类型检查通过。快照超时保留投票，已有快照或回执按原值重试；迟到读取、保存及现场回执不会覆盖当前版本。下一入口为 SE6。
 
 ### SE6 — 从真实使用形成可追溯案例
 
@@ -386,7 +386,7 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 **验收**：能从案例打开原版本并重现具体差异；无现场、未读取方法、反馈已撤回/改选和材料不可用分别如实表达；页面总评不会自动分摊到每张卡。  
 **失败后的动作**：补具体证据或将案例保留为待诊断；无法成立的归因不进入候选依据。
 
-**状态**：2026-10-16 完成。[SE6 记录](performance/explanation-evolution/se6/README.md)保留有界整理入口、12 项最终案例验收、15 项既有证据/用量回归及真实 SE3 版本格式核对。EX11.8 圆盘 revision 2 → 3 已形成私有案例，两版本 × 三视口经现有页面装配与快照桥接重放，复现旧版把 7+.999 吸附为 8+0、修正版保留原位置。历史用户投票、反馈现场和 method_refs 缺失如实记录，案例保持待诊断；下一入口 SE7。
+**状态**：2026-10-16 完成。[SE6 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se6/README.md)保留有界整理入口、12 项最终案例验收、15 项既有证据/用量回归及真实 SE3 版本格式核对。EX11.8 圆盘 revision 2 → 3 已形成私有案例，两版本 × 三视口经现有页面装配与快照桥接重放，复现旧版把 7+.999 吸附为 8+0、修正版保留原位置。历史用户投票、反馈现场和 method_refs 缺失如实记录，案例保持待诊断；下一入口 SE7。
 
 ### SE7 — 生成一个可比较的能力候选
 
@@ -396,7 +396,7 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 **验收**：候选能独立运行，修改与问题对应；可复用结构和主题专属内容分明；新增方法、修订、缩小范围或退役之一形成具体可评审差异。  
 **失败后的动作**：继续修候选或结束该提案；正式目录仍使用原采用版本。
 
-**状态**：2026-10-16 完成。[SE7 记录](performance/explanation-evolution/se7/README.md)确认 D2 的输入吸附误用已由当前连续场景合同、`discrete-update@1` 实现与恢复检查覆盖，结束本次派生新版本提案。四文件六段输入及 SE1 确切交付的逐字比对通过，沿用既有三环境九次存储重开等验收；本片未修改运行资产或验证合同。SE1 候选保留，正式目录为空；[SE8 接手合同](performance/explanation-evolution/se7/se8-handoff.md)固定比较方向，具体 H1/R1、模型与预算在开跑前冻结。
+**状态**：2026-10-16 完成。[SE7 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se7/README.md)确认 D2 的输入吸附误用已由当前连续场景合同、`discrete-update@1` 实现与恢复检查覆盖，结束本次派生新版本提案。四文件六段输入及 SE1 确切交付的逐字比对通过，沿用既有三环境九次存储重开等验收；本片未修改运行资产或验证合同。SE1 候选保留，正式目录为空；[SE8 接手合同](performance/explanation-evolution/se7/se8-handoff.md)固定比较方向，具体 H1/R1、模型与预算在开跑前冻结。
 
 ### SE8 — 同条件对照与独立迁移
 
@@ -432,18 +432,18 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 | 阶段 | 交付 | 状态 |
 |---|---|---|
 | 方案 | SE0：完整方案、决策、术语和接手入口 | 已落档 |
-| 最小作品 | SE1：一张语法卡与可运行候选 | 已完成，见 [SE1 记录](performance/explanation-evolution/se1/README.md) |
-| 正式读取 | SE2：编译发现与精确源码读取 | 已完成，见 [SE2 记录](performance/explanation-evolution/se2/README.md) |
-| 使用追溯 | SE3：候选与交付版本的能力引用 | 已完成，见 [SE3 记录](performance/explanation-evolution/se3/README.md) |
-| 反馈存储 | SE4：确切版本的私人反馈与现场回执 | 已完成，见 [SE4 记录](performance/explanation-evolution/se4/README.md) |
-| 反馈界面 | SE5：确切版本的一键反馈 | 已完成，见 [SE5 记录](performance/explanation-evolution/se5/README.md) |
-| 真实案例 | SE6：有界整理入口、历史修复及确切版本重放 | 已完成，见 [SE6 记录](performance/explanation-evolution/se6/README.md) |
-| 候选诊断 | SE7：判断现有方法覆盖并结束 D2 新版本提案 | 已完成，见 [SE7 记录](performance/explanation-evolution/se7/README.md) |
-| 首批库 | 八单元、可操作总览、正式登记与接入 | 已完成，见 [首批库记录](performance/presentation-method-library-v1/README.md) |
+| 最小作品 | SE1：一张语法卡与可运行候选 | 已完成，见 [SE1 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se1/README.md) |
+| 正式读取 | SE2：编译发现与精确源码读取 | 已完成，见 [SE2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se2/README.md) |
+| 使用追溯 | SE3：候选与交付版本的能力引用 | 已完成，见 [SE3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se3/README.md) |
+| 反馈存储 | SE4：确切版本的私人反馈与现场回执 | 已完成，见 [SE4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se4/README.md) |
+| 反馈界面 | SE5：确切版本的一键反馈 | 已完成，见 [SE5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se5/README.md) |
+| 真实案例 | SE6：有界整理入口、历史修复及确切版本重放 | 已完成，见 [SE6 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se6/README.md) |
+| 候选诊断 | SE7：判断现有方法覆盖并结束 D2 新版本提案 | 已完成，见 [SE7 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se7/README.md) |
+| 首批库 | 八单元、可操作总览、正式登记与接入 | 已完成，见 [首批库记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-method-library-v1/README.md) |
 | 收益闭环 | SE8–SE9：独立验证、采用后使用 | 2026-10-22 CS336 反例批次已完成八次对照；未读取候选，收益未证实，维持旧目录 |
 | 验证改进 | SE10：由真实漏检触发的验证合同修订 | 条件性后续 |
 
-2026-10-22 已沿现有案例整理与 SE8 native Author/Reader 链完成 CS336 反例迁移实验：原页具体方法读取为零；新增 chart-reveal@3 反例与教师作品，在两道未参与示范的新题上各做两组、两次首次交付。八次均交付，具体方法读取仍为零，134 次调用峰时估算 6.67 元。没有形成稳定质量优势，也未证明教师迁移。候选保留本地，正式 revision 5 目录不变，未改线上。见 [完整实验与采用决定](performance/explanation-evolution/cs336-transfer-20261022/README.md)。
+2026-10-22 已沿现有案例整理与 SE8 native Author/Reader 链完成 CS336 反例迁移实验：原页具体方法读取为零；新增 chart-reveal@3 反例与教师作品，在两道未参与示范的新题上各做两组、两次首次交付。八次均交付，具体方法读取仍为零，134 次调用峰时估算 6.67 元。没有形成稳定质量优势，也未证明教师迁移。候选保留本地，正式 revision 5 目录不变，未改线上。见 [完整实验与采用决定](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/cs336-transfer-20261022/README.md)。
 
 下一步集中在实际制作过程中的按需选择与读取：先明确理解障碍，再读取选中方法的卡片、作品及适配说明，进入制作并保留实际证据。没有合适方法时允许自行设计。SE8 的 [历史接手合同](performance/explanation-evolution/se7/se8-handoff.md)保留为历史参考；本批的冻结合同与结果单独保留。
 
@@ -463,8 +463,8 @@ SE10 验证器改进：由真实漏检触发，形成新合同后回到 SE8
 - [ADR-0139](adr/0139-explorable-explanation.md)：可组合解释动作、局部演示与分层证据。
 - [ADR-0154](adr/0154-presentation-global-framework-and-staged-authoring.md)、[ADR-0155](adr/0155-goal-work-plan-and-version-centered-presentation-context.md)：全局框架、阶段职责、Goal 和确切版本。
 - [ADR-0157](adr/0157-obstacle-driven-visual-methods-and-critical-moment-review.md)：关键关系检查与按理解障碍选择方法。
-- [EX11.8 真实修订](performance/explorable-explanation-ex11-8-live-20260929.md)：具体失败、修复、回归与成本。
-- [EX14 实验索引](performance/presentation-critical-moments-ex14/README.md)、[分层评测方案](切片方案-Agent分层评测与诊断闭环.md)：冻结条件、实际加载、外部判断和采用边界。
+- [EX11.8 真实修订](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-8-live-20260929.md)：具体失败、修复、回归与成本。
+- [EX14 实验索引](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-critical-moments-ex14/README.md)、[分层评测方案](切片方案-Agent分层评测与诊断闭环.md)：冻结条件、实际加载、外部判断和采用边界。
 
 **外部经验**
 

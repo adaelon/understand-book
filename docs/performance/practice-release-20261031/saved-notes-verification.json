@@ -1,8 +1,0 @@
-{
-  "status": "passed",
-  "checked_at_utc": "2026-10-31T03:07:24.714559+00:00",
-  "workspace_note_files_preserved": 1,
-  "verified_storage_path": "users/*/memory/notes/**/notebook.json",
-  "personal_notes": "Included in the memory document fields compared during deployment",
-  "production_mutated": false
-}

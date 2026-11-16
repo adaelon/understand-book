@@ -1,6 +1,6 @@
 # ADR-0138：多 Harness 预构建与 DeepSeek Harness 原生适配
 
-状态：**架构方向已确认；DH0 安装态探针与 DH1 公共合同拆分在途，新增协议细节待冻结，尚未通过完整宿主兼容与构建验收。** 2026-09-26 实施证据见 [兼容报告](../performance/dsh-prebuild-compatibility-20260925.md)。
+状态：**架构方向已确认；DH0 安装态探针与 DH1 公共合同拆分在途，新增协议细节待冻结，尚未通过完整宿主兼容与构建验收。** 2026-09-26 实施证据见 [兼容报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-prebuild-compatibility-20260925.md)。
 日期：2026-09-25。变更类型：边界重构与新增宿主适配；不是新增模型 Provider，也不是重写预构建管线。
 
 实施与验收：[切片方案-多Harness预构建与DeepSeekHarness适配](../切片方案-多Harness预构建与DeepSeekHarness适配.md)。
@@ -200,9 +200,9 @@ DH0–DH6 全部通过才可声称首版支持；DH7 是独立扩展。必须同
 
 ## 已知限制
 
-DH6 的正式包与 Windows Desktop 安装生命周期已完成：`0.1.0-rc.2` tarball、独立编译 Engine、官方插件页安装/升级/卸载、完整 Desktop 重启，以及包内取消/卸载/重新启用。环境要求与证据见 [DH6 安装报告](../performance/dsh-dh6-install-20260926.md)。真实模型质量、带业务进度的 Desktop 重启恢复和回滚仍未验收。
+DH6 的正式包与 Windows Desktop 安装生命周期已完成：`0.1.0-rc.2` tarball、独立编译 Engine、官方插件页安装/升级/卸载、完整 Desktop 重启，以及包内取消/卸载/重新启用。环境要求与证据见 [DH6 安装报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-dh6-install-20260926.md)。真实模型质量、带业务进度的 Desktop 重启恢复和回滚仍未验收。
 
-DH1–DH4 的源码实现和安装态确定性标准闭环已落地，证据见[兼容记录](../performance/dsh-prebuild-compatibility-20260925.md)。DH0 人工“要求修改”仍待实际操作；全文展示通过的组合为官方 `0.1.7-rc.2` 加 SidebarRight 修复。论文已验证计划/预算边界，完整闭环证据来自技术书。DH5 并发、故障、取消及受控接手的确定性证据见 [DH5 报告](../performance/dsh-dh5-20260926.md)。真实模型仅完成小型四工具往返，完整构建尚未验收。CLI/自定义 profile 若存在全局 compaction 或裁剪策略，须另行验证兼容性。
+DH1–DH4 的源码实现和安装态确定性标准闭环已落地，证据见[兼容记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-prebuild-compatibility-20260925.md)。DH0 人工“要求修改”仍待实际操作；全文展示通过的组合为官方 `0.1.7-rc.2` 加 SidebarRight 修复。论文已验证计划/预算边界，完整闭环证据来自技术书。DH5 并发、故障、取消及受控接手的确定性证据见 [DH5 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-dh5-20260926.md)。真实模型仅完成小型四工具往返，完整构建尚未验收。CLI/自定义 profile 若存在全局 compaction 或裁剪策略，须另行验证兼容性。
 
 ## 仓库证据索引
 

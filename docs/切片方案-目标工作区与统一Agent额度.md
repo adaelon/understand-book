@@ -2,7 +2,7 @@
 
 日期：2026-10-18。状态：D0、W1–W6、Q1–Q5、S1–S2、B1–B2、V1、E1已完成并通过对应验收；最新E1联合记录见§18。E2真实运行、成本对照与发布准备尚未开始，未部署。
 
-行为合同以[设计方案](设计方案-目标工作区与统一Agent额度.md)为准，术语见 [CONTEXT](../CONTEXT.md)，决策见 [ADR-0170](adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md) 与 [ADR-0171](adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)。接手入口为[本线 checkpoint](../SESSION_CHECKPOINT_WORKSPACE_QUOTA.md)。
+行为合同以[设计方案](设计方案-目标工作区与统一Agent额度.md)为准，术语见 [CONTEXT](../CONTEXT.md)，决策见 [ADR-0170](adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md) 与 [ADR-0171](adr/0171-all-agent-cost-accounting-and-percentage-allowance.md)。接手入口为[本线 checkpoint](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/SESSION_CHECKPOINT_WORKSPACE_QUOTA.md)。
 
 后续商业化实施由[云端学习与考试冲刺计划](实施计划-云端学习与考试冲刺.md)承接。已完成的工作区、额度与共享发布作为其底座，原 E2 的真实模型、成本和发布准备接入新计划 C11；本文件保留原实施事实。
 
@@ -702,7 +702,7 @@ pnpm --filter @understand-book/web exec playwright test playwright/operator-buil
 
 按用户指定，将 `understand-book-video-understanding` 的 VI1–VI18 及后续未提交视频修改接入当前工作目录，保留 W/Q/S/B1。现有视频预构建、发布、Reader 和 Agent 媒体工具已合入；新增混合学习工作区的资料身份、草稿隔离、时间来源、明确选择更新、真实能力检查和后台复用发布接点。
 
-定向回归、编译产物的真实短片段预构建、混合共享工作区及完整课程浏览器验收已通过。完整结果和复跑入口见 [视频接入记录](视频工作区接入-20261018.md)，长期证据见 [实际构建与浏览器验收](performance/video-workspace-integration-20261018/README.md)。本次未提交、未部署。
+定向回归、编译产物的真实短片段预构建、混合共享工作区及完整课程浏览器验收已通过。完整结果和复跑入口见 [视频接入记录](视频工作区接入-20261018.md)，长期证据见 [实际构建与浏览器验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/video-workspace-integration-20261018/README.md)。本次未提交、未部署。
 
 本阶段先完成现有能力整合和已构建成果的复用、共享及私人实例。随后完成的 B1 新视频自动调度、真实进度、默认省略额外教学资产和外部费用接线见 §16；跨资料取帧/原声及其他依赖尚未完成，V1 维持部分完成。
 
@@ -718,7 +718,7 @@ pnpm --filter @understand-book/web exec playwright test playwright/operator-buil
 
 真实 8 秒视频经过新编译 Engine、本地语音识别、原生 MCP 执行协议、HTTP 服务和账本完成共享发布。4 次外部启动各有部分回执；验证暂停后宿主重建、预算不足阻止启动、提额后接续、最终成果脱离暂存库可读，以及完成后继续为 0 新执行。浏览器覆盖一次创建/启动、2/5 的阶段进度与刷新、未知总量、预算继续、回执、真实成果再发布和 390px 布局，页面错误为 0。
 
-实现接点、各组回归计数、复跑条件、费用能力限制与长期证据统一见[视频后台预构建记录](视频后台预构建-20261018.md)和[验收证据](performance/video-operator-20261018/README.md)。Control schema18、learning schema3 保持不变。
+实现接点、各组回归计数、复跑条件、费用能力限制与长期证据统一见[视频后台预构建记录](视频后台预构建-20261018.md)和[验收证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/video-operator-20261018/README.md)。Control schema18、learning schema3 保持不变。
 
 ## 17. 2026-10-18：B2个人准备与V1跨资料媒体完成
 
@@ -744,7 +744,7 @@ DSH新增`provider_calls_v1`，每次实际模型发送前复用Q3账号和父�
 - 浏览器7.6秒通过：81,016字节分3块上传、1.25%上限确认、暂停、切换、明确继续、归回原工作区及继续阅读；页面错误0，390px无横向溢出。中间执行状态由受控宿主驱动，实际执行由独立HTTP场景覆盖。
 - Core/DSH/Web类型检查和Engine/DSH/Web生产构建通过；默认关闭Pass2与额外Tutor材料的既有行为保留。
 
-完整接口、计量合同及复跑条件见[实施记录](个人资料准备与跨资料媒体-20261018.md)，长期结果和截图见[验收证据](performance/b2-v1-20261018/README.md)，接续入口为根`SESSION_CHECKPOINT_WORKSPACE_QUOTA.md`。
+完整接口、计量合同及复跑条件见[实施记录](个人资料准备与跨资料媒体-20261018.md)，长期结果和截图见[验收证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/b2-v1-20261018/README.md)，接续入口为根`SESSION_CHECKPOINT_WORKSPACE_QUOTA.md`。
 
 ### 17.4 已知限制
 
@@ -752,7 +752,7 @@ DSH新增`provider_calls_v1`，每次实际模型发送前复用Q3账号和父�
 
 ## 18. 2026-10-18：E1联合验收与上传入口完成
 
-**状态：E1已完成并通过联合验收，未提交、未部署。** 此前切片完成状态保留；E2真实运行、成本对照和发布准备尚未开始。完整实现、测试范围与命令见[联合验收记录](联合验收-工作区与统一额度-20261018.md)，结果见[证据目录](performance/workspace-e1-20261018/README.md)。
+**状态：E1已完成并通过联合验收，未提交、未部署。** 此前切片完成状态保留；E2真实运行、成本对照和发布准备尚未开始。完整实现、测试范围与命令见[联合验收记录](联合验收-工作区与统一额度-20261018.md)，结果见[证据目录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/workspace-e1-20261018/README.md)。
 
 ### 已完成与修复
 

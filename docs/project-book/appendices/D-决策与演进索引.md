@@ -32,7 +32,7 @@ ADR适合回答“当时面对什么约束，为什么这样选择”。判断�
 
 [ADR-0137](../../adr/0137-stratified-reading-evals-and-diagnostic-improvement.md)于2026-09-25接受，按必要理解操作区分L1定位提取、L2解释与局部推导、L3多证据整合和L4情境诊断与迁移；单轮、多轮和跨会话作为另一条维度。
 
-该ADR顶部仍写EV7待实施。后续[EV7原始记录](../../performance/agent-eval-ev7-20260926.md)已经给出六对十二份首次回答、事前保留门槛及候选撤回。当前[agent_prompt.rs](../../../crates/runtime/src/agent_prompt.rs)中的完成指导为v7。因此，查阅时应保留下面这条时间关系：
+该ADR顶部仍写EV7待实施。后续[EV7原始记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md)已经给出六对十二份首次回答、事前保留门槛及候选撤回。当前[agent_prompt.rs](../../../crates/runtime/src/agent_prompt.rs)中的完成指导为v7。因此，查阅时应保留下面这条时间关系：
 
 | 材料 | 能回答什么 |
 | --- | --- |

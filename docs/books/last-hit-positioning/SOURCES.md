@@ -45,4 +45,4 @@ G1–G4、W1–W4、第六章静态例、A–D 点及 P 点为本书构造的练
 
 附录 B 的代码块抽取为 `quickstart.py` 实际执行；附录 D 的完整代码保存为 `standalone_model.py` 实际执行。组装时由 KaTeX 解析正文和附录公式，交付检查核对本地图片、代码、目录链接与单文件正文一致性。版面另通过本地浏览器检查。
 
-具体验证结果与阅读版状态见 [SESSION_CHECKPOINT.md](SESSION_CHECKPOINT.md)。未执行上游整个测试集；未进行实际游戏录像标定或教学效果实验。
+具体验证结果与阅读版状态见 [SESSION_CHECKPOINT.md](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/books/last-hit-positioning/SESSION_CHECKPOINT.md)。未执行上游整个测试集；未进行实际游戏录像标定或教学效果实验。

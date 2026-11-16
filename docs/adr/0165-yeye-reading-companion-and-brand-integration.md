@@ -1,6 +1,6 @@
 # ADR-0165 页页阅读伙伴与品牌融入
 
-状态：设计已接受，2026-10-13；YY0 决策与切片、YY1 统一品牌色、YY2 生产素材与静态组件、YY3 书架接续、YY4 助手空态与紧凑身份、YY5 首页情境融合、YY6 受控播放器与等待、YY7 真实任务的一次完成反馈已在本地完成。配色验证见 [YY1 交付记录](../performance/yeye-brand-yy1-20261013/README.md)，生产素材与专用头像见 [YY2 交付记录](../performance/yeye-brand-yy2-20261013/README.md)，真实接续卡与生产页面验证见 [YY3 交付记录](../performance/yeye-brand-yy3-20261013/README.md)，助手首问与布局验证见 [YY4 交付记录](../performance/yeye-brand-yy4-20261013/README.md)，首页情境与互动回归见 [YY5 交付记录](../performance/yeye-brand-yy5-20261013/README.md)。受控播放、等待和生产生命周期验证见 [YY6 交付记录](../performance/yeye-brand-yy6-20261013/README.md)。一次完成、作用域与不补播验证见 [YY7 交付记录](../performance/yeye-brand-yy7-20261013/README.md)。实施入口：[页页品牌融入与动效切片](../切片方案-页页品牌融入与动效.md)。
+状态：设计已接受，2026-10-13；YY0 决策与切片、YY1 统一品牌色、YY2 生产素材与静态组件、YY3 书架接续、YY4 助手空态与紧凑身份、YY5 首页情境融合、YY6 受控播放器与等待、YY7 真实任务的一次完成反馈已在本地完成。配色验证见 [YY1 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy1-20261013/README.md)，生产素材与专用头像见 [YY2 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy2-20261013/README.md)，真实接续卡与生产页面验证见 [YY3 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy3-20261013/README.md)，助手首问与布局验证见 [YY4 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy4-20261013/README.md)，首页情境与互动回归见 [YY5 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy5-20261013/README.md)。受控播放、等待和生产生命周期验证见 [YY6 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy6-20261013/README.md)。一次完成、作用域与不补播验证见 [YY7 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy7-20261013/README.md)。实施入口：[页页品牌融入与动效切片](../切片方案-页页品牌融入与动效.md)。
 
 页页是“陪你把一本书读懂的阅读伙伴”。它通过品牌形象、开始阅读的引导和真实操作反馈，连接首页、书架与阅读助手。**越接近正文，页页越安静；越接近欢迎、引导和阶段完成，页页越有表现力。**
 
@@ -82,4 +82,4 @@
 **命门**：以 2026-10-13 用户确认原图为造型基准，保留宽脸歪头、高低圆耳和脸颊接入书缝的留白；生产主色为 `#B65A17`，纸色为 `#F7F3EB`。页页角色继续承载既有神态与陪伴表达。
 **展开**：[确认原图](../../assets/brand/logo/v1/understand-book-logo-approved.png) · [素材规格与生产状态](../../assets/brand/logo/v1/design-spec.json)。
 
-2026-10-13：主标识已整理为纯色透明 SVG，并接入首页、账号入口、书架、阅读器顶栏和浏览器图标。用户已明确授权与手机布局、YY0–YY7、得意黑等近期改动一起发布，详见[发布记录](../performance/logo-brand-release-20261013/README.md)。
+2026-10-13：主标识已整理为纯色透明 SVG，并接入首页、账号入口、书架、阅读器顶栏和浏览器图标。用户已明确授权与手机布局、YY0–YY7、得意黑等近期改动一起发布，详见[发布记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/logo-brand-release-20261013/README.md)。

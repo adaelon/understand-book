@@ -1,8 +1,0 @@
-{
-  "status": "installed",
-  "files": 304,
-  "source_corrections": [
-    "packages/web/src/board-preview.ts"
-  ],
-  "previous_assets_preserved": true
-}

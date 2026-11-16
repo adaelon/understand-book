@@ -20,7 +20,7 @@
 
 `VideoReaderPane.vue` 保持播放器挂载，在同一组件内管理字幕搜索、语言显示、跟随与回看。宽视口把字幕放在视频旁，窄视口放在视频下方；`ReaderWorkspace.vue` 使用现有前景切换保留播放器和提问草稿。`TopBar.vue` 根据视频材料显示观看操作，`RightRail.vue` 使用视频伴读文案。
 
-组件选择集 95 项通过，生产构建通过。真实 VI18 视频在 1440×900、1280×720、1024×768、390×844 下完成搜索、跳转、手动浏览、框选、片段选择、手机草稿保留和专注退出验证。[截图与结果](../performance/video-workspace-20261015/README.md)。
+组件选择集 95 项通过，生产构建通过。真实 VI18 视频在 1440×900、1280×720、1024×768、390×844 下完成搜索、跳转、手动浏览、框选、片段选择、手机草稿保留和专注退出验证。[截图与结果](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/video-workspace-20261015/README.md)。
 
 ## 已知限制
 

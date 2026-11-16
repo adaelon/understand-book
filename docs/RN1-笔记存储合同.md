@@ -2,7 +2,7 @@
 
 本合同现由 PN1 接续：私人笔记使用稳定身份、追加修订、schema 6 存储与原子编辑；RN1 的原话/摘录和主要关联规则继续生效。决策沿 [ADR-0160 §7](adr/0160-reading-share-images-and-calm-surfaces.md#7-笔记内容与关联)，演示留存和交互已由 [RN2](切片方案-阅读分享与安静呈现.md#rn2-演示笔记保存与返回闭环) 实现。
 
-2026-10-30 已实现 [ADR-0177](adr/0177-personal-notes-evolution-and-teaching-recall.md) 与 [PN1–PN6](切片方案-个人想法演进与教学召回.md)。新用户级笔记允许没有材料，使用 `/me/notes/*`；旧 RN1 材料采集入口仍按下述来源规则核验。验证见 [PN 报告](performance/personal-notes-20261030/README.md)。
+2026-10-30 已实现 [ADR-0177](adr/0177-personal-notes-evolution-and-teaching-recall.md) 与 [PN1–PN6](切片方案-个人想法演进与教学召回.md)。新用户级笔记允许没有材料，使用 `/me/notes/*`；旧 RN1 材料采集入口仍按下述来源规则核验。验证见 [PN 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/personal-notes-20261030/README.md)。
 
 ## 稳定笔记与版本
 
@@ -12,7 +12,7 @@
 
 `NoteRef` 是 note_id 和可选 revision。当前查看和当前画板解析最新版本；讨论接纳、历史反馈与历史画板冻结 revision。source_refs、NoteLink 的建立版本和说明依据版本分别保存；已删除来源不妨碍已有综合稿继续写。
 
-`NoteContext.origin` 保存产生时的消息原句/出现序号或演示状态，画布来源保存 board_id / board_item_id。展示位置独立于修订：`MemoryDocument.note_attachments` 保存消息与演示引用，画布沿用 `BoardItem::PersonalNote` 和 `BoardLink`。添加/移除位置不追加正文版本、不改写产生现场、不复制正文；同一目标的重复放置返回已有引用。画布的卡片与连线经 `BoardStore::place_personal_note` 一次提交。正式正文先保存成功但放置失败时，设备草稿保留已确认 NoteID；重试只补放置。`notes.read` 返回产生现场与消息/演示展示引用，画布的反向位置由用户私有画布查询读取。验证见[放置验收](performance/personal-notes-20261030/placements/README.md)。
+`NoteContext.origin` 保存产生时的消息原句/出现序号或演示状态，画布来源保存 board_id / board_item_id。展示位置独立于修订：`MemoryDocument.note_attachments` 保存消息与演示引用，画布沿用 `BoardItem::PersonalNote` 和 `BoardLink`。添加/移除位置不追加正文版本、不改写产生现场、不复制正文；同一目标的重复放置返回已有引用。画布的卡片与连线经 `BoardStore::place_personal_note` 一次提交。正式正文先保存成功但放置失败时，设备草稿保留已确认 NoteID；重试只补放置。`notes.read` 返回产生现场与消息/演示展示引用，画布的反向位置由用户私有画布查询读取。验证见[放置验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/personal-notes-20261030/placements/README.md)。
 
 内容来源分别为 user、assistant_draft、adopted_assistant、material_excerpt、unknown。用户修改 AI 稿后仍保留采用 AI 修改身份和形成它的讨论。旧内容不会因为迁移而被推测为用户原话或新掌握事实。
 
@@ -60,7 +60,7 @@
 
 `memory/reanchor` 沿原真实位置校验，原子改变当前显示 placement、anchor、citations，保持 note_id 和正文修订不变，保留原关联。正文的旧情境仍属于其保存版本。`memory/promote`、Agent 提议保留与撤销继续使用原命令和原所有权。碰撞或持久化失败不切换内存及磁盘中的原记录。
 
-RN4 原 v4 文档留下的 `note_replacements` 在升级后继续解析旧链接到稳定身份；PN1 后正文 replace 追加版本，重锚改变显示位置，两者都不再产生另一条笔记身份。旧系统没有留下的正文与替换过程不反推。见 [RN4 验收](performance/reading-notes-rn4-20261010/README.md)。
+RN4 原 v4 文档留下的 `note_replacements` 在升级后继续解析旧链接到稳定身份；PN1 后正文 replace 追加版本，重锚改变显示位置，两者都不再产生另一条笔记身份。旧系统没有留下的正文与替换过程不反推。见 [RN4 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/reading-notes-rn4-20261010/README.md)。
 
 ## 版本升级与验证
 
@@ -73,5 +73,5 @@ MemoryDocument 当前为 schema 6；旧 v5、v4、v3、v2 与裸数组由原入�
 ## 已知限制
 
 - 全局编辑、内容分区、历史与召回已由 PN1–PN6 接入；未发送草稿仅保存在当前设备，历史旧正文无法追补。
-- RN2 已实现从已存笔记读取原演示，不再要求原聊天存在，见 [RN2 实现与验收](performance/reading-notes-rn2-20261010/README.md)。
+- RN2 已实现从已存笔记读取原演示，不再要求原聊天存在，见 [RN2 实现与验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/reading-notes-rn2-20261010/README.md)。
 - 回答摘录接口接收已交付 Markdown 中的连续文字；个人讨论的 AI 稿保留 based_on_turn 与实际想法引用，保存或采用本身不证明掌握。

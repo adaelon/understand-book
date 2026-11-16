@@ -1,6 +1,6 @@
 # ADR-0154 演示页全局框架与分阶段制作
 
-状态：设计已接受，2026-10-02；EX12.0–EX12.4 已完成；最终原生修正与内容验收见 [EX13.6](../performance/presentation-context-ex13/ex13-6/README.md)；EX12.5 待实施。实施合同见[切片方案](../切片方案-演示页全局框架与分阶段制作.md)。
+状态：设计已接受，2026-10-02；EX12.0–EX12.4 已完成；最终原生修正与内容验收见 [EX13.6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md)；EX12.5 待实施。实施合同见[切片方案](../切片方案-演示页全局框架与分阶段制作.md)。
 
 后续已接受 [ADR-0155](0155-goal-work-plan-and-version-centered-presentation-context.md) 与 [EX13](../切片方案-EX13-Goal工作计划与演示修订上下文.md)：Goal 负责工作进度，框架保留解释设计职责，阶段指导改为稳定前缀后的追加式组装。EX13.0–EX13.6 已完成，EX12.4 最终原生验收通过；下一片为 EX12.5 Reader 连续使用。
 
@@ -105,6 +105,6 @@ ADR-0139 §10 的“只有跨轮修改才考虑 Brief”不适用于本轮全局
 
 ## 已知限制
 
-本地指导为 `ex13.v2`；原 EX12.4 对照使用 `ex12.v5`。原 Resident 循环的阶段、框架和 scroll 已经受控测试与真实浏览器验证，见 [EX12.2](../performance/presentation-staged-authoring-ex12-2.md)、[EX12.3](../performance/presentation-staged-authoring-ex12-3.md)。[EX12.4 对照](../performance/presentation-staged-authoring-ex12-4.md)已在正确归档配置上跑通局部原型、反馈、展开、串读与交付；范围遗漏和后续数值问题仍需外部反馈修正。最终 11 项局部补丁及一项公式补充已由 EX13.6 原生交付为同对象 revision 2，三环境七路径独立内容验收通过。Linux 部署与 Reader 连续使用留在 EX12.5。
+本地指导为 `ex13.v2`；原 EX12.4 对照使用 `ex12.v5`。原 Resident 循环的阶段、框架和 scroll 已经受控测试与真实浏览器验证，见 [EX12.2](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-2.md)、[EX12.3](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-3.md)。[EX12.4 对照](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md)已在正确归档配置上跑通局部原型、反馈、展开、串读与交付；范围遗漏和后续数值问题仍需外部反馈修正。最终 11 项局部补丁及一项公式补充已由 EX13.6 原生交付为同对象 revision 2，三环境七路径独立内容验收通过。Linux 部署与 Reader 连续使用留在 EX12.5。
 
-[EX12.0](../performance/presentation-staged-authoring-baseline.md) 保留确切版本、两轮原请求、材料、实际 Reader 串读和独立页面观察。运行内框架不解决跨轮持久化。现有证据不足以宣称已达到参考网站的制作质量或改善学习效果。
+[EX12.0](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-baseline.md) 保留确切版本、两轮原请求、材料、实际 Reader 串读和独立页面观察。运行内框架不解决跨轮持久化。现有证据不足以宣称已达到参考网站的制作质量或改善学习效果。

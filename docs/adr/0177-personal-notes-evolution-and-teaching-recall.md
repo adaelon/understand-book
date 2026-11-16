@@ -179,7 +179,7 @@
 
 ## 当前范围与限制
 
-- 本次实现与验证见 [PN 实施报告](../performance/personal-notes-20261030/README.md)。MemoryDocument schema 5、控制库 schema 22、真实无材料运行、关键词/服务器语义融合和六个切片均已接通；线上数据保留、实际模型就绪与恢复边界见[发布记录](../performance/personal-notes-20261030/deployment/README.md)。
+- 本次实现与验证见 [PN 实施报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/personal-notes-20261030/README.md)。MemoryDocument schema 5、控制库 schema 22、真实无材料运行、关键词/服务器语义融合和六个切片均已接通；线上数据保留、实际模型就绪与恢复边界见[发布记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/personal-notes-20261030/deployment/README.md)。
 - 设备草稿恢复纳入本次范围；跨设备未发送草稿同步和本机历史批量迁云不隐含在其中。
 - 文本、粘贴和现有资料/媒体情境优先；新增语音、手写识别和新附件制作流程未纳入本次切片。
 - 不新增自动全库知识图谱、推荐平台、独立向量服务、独立笔记教师或每轮查询规划模型。后续取舍由真实召回失败或成本测量触发。
@@ -193,8 +193,8 @@
 
 无材料场景使用 `RunScope.book=None`，沿原运行接纳、Goal、日志、取消与计量接续。个人讨论带入资料时使用确切 `personal_chat_ref`，实际资料仍独立执行授权与来源核验。当前画板解析最新笔记；历史画板和实际反馈保存版本引用，综合稿使用 source_refs 与 based_on_turn 保留来路。
 
-[工程、真实模型、性能和界面证据](../performance/personal-notes-20261030/README.md)区分了 Probe 浏览器场景、真实 DeepSeek 教学对照和真实 MiniLM 检索。语义模型是否可用取决于现有宿主配置；未配置时词法与明确引用可用，语义状态如实返回 unavailable。
+[工程、真实模型、性能和界面证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/personal-notes-20261030/README.md)区分了 Probe 浏览器场景、真实 DeepSeek 教学对照和真实 MiniLM 检索。语义模型是否可用取决于现有宿主配置；未配置时词法与明确引用可用，语义状态如实返回 unavailable。
 
 ## 浮窗与放置续作（2026-10-30，本地）
 
-随手记改为可拖动、缩放的非模态浮窗。全局记录默认只保存并冻结产生现场；就地记录默认关联明确位置。统一「放到…」接通画布卡片及元素连线、对话原句所属段落下、演示页面或保存状态，各处仍引用同一 NoteID。产生现场、展示引用与正文修订分开；移除展示不删除正文，部分成功的设备草稿只重试放置。MemoryDocument 本地版本为 6，新增 `note_attachments`，画布保持原生个人想法卡片，控制库不变。实现、测试与限制见[放置验收](../performance/personal-notes-20261030/placements/README.md)；本段增补未部署，不改变前述线上 schema 5 的历史记录。
+随手记改为可拖动、缩放的非模态浮窗。全局记录默认只保存并冻结产生现场；就地记录默认关联明确位置。统一「放到…」接通画布卡片及元素连线、对话原句所属段落下、演示页面或保存状态，各处仍引用同一 NoteID。产生现场、展示引用与正文修订分开；移除展示不删除正文，部分成功的设备草稿只重试放置。MemoryDocument 本地版本为 6，新增 `note_attachments`，画布保持原生个人想法卡片，控制库不变。实现、测试与限制见[放置验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/personal-notes-20261030/placements/README.md)；本段增补未部署，不改变前述线上 schema 5 的历史记录。

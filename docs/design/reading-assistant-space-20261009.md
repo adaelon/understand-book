@@ -31,4 +31,4 @@
 - 公网实际登录、打开授权书籍、历史菜单与草稿收起通过；加载的 JS/CSS 与本次构建逐字节一致，页面脚本错误 0，模型请求 0，验收会话已退出。
 - 桌面对话正文为 731/844px，手机为 678/791px；收起的输入框均为 42px，工具栏均为 51px，无横向溢出。这组线上尺寸来自没有未完成任务的阅读现场；有任务的单行状态及详情浮层由组件与浏览器用例验证。
 
-发布、验收与回退见 [上线记录](../performance/reading-assistant-space-20261009/README.md)。
+发布、验收与回退见 [上线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/reading-assistant-space-20261009/README.md)。

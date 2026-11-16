@@ -80,7 +80,7 @@
 
 ## 已知限制
 
-EX14.0 已冻结离线基线、实验材料与实际指导载荷，N3 静态基准通过三环境原生交付，见[基线记录](../performance/presentation-critical-moments-ex14/README.md)。EX14.1-B 的 A06–A09/A11 通过，见[浏览器记录](../performance/presentation-critical-moments-ex14/browser/README.md)。EX14.2 通用路径 A13–A18 通过，B 组 ex14.v1 全文与实际载荷已冻结，见[检查指导记录](../performance/presentation-critical-moments-ex14/checks/README.md)。EX14.3 通用路径工程完成，C 组 ex14.v2 全文、实际载荷、表示样例与离线 token 计量见[视觉方法记录](../performance/presentation-critical-moments-ex14/visual/README.md)。EX14.1-M 的 A04–A10/A12 已通过，见[媒体验证](../performance/presentation-critical-moments-ex14/media/README.md)。Manim 指导增补及兼容样例已完成，媒体 B/C 为 ex14.v3/ex14.v4，见[媒体指导验收](../performance/presentation-critical-moments-ex14/media-guidance/README.md)。真实模型实验和真实读者测量待执行。付费实验的范围与额度在启动前确定；采用结论限定到实际验证的指导组合和路径。
+EX14.0 已冻结离线基线、实验材料与实际指导载荷，N3 静态基准通过三环境原生交付，见[基线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-critical-moments-ex14/README.md)。EX14.1-B 的 A06–A09/A11 通过，见[浏览器记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-critical-moments-ex14/browser/README.md)。EX14.2 通用路径 A13–A18 通过，B 组 ex14.v1 全文与实际载荷已冻结，见[检查指导记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-critical-moments-ex14/checks/README.md)。EX14.3 通用路径工程完成，C 组 ex14.v2 全文、实际载荷、表示样例与离线 token 计量见[视觉方法记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-critical-moments-ex14/visual/README.md)。EX14.1-M 的 A04–A10/A12 已通过，见[媒体验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-critical-moments-ex14/media/README.md)。Manim 指导增补及兼容样例已完成，媒体 B/C 为 ex14.v3/ex14.v4，见[媒体指导验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-critical-moments-ex14/media-guidance/README.md)。真实模型实验和真实读者测量待执行。付费实验的范围与额度在启动前确定；采用结论限定到实际验证的指导组合和路径。
 
 受控夹具只验证观察能力，自然用例覆盖有限的解释关系；学习效果需真实读者在新参数或新例子上的表现。EX12.5 Reader 连续使用的历史状态独立保留。
 
@@ -104,7 +104,7 @@ EX14.0 已冻结离线基线、实验材料与实际指导载荷，N3 静态基�
 - **[R14]** [模块装配测试](../../crates/runtime/src/agent_prompt/presentation/tests.rs)及 [Resident 请求测试](../../crates/runtime/src/presentation_authoring_tests.rs)：按需加载与追加指导。
 - **[R15]** [动画测试](../../crates/server/src/tests/presentation_animation_tests.rs)：资源合同与依赖真实环境的测试入口。
 - **[R16]** [已有圆盘页面](../performance/ex11-local-demonstrations/ex11.7/batch12/runs/disk-1/delivered-raw.html)及 [数学检查](../../packages/web/playwright/agent-presentation-ex11-batch12-math.spec.ts)：半径参数与实际使用的核对值。
-- **[R17]** [EX12.4 实验记录](../performance/presentation-staged-authoring-ex12-4.md)：未加载演示指导的纯文字运行只能支持文字路径结论。
+- **[R17]** [EX12.4 实验记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md)：未加载演示指导的纯文字运行只能支持文字路径结论。
 
 外部参考于 2026-10-08 查阅，作为方法讨论材料。若后续复制实现代码，再核查所用版本、授权与依赖。
 

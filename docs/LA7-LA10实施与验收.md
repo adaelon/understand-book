@@ -21,7 +21,7 @@ Tree 使用 canonical LID 树；Graph 额外开放概念候选和 graph context�
 
 实际输入隔离、词法定位回读、重叠/重复正文区间和超限拒绝测试通过。完整 Runtime 315 passed / 3 既有 ignored，Server 241 passed；随后增加的输出上限适配器测试通过。评测器 27 passed。日志位于 `tmp/la8-*`、`tmp/la9-tests.log`。
 
-三组首题接入 exact-01 全部通过：Text 48,815 tokens / 23.63 秒，Tree 61,582 / 31.62 秒，Graph 47,115 / 36.46 秒。见[独立接入结果](../evals/semantic/results/2026-09-08-la8-probe/summary.json)。该批没有显式输出上限，只用于 LA8 接入；不能计入 LA9。
+三组首题接入 exact-01 全部通过：Text 48,815 tokens / 23.63 秒，Tree 61,582 / 31.62 秒，Graph 47,115 / 36.46 秒。见[独立接入结果](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la8-probe/summary.json)。该批没有显式输出上限，只用于 LA8 接入；不能计入 LA9。
 
 LA9 首批启动后发现 Adapter 未显式发送单次输出上限，停止并保留 `2026-09-08-la9` 两条已完成样本，状态 `invalid_configuration`。新目录 `2026-09-08-la9-v2` 冻结 8,000 输出 tokens、12 轮、300 秒、120,000 实际累计 tokens、20,000 终答预留和 12,000 UTF-16 唯一正文预算；三组按题号循环轮换，不拼接首批成绩。
 
@@ -35,11 +35,11 @@ LA9 首批启动后发现 Adapter 未显式发送单次输出上限，停止并�
 
 正式前端 `continuous-reading.mjs` 的 `tmp/la10-v4` 七阶段全部通过：选区解释、来源弹窗核对且无跳转、显式打开原文、保存笔记、换进程后同位置与同笔记、空新聊天主动读取 memory.recall/reader.state、两章来源点击。末步脚本在 DOM 渲染前计数误报无按钮，`continuous-reading-sources.mjs` 修正等待后接续同一持久回答，先核对回答完全一致，再实际打开“因子是什么？”和“防过拟合”两个来源；未重新生成答案。初始失败记录在 `run-initial.json`，完整行为及请求在 `run.json`，截图仅佐证。
 
-匿名阶段结果：[LA10 summary](../evals/semantic/results/2026-09-08-la10/summary.json)。程序 `tmp/la10-final/server.exe`、正式 Web dist；测试记忆独立，未部署到 Linux。
+匿名阶段结果：[LA10 summary](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la10/summary.json)。程序 `tmp/la10-final/server.exe`、正式 Web dist；测试记忆独立，未部署到 Linux。
 
 ## LA7 固定程序全量结果
 
-固定 `tmp/la-final-colon/server.exe` 完成 32 道任务、48 个共同问答系统样本。原始记录和程序始终不替换。[完整报告](../evals/semantic/results/2026-09-08-la7/report.md)及[逐题分账](../evals/semantic/results/2026-09-08-la7/summary.json)按同一 `natural-facts-v2-bold-normalization` 判分。
+固定 `tmp/la-final-colon/server.exe` 完成 32 道任务、48 个共同问答系统样本。原始记录和程序始终不替换。[完整报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la7/report.md)及[逐题分账](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la7/summary.json)按同一 `natural-facts-v2-bold-normalization` 判分。
 
 | 项目 | 本轮观测 |
 | --- | --- |
@@ -71,13 +71,13 @@ LA9 首批启动后发现 Adapter 未显式发送单次输出上限，停止并�
 
 `TurnEvidenceLedger::present` 在观察覆盖成立后单独返回 SOURCE_QUOTE_MISMATCH，明确可更正原文或省略 quote，避免提示重新检索；覆盖不成立仍拒绝。来源使用合同同步说明完整已读范围与关键词片段的区别。红测复现后来源相关 17 项通过。
 
-固定后续程序 `tmp/la7-followup/server.exe` 的独立四场景：contrast-04、source-02、source-03 完整通过；formula-04 仍因 FINALIZATION_TOOL_PROTOCOL_VIOLATION 失败，返回 LA6。见[独立复验](../evals/semantic/results/2026-09-08-la7-followup/report.md)。该结果不替换 LA7 全量或 LA9 已冻结样本，也不把随机模型的一次改善当作稳定保证。
+固定后续程序 `tmp/la7-followup/server.exe` 的独立四场景：contrast-04、source-02、source-03 完整通过；formula-04 仍因 FINALIZATION_TOOL_PROTOCOL_VIOLATION 失败，返回 LA6。见[独立复验](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la7-followup/report.md)。该结果不替换 LA7 全量或 LA9 已冻结样本，也不把随机模型的一次改善当作稳定保证。
 
 最终 Runtime 318 passed / 3 既有 ignored、Server 241 passed，评测器 28 passed；覆盖配对路径匿名化、失败请求轨迹保留及实际正文区间并集。日志 `tmp/la7-la10-final-rust-tests.log`、`tmp/la7-la10-final-eval-tests.log`。
 
 ## LA9 完整结果与裁决
 
-固定程序 `tmp/la9/server.exe` 已完成每组24题、共72个样本，程序早于 LA10 持久化及 LA7 后续来源反馈修复；这两项后续源码变化没有进入本批。模型、预算、循环轮换及失败保留按启动清单执行。[配对报告](../evals/semantic/results/2026-09-08-la9-v2/report.md)与[匿名逐题记录](../evals/semantic/results/2026-09-08-la9-v2/summary.json)使用同一判分版本。
+固定程序 `tmp/la9/server.exe` 已完成每组24题、共72个样本，程序早于 LA10 持久化及 LA7 后续来源反馈修复；这两项后续源码变化没有进入本批。模型、预算、循环轮换及失败保留按启动清单执行。[配对报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la9-v2/report.md)与[匿名逐题记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la9-v2/summary.json)使用同一判分版本。
 
 | 组 | 完整成功 | 证据召回 | 引用支持 | P95 | 平均实际 Token |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -103,7 +103,7 @@ LA9 首批启动后发现 Adapter 未显式发送单次输出上限，停止并�
 
 ### 预构建成本与回收点
 
-[既有构建记录](../evals/semantic/results/2026-09-08-la9-v2/prebuild.json)共530次尝试。整个书目录7,861个文件、34,814,058字节，包含原文、语义资产和构建历史，不能当作图谱独有的增量体积。
+[既有构建记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la9-v2/prebuild.json)共530次尝试。整个书目录7,861个文件、34,814,058字节，包含原文、语义资产和构建历史，不能当作图谱独有的增量体积。
 
 | 阶段 | 尝试 / committed | executor累计毫秒 | lease等待累计毫秒 | writer累计毫秒 |
 | --- | ---: | ---: | ---: | ---: |

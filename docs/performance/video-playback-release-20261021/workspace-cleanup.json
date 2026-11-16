@@ -1,9 +1,0 @@
-{
-  "test_workspaces": [
-    {
-      "id": "ws-01a15ee1-885c-7dd1-b808-73479e538519",
-      "takeover_status": 200
-    }
-  ],
-  "status": "passed"
-}

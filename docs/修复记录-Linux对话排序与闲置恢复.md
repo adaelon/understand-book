@@ -25,13 +25,13 @@
 - `tests::mu6_tests` 45 项通过，进程杀断辅助用例按原配置忽略；覆盖接单、请求键核对、停止、保存失败重试、重启、事件流及多窗口权限边界。
 - 当前工作区 Web 类型检查通过。基于实际线上源码单独应用本次补丁的候选网页，类型检查和生产构建通过。
 - 同候选 Linux 隔离后端 + 候选网页：1440px、390px 两项真实浏览器测试通过，覆盖两轮问答顺序、断开后自动绑定、手机手动重试、原现场与草稿保留、无重复提交；只使用测试 Provider。
-- 生产入口复验通过：读取 6 段历史会话并确认排序，恢复的对话 2 个回合按新到旧显示；桌面/手机模拟连接失效后恢复原历史与未发送文字；脚本错误 0、模型问题提交 0。见[复验回执](performance/linux-chat-recovery-20261002/live-verification.json)。
+- 生产入口复验通过：读取 6 段历史会话并确认排序，恢复的对话 2 个回合按新到旧显示；桌面/手机模拟连接失效后恢复原历史与未发送文字；脚本错误 0、模型问题提交 0。见[复验回执](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-chat-recovery-20261002/live-verification.json)。
 
 ## 发布
 
 已于 2026-10-02 发布至 `https://115.190.121.150`。以 `/opt/understand-book/releases/mu12-20261001` 实际源码为基线，只应用本次 8 个生产文件的变更；当前版本目录为 `/opt/understand-book/releases/chat-recovery-20261002`，Rust 五个运行入口 release 编译通过。发布前活动或未保存运行数为 0，Nginx 配置校验通过，服务状态 active。
 
-旧版本目录保留，配置备份为 `/opt/understand-book/backups/chat-recovery-20261002`。切换 service、静态网页与演示 worker 路径；私人数据目录和数据库结构保持原有状态。见[发布回执](performance/linux-chat-recovery-20261002/deployment.json)。临时浏览器宿主和本地转发已关闭。
+旧版本目录保留，配置备份为 `/opt/understand-book/backups/chat-recovery-20261002`。切换 service、静态网页与演示 worker 路径；私人数据目录和数据库结构保持原有状态。见[发布回执](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-chat-recovery-20261002/deployment.json)。临时浏览器宿主和本地转发已关闭。
 
 ## 2026-10-03 正文顺序纠正
 
@@ -40,7 +40,7 @@
 - `RightRail.test.ts` 两项顺序和跟随回归先失败，修复后全部 27 项通过，包括按钮原回合索引和查看旧内容时的位置保持。
 - 以实际线上 `ex13-jl-20261002` 为基线，仅修改 `RightRail.vue`；Linux 类型检查和生产构建通过。发布新增静态资源并原子切换网页入口，旧资源和入口备份保留，服务未重启，已上线的 EX13/JL 功能保留。
 - 正式 HTTPS 入口在 1440px 和 390px 下验证两轮正文从旧到新、最新回答定位底部，脚本错误 0、模型问题提交 0。验收账号在所选材料下没有可用历史，因此使用仅在测试浏览器内注入的两轮历史响应，未写入服务器；这不是既有私人历史数据的端到端验收。
-- 当前 release：`/opt/understand-book/releases/ex13-jl-20261002`；本次备份：`/opt/understand-book/backups/qa-order-20261003`。见[发布回执](performance/linux-qa-order-20261003/deployment.json)和[浏览器验收](performance/linux-qa-order-20261003/live-verification.json)。
+- 当前 release：`/opt/understand-book/releases/ex13-jl-20261002`；本次备份：`/opt/understand-book/backups/qa-order-20261003`。见[发布回执](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-qa-order-20261003/deployment.json)和[浏览器验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-qa-order-20261003/live-verification.json)。
 
 ## 已知限制
 

@@ -1,8 +1,0 @@
-{
-  "status": "passed",
-  "base_commit": "33c19c7fa8aec9a4f1031122bc177743b234b9fd",
-  "tests": 3,
-  "review_count": 2,
-  "delivered_count": 1,
-  "model_boundary": "deterministic replay; real runtime, browser previews, review validation and persistent store"
-}

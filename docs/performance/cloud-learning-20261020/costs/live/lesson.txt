@@ -1,5 +1,0 @@
-Source windows are part of the evidence.
-
-The demonstration video contains a changing test pattern for two seconds. A statement about the first second should point to that interval, rather than to an entire course.
-
-Practice: identify the source material, its published version, and the interval that supports a statement. Keeping the original source reference lets a later reader revisit the same evidence after a new course version is published.

@@ -1,6 +1,6 @@
 # Tutor 全局模式、教学预构建与演示工作区切片方案
 
-日期：2026-09-29。状态：T0–T12 已实现；[T5A 大材料教学预构建](#t5a-大材料教学预构建) 实施中（4/5），T13 待实施。T1–T2 见 [工作区与控制验收](performance/tutor-t1-t2-20260929.md)，T3–T5 见 [教学基座验证与限制](performance/tutor-t3-t5-20260929.md)。T6–T8 见 [交付、教学循环与行为记录](performance/tutor-t6-t8-20260929.md)，T9–T12 见 [判定、证据与理解视图](performance/tutor-t9-t12-20260929.md)。
+日期：2026-09-29。状态：T0–T12 已实现；[T5A 大材料教学预构建](#t5a-大材料教学预构建) 实施中（4/5），T13 待实施。T1–T2 见 [工作区与控制验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t1-t2-20260929.md)，T3–T5 见 [教学基座验证与限制](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t3-t5-20260929.md)。T6–T8 见 [交付、教学循环与行为记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t6-t8-20260929.md)，T9–T12 见 [判定、证据与理解视图](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t9-t12-20260929.md)。
 
 决策入口：[ADR-0141 全局控制与会话](adr/0141-global-tutor-control-and-session-ownership.md)、[ADR-0142 公共教学基座](adr/0142-grounded-teaching-map-and-whole-source-readiness.md)、[ADR-0143 教学事实与证据](adr/0143-teaching-trace-assessment-and-learning-evidence.md)、[ADR-0144 演示工作区](adr/0144-shared-presentation-conversation-workspace.md)。术语以 [CONTEXT](../CONTEXT.md) 为准。
 
@@ -309,7 +309,7 @@ on_user_request(request, optional_scene_receipt):
 
 ## T1 同一演示内继续原对话
 
-**实施结果**：已完成。App 保留工作区选择和共同草稿；RightRail 复用原 transcript/composer，同一 iframe 展开/收起，窄屏讨论切换；绑定卡读取确切快照，显式恢复先保存当前现场，新版本点击后打开。历史 API 已投影原回执。实际验证见 [T1–T2 记录](performance/tutor-t1-t2-20260929.md)。
+**实施结果**：已完成。App 保留工作区选择和共同草稿；RightRail 复用原 transcript/composer，同一 iframe 展开/收起，窄屏讨论切换；绑定卡读取确切快照，显式恢复先保存当前现场，新版本点击后打开。历史 API 已投影原回执。实际验证见 [T1–T2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t1-t2-20260929.md)。
 
 **输入 → 产出**：现有 RP 版本、现场回执及聊天状态 → 演示/对话共同工作区、绑定卡、显式恢复与换版。所有权落在 `App.vue` 的共同会话状态；可按职责提取共享 transcript/composer，`AgentPresentation` 只持有内容实例和局部观察。
 
@@ -319,7 +319,7 @@ on_user_request(request, optional_scene_receipt):
 
 ## T2 全局控制、私人存储与教学会话
 
-**实施结果**：已完成。Memory 的 SQLite 库按事件/revision 保存控制与会话，使用同一私有目录与权限入口；Server 提供状态/动作 API，Web 顶栏和演示工作区共享控制，失败保留原状态并复用操作身份重试。T2 阶段开启只保存用户意图；T5 接入独立就绪读取，T7 已让显式开启/开始/继续在素材就绪时进入 Resident 教学回合。实际验证见 [T1–T2 记录](performance/tutor-t1-t2-20260929.md)。
+**实施结果**：已完成。Memory 的 SQLite 库按事件/revision 保存控制与会话，使用同一私有目录与权限入口；Server 提供状态/动作 API，Web 顶栏和演示工作区共享控制，失败保留原状态并复用操作身份重试。T2 阶段开启只保存用户意图；T5 接入独立就绪读取，T7 已让显式开启/开始/继续在素材就绪时进入 Resident 教学回合。实际验证见 [T1–T2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t1-t2-20260929.md)。
 
 **输入 → 产出**：§3 生命周期及现有 Memory 私有目录 → SQLite 学习存储、全局状态读写、独立会话 API 与顶栏开关。按事件与 revision 保存会话；首版 UI 可展示“已开启，教学准备中”，尚未接入的 TutorLoop 不伪装成功运行。
 
@@ -349,7 +349,7 @@ on_user_request(request, optional_scene_receipt):
 
 ## T5 构建接入与正式学习发布
 
-**实施结果**：三个阶段接入 BuildPlan/DAG、generation work unit、现有执行器与原子发布；Pass2 仍可选。独立来源审阅失败阻止发布，修正轮保留旧身份；不可变版本和 readiness 一同发布。Server/Reader 分别表达阅读、教学就绪和全局开关。小材料完成启用/停用 Pass2、恢复及拒绝发布路径；预算确认、取消、阅读状态回归通过。证据范围见 [验证记录](performance/tutor-t3-t5-20260929.md)。
+**实施结果**：三个阶段接入 BuildPlan/DAG、generation work unit、现有执行器与原子发布；Pass2 仍可选。独立来源审阅失败阻止发布，修正轮保留旧身份；不可变版本和 readiness 一同发布。Server/Reader 分别表达阅读、教学就绪和全局开关。小材料完成启用/停用 Pass2、恢复及拒绝发布路径；预算确认、取消、阅读状态回归通过。证据范围见 [验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t3-t5-20260929.md)。
 
 **输入 → 产出**：T3/T4 可接纳产物 → 三项职责接入现有 BuildPlan、DAG、work unit 与版本发布，独立读取正式 readiness，Reader 显示准备与可开始状态。
 
@@ -359,7 +359,7 @@ on_user_request(request, optional_scene_receipt):
 
 ## T5A 大材料教学预构建
 
-**状态与依赖**：实施中，前四项代码已实现并通过针对性测试，真实长材料验收待完成；[实现记录](performance/tutor-t5a-20260929.md) 保存进度及验证。依赖 T3、T4、T5，完成后进入 T13。遵循 [ADR-0142](adr/0142-grounded-teaching-map-and-whole-source-readiness.md) 的对象身份、来源依据与整份就绪合同。
+**状态与依赖**：实施中，前四项代码已实现并通过针对性测试，真实长材料验收待完成；[实现记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t5a-20260929.md) 保存进度及验证。依赖 T3、T4、T5，完成后进入 T13。遵循 [ADR-0142](adr/0142-grounded-teaching-map-and-whole-source-readiness.md) 的对象身份、来源依据与整份就绪合同。
 
 **输入 → 产出**：可信完整来源与已接纳的 Pass1、profile sidecar、BookStructure、计划内可选 Pass2 → 可恢复的局部候选、跨块对齐结果、正式对象与认知素材、独立来源审阅及整份 TeachingMap 发布回执。每次语义任务的输入与输出均有界，整份覆盖完成后发布正式教学版本。
 
@@ -395,7 +395,7 @@ on_user_request(request, optional_scene_receipt):
 
 ## T6 实际交付 Trace 与跨聊天引用
 
-**实施结果**：追加 teaching_trace 保存冻结归属、候选选择、已交付消息、可见展示、显式行为和实际帮助。正式活动保留原版本内容、来源绑定及提交现场；操作身份去重，历史已落盘而 Trace 失败可补写，关闭不抹去事实。显式 teaching_ref 可跨聊天读原版本，压缩/重开不改绑，原素材不可用则报错。 验证见 [T6–T8 记录](performance/tutor-t6-t8-20260929.md)。
+**实施结果**：追加 teaching_trace 保存冻结归属、候选选择、已交付消息、可见展示、显式行为和实际帮助。正式活动保留原版本内容、来源绑定及提交现场；操作身份去重，历史已落盘而 Trace 失败可补写，关闭不抹去事实。显式 teaching_ref 可跨聊天读原版本，压缩/重开不改绑，原素材不可用则报错。 验证见 [T6–T8 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t6-t8-20260929.md)。
 
 **输入 → 产出**：T2 存储、现有对话/呈现回执 → 追加式 Trace、可回读实际交付、精确会话/回合/内容关联和有归属的跨聊天教学读取。
 
@@ -405,7 +405,7 @@ on_user_request(request, optional_scene_receipt):
 
 ## T7 Resident 内首个连续教学循环
 
-**实施结果**：原 Resident 新增 tutor.step 的素材、Trace、动作选择与范围外退出能力；每轮冻结控制/会话/素材版本，读正式对象和真实原文后选择动作。用户回应进入下一轮；当前直接讲解优先于默认引导。普通聊天保持原工具集，关闭只允许显式旧引用只读，未就绪继续普通请求。已执行固定两轮及真实模型两轮，语义限制见 §11。 验证见 [T6–T8 记录](performance/tutor-t6-t8-20260929.md)。
+**实施结果**：原 Resident 新增 tutor.step 的素材、Trace、动作选择与范围外退出能力；每轮冻结控制/会话/素材版本，读正式对象和真实原文后选择动作。用户回应进入下一轮；当前直接讲解优先于默认引导。普通聊天保持原工具集，关闭只允许显式旧引用只读，未就绪继续普通请求。已执行固定两轮及真实模型两轮，语义限制见 §11。 验证见 [T6–T8 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t6-t8-20260929.md)。
 
 **输入 → 产出**：T2 控制/会话、T5 已发布素材、T6 事实 → 原 Resident 上的教学上下文与能力入口、一个动作到真实反馈再到后续动作的最小闭环。
 
@@ -415,7 +415,7 @@ on_user_request(request, optional_scene_receipt):
 
 ## T8 演示页的正式教学行为
 
-**实施结果**：宿主 TutorActivities 提供提交、改答、提示、直接讲解、跳过和自评；同页活动独立关联。页面请求仅聚焦宿主控件，动作冻结现场，帮助内容保留在服务端直至显式请求，实际可见后才记帮助展示。失败重试沿用原操作与现场，重开/切换模式保留帮助历史，页面计算不判题。 验证见 [T6–T8 记录](performance/tutor-t6-t8-20260929.md)。
+**实施结果**：宿主 TutorActivities 提供提交、改答、提示、直接讲解、跳过和自评；同页活动独立关联。页面请求仅聚焦宿主控件，动作冻结现场，帮助内容保留在服务端直至显式请求，实际可见后才记帮助展示。失败重试沿用原操作与现场，重开/切换模式保留帮助历史，页面计算不判题。 验证见 [T6–T8 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t6-t8-20260929.md)。
 
 **输入 → 产出**：T1 工作区、T6 Trace、T7 动作交付 → 提交/改答/提示/揭示/跳过等宿主行为合同，活动与版本/现场绑定。完成后承接原 RP8 的呈现与行为接入部分。
 
@@ -494,7 +494,7 @@ T0 文档验收：新增/修改的本地链接与标题锚点、ADR 编号唯一
 
 T1–T12 已接通工作区、控制、公共教学基座、Trace、TutorLoop、显式活动、冻结判定、Evidence 和理解空间。封闭题首版支持集合选择（单选是单元素集合），未建排序/匹配/计算题框架。无合同或评估失败的回答为 unassessed；无客观证据的能力保持 unknown，未评分来源辨析保留可纠正观察身份。T13 的完整书籍/论文与 Windows/Tauri、Linux 体验验收仍待实施。
 
-T7 真实模型两轮已读源并选择动作，但一次讲解把时间÷距离说成无意义量；该量可以表示配速。这是实际语义错误，接线通过不代表讲解质量通过完整验收。详情见 [T6–T8 记录](performance/tutor-t6-t8-20260929.md)。
+T7 真实模型两轮已读源并选择动作，但一次讲解把时间÷距离说成无意义量；该量可以表示配速。这是实际语义错误，接线通过不代表讲解质量通过完整验收。详情见 [T6–T8 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t6-t8-20260929.md)。
 
 每次教学输入受 6,000 估算 token 上限约束；T5A 已接入对象分块、跨块对齐、有界认知/审阅和依赖定向修复。单个不可切分来源或单项对象/审阅内容超限仍保持未完成。提高认知读取额度不会绕过输入上限。[T5A](#t5a-大材料教学预构建) 负责分块、跨块对齐、有界认知/审阅、定向修复及真实长材料构建，当前已完成前四项代码任务。现有验证使用完整小来源、长来源夹具与真实接纳/发布路径，完整书籍/论文的教学交互及安装包体验留在 T13。
 

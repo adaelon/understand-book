@@ -1,8 +1,0 @@
-{
-  "status": "passed",
-  "verified_at_utc": "2026-10-27T15:09:11.530053+00:00",
-  "reader_and_admin_html_match": true,
-  "referenced_assets_equal": 7,
-  "notes_and_unlimited_present": true,
-  "auth_route_status": 401
-}

@@ -6,7 +6,7 @@
 
 ## 线上路径与 Codex 对照
 
-用户明确要求 DeepSeek 沿用线上产品路径、Astra 经 Codex 时，使用 `online-browser.mjs` 和 `online-comparison.mjs`。2026-11-11 的实际条件和结果见 [线上路径对照](../../docs/performance/music-answer-quality-20261111/online-comparison.md)。这一路不使用下述本地单用户服务和 Provider 代理。
+用户明确要求 DeepSeek 沿用线上产品路径、Astra 经 Codex 时，使用 `online-browser.mjs` 和 `online-comparison.mjs`。2026-11-11 的实际条件和结果见 线上路径对照。这一路不使用下述本地单用户服务和 Provider 代理。
 
 先在隔离目录准备当前实际部署程序、`dist-multi`、准确的出版物和每题独立账号，保留线上模型配置与原生接口。由产品内置 full 观测保存公开模型请求及工具结果，并把账号凭据保存在实验目录的 `credentials.private.json`；该文件不进入报告或版本库。
 
@@ -19,7 +19,7 @@ node evals/answer-quality/online-comparison.mjs --out <下载的实验目录> --
 
 导入要求每题保留 `sample.json`、`provider.json` 与完整公开 `observations.json`。同材料对照取自进入模型上下文的工具返回；原工具执行成功后仍可能因返回大小限制而在上下文中成为错误，因此不能改用更完整的后台观测来补充给 Astra。`comparison.json` 汇集两路样本，`answers.md` 保存答案全文。此采样不代表对多模态、交互和长期教学效果的全面验证。
 
-若用户另行要求 Codex 自主读取完整预构建材料，使用独立样本目录，保留原输入和原答案；`runCodex` 的 `allowShell: true` 在已有只读模式下开放文件读取，`onEvent` 可保存实时读取记录。该条件不同于 `same_material` 的汇总工具返回。第一题的实际补充结果见 [Astra 读取预构建材料](../../docs/performance/music-answer-quality-20261111/astra-prebuilt-m01.md)。
+若用户另行要求 Codex 自主读取完整预构建材料，使用独立样本目录，保留原输入和原答案；`runCodex` 的 `allowShell: true` 在已有只读模式下开放文件读取，`onEvent` 可保存实时读取记录。该条件不同于 `same_material` 的汇总工具返回。第一题的实际补充结果见 Astra 读取预构建材料。
 
 以下运行说明对应首轮本地实验及通用导入入口。
 

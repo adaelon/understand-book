@@ -395,7 +395,7 @@ ADR-0021 中“前端待定”属于决策当时的状态。当前 Vue 与 Tauri
 
 成本模型中的 `R` 取决于运行时实际做了多少工作。增加结构和语义线索，可能缩短定位，也可能让 Agent 多走几轮工具调用。更丰富的结构是否改善完整任务，需要看实验。
 
-项目在 [2026-09-08 的同环消融报告](../../../evals/semantic/results/2026-09-08-la9-v2/report.md)中比较了 text、tree、graph 三种读时定位能力。三组使用 deepseek-v4-flash，共享生产 Agent 循环、基础提示、原文、判分和冻结预算。该轮 24 个任务的部分结果如下：
+项目在 [2026-09-08 的同环消融报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la9-v2/report.md)中比较了 text、tree、graph 三种读时定位能力。三组使用 deepseek-v4-flash，共享生产 Agent 循环、基础提示、原文、判分和冻结预算。该轮 24 个任务的部分结果如下：
 
 | 组别 | 完整成功 | 证据召回 | 引用支持 | 平均 Token |
 | --- | ---: | ---: | ---: | ---: |
@@ -1109,11 +1109,11 @@ BookStructure 在原文位置和语义成果之上组织这些信息。本章沿
 
 一种自然做法是逐段总结，再把段落摘要合成章节摘要，最后合成全书摘要。随着输入变长，每一层都要决定哪些内容值得带入下一层。被前一层省略的条件，后一层通常已经看不到。
 
-项目的 [BSR0 基线记录](../../performance/book-structure-bsr0.md)给出了具体案例。AI Infra 材料的“第 8 章 推理优化”原本包含连续批处理、KV 分页、前缀缓存等机制；旧章节卡已经压缩为 9 个候选，最终公开结构只留下 2 个重点：一处显存容量公式和一处有效吞吐公式。完整片段中仍有相关机制的说明，但它们没有保留到最终重点里。
+项目的 [BSR0 基线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr0.md)给出了具体案例。AI Infra 材料的“第 8 章 推理优化”原本包含连续批处理、KV 分页、前缀缓存等机制；旧章节卡已经压缩为 9 个候选，最终公开结构只留下 2 个重点：一处显存容量公式和一处有效吞吐公式。完整片段中仍有相关机制的说明，但它们没有保留到最终重点里。
 
 最终结果取决于整个传递过程。信息经过了哪些中间产物、在哪一层被删除，决定了后续模型是否还有机会作出完整选择。
 
-[BSR2 的局部实验](../../performance/book-structure-bsr2-codex.md)改用候选保留与引用选择。实验复用该章的章节卡、5 个完整片段、31 个候选和 12 段原文摘录，得到如下结果：
+[BSR2 的局部实验](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr2-codex.md)改用候选保留与引用选择。实验复用该章的章节卡、5 个完整片段、31 个候选和 12 段原文摘录，得到如下结果：
 
 | 层次 | 数量 | 含义 |
 | --- | ---:| --- |
@@ -1232,7 +1232,7 @@ Embedding 会产生计算、等待与可能的外部费用。[EmbeddingProvider]
 
 “状态复用”可以贯穿很多章节，但这个名称本身还不足以帮助读者。
 
-在模型上下文中，复用要解释旧状态为何保持有效；在单机推理中，要讨论分页、共享和写时复制；跨实例传输又增加了搬运时间、两端驻留与释放顺序；训练检查点需要保存相互一致的模型和优化器等状态；Agent 的任务恢复还涉及外部动作与已提交进度。它们共同涉及复用，成立条件却不同。[BSR0 的跨章主题基线](../../performance/book-structure-bsr0.md)正是按这些发展关系组织验收问题。
+在模型上下文中，复用要解释旧状态为何保持有效；在单机推理中，要讨论分页、共享和写时复制；跨实例传输又增加了搬运时间、两端驻留与释放顺序；训练检查点需要保存相互一致的模型和优化器等状态；Agent 的任务恢复还涉及外部动作与已提交进度。它们共同涉及复用，成立条件却不同。[BSR0 的跨章主题基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr0.md)正是按这些发展关系组织验收问题。
 
 [planStructureThemes](../../../packages/core/src/book-structure-themes.ts) 为一个主题问题建立一项工作。工作中可以涉及多个章节，输入同时提供全局主题目录，便于说明它与其他主题的区别。模型随后通过检索扩展候选，以 `stages` 描述各章怎样推进问题。
 
@@ -1250,7 +1250,7 @@ Embedding 会产生计算、等待与可能的外部费用。[EmbeddingProvider]
 
 ### 从局部实验到全书结果
 
-2026 年 10 月完成的 [BSR7 全书实验](../../performance/book-structure-bsr7.md)将这条路径用于同一本 AI Infra 材料。正文发现覆盖 14 个单元、572 个片段和 9111 个 core 叶子，保留 2636 个候选。来源核对后的章节选择为 946 个重点、345 个宏观路线引用。
+2026 年 10 月完成的 [BSR7 全书实验](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)将这条路径用于同一本 AI Infra 材料。正文发现覆盖 14 个单元、572 个片段和 9111 个 core 叶子，保留 2636 个候选。来源核对后的章节选择为 946 个重点、345 个宏观路线引用。
 
 主题阶段分别采用词法加 Embedding 的 C 组和纯词法的 B 组。两组共享来源、候选目录、章节选择及主题计划；C 使用本地 MiniLM L12-v2，q8、CPU、384 维。
 
@@ -1423,7 +1423,7 @@ B_{\text{effective}} = \min\left(S,\max\left(0,C-P-H-O-M\right)\right)
 
 两个单位同时约束提交。1981 来自当前协议形状和估算器，不能用它替代任意模型的真实 token 计数。
 
-这就能解释开篇的失败。[BSR7 报告](../../performance/book-structure-bsr7.md)记录，训练系统章保留 114 个重点、44 个宏观引用，完整选择输出估算为 2643 tokens。虽然输出预留为 3500，但实际候选容量只有 1981。即使把摘要缩短到一个字符，引用等必要字段的估算下界仍为 2228，已经超过通道容量。
+这就能解释开篇的失败。[BSR7 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)记录，训练系统章保留 114 个重点、44 个宏观引用，完整选择输出估算为 2643 tokens。虽然输出预留为 3500，但实际候选容量只有 1981。即使把摘要缩短到一个字符，引用等必要字段的估算下界仍为 2228，已经超过通道容量。
 
 继续删摘要无法跨过这个下界。实际修订引入了有限的章节选择提交：每次 `select_stops` 最多提交 48 个引用，Core 保存草稿，最后一次选择提交摘要与宏观路线，再由 Core 注入完整章节引用并执行原来的选择检查。该次真实执行按 48、48、18 个引用分三次提交，再提交最终选择，完整 114/44 得以保留。
 
@@ -1556,7 +1556,7 @@ DSH 的[插件入口](../../../packages/dsh-plugin/src/index.ts)先与已安装 
 
 114/44 的容量问题来自 BSR7 的既有真实记录，本次没有重跑模型生成。小段落切片、候选容量和两类预算失败则实际调用了当前确定性函数。教学渲染与封套已说明为合成输入，没有将它们冒充生产任务的容量测量。
 
-[DSH 兼容报告](../../performance/dsh-prebuild-compatibility-20260925.md)记录，DH1—DH5 已有相应实现和确定性验收，技术书完整闭环使用脚本模型与真实源码 Engine；小型真实模型往返只验证较小范围。该报告仍保留 DH0 人工“要求修改”和 DH6 独立分发、真实模型完整构建等未完成项。本章据此介绍已实现的适配分工，不作完整发布支持声明。
+[DSH 兼容报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-prebuild-compatibility-20260925.md)记录，DH1—DH5 已有相应实现和确定性验收，技术书完整闭环使用脚本模型与真实源码 Engine；小型真实模型往返只验证较小范围。该报告仍保留 DH0 人工“要求修改”和 DH6 独立分发、真实模型完整构建等未完成项。本章据此介绍已实现的适配分工，不作完整发布支持声明。
 
 <a id="ch07-s11"></a>
 
@@ -1820,7 +1820,7 @@ EPUB 还有一个容易忽略的细节：规范正文未必保留 Markdown 标�
 
 这样，同一组成果在新位置重新核对，不会覆盖旧位置的关闭记录。
 
-[2026-10-01 的 U1—U2 验证记录](../../performance/workspace-u1-u2-20261001.md)提供了完整链路的已有证据：两章材料完成一项 Pass1、领取另一项后复制工作区，新位置只调度未完成项，原位置的旧提交被拒绝。另一个用例使用 29 章 BookStructure 生产夹具，搬迁后没有待抽取任务；删除新目录的公开结构文件后，经正常 close 入口从已完成成果重发 82,514 字节，结果与原输出完全一致。
+[2026-10-01 的 U1—U2 验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/workspace-u1-u2-20261001.md)提供了完整链路的已有证据：两章材料完成一项 Pass1、领取另一项后复制工作区，新位置只调度未完成项，原位置的旧提交被拒绝。另一个用例使用 29 章 BookStructure 生产夹具，搬迁后没有待抽取任务；删除新目录的公开结构文件后，经正常 close 入口从已完成成果重发 82,514 字节，结果与原输出完全一致。
 
 这说明公开文件丢失与模型成果失效是两种不同故障。前者在已有有效贡献时可以重新组装，未必需要再次付出模型生成成本。
 
@@ -5535,7 +5535,7 @@ prepare 提交 phase、framework、focus 和 needs，更新当前 Run 的 Presen
 
 #### 请求变短与真实费用，需要分别观察
 
-项目在 2026-10-02 的 [EX13.2 报告](../../performance/presentation-context-ex13/ex13-2/README.md) 中使用冻结的两次 write，分别含 18,486 和 31,850 个 HTML 字符，比较保存源码投影前后的末次请求：
+项目在 2026-10-02 的 [EX13.2 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-2/README.md) 中使用冻结的两次 write，分别含 18,486 和 31,850 个 HTML 字符，比较保存源码投影前后的末次请求：
 
 | 同输入离线统计，UTF-8 字节 | 改动前 | 改动后 | 减少 |
 | --- | ---: | ---: | ---: |
@@ -5546,9 +5546,9 @@ prepare 提交 phase、framework、focus 和 needs，更新当前 Run 的 Presen
 
 例如，录制内容减少约 59.01%，调用参数减少约 95.07%。ReAct 的表示方式不同，序列化差值也不同。这组实验没有发送模型 HTTP 请求，usage 为 null；表中度量的是字节，不能把它直接写成 token、缓存命中或人民币节省。
 
-另一项 [EX13.1 指导前缀实验](../../performance/presentation-context-ex13/ex13-1/README.md) 则说明了取舍：把阶段指导改为在后部追加，可以保留既有文本前缀，但历史会增长。该受控样本末次录制体积从 50,547 增至 67,009 字节。前缀更稳定与总输入更小，是两个不同目标；源码回读正用于处理后一部分负担。
+另一项 [EX13.1 指导前缀实验](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-1/README.md) 则说明了取舍：把阶段指导改为在后部追加，可以保留既有文本前缀，但历史会增长。该受控样本末次录制体积从 50,547 增至 67,009 字节。前缀更稳定与总输入更小，是两个不同目标；源码回读正用于处理后一部分负担。
 
-随后进行的 [EX13.6 真实接续](../../performance/presentation-context-ex13/ex13-6/README.md) 提供了另一种证据。它从原聊天、未完成 Goal 和检查点恢复，对同一对象从 revision 1 修订到 revision 2，保留 27 个来源绑定，经过原生 patch、preview、后续图片观察和 deliver。独立浏览器重放覆盖三环境、每环境七条路径，记录了 78 张截图。
+随后进行的 [EX13.6 真实接续](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md) 提供了另一种证据。它从原聊天、未完成 Goal 和检查点恢复，对同一对象从 revision 1 修订到 revision 2，保留 27 个来源绑定，经过原生 patch、preview、后续图片观察和 deliver。独立浏览器重放覆盖三环境、每环境七条路径，记录了 78 张截图。
 
 该次成功接续持续 379.231 秒，发生 20 次提供方调用；计入两次准备失败中的辅助请求，累计新增 22 次调用，输入加输出为 1,920,856 token。按当时报告记录的价格估算累计费用为 0.93951468 元；余额观察净减少 0.59 元，报告没有把两者视为同一项结算事实。本章引用这些历史口径，没有重新查询价格或运行该模型。
 
@@ -6982,7 +6982,7 @@ T7 脚本使用合成输入与固定候选，检查四工具协议、重复提�
 
 #### 一次真实发布怎样改变“已经验证”的含义
 
-[2026-10-01 MU11 实施记录](../../performance/linux-multi-reader-mu11-20261001.md)提供了很具体的分阶段证据。早期隔离验证把 dev 构建的五个程序放进候选目录的 `target/release`，只是为了复用 launcher；记录明确说明目录名不等于优化构建。随后正式构建才生成 release 产物。[正式收据](../../performance/linux-multi-reader-mu11-20261001/production-build-receipt.txt)保存 profile=release、最终源码根与 working-tree-source-copy，基线是当时的 5e10516。
+[2026-10-01 MU11 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu11-20261001.md)提供了很具体的分阶段证据。早期隔离验证把 dev 构建的五个程序放进候选目录的 `target/release`，只是为了复用 launcher；记录明确说明目录名不等于优化构建。随后正式构建才生成 release 产物。[正式收据](../../performance/linux-multi-reader-mu11-20261001/production-build-receipt.txt)保存 profile=release、最终源码根与 working-tree-source-copy，基线是当时的 5e10516。
 
 同一记录还揭示另一种可达失败：初次部署有在线服务，却遗漏 presentation-sandbox.json 与宿主的 systemd 权限，网络制作处于 not_configured。补齐同 release worker、独立运行时和宿主权限后，才在实际服务账号下验证浏览器、Python 渲染、取消和回收。[原始集成日志](../../performance/linux-multi-reader-mu11-20261001/production-render-integration.log)记载四个用例通过，测试进程耗时 57.27 秒。这个时间属于那次集成测试，不能解释成一次演示的制作延迟。
 
@@ -7347,7 +7347,7 @@ API 状态观察与真实界面又有区别。历史 [LA10](../../LA7-LA10%E5%AE
 
 #### 先看一次完整产品比较
 
-历史 [LA7 报告](../../../evals/semantic/results/2026-09-08-la7/summary.json)比较同一部书、同配置模型上的完整 Resident 与普通 Chunk RAG。Chunk 使用 1000 UTF-16 字符分块、150 重叠、BM25、最多 6000 字符正文和一次回答调用；Resident 使用当时的生产工具循环、证据账本及来源交付。
+历史 [LA7 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la7/summary.json)比较同一部书、同配置模型上的完整 Resident 与普通 Chunk RAG。Chunk 使用 1000 UTF-16 字符分块、150 重叠、BM25、最多 6000 字符正文和一次回答调用；Resident 使用当时的生产工具循环、证据账本及来源交付。
 
 两者问题和模型相同，但提示、工具、上下文和执行能力不同。这是产品比较，不是只增加图谱的实验。以下数字是 **2026-09-08 的冻结程序与 natural-facts-v2-bold-normalization 口径**，本轮只回读和复算：
 
@@ -7369,7 +7369,7 @@ API 状态观察与真实界面又有区别。历史 [LA10](../../LA7-LA10%E5%AE
 
 #### 同一循环下，增加结构定位是否更好
 
-要判断图或树带来的变化，需要收窄其他变量。[LA9-v2](../../../evals/semantic/results/2026-09-08-la9-v2/summary.json)在同一 Agent 循环中比较 Text、Tree、Graph，三组共用模型、提示、正文预算和停止条件，按题轮换顺序。Text 只使用原文与词法定位；Tree 加确定性章节树和邻接；Graph 再加概念与关系定位。
+要判断图或树带来的变化，需要收窄其他变量。[LA9-v2](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la9-v2/summary.json)在同一 Agent 循环中比较 Text、Tree、Graph，三组共用模型、提示、正文预算和停止条件，按题轮换顺序。Text 只使用原文与词法定位；Tree 加确定性章节树和邻接；Graph 再加概念与关系定位。
 
 三组共同关闭高层 query/synthesize、profile、memory、artifact 和模型 sidecar，定位预览不提供正文；真正的原文必须经相同 book.text 和证据闸。冻结条件包括 12 轮、300 秒、8000 输出 tokens、120,000 累计实际 tokens、20,000 终答预留、12,000 UTF-16 唯一正文预算。这些是历史消融合同，不是今天默认 Resident 的限制；当前 [OuterConfig](../../../crates/runtime/src/orchestrator.rs)默认 max_turns 为 None。
 
@@ -7389,7 +7389,7 @@ Graph 的两道新增成功都实际先用了 book.concept，随后回读原文�
 
 #### 成本回收必须先满足可比条件
 
-LA9 的历史[预构建记录](../../../evals/semantic/results/2026-09-08-la9-v2/prebuild.json)有 530 次尝试，但全部历史实际 Provider 用量不可用；各执行器区间还可能并行重叠。书目录的 34,814,058 字节包含原文、语义资产和构建历史，不是图谱独有的增量体积。
+LA9 的历史[预构建记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la9-v2/prebuild.json)有 530 次尝试，但全部历史实际 Provider 用量不可用；各执行器区间还可能并行重叠。书目录的 34,814,058 字节包含原文、语义资产和构建历史，不是图谱独有的增量体积。
 
 若用教学模型表示一次性额外构建成本为 B，每次阅读节省为 Δ，则在任务效果可比、模型单价和材料版本等条件固定时，候选回收次数可以写成 `B / Δ`。这批证据里 B 未知，也没有同成功水平下的正向 Δ，所以不能代入一组估计数，宣称“读多少次就回本”。
 
@@ -7423,7 +7423,7 @@ LA9 的历史[预构建记录](../../../evals/semantic/results/2026-09-08-la9-v2
 
 一个任务失败后，最有价值的下一步往往不是再跑同一个问题，而是提出能区分原因的干预。
 
-历史 [EV5—EV6](../../performance/agent-eval-ev5-ev6-20260925.md)选择 target-l2：原 Resident 的内容要求通过，来源要求失败。EV5 把前两次模型工具决策改成脚本化定位和读取，仍使用真实 book.search_text 找唯一范围，再把返回的 LID 交给真实 book.text。之后模型继续自然执行。这个干预问的是：“如果一开始合法获得必要原文，后续来源组织还会失败吗？”
+历史 [EV5—EV6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md)选择 target-l2：原 Resident 的内容要求通过，来源要求失败。EV5 把前两次模型工具决策改成脚本化定位和读取，仍使用真实 book.search_text 找唯一范围，再把返回的 LID 交给真实 book.text。之后模型继续自然执行。这个干预问的是：“如果一开始合法获得必要原文，后续来源组织还会失败吗？”
 
 [evidenceIntervention](../../../evals/semantic/diagnostic-core.mjs)没有把金标准答案写进用户问题，也没有伪造证据账本。但它改变了前两次决策和上下文，所以结果只能作为诊断。历史有效运行确实读到 660 个 UTF-16 字符的必要原文并交付可打开来源；评委却把冻结英文枚举写成中文释义，导致旧字面比较与其他维度冲突，最终复核记为评分未决。来源失败未重现，不等于整项诊断已通过。
 
@@ -7437,9 +7437,9 @@ EV6 则从两系统实际模型请求抽取各自真正见过的 canonical 原�
 
 #### 先修量尺，再谈分数增长
 
-EV3—EV4 的[历史首轮](../../performance/agent-eval-ev3-ev4-20260925.md)在 8 道单轮与两个同聊天多轮任务上得到 18 个系统样本：Chunk 6 通过、2 失败；Resident 1 通过、7 失败、2 未决。其中多项旧来源失败混合了支持和定位，不能概括成理解能力失败。
+EV3—EV4 的[历史首轮](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md)在 8 道单轮与两个同聊天多轮任务上得到 18 个系统样本：Chunk 6 通过、2 失败；Resident 1 通过、7 失败、2 未决。其中多项旧来源失败混合了支持和定位，不能概括成理解能力失败。
 
-此后 CQ 系列修订来源与评分合同。[CQ8](../../performance/source-delivery-cq8-20260926.md)把模型猜数值区间改成逐字依据定位，重新校准已有人审的判例；第二版十个既有判例方向一致，但九个开发诊断只有七个标签完全一致，另外两案的分类差异保留。结构有效的评分与语义可靠的评分仍是两件事。
+此后 CQ 系列修订来源与评分合同。[CQ8](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/source-delivery-cq8-20260926.md)把模型猜数值区间改成逐字依据定位，重新校准已有人审的判例；第二版十个既有判例方向一致，但九个开发诊断只有七个标签完全一致，另外两案的分类差异保留。结构有效的评分与语义可靠的评分仍是两件事。
 
 旧答案经新量尺复评，应生成新版本报告，保留全体样本和旧分数。它能说明量尺修正后的判断，不能把分数上涨当成重新生成答案后的能力提高。评委、协议或适用任务范围改变时，也不能自动继承旧校准许可。
 
@@ -7447,7 +7447,7 @@ EV3—EV4 的[历史首轮](../../performance/agent-eval-ev3-ev4-20260925.md)在
 
 #### 一项实验可以以撤回候选完成
 
-ADR-0137 的较早状态仍写 EV7 待实施，但[2026-09-26 EV7 记录](../../performance/agent-eval-ev7-20260926.md)已经记载完整实验与撤回结果。
+ADR-0137 的较早状态仍写 EV7 待实施，但[2026-09-26 EV7 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md)已经记载完整实验与撤回结果。
 
 该实验只修改收尾提示的一项范围表达，假设模型把“用户没有给实现细节”误当成“全书没有依据”，从而添加过强否定。旧版和候选使用固定程序，各跑开发迁移题、新题族、简单解释及应保留不确定性的控制题，共六对十二份首次回答，交错顺序，不根据结果追加试跑。
 
@@ -7675,11 +7675,11 @@ BookStructure 的 [projectStructureRetrieval](../../../packages/core/src/book-st
 
 #### 为什么“召回变好”没有直接改变默认模式
 
-[SR6 历史记录](../../performance/semantic-retrieval-20260930.md)提供了一个非常具体的决策证据。固定 28 条记录、8 个查询的排名比较中，A/B 的 recall@6 为 12.5%，加入留存真实向量的 C 为 100%；但是两轮完整身份对齐并没有得到三组可比的完成结果，长材料验收也未完成。记录给出的发布结论仍是保持 lexical_only。
+[SR6 历史记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/semantic-retrieval-20260930.md)提供了一个非常具体的决策证据。固定 28 条记录、8 个查询的排名比较中，A/B 的 recall@6 为 12.5%，加入留存真实向量的 C 为 100%；但是两轮完整身份对齐并没有得到三组可比的完成结果，长材料验收也未完成。记录给出的发布结论仍是保持 lexical_only。
 
 这不是否认排名增益，而是承认“把对象找出来”和“在完整循环中正确处理身份”之间仍有工作。未完成组的身份质量保持未知，不能从一张排序表补造出来。
 
-BookStructure 的 BSR7 又是另一份证据：它完成了特定书籍的两组全书结构交付，按当时用户选择以 embedding 组为主成果，词法组保留对照。该[报告](../../performance/book-structure-bsr7.md)同时保留实际模型 usage 未知、生成者查询不同等限制，因此不能外推为一般费用下降，也不自动改写 T5A 的验收状态或产品默认。
+BookStructure 的 BSR7 又是另一份证据：它完成了特定书籍的两组全书结构交付，按当时用户选择以 embedding 组为主成果，词法组保留对照。该[报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)同时保留实际模型 usage 未知、生成者查询不同等限制，因此不能外推为一般费用下降，也不自动改写 T5A 的验收状态或产品默认。
 
 真正被保留下来的架构判断是：公共原文和候选内容有稳定身份；召回策略可以替换；每个消费者用自己的任务效果决定是否启用。把某一实验的成功扩散成所有路径的默认依赖，会越过这三个边界。
 
@@ -8009,9 +8009,9 @@ Understand Book 的记录里有几种很容易误读的结果。原文已读到�
 
 #### 用两次干预把怀疑范围缩小
 
-2026-09-25 的 EV4采用另一份分层阅读题集与评分协议。它的首轮结果不能与LA7拼成趋势线，但出现了一个适合继续定位的案例：`target-l2` 的 Resident 回答在内容、准确性、完整性与解释维度上为 `met`，来源要求却为 `unmet`。其中一处引号里的表述不在所引原文摘录内。[EV3—EV4记录](../../performance/agent-eval-ev3-ev4-20260925.md)还保留了评委输出无效和绝对评分范围未批准的样本，二者没有被算成产品交付错误。
+2026-09-25 的 EV4采用另一份分层阅读题集与评分协议。它的首轮结果不能与LA7拼成趋势线，但出现了一个适合继续定位的案例：`target-l2` 的 Resident 回答在内容、准确性、完整性与解释维度上为 `met`，来源要求却为 `unmet`。其中一处引号里的表述不在所引原文摘录内。[EV3—EV4记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md)还保留了评委输出无效和绝对评分范围未批准的样本，二者没有被算成产品交付错误。
 
-[EV5—EV6](../../performance/agent-eval-ev5-ev6-20260925.md)随后围绕这道题问两个更窄的问题。第一个是：如果开头就合法取得必要原文，后面的引用组织是否仍然失败？EV5用脚本替换前两次工具决策，先调用真实 `book.search_text`，从返回结果复制位置，再调用真实 `book.text`；随后交还原模型。660个UTF-16字符的必要原文确实进入第三次模型请求，最终来源可打开，原来的来源失败项没有重现。
+[EV5—EV6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md)随后围绕这道题问两个更窄的问题。第一个是：如果开头就合法取得必要原文，后面的引用组织是否仍然失败？EV5用脚本替换前两次工具决策，先调用真实 `book.search_text`，从返回结果复制位置，再调用真实 `book.text`；随后交还原模型。660个UTF-16字符的必要原文确实进入第三次模型请求，最终来源可打开，原来的来源失败项没有重现。
 
 但完整结果没有因此记为通过。评委把冻结枚举 `denominator_falls_more` 写成了中文释义，程序的字面比较判为不满足，其他维度和理由却认为成立。复核将这次结果记为**评分无效、任务未决**。从这个探针能说的是“预供原文后，原来源症状未重现”，不能说“证据不足就是唯一根因”。脚本已经改变了早期决策和上下文。
 
@@ -8098,7 +8098,7 @@ LA10把问题从回答文本推进到真实前端连续使用。第一次选区�
 
 2026-09-30，旧全书结构路线完成14个单元的结果，展开五项全书局部拼接。三个执行器已经成功 `open`、`input.next`，随后各重试三次 `generation.start`，九次都被客户端120秒等待期限截断，没有候选提交。只看子执行器的最后一句话，很容易得出“引擎没有启动任务”的结论。
 
-[构建控制恢复记录](../../performance/build-control-recovery-20260930.md)回到持久事实后发现：服务端已经写出首次 `GENERATE` 记录，只是比客户端期限晚。计时起点是请求进入函数时保存的 `accepted_at`，终点是启动记录文件实际写入时间，单位为秒：
+[构建控制恢复记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/build-control-recovery-20260930.md)回到持久事实后发现：服务端已经写出首次 `GENERATE` 记录，只是比客户端期限晚。计时起点是请求进入函数时保存的 `accepted_at`，终点是启动记录文件实际写入时间，单位为秒：
 
 | 拼接任务 | 修复前启动记录耗时 | 修复后同口径耗时 |
 | --- | ---: | ---: |
@@ -8132,7 +8132,7 @@ LA10把问题从回答文本推进到真实前端连续使用。第一次选区�
 
 #### 有3500输出预留，为什么1981就提交不进去
 
-2026-10-02至03的 [BSR7](../../performance/book-structure-bsr7.md)遇到另一项可精确计算的失败。训练系统章需要保留114个重点、44个宏观引用，完整选择输出估算为2643 tokens；模型输出预留是3500，候选提交通道扣除协议封套后却只能承载1981。即使把摘要缩到一个字符，必要引用的估算下界仍为2228。
+2026-10-02至03的 [BSR7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)遇到另一项可精确计算的失败。训练系统章需要保留114个重点、44个宏观引用，完整选择输出估算为2643 tokens；模型输出预留是3500，候选提交通道扣除协议封套后却只能承载1981。即使把摘要缩到一个字符，必要引用的估算下界仍为2228。
 
 ```text
 完整选择：2643 > 1981
@@ -8176,7 +8176,7 @@ const contributors = input.stage === "book_structure"
 
 #### 已经进入review，为什么仍然漏内容
 
-[EX12.4](../../performance/presentation-staged-authoring-ex12-4.md)在2026-10-02围绕一份已有演示继续制作。原请求要求完整解释一节材料，包含练习和计算关系。初始阶段指导希望模型先形成全局框架，再制作关键局部、观察结果、展开全文并串读。
+[EX12.4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md)在2026-10-02围绕一份已有演示继续制作。原请求要求完整解释一节材料，包含练习和计算关系。初始阶段指导希望模型先形成全局框架，再制作关键局部、观察结果、展开全文并串读。
 
 首批请求轨迹却显示，模型记录global后直接write，后续请求仍只有global指导。方法资产随后明确要求用独立 `prepare(local)` 交接，在下一次采样开始制作。v4虽然进入local，首个write仍一次输出44,113字符的完整长页，说明“可独立运行的HTML”被混同为“先写完整作品”。v5进一步把首个候选限定为关键关系及必要前提，终于出现局部原型、真实预览、扩展全文与review交接。
 
@@ -8236,7 +8236,7 @@ if let Some(choice) = value.get("new_object") {
 
 EX12.4曾在本地修正11项内容并通过三环境操作，状态明确记为 `local_verified_not_native_delivered`，版本引用为null。当时Provider 402阻止了原生完成；离线页面正确，不能代替产品中已交付版本正确。
 
-[EX13.6](../../performance/presentation-context-ex13/ex13-6/README.md)随后从feedback5的原聊天、未完成Goal和检查点恢复，读取feedback3的确切revision 1。验收准备又发现静态推导保留旧读取量，于原11项补丁之外增加一项公式修正。当前运行重新发现工具、读取材料与源码，经过patch、原生preview、后续模型图片观察、review和deliver，最终交付同一对象revision 2，保留27个来源。
+[EX13.6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md)随后从feedback5的原聊天、未完成Goal和检查点恢复，读取feedback3的确切revision 1。验收准备又发现静态推导保留旧读取量，于原11项补丁之外增加一项公式修正。当前运行重新发现工具、读取材料与源码，经过patch、原生preview、后续模型图片观察、review和deliver，最终交付同一对象revision 2，保留27个来源。
 
 独立浏览器再对确切revision 2重放三环境、每环境七条路径，覆盖原值、读取减半、控件聚焦与四档实测汇算，共78张截图。内容与“原修正内容加补充公式”逐字段一致。成功接续有20次提供方调用；计入两次准备失败中的辅助调用，累计22次。它们属于这一份有限接续，不能混入此前25次运行的对照，也不能由截图数量推导学习效果。
 
@@ -8250,7 +8250,7 @@ EX12.4曾在本地修正11项内容并通过三环境操作，状态明确记为
 
 #### 先修正“失败”的含义
 
-前面的案例不断出现同一困难：当程序说一题失败时，产品、执行环境和评分程序究竟哪一部分需要改变？2026-09-26的 [CQ8](../../performance/source-delivery-cq8-20260926.md)把这个问题推进到了逐条论断。
+前面的案例不断出现同一困难：当程序说一题失败时，产品、执行环境和评分程序究竟哪一部分需要改变？2026-09-26的 [CQ8](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/source-delivery-cq8-20260926.md)把这个问题推进到了逐条论断。
 
 一份历史长回答的公式已经存在于交付来源C4的后文，旧判断却将它当作没有交付。重新定位后，公式明确位于 C4.after 的 [7,89)。如果只看高亮正文，评委会漏读已交付材料；如果允许评委凭公共参考材料补齐，又会把实际没交付的依据当成已交付。两个方向都可能使改进建立在错误前提上。
 
@@ -8266,7 +8266,7 @@ EX12.4曾在本地修正11项内容并通过三环境操作，状态明确记为
 
 #### 一个合理假设，为什么最后仍要撤回
 
-[EV7](../../performance/agent-eval-ev7-20260926.md)先核对一个容易遗漏的事实：CQ8的范围正反例已经进入全部模型请求，失败也发生在普通业务循环，不是无工具收尾阶段。缺失提示注入和预算耗尽，不能解释这批症状。
+[EV7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md)先核对一个容易遗漏的事实：CQ8的范围正反例已经进入全部模型请求，失败也发生在普通业务循环，不是无工具收尾阶段。缺失提示注入和预算耗尽，不能解释这批症状。
 
 剩下一个值得检验的假设：完成指导末尾笼统要求“证据不足就明确说明”，模型可能把用户未给出实施细节，混同为整本书没有支持材料。因此候选只替换这一条的首句，要求对尚未确立的具体结论说明缺失前提，并区分用户信息缺口和已读原文缺口。模型、工具、预算、原有范围例子及评分协议保持不变。这个解释在开跑前仍是假设，没有被写成已证实原因。
 
@@ -8638,9 +8638,9 @@ $D$与$A$的单位都是“许可秒/分钟”。这里的$\tau$从已经取得�
 
 > 2026-09-26的EV7实验检查一项范围提示改动。候选必须在四对迁移题中至少改善两对，同时保持内容、来源和控制题要求。实际只有一对明确改善，控制题还出现未经核实的章节断言，因此撤回候选，保留原有来源修复。这个结果说明该次改动没有达到保留条件，后续需要另立假设。
 
-这段话的价值在于能继续回答追问：假设从哪条失败轨迹形成，为什么是单变量，未决样本怎样处理，撤回后留下什么。原始依据在[EV7报告](../../performance/agent-eval-ev7-20260926.md)，当前[完成指导版本](../../../crates/runtime/src/agent_prompt.rs)仍为v7。这里的“实验完成”与“产品效果提高”具有不同含义。
+这段话的价值在于能继续回答追问：假设从哪条失败轨迹形成，为什么是单变量，未决样本怎样处理，撤回后留下什么。原始依据在[EV7报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md)，当前[完成指导版本](../../../crates/runtime/src/agent_prompt.rs)仍为v7。这里的“实验完成”与“产品效果提高”具有不同含义。
 
-相应地，正结果也应保持范围。EX13.6确实接续原聊天，完成同一演示对象revision 2，并对确切版本重放浏览器路径；它支持那份内容、版本和操作的验收。[该记录](../../performance/presentation-context-ex13/ex13-6/README.md)并没有把所有书籍、所有模型或长期教学效果纳入同一次证明。
+相应地，正结果也应保持范围。EX13.6确实接续原聊天，完成同一演示对象revision 2，并对确切版本重放浏览器路径；它支持那份内容、版本和操作的验收。[该记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md)并没有把所有书籍、所有模型或长期教学效果纳入同一次证明。
 
 <a id="ch24-s23"></a>
 
@@ -9069,7 +9069,7 @@ ADR适合回答“当时面对什么约束，为什么这样选择”。判断�
 
 [ADR-0137](../../adr/0137-stratified-reading-evals-and-diagnostic-improvement.md)于2026-09-25接受，按必要理解操作区分L1定位提取、L2解释与局部推导、L3多证据整合和L4情境诊断与迁移；单轮、多轮和跨会话作为另一条维度。
 
-该ADR顶部仍写EV7待实施。后续[EV7原始记录](../../performance/agent-eval-ev7-20260926.md)已经给出六对十二份首次回答、事前保留门槛及候选撤回。当前[agent_prompt.rs](../../../crates/runtime/src/agent_prompt.rs)中的完成指导为v7。因此，查阅时应保留下面这条时间关系：
+该ADR顶部仍写EV7待实施。后续[EV7原始记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md)已经给出六对十二份首次回答、事前保留门槛及候选撤回。当前[agent_prompt.rs](../../../crates/runtime/src/agent_prompt.rs)中的完成指导为v7。因此，查阅时应保留下面这条时间关系：
 
 | 材料 | 能回答什么 |
 | --- | --- |
@@ -9151,15 +9151,15 @@ agent-run会读取本地配置并执行真实产品与模型请求，quality路�
 | --- | --- | --- |
 | [LA1—LA6](../../LA1-LA6%E5%AE%9E%E6%96%BD%E4%B8%8E%E9%AA%8C%E6%94%B6.md) | 证据、来源、交付和恢复的阶段问题 | 用于解释失败与早期修复，当前机制另回读实现 |
 | [LA7—LA10](../../LA7-LA10%E5%AE%9E%E6%96%BD%E4%B8%8E%E9%AA%8C%E6%94%B6.md)，2026-09-08批次 | 产品共同任务、Text/Tree/Graph同环对照及动作 | LA7与LA9-v2分开；接入探针、配置无效首批和独立修复不拼接成绩 |
-| [EV3—EV4](../../performance/agent-eval-ev3-ev4-20260925.md) | 人工校准与分层题集 | 区分评分依据与真实产品回答 |
-| [EV5—EV6](../../performance/agent-eval-ev5-ev6-20260925.md) | 首个单题诊断与干预 | 只解释固定题目及其对照条件 |
-| [CQ8](../../performance/source-delivery-cq8-20260926.md) | 来源交付及范围表达 | 开发结果与人审校准分开；完整来源不自动消除过强推论 |
-| [EV7](../../performance/agent-eval-ev7-20260926.md) | 范围提示的单变量对照 | 六对十二份首次回答，候选未达到门槛而撤回 |
-| [2026-09-30构建恢复](../../performance/build-control-recovery-20260930.md) | 输入、交接、恢复与准备 | 历史耗时对应记录中的程序和阶段；当前流程按源码判断 |
-| [BSR7](../../performance/book-structure-bsr7.md) | 特定BookStructure成果及后续选择 | 各消费者、所选成果和计量口径分别保留 |
-| [SR6](../../performance/semantic-retrieval-20260930.md) | 构建期语义召回及Gold验收 | 排名改善与完整验收未通过同时记录 |
-| [EX12.4](../../performance/presentation-staged-authoring-ex12-4.md) | 分阶段制作、反馈与完整展开 | 局部制作结果与尚未闭合的原生验收分开 |
-| [EX13.6](../../performance/presentation-context-ex13/ex13-6/README.md) | 原聊天继续修订、确切版本及浏览器操作 | 支持该次同对象revision 2交付，不外推所有模型或长期学习效果 |
+| [EV3—EV4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md) | 人工校准与分层题集 | 区分评分依据与真实产品回答 |
+| [EV5—EV6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md) | 首个单题诊断与干预 | 只解释固定题目及其对照条件 |
+| [CQ8](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/source-delivery-cq8-20260926.md) | 来源交付及范围表达 | 开发结果与人审校准分开；完整来源不自动消除过强推论 |
+| [EV7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md) | 范围提示的单变量对照 | 六对十二份首次回答，候选未达到门槛而撤回 |
+| [2026-09-30构建恢复](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/build-control-recovery-20260930.md) | 输入、交接、恢复与准备 | 历史耗时对应记录中的程序和阶段；当前流程按源码判断 |
+| [BSR7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md) | 特定BookStructure成果及后续选择 | 各消费者、所选成果和计量口径分别保留 |
+| [SR6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/semantic-retrieval-20260930.md) | 构建期语义召回及Gold验收 | 排名改善与完整验收未通过同时记录 |
+| [EX12.4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md) | 分阶段制作、反馈与完整展开 | 局部制作结果与尚未闭合的原生验收分开 |
+| [EX13.6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md) | 原聊天继续修订、确切版本及浏览器操作 | 支持该次同对象revision 2交付，不外推所有模型或长期学习效果 |
 
 时间接近不等于实验条件相同。原始记录中的模型、程序、预算、题集和评分版本决定比较边界，表中日期只是查找入口。
 

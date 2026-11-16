@@ -58,12 +58,12 @@
 
 | 运行 | 结果 |
 | --- | --- |
-| MCP4 定向 `mcp_pack` | 8 通过、0 失败、0 忽略；[日志](performance/mcp4-20261011/mcp-pack.log) |
-| 免费次数、控制库、MCP1／MCP2、ADM2／ADM3 回归 | 38 通过、0 失败、0 忽略；[日志](performance/mcp4-20261011/regression.log) |
+| MCP4 定向 `mcp_pack` | 8 通过、0 失败、0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp4-20261011/mcp-pack.log) |
+| 免费次数、控制库、MCP1／MCP2、ADM2／ADM3 回归 | 38 通过、0 失败、0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp4-20261011/regression.log) |
 
 真实临时 SQLite 覆盖：购包同号重试／跨月重放、字段冲突、两类收款共用交易编号去重、失败回滚与释放句柄后重启；免费优先、跨月余量、月末／闰年期限、到期排除与同到期批次顺序；金额与次数独立更正、修订号冲突、不可扣回已消费次数、消费事实保留；两连接争最后一次；schema 11 消费保值升级、失败原子回滚和来源外键；经真实 Host 分发的混合收款、两类更正、赠送复用、权限与参数拒绝。
 
-本机默认构建遇到磁盘／PDB 环境错误；最终以相同 Rust 测试程序关闭调试输出运行，构建命令、测试命令与环境处理见 [验证记录](performance/mcp4-20261011/README.md)。
+本机默认构建遇到磁盘／PDB 环境错误；最终以相同 Rust 测试程序关闭调试输出运行，构建命令、测试命令与环境处理见 [验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp4-20261011/README.md)。
 
 ## 已知限制
 

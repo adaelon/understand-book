@@ -1,7 +1,0 @@
-{
-  "status": "passed",
-  "verified_at_utc": "2026-10-29T15:50:41.001798+00:00",
-  "compiled_teaching_and_feature_markers_present": 14,
-  "frontend_files_equal_local_verified_build": 300,
-  "model_requests": 0
-}

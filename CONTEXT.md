@@ -18,7 +18,7 @@
 ## 探究课程（InquiryCourse）
 从 BookStructure 已有章节问题、跨章主线或一段知识演进中选取教学主线，提前制作必要阅读、预测、实验、解释与最终任务，通过 WorkspaceRelease 交付可复用课件。章节路线默认一章一单元、一节一课及一个主问题；主题路线以跨章或局部演进的总问题组织各课主问题。每课默认完整学习投入为 20–30 分钟，包含思考、操作和作答；按可独立收束的理解目标拆合，一个主问题下组织多轮预测、实验、解释与综合应用，各轮可暂停和回看。路线数与课数分别表达，个人课程推进、实验现场和理解证据沿原私人学习存储保存。状态：首课合同、共享发布、阶段学习、帮助事实、冻结评分与私人恢复已实现并本地验收；第二版增加概念讲解、2D/3D 参数联动与实验保存，文字表达经既有 Coach 生成针对性反馈并进入原“我的理解”，四种真实作答已核对。2026-11-10 样课扩为三轮探究及独立综合题，原话、配置与解释逐轮保存，预计 27 分钟。课程预构建由 Codex 直接完成；学习时右侧 Agent、针对性反馈及理解分析继续使用已配置模型。2026-11-09 课程进入书内 Reader：左侧课程／原文／实验，右侧原 Agent；切换保留草稿与实验，插问冻结已展示内容与实时参数，反馈进入同一理解记录。真实 DeepSeek 候选经复核修正使用同一播放器。完整主题路线、原执行器自动制作和目标用户试学待续，见 [ADR-0182](docs/adr/0182-book-structure-led-inquiry-courses.md)及[切片方案](docs/切片方案-BookStructure驱动的探究课程.md)。
 
-2026-11-10 决策题接入连续教学：可选 `decision_teaching` 预置理解目标、支持和新情境。当前工作区直接展示反馈、补讲、一个追问及观察位置；续答、疑问和直接讲解分别记录。服务端依据最新已交付的判断及当前阶段真实原话开放进度，原题通过后还需完成新情境；沿原 Coach、教学事实和理解记录保存帮助条件。完整课程的旧版本保持冻结。见[决策教学验收](docs/evidence/inquiry-course-decision-20261110/README.md)。
+2026-11-10 决策题接入连续教学：可选 `decision_teaching` 预置理解目标、支持和新情境。当前工作区直接展示反馈、补讲、一个追问及观察位置；续答、疑问和直接讲解分别记录。服务端依据最新已交付的判断及当前阶段真实原话开放进度，原题通过后还需完成新情境；沿原 Coach、教学事实和理解记录保存帮助条件。完整课程的旧版本保持冻结。见决策教学验收。
 
 ## 学习工作区（LearningWorkspace）
 用户围绕已接受的大目标组织资料、聊天及私人理解的学习范围；当前打开的资料是其阅读焦点。同一用户的工作区共用账号额度，聊天、私人理解和局部画像按工作区归属，稳定偏好仍归账号。运行冻结目标版本和确切资料成员，资料读取同时受当前账号授权约束；旧记录经用户选择以原身份关联。状态：BOUNDARY_CHANGE，2026-10-18 W1–W5已完成，W6历史保留与选择承接已实现，验收记录统一见[切片方案](docs/切片方案-目标工作区与统一Agent额度.md)（[ADR-0170](docs/adr/0170-goal-scoped-learning-workspaces-and-shared-releases.md)）。
@@ -143,7 +143,7 @@ Agent在工作区冻结成员和当前授权范围内，以确切发布引用检
 读者验证持有权后绑定到其账号、用于登录与找回密码的邮箱，一个邮箱只对应一个账号。绑定邮箱保留账号原有身份、私人阅读成果、材料授权和使用额度；状态：注册验证、邮箱登录、老账号首次绑定与找回密码已实现（2026-10-09，[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
 
 ## 内测默认资料（Beta default materials）
-站内账号默认可阅读当前已发布资料的默认版本，排除 `understandbook`；同一资料不重复发放历史版本。正式名单由 `default_book_grants` 保存，在邮箱注册或受信开户事务内复制到账号授权。发布新资料或替换默认版本时同步维护名单与已有账号授权；历史阅读所需的原授权保留。状态：EXISTING，2026-10-27 已补齐 14 份资料及已有邮箱账号，见[授权修复记录](docs/performance/catalog-access-20261027/README.md)。
+站内账号默认可阅读当前已发布资料的默认版本，排除 `understandbook`；同一资料不重复发放历史版本。正式名单由 `default_book_grants` 保存，在邮箱注册或受信开户事务内复制到账号授权。发布新资料或替换默认版本时同步维护名单与已有账号授权；历史阅读所需的原授权保留。状态：EXISTING，2026-10-27 已补齐 14 份资料及已有邮箱账号，见[授权修复记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/catalog-access-20261027/README.md)。
 
 ## 待完成注册（PendingRegistration）
 持有内测码的申请者提交注册信息后、完成邮箱验证前的注册申请，尚未成为读者账号。仅成功完成注册时使用内测码，申请失败或过期不消耗注册资格；状态：EXISTING，INV4 已实现（2026-10-09，[ADR-0159](docs/adr/0159-email-accounts-and-single-use-beta-invites.md)）。
@@ -678,7 +678,7 @@ BookStructure 构建中对一个章或节的有来源理解，表达该单元的
 从公共材料中发现、具有来源依据和讲解价值的内容候选，保留其含义、成立条件及所在章节。经章节或主题取舍后成为正式重点；未入选宏观路线不表示候选失效，也不表示读者已掌握。状态：EXISTING，BSR1 候选保留与引用物化已实现（[ADR-0151 §2](docs/adr/0151-book-structure-global-outline-and-semantic-retrieval.md#2-候选重点与章节取舍)）。
 
 ## BookStructure 主题工作集
-围绕一个跨章问题组织的相关章节、候选重点与依据，用于说明这个问题在后续内容中加入了哪些条件、发生了哪些判断变化。它的成员可以是不同机制；共同主题不等于对象同一或阅读前置依赖。状态：EXISTING，BSR4 合同及真实主题局部对照完成，BSR5 正式调度与发布已接入（[ADR-0151 §3](docs/adr/0151-book-structure-global-outline-and-semantic-retrieval.md#3-跨章主题与依赖)、[验收](docs/performance/book-structure-bsr3-bsr4.md)）。
+围绕一个跨章问题组织的相关章节、候选重点与依据，用于说明这个问题在后续内容中加入了哪些条件、发生了哪些判断变化。它的成员可以是不同机制；共同主题不等于对象同一或阅读前置依赖。状态：EXISTING，BSR4 合同及真实主题局部对照完成，BSR5 正式调度与发布已接入（[ADR-0151 §3](docs/adr/0151-book-structure-global-outline-and-semantic-retrieval.md#3-跨章主题与依赖)、[验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr3-bsr4.md)）。
 
 ## 结构投影 (structure projection)
 BookStructure 在读时围绕某个 LID 投影出的结构解释 `[ADR-0045]`:回答“当前位置在全书/当前 spine/throughline/key_stop 中意味着什么”。它只消费公共 BookStructure sidecar 与真实 LID,不消费 `ReaderProfileSnapshot`、MemoryDocument 或读者 viewport。状态:BOUNDARY_CHANGE(详见 [docs/adr/0045], [docs/adr/0075])。
@@ -984,7 +984,7 @@ Agent 可理解、可观察、可行动并获得真实反馈的学习现场，�
 在当前请求得到完整回应后，选择一个有价值且容易参与的接话入口：表达当前理解，或从已给对象和条件出发观察、猜想、预测，由此打开下一知识关系。邀请不以复习或证明掌握为前提，不要求猜陌生术语，也不构成新的课程关卡。普通聊天沿真实历史接续；主动教学沿既有 `participation=invite → response_expectation → responds_to` 保存并回应邀请，未来帮助仍归 `TeachingContinuation`。用户回答后先回应其具体关系再调整帮助；受助表达保留帮助条件，“不知道”“继续”及跳过均不产生掌握证明。状态：BOUNDARY_CHANGE，2026-10-28；权威原则见 [learner_starting_point.md](crates/runtime/src/learner_starting_point.md)，实现与验证见[实施记录](docs/实施记录-教学对话接续.md)。
 
 ## 苏格拉底式问答
-Agent 讲清当前话题，或交付了可以一起观察的演示后，可以在同一条回答里留一个开放问题。读者的猜测、理由、反问和纠正决定下一轮怎样讲、再问什么。当前聊天和资料版本里实际交付的问题是接续依据。连续教学沿普通表达邀请保存原话及当时的帮助条件。要求直接讲解就给出解释，选择「先到这里」就收束本段讨论。[实现与验收](docs/performance/socratic-dialogue-20261104/README.md)
+Agent 讲清当前话题，或交付了可以一起观察的演示后，可以在同一条回答里留一个开放问题。读者的猜测、理由、反问和纠正决定下一轮怎样讲、再问什么。当前聊天和资料版本里实际交付的问题是接续依据。连续教学沿普通表达邀请保存原话及当时的帮助条件。要求直接讲解就给出解释，选择「先到这里」就收束本段讨论。实现与验收
 
 ## 建议选择（TeachingChoice）
 读者接受某次已交付建议中一个选项的明确请求。选择只表达本次希望获得的帮助，不代表已经执行、完成作答、掌握知识或确认长期偏好。状态：EXISTING，设计已确认（[ADR-0163 §4/§6](docs/adr/0163-tutor-continuation-and-contextual-reading-entry.md)）。
@@ -1016,10 +1016,10 @@ ResidentGoal 内由 Agent 维护、随实际观察修订的工作安排，用工
 用户通过入口选择的本次目的：discover、understand、exam 或 explore，随已解析交互与教学阶段保存。discover 只请求当前范围概览；其他目的沿原教学控制开始或接续阶段。它不覆盖工作区大目标、不决定固定教法，也不成为理解证据。状态：NEW，2026-10-22 目的点击与服务端接纳链路已实现，验证状态见[实施方案](docs/实施方案-Tutor教练与用户参与闭环.md#10-验证与会改变实施的失败)。
 
 ## 教学教练（TeachingCoach）
-Tutor 内在回合交付后整理真实学习表达的后台模型角色。普通聊天只产出有原话、表达前帮助、来源与知识关联依据的理解观察，不为尚未到来的问题生成下一步教案；当前主讲负责本轮取材、核验与回答。课程播放器沿独立输入路径消费 course_feedback/next_step。阶段起步没有已完成对话，宿主保存空观察，不调用模型。状态：BOUNDARY_CHANGE，2026-11-12 本地实现；验证和部署状态见[教学上下文记录](docs/performance/teaching-context-20261112/README.md)。
+Tutor 内在回合交付后整理真实学习表达的后台模型角色。普通聊天只产出有原话、表达前帮助、来源与知识关联依据的理解观察，不为尚未到来的问题生成下一步教案；当前主讲负责本轮取材、核验与回答。课程播放器沿独立输入路径消费 course_feedback/next_step。阶段起步没有已完成对话，宿主保存空观察，不调用模型。状态：BOUNDARY_CHANGE，2026-11-12 本地实现；验证和部署状态见教学上下文记录。
 
 ## 教练指导与依赖（CoachGuidance / CoachTurnDependency）
-保留源回合、阶段与目标版本以及观察依据的私有记录。普通聊天输出只含 observations/reason，生成合同不含推测的计划字段；既有课程任务仍保留其实际消费的反馈与下一步。接纳下一轮时冻结已经就绪的结果，不等待后台模型，不在本轮热替换。主讲只获得历史观察回执；未评估的解释在 grounding 与 continuity 中保留相同的 nature/status、原话、帮助和纠正引用，不展开成当前诊断。任务、尝试、结果与消费记录仍沿既有 LearningMemory 保存。状态：BOUNDARY_CHANGE，2026-11-12；见同一[实现记录](docs/performance/teaching-context-20261112/README.md)。
+保留源回合、阶段与目标版本以及观察依据的私有记录。普通聊天输出只含 observations/reason，生成合同不含推测的计划字段；既有课程任务仍保留其实际消费的反馈与下一步。接纳下一轮时冻结已经就绪的结果，不等待后台模型，不在本轮热替换。主讲只获得历史观察回执；未评估的解释在 grounding 与 continuity 中保留相同的 nature/status、原话、帮助和纠正引用，不展开成当前诊断。任务、尝试、结果与消费记录仍沿既有 LearningMemory 保存。状态：BOUNDARY_CHANGE，2026-11-12；见同一实现记录。
 
 ## 本轮教学安排与普通答疑
 教案组织需要持续的学习问题、先后关系、材料和呈现方式。blocks[].relation 记录有来源依据的学习问题或操作，引用知识关系时保留原文范围和条件；教师的临时类比和未验证推断不作为可复用知识结论。普通解释、澄清和纠错在原教学会话内直接提供本轮 target，不自动采用旧 design_ref；练习、正式活动及教学演示仍采用已接纳教案。来源读取、实际表达、未答邀请及交付记录沿原合同保存。局部插问不改写连续学习位置；证据推翻旧关系时，重新采用前须修订相关关系及依赖。状态：BOUNDARY_CHANGE，2026-11-12。
@@ -1034,7 +1034,7 @@ Agent 基于当前材料、相关历史与会话学习意图采用的当前学�
 用户显式开启、归属当前学习目标的持续约定：普通教学由 TutorSession 持有，课程由 CourseRun 持有；每次尝试关联确切聊天、问题、原话和实际帮助。练习现场只显示当前题目、对话与作答，原文、笔记、课件、演示及此前讲解暂时收起。Agent 围绕当前目标追问和补教，受助后用尚未被代答的新判断观察独立表现，依据充分即收束本轮。模式与默认教法、题目正确、课程进度及长期理解分别表达。暂停继续遮住资料并恢复同一次尝试；返回资料后用新尝试验证。状态：已实施，2026-11-15；状态为 teaching_trace 的 ClosedBookPractice 投影，沿 Resident 的 tutor.step 与实际交付推进。见 [ADR-0183](docs/adr/0183-closed-book-dialogue-to-independent-performance.md)、[切片方案](docs/切片方案-闭卷对话练到会.md)和[实施记录](docs/实施记录-闭卷对话练到会.md)。
 
 ## TutorLoop
-在原生学习环境中持续读取实际表达与既有帮助、解释或组织教学活动，并把新表达保存为可纠正理解观察的读时循环。主 Agent 结合最新请求、会话教法、真实事实及可信原文决定本轮回应；普通问答直接提供 target，持续学习活动显式采用 TeachingDesign。普通聊天 Coach 在交付后整理观察，下一轮不等待后台规划；课程反馈沿原课程合同返回反馈与后续安排。阶段起步不调用 Coach 模型。系统维护来源、实际交付与受助条件，已讲过不等于已理解。状态：BOUNDARY_CHANGE，2026-11-12；当前职责见[实现记录](docs/performance/teaching-context-20261112/README.md)，历史决策见 [ADR-0174](docs/adr/0174-teaching-coach-and-participation-planning.md)。
+在原生学习环境中持续读取实际表达与既有帮助、解释或组织教学活动，并把新表达保存为可纠正理解观察的读时循环。主 Agent 结合最新请求、会话教法、真实事实及可信原文决定本轮回应；普通问答直接提供 target，持续学习活动显式采用 TeachingDesign。普通聊天 Coach 在交付后整理观察，下一轮不等待后台规划；课程反馈沿原课程合同返回反馈与后续安排。阶段起步不调用 Coach 模型。系统维护来源、实际交付与受助条件，已讲过不等于已理解。状态：BOUNDARY_CHANGE，2026-11-12；当前职责见实现记录，历史决策见 [ADR-0174](docs/adr/0174-teaching-coach-and-participation-planning.md)。
 
 ## 认知积木
 学习者能够从已有理解出发理解、操作和组合，用于建立新理解的知识关系、模型、方法或表征；其范围、表达方式与提供时机取决于当前目标、实际表现和所需帮助。同一内容可以形成适合不同学习起点的认知积木，价值体现为学习者能够借它完成具体判断、解释或运用。状态：NEW，设计已接受；TB2 文字教学、TB3 回应与记忆接续、TB4 操作教具及现场接续通过工程与子代理内容验收（2026-10-12，[ADR-0164](docs/adr/0164-tutor-mission-and-cognitive-building-blocks.md)）。
@@ -1195,7 +1195,7 @@ Resident 模型—工具循环用尽最后一个合法工具批次后，由 Runt
 一次构建运行在开始前确定、执行期间保持不变的宿主、模型路由、模型预算与传输能力组合。更换宿主后的运行重新评估该组合，历史记录保留原义。状态：已接入 Codex 旧分支与 DSH 公共标准构建源码路径；模型快照、确认记录与传输 profile 由 invocation 绑定（[ADR-0138 §6](docs/adr/0138-multi-harness-prebuild-and-deepseek-harness-adapter.md#6-执行配置显式绑定协议扩展不伪装成字节不变)）。
 
 ## 页面结果读取（preview reading）
-`presentation.author.preview(read_selector)` 在最后一个动作后，同次读取一个可见区域的完整文字、实际页面参数、原生控件和可用场景位置；candidate、environment 与 action_step 标明观察来源。action_step 是预览动作序号，数学步号来自页面状态/读数。投影整体保留结果与上下文，预算不足时整条省略并要求缩小范围。状态：已确认并实现（[结果读取记录](docs/performance/explorable-explanation-ex2-result-read-20260927.md)）。
+`presentation.author.preview(read_selector)` 在最后一个动作后，同次读取一个可见区域的完整文字、实际页面参数、原生控件和可用场景位置；candidate、environment 与 action_step 标明观察来源。action_step 是预览动作序号，数学步号来自页面状态/读数。投影整体保留结果与上下文，预算不足时整条省略并要求缩小范围。状态：已确认并实现（[结果读取记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex2-result-read-20260927.md)）。
 
 ## Provider 续接状态与采样状态快照
 
@@ -1281,7 +1281,7 @@ Resident Run 开始时固定的用户、原聊天、原材料与原现场代次�
 当前聊天在明确记录范围内的阅读活动回顾，列出讨论过的问题、引用的原文、留下的成果和待继续事项，并关联原回合与实际来源。它表达阅读过程中发生过什么，读者的理解程度和学习结论由既有教学证据定义。状态：EXISTING，JL8–JL9 已实现并验证（[ADR-0153](docs/adr/0153-session-reading-recap.md)）。
 
 ## 知识树与理解果实（Knowledge tree / understanding fruit）
-知识树是既有公共内容的程序投影：章、节提供导航，普通段落/公式/图片 LID 只作来源定位；同节同一条目保留一个入口，Pass1、discourse、BookStructure 或音乐/视频成果提供具体知识与来源；树形父子表示浏览归属，语义联系沿原关系保留。理解果实是私人 LearningEvidence 的可视入口，按版本明确的知识引用与真实用户引文归属，承接帮助条件、纠正和时间线。当前位置与理解证据分开；接续无需笔记。状态：EXISTING，本地实现已验收，见 [ADR-0181](docs/adr/0181-source-knowledge-tree-and-understanding-fruits.md) 与[验收记录](docs/performance/knowledge-tree-20261105/README.md)。
+知识树是既有公共内容的程序投影：章、节提供导航，普通段落/公式/图片 LID 只作来源定位；同节同一条目保留一个入口，Pass1、discourse、BookStructure 或音乐/视频成果提供具体知识与来源；树形父子表示浏览归属，语义联系沿原关系保留。理解果实是私人 LearningEvidence 的可视入口，按版本明确的知识引用与真实用户引文归属，承接帮助条件、纠正和时间线。当前位置与理解证据分开；接续无需笔记。状态：EXISTING，本地实现已验收，见 [ADR-0181](docs/adr/0181-source-knowledge-tree-and-understanding-fruits.md) 与验收记录。
 
 
 ## 理解地图与变化小结（Understanding map / learner change summary）
@@ -1296,4 +1296,4 @@ Resident Run 开始时固定的用户、原聊天、原材料与原现场代次�
 
 
 ## 问题目的与理解接续（Question purpose）
-实际交付问题的教师意图，说明当前要弄清的关系、提问理由、留给学习者的推理、观察什么表达及使用哪些已有依据。课内复用 `CoachNextStep`，右侧随 `SocraticQuestion` 保存；下一轮从原交付恢复，连同新表达和真实帮助解释理解变化。它不代表学习者诊断，不是未来教案，也不决定课程通过。直接补讲或收束不必产生新问题，未确认不等于不会。状态：EXISTING，2026-11-13 本地实现，见[接续记录](docs/evidence/socratic-purpose-20261113/README.md)。
+实际交付问题的教师意图，说明当前要弄清的关系、提问理由、留给学习者的推理、观察什么表达及使用哪些已有依据。课内复用 `CoachNextStep`，右侧随 `SocraticQuestion` 保存；下一轮从原交付恢复，连同新表达和真实帮助解释理解变化。它不代表学习者诊断，不是未来教案，也不决定课程通过。直接补讲或收束不必产生新问题，未确认不等于不会。状态：EXISTING，2026-11-13 本地实现，见接续记录。

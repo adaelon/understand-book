@@ -1,6 +1,6 @@
 # MU7 受限制作接口
 
-日期：2026-09-30。实现依据为 [ADR-0147 §8](adr/0147-linux-multi-reader-service-without-redis.md)；实机记录见 [MU7 验证](performance/linux-multi-reader-mu7-20260930.md)。
+日期：2026-09-30。实现依据为 [ADR-0147 §8](adr/0147-linux-multi-reader-service-without-redis.md)；实机记录见 [MU7 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu7-20260930.md)。
 
 ## 配置与能力
 

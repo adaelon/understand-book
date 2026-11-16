@@ -66,4 +66,4 @@
 
 ## 证据
 
-本地可复核结果见 [发布验收目录](performance/linux-ex13-jl-20261002/)，主要回执为 [部署](performance/linux-ex13-jl-20261002/deployment.json)、[正式服务与成果核对](performance/linux-ex13-jl-20261002/production-receipt.json)、[公网浏览器](performance/linux-ex13-jl-20261002/production-browser.json)、[备份恢复](performance/linux-ex13-jl-20261002/recovery.json)、[现场追问与追加写入](performance/linux-ex13-jl-20261002/provider-smoke.json) 和 [隔离滚动预览](performance/linux-ex13-jl-20261002/network-scroll.json)。日志分组有重叠，不合计为去重测试总数。
+本地可复核结果见 [发布验收目录](performance/linux-ex13-jl-20261002/)，主要回执为 [部署](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-ex13-jl-20261002/deployment.json)、[正式服务与成果核对](performance/linux-ex13-jl-20261002/production-receipt.json)、[公网浏览器](performance/linux-ex13-jl-20261002/production-browser.json)、[备份恢复](performance/linux-ex13-jl-20261002/recovery.json)、[现场追问与追加写入](performance/linux-ex13-jl-20261002/provider-smoke.json) 和 [隔离滚动预览](performance/linux-ex13-jl-20261002/network-scroll.json)。日志分组有重叠，不合计为去重测试总数。

@@ -1,6 +1,6 @@
 # 切片方案：Tutor 使命与认知积木
 
-状态：2026-10-12，设计已确认，TB0–TB5 完成；TB2–TB4 按用户成本约束通过工程与 GPT-6.1-Sol 教学内容验收，本次与 TO0–TO14 集成；TB6 跨材料与真人验收留作上线使用后的后续工作。[TB5 记录](performance/tutor-building-blocks-tb5/README.md)保存教法／理解视图、TB4 实际记录的浏览器读取与纠正重开验收，新增模型调用 0；[TB4 记录](performance/tutor-building-blocks-tb4/README.md)保存操作教具、实际版本／现场与原聊天接续、2 次子代理实验及局部修正；[TB3 记录](performance/tutor-building-blocks-tb3/README.md)保存帮助适配、事实回读修复、16 次实验与四组回应／重开交付；[TB2 记录](performance/tutor-building-blocks-tb2/README.md)保存前置交付和 DeepSeek 历史未结项；[TB1 记录](performance/tutor-building-blocks-tb1/README.md)固定材料与输入。对应 [ADR-0164](adr/0164-tutor-mission-and-cognitive-building-blocks.md)。
+状态：2026-10-12，设计已确认，TB0–TB5 完成；TB2–TB4 按用户成本约束通过工程与 GPT-6.1-Sol 教学内容验收，本次与 TO0–TO14 集成；TB6 跨材料与真人验收留作上线使用后的后续工作。[TB5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb5/README.md)保存教法／理解视图、TB4 实际记录的浏览器读取与纠正重开验收，新增模型调用 0；[TB4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb4/README.md)保存操作教具、实际版本／现场与原聊天接续、2 次子代理实验及局部修正；[TB3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb3/README.md)保存帮助适配、事实回读修复、16 次实验与四组回应／重开交付；[TB2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb2/README.md)保存前置交付和 DeepSeek 历史未结项；[TB1 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb1/README.md)固定材料与输入。对应 [ADR-0164](adr/0164-tutor-mission-and-cognitive-building-blocks.md)。
 
 后续设计（2026-10-20）：[交互教学与学习接续](切片方案-交互教学与学习接续.md)沿用本方案的教学使命和证据边界，补充语义现场、教师实时演示与有依据的学习接续；[ADR-0172](adr/0172-interactive-teaching-state-and-learning-continuity.md)已接受，实施进度以该切片方案为准。
 
@@ -154,18 +154,18 @@ TB1 以真实材料和自然问题建立基线；TB6 再加入一段实际论证
 | 切片 | 产出 | 依赖 | 状态 |
 |---|---|---|---|
 | TB0 | 术语、ADR 与切片方案 | 用户确认 | 完成 |
-| TB1 | 同一工具基线上的真实材料、可复跑输入和现状记录 | TB0，固定已同步的 TO 版本 | 完成，见[实施记录](performance/tutor-building-blocks-tb1/README.md) |
-| TB2 | 按需指导驱动的首条文字教学路径与实际请求 | TB1 | 完成，工程与子代理内容验收，见 [记录](performance/tutor-building-blocks-tb2/README.md) |
-| TB3 | 回应后的帮助调整与记忆接续 | TB2 | 完成，工程与子代理内容验收，见 [记录](performance/tutor-building-blocks-tb3/README.md) |
-| TB4 | 认知积木在交互教具中的使用 | TB3 | 完成，工程与子代理内容验收，见 [记录](performance/tutor-building-blocks-tb4/README.md) |
-| TB5 | 教法与理解视图的用户表达 | TB3，采用 TB4 的已交付样例 | 完成，见 [记录](performance/tutor-building-blocks-tb5/README.md) |
+| TB1 | 同一工具基线上的真实材料、可复跑输入和现状记录 | TB0，固定已同步的 TO 版本 | 完成，见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb1/README.md) |
+| TB2 | 按需指导驱动的首条文字教学路径与实际请求 | TB1 | 完成，工程与子代理内容验收，见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb2/README.md) |
+| TB3 | 回应后的帮助调整与记忆接续 | TB2 | 完成，工程与子代理内容验收，见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb3/README.md) |
+| TB4 | 认知积木在交互教具中的使用 | TB3 | 完成，工程与子代理内容验收，见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb4/README.md) |
+| TB5 | 教法与理解视图的用户表达 | TB3，采用 TB4 的已交付样例 | 完成，见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb5/README.md) |
 | TB6 | 跨场景、真实读者和全链路验收 | TB4、TB5 | 后续进行，不阻塞本次集成 |
 
 每片只修改其行为所需接点；完成时更新本表和该片实施记录。有代码修改时同步代码链路，真实组件或数据流边界改变时再更新架构。TB5 已收口；先集成已完成能力，TB6 随后续真实使用推进。
 
 ## TO 与 TB 的并行边界
 
-设计修订时 TO0–TO2 已完成。TB1/TB2 从 TO2 开始，TB2 首轮观察到参数阻断后已集成主工作区完成的 TO3，并把改前／改后教学指导放到同一 TO3 基线重新配对；见 [TB2 记录](performance/tutor-building-blocks-tb2/README.md)。TO4 及后续工具能力按各自完成情况接入。
+设计修订时 TO0–TO2 已完成。TB1/TB2 从 TO2 开始，TB2 首轮观察到参数阻断后已集成主工作区完成的 TO3，并把改前／改后教学指导放到同一 TO3 基线重新配对；见 [TB2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb2/README.md)。TO4 及后续工具能力按各自完成情况接入。
 
 | 共享范围 | TO 负责 | TB 负责 | 集成时核对 |
 |---|---|---|---|
@@ -183,7 +183,7 @@ TB1 以真实材料和自然问题建立基线；TB6 再加入一段实际论证
 
 ## TB1 真实材料与教学行为基线
 
-**输入**：固定 TO 版本的 Tutor 基线、[TC0 基线](performance/tutor-continuation-tc0-baseline.md)、[TC6 纠正轨迹](performance/tutor-continuation-tc6.md)及对应测试夹具。历史轨迹用于选取问题，新对照保留可重跑的基线代码与实际请求。
+**输入**：固定 TO 版本的 Tutor 基线、[TC0 基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc0-baseline.md)、[TC6 纠正轨迹](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc6.md)及对应测试夹具。历史轨迹用于选取问题，新对照保留可重跑的基线代码与实际请求。
 
 **责任与产出**：复用 `crates/server/src/tests/tutor_loop_tests.rs`、`tutor_continuation_tests.rs` 的运行入口，在 `docs/performance/tutor-building-blocks-tb1/` 保存可复跑材料、输入及现状记录；冻结原文范围、初始会话状态、明确背景、自然问题和预期可观察行为，并固定模型设置、重复次数、费用／token 预算及停止条件。
 
@@ -217,7 +217,7 @@ TB1 以真实材料和自然问题建立基线；TB6 再加入一段实际论证
 
 **完成判据**：原会话接续及重开同一有效会话后，相关事实可以回读，帮助条件保留，下一步确实采用更新后的理解。普通表达与正式表现沿各自证据语义处理。
 
-**实施结果（2026-10-12）**：指导 `tb3.v1`；修复来源理解记录的分页发现、Web 翻页与纠正后重载，以及引用普通回应形成假设时的已展示帮助遗漏。长原话分块、旧假设替代和帮助条件有确定性回归；四种脚本回应及同会话重开均有实际交付，重开复用既有理解而不重复记能力证据。12 次固定实验加 4 次授权参数修复，原始失败及一处额外删除可选交付引用的修复偏差保留。改前已存在适配行为，本次不据单样本推断普遍提升。证据与限制见 [TB3 记录](performance/tutor-building-blocks-tb3/README.md)。
+**实施结果（2026-10-12）**：指导 `tb3.v1`；修复来源理解记录的分页发现、Web 翻页与纠正后重载，以及引用普通回应形成假设时的已展示帮助遗漏。长原话分块、旧假设替代和帮助条件有确定性回归；四种脚本回应及同会话重开均有实际交付，重开复用既有理解而不重复记能力证据。12 次固定实验加 4 次授权参数修复，原始失败及一处额外删除可选交付引用的修复偏差保留。改前已存在适配行为，本次不据单样本推断普遍提升。证据与限制见 [TB3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb3/README.md)。
 
 ## TB4 可操作的认知积木
 
@@ -231,7 +231,7 @@ TB1 以真实材料和自然问题建立基线；TB6 再加入一段实际论证
 
 **完成判据**：用户能够用教具检验一个具体判断，并围绕实际结果继续原对话；Agent 的下一次帮助引用正确版本和现场。实际操作事实与理解判断分别保存。
 
-**实施结果（2026-10-12）**：指导 `tb4.v1`，沿 TB3 未答活动交付 Copy／引用方式的双组对照教具。四组代码经实际编译／运行核对；真实 author、五次预览、交付、浏览器保存／重开和原聊天接续成立。接续采用实际版本和发送时现场，区分教具结果与脚本用户推断，保留帮助条件及未评分性质。两次新增授权模型实验完成；原输出的状态恢复字段、来源按钮配色及新解释引用遗漏由主代理局部修正，原件与修正后结果分别保留。TO4 尚未实施，使用现有工具契约。详见 [TB4 记录](performance/tutor-building-blocks-tb4/README.md)。
+**实施结果（2026-10-12）**：指导 `tb4.v1`，沿 TB3 未答活动交付 Copy／引用方式的双组对照教具。四组代码经实际编译／运行核对；真实 author、五次预览、交付、浏览器保存／重开和原聊天接续成立。接续采用实际版本和发送时现场，区分教具结果与脚本用户推断，保留帮助条件及未评分性质。两次新增授权模型实验完成；原输出的状态恢复字段、来源按钮配色及新解释引用遗漏由主代理局部修正，原件与修正后结果分别保留。TO4 尚未实施，使用现有工具契约。详见 [TB4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb4/README.md)。
 
 ## TB5 教法与理解视图
 
@@ -245,7 +245,7 @@ TB1 以真实材料和自然问题建立基线；TB6 再加入一段实际论证
 
 **完成判据**：读者能理解 Tutor 正在怎样帮助自己，并能指出理解记录中不符合实际的部分；当前模式和直接讲解入口含义清楚。
 
-**实施结果（2026-10-12）**：教法说明覆盖尝试、示范与按需帮助，区分会话默认和当前请求；假设详情直接显示适用目标及帮助条件、原话、暂定解释和纠正，普通交流明确未评分。复用原接口字段，生产后端与领域合同无变化。20 项组件、1 项实际记录投影／纠正、1 项浏览器 host 和 1 条完整浏览器路径通过，类型检查通过；TB4 记录经实际接口纠正、重开后保留原话与帮助条件，能力投影为空。新增模型调用 0，见 [TB5 记录](performance/tutor-building-blocks-tb5/README.md)。
+**实施结果（2026-10-12）**：教法说明覆盖尝试、示范与按需帮助，区分会话默认和当前请求；假设详情直接显示适用目标及帮助条件、原话、暂定解释和纠正，普通交流明确未评分。复用原接口字段，生产后端与领域合同无变化。20 项组件、1 项实际记录投影／纠正、1 项浏览器 host 和 1 条完整浏览器路径通过，类型检查通过；TB4 记录经实际接口纠正、重开后保留原话与帮助条件，能力投影为空。新增模型调用 0，见 [TB5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb5/README.md)。
 
 ## TB6 全链路与真实读者验收
 
@@ -267,7 +267,7 @@ TB1 以真实材料和自然问题建立基线；TB6 再加入一段实际论证
 
 真实对照沿 [TO14](切片方案-工具契约与Agent可用性优化.md#to14真实-agent-对照与可复用阅读案例) 的固定采样办法，在 TB 每片按需执行。TB 前后比较固定同一 TO 版本；如果合入 TO 变化会影响对应请求或结果，则将前后两个教学版本都置于新的共同工具基线上重跑受影响场景，保留旧记录。两条线一同变化的单次结果只用于集成验收。
 
-2026-10-12 起按用户 API 成本约束，教学内容与指导实验优先用 GPT-6.1-Sol 子代理；前后版本使用相同模型、推理设置、固定输入与工具说明，独立上下文，每组每版一次，保留实际输出与失败。工程行为沿确定性测试验证；DeepSeek 专项调用仅在用户明确要求后执行最小必要样例。子代理结果不替代生产 Provider 端到端或真人验收，也不与 DeepSeek 历史输出混作指导前后对照。具体记录见 [TB2 后续实验方式](performance/tutor-building-blocks-tb2/README.md#后续实验方式)。
+2026-10-12 起按用户 API 成本约束，教学内容与指导实验优先用 GPT-6.1-Sol 子代理；前后版本使用相同模型、推理设置、固定输入与工具说明，独立上下文，每组每版一次，保留实际输出与失败。工程行为沿确定性测试验证；DeepSeek 专项调用仅在用户明确要求后执行最小必要样例。子代理结果不替代生产 Provider 端到端或真人验收，也不与 DeepSeek 历史输出混作指导前后对照。具体记录见 [TB2 后续实验方式](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb2/README.md#后续实验方式)。
 
 活动输入量、累计 usage、费用、重试和端到端耗时附在真实交付旁，活动上下文与累计计费分别报告。无实际收益且明显增加输入的指导或案例应收敛；任务未完成、内容错误和用户无法使用的过程保留为失败。涉及模型的验证复用已有实际请求／审计入口，参数示例验证复用 TO2 的最终投影与真实解析机制；输入与相关行为未变时沿用已通过的结果。
 
@@ -279,7 +279,7 @@ TB1 以真实材料和自然问题建立基线；TB6 再加入一段实际论证
 - Web 组件：`pnpm --filter @understand-book/web test src/components/TutorPanel.test.ts src/components/UnderstandingSpace.test.ts`；触及活动再加入 `TutorActivities.test.ts`，并运行该包类型检查。
 - 演示与接续交互：复用 `packages/web/playwright/tutor-workspace.spec.ts`、`tutor-continuity.spec.ts` 的相关路径，配置和测试数据以当前实现为准。
 
-本次先集成并发布已完成能力，见 [集成记录](performance/integration-to-tb-20261012/README.md)。后续启动 TB6 时读取 [TB5 记录](performance/tutor-building-blocks-tb5/README.md)与 TB4 已交付样例，固定另一段论证／定义辨析材料、可观察活动和真实读者入口，再按 TB6 合同执行全链路验收。教学实验继续优先 GPT-6.1-Sol，新增实验预先固定次数；TB3 的 16 次及 TB4 新增 2 次授权均已用完，TB5 未新增调用。DeepSeek 历史失败和未知 usage 保留，不阻塞本地工作。
+本次先集成并发布已完成能力，见 [集成记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/integration-to-tb-20261012/README.md)。后续启动 TB6 时读取 [TB5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb5/README.md)与 TB4 已交付样例，固定另一段论证／定义辨析材料、可观察活动和真实读者入口，再按 TB6 合同执行全链路验收。教学实验继续优先 GPT-6.1-Sol，新增实验预先固定次数；TB3 的 16 次及 TB4 新增 2 次授权均已用完，TB5 未新增调用。DeepSeek 历史失败和未知 usage 保留，不阻塞本地工作。
 
 ## 8 已知限制
 

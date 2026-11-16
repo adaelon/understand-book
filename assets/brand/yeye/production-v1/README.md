@@ -19,10 +19,10 @@ $env:NODE_PATH = 'C:\Users\Lenovo\.cache\codex-runtimes\codex-primary-runtime\de
 node assets/brand/yeye/production-v1/export.mjs
 ```
 
-组件用法、生产路径验证及实际尺寸截图见 [YY2 交付记录](../../../../docs/performance/yeye-brand-yy2-20261013/README.md)。
+组件用法、生产路径验证及实际尺寸截图见 [YY2 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy2-20261013/README.md)。
 
 ## YY6 生产动画
 
 `packages/web/src/assets/yeye/idle.json` 与 `reading.json` 分别复制自 `animation-v1/idle/lottie.json`、`animation-v1/reading/lottie.json`，保留原始图层与 1254×1254 坐标，大小为 69,728／53,491 字节。运行时 `loadYeyeAnimation` 将唯一的 `approved-art` 引用替换为本页所列同画布 WebP 的构建 URL；SVG 仍按原坐标绘制图片和局部矢量层。
 
-运行库为固定的 `lottie-web@5.13.0`，对应 MIT 许可从 `animation-v1/licenses/lottie-web-MIT.txt` 复制至 `packages/web/public/licenses/lottie-web-MIT.txt`。产品按需加载当前 JSON 与运行库，success 保留在制作目录。播放策略、网络记录和截图见 [YY6 交付记录](../../../../docs/performance/yeye-brand-yy6-20261013/README.md)。
+运行库为固定的 `lottie-web@5.13.0`，对应 MIT 许可从 `animation-v1/licenses/lottie-web-MIT.txt` 复制至 `packages/web/public/licenses/lottie-web-MIT.txt`。产品按需加载当前 JSON 与运行库，success 保留在制作目录。播放策略、网络记录和截图见 [YY6 交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/yeye-brand-yy6-20261013/README.md)。

@@ -1,6 +1,6 @@
 # Tutor 预构建不阻塞教学切片方案
 
-发布记录（2026-10-09）：T15–T18 随 INV9 同版上线，原版本因缺少必要接纳回执阻塞旧书。随后按用户要求将 Tutor 准入改为直接检查已有基础成品；此修复已于 20:32:02 HKT 部署，旧书无需重建或重新导入，见 [上线记录](performance/tutor-artifacts-deployment-20261009/README.md)。T19 仍待验收。见 [INV9 发布运行单](邮箱账号-INV9发布运行单.md)。
+发布记录（2026-10-09）：T15–T18 随 INV9 同版上线，原版本因缺少必要接纳回执阻塞旧书。随后按用户要求将 Tutor 准入改为直接检查已有基础成品；此修复已于 20:32:02 HKT 部署，旧书无需重建或重新导入，见 [上线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-artifacts-deployment-20261009/README.md)。T19 仍待验收。见 [INV9 发布运行单](邮箱账号-INV9发布运行单.md)。
 
 日期：2026-10-09。状态：T14 文档、T15 就绪与目标绑定合同、T16 来源教学与首轮上下文、T17 使用观察与反馈适配已完成；T18 连续使用与界面已完成；T19 待实施。Server 启动、回合准备及本机/发布书库界面使用同一 Tutor 可用就绪。
 
@@ -208,7 +208,7 @@ T15–T18 共同组成首个可交付实现；中间提交按合同逐步接通�
 
 **验证入口**：在 [tutor_loop_tests.rs](../crates/server/src/tests/tutor_loop_tests.rs) 的 Resident 集成用例中增加无地图夹具，调整旧的“未发布即不暴露教学动作”预期；基座未就绪的拒绝用例继续存在。若循环仍索取不存在的对象，修正工具指导与完成合同后重跑该路径。
 
-**实现记录（2026-10-09）**：`start_request` 与 `freeze_prepare` 使用必要接纳就绪；地图引用可缺省，已接纳的独立对象和素材保存为本轮私人资料快照。`material` 读取可用资料，`select` 核对 TeachingTarget 的来源版本、完整原文范围和实际使用的对象修订；范围按原文 UTF-16 区间与本轮读取比对。已交付目标通过原事件进入下一轮上下文，来源教学的活动、显式回读和关闭后的普通追问沿原生命周期运行。LearnerContext 始终提供当前请求、会话意图与约束、已确认背景/偏好、当前目标及近期真实交付/回应；未知不产生能力结论。Runtime 指导和未完成动作修复接受无对象教学，仍要求选定动作后实际交付。验证见 [T16 验证](performance/tutor-t16-20261009.md)。
+**实现记录（2026-10-09）**：`start_request` 与 `freeze_prepare` 使用必要接纳就绪；地图引用可缺省，已接纳的独立对象和素材保存为本轮私人资料快照。`material` 读取可用资料，`select` 核对 TeachingTarget 的来源版本、完整原文范围和实际使用的对象修订；范围按原文 UTF-16 区间与本轮读取比对。已交付目标通过原事件进入下一轮上下文，来源教学的活动、显式回读和关闭后的普通追问沿原生命周期运行。LearnerContext 始终提供当前请求、会话意图与约束、已确认背景/偏好、当前目标及近期真实交付/回应；未知不产生能力结论。Runtime 指导和未完成动作修复接受无对象教学，仍要求选定动作后实际交付。验证见 [T16 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t16-20261009.md)。
 
 ## T17 使用观察、理解分析与反馈适配
 
@@ -238,7 +238,7 @@ T15–T18 共同组成首个可交付实现；中间提交按合同逐步接通�
 - T17B：LearningEvidence 保存 `nature/target/fact_refs/teaching_implication`，在同一 Resident 内形成和修订理解假设。LearnerContext 读取当前解释和未解释事实；动作保存 `interpretation_refs`，已替代判断不能再采用。用户纠正、新聊天和 JSONL 重开后保持当前解释；冻结回合输入不被新解释改写。理解空间提供暂定理解、教学影响和纠正入口。
 - T17C：无对象封闭题及开放题使用实际交付的冻结目标和来源，保留独立回答、展示提示及改答条件。LearningEvidence 的地图、对象、交付引用按实际缺省；对象投影跳过假设与无对象证据，已接纳历史证据不因新字段重写；已接纳独立对象在无地图时仍按当前修订展示。
 
-验证见 [T17 验证](performance/tutor-t17-20261009.md)。真实学习效果和成本继续由 T19 验收。
+验证见 [T17 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t17-20261009.md)。真实学习效果和成本继续由 T19 验收。
 
 ## T18 连续使用与界面
 
@@ -254,7 +254,7 @@ T15–T18 共同组成首个可交付实现；中间提交按合同逐步接通�
 
 **T18 实现记录（2026-10-09）**：本机 `/tutor/readiness` 与发布书库 `tutor_readiness` 提供同一读者投影，独立返回 `teaching_assets`，内部必要阶段回执不进入响应。网页请求绑定当前明确选择的发布版本；切换到后来可见的同源发布后，下一回合读取该版本资料，正在执行的回合保持原加载范围。界面显示可开始/继续、基础准备中、暂停和材料归属；缺少必要基座时可保存意图，可选资料状态不改写开关。
 
-旧活动按已保存的交付、目标、对象修订、来源引文及评分合同响应，不再要求新发布目录含有旧地图文件；仍核对原文身份和版本。原地图读取继续用于绑定该地图的执行回合。发布、权限、旧活动和理解接续测试及浏览器记录见 [T18 验证](performance/tutor-t18-20261009.md)。
+旧活动按已保存的交付、目标、对象修订、来源引文及评分合同响应，不再要求新发布目录含有旧地图文件；仍核对原文身份和版本。原地图读取继续用于绑定该地图的执行回合。发布、权限、旧活动和理解接续测试及浏览器记录见 [T18 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t18-20261009.md)。
 
 ## T19 真实体验验收
 
@@ -272,9 +272,9 @@ T15–T18 共同组成首个可交付实现；中间提交按合同逐步接通�
 
 T14 文档验证（2026-10-09）：新增与修改处的本地链接、标题锚点、ADR-0158 编号唯一性、T14–T19 状态表与待实施切片详情对应检查通过。持续观察增补已检查链接与锚点、T17A–T17C 的依赖和详情对应、理解假设术语唯一性、ADR 决策格式及文档差异空白，均通过。
 
-T14 为文档交付，未执行实现测试。T15 的验证及环境记录见 [T15 验证](performance/tutor-t15-20261009.md)。后续实施按改动职责选择现有入口：`cargo test -p server tutor_`、`cargo test -p memory <相关测试名>`、`cargo test -p runtime <相关测试名>`；Web 使用 `pnpm --filter @understand-book/web exec vitest run <相关文件>`；涉及构建投影时使用 core 对应文件测试。共享类型变化后运行受影响包的类型检查与现有类型生成校验。
+T14 为文档交付，未执行实现测试。T15 的验证及环境记录见 [T15 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t15-20261009.md)。后续实施按改动职责选择现有入口：`cargo test -p server tutor_`、`cargo test -p memory <相关测试名>`、`cargo test -p runtime <相关测试名>`；Web 使用 `pnpm --filter @understand-book/web exec vitest run <相关文件>`；涉及构建投影时使用 core 对应文件测试。共享类型变化后运行受影响包的类型检查与现有类型生成校验。
 
-T17A–T17C 已接通并通过定向验证，见 [T17 验证](performance/tutor-t17-20261009.md)。T18 已完成，验证结果见 [T18 验证](performance/tutor-t18-20261009.md)；下一刀 T19 按真实体验场景收集学习过程、读者反馈和成本。原方案已完成的 T0–T12 记录保持其历史范围。
+T17A–T17C 已接通并通过定向验证，见 [T17 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t17-20261009.md)。T18 已完成，验证结果见 [T18 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-t18-20261009.md)；下一刀 T19 按真实体验场景收集学习过程、读者反馈和成本。原方案已完成的 T0–T12 记录保持其历史范围。
 
 ## 7 已知限制
 

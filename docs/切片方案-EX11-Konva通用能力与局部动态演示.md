@@ -6,7 +6,7 @@
 
 本切片把固定 Konva 供给、Agent 制作方法、Manim 局部短片段和 Reader 使用体验连成正式能力。完成后，Agent 应能围绕不同阅读问题选择表示、制作、预览、修订、交付；用户能操作演示、保存现场并继续追问。学习率页是首个验收载体。
 
-依据：[网站实际观察](performance/ciechanowski-observation-plan-20260928.md)、[EX10 第三批结果](performance/explorable-explanation-ex10-svg-konva-batch3-20260928.md)、[ADR-0139 §14](adr/0139-explorable-explanation.md#14-通用制作与局部动态演示)。整体路线见[可探索解释方案](切片方案-可探索解释方法库与连续视觉演示.md)。EX11.1–2 的实际实现和证据见[实施报告](performance/explorable-explanation-ex11-1-2-20260928.md)。
+依据：[网站实际观察](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/ciechanowski-observation-plan-20260928.md)、[EX10 第三批结果](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex10-svg-konva-batch3-20260928.md)、[ADR-0139 §14](adr/0139-explorable-explanation.md#14-通用制作与局部动态演示)。整体路线见[可探索解释方案](切片方案-可探索解释方法库与连续视觉演示.md)。EX11.1–2 的实际实现和证据见[实施报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-1-2-20260928.md)。
 
 ## 0. 意图、术语与交付范围
 
@@ -311,17 +311,17 @@ EX11 完成需要以下结果同时成立：正式供给可用；Agent 实际使
 - JSON 内保存媒体及 data URL 会增加版本体积和装配内存。本切片限定短片段，并记录实际页面加载；若实测成为问题，再单独设计二进制存储与媒体加载。
 - Manim 字体、TeX、编码器和目标 WebView 的实际可用性影响部署。当前开发验证以本项目 Windows 环境为起点，发布覆盖哪些宿主，就在相应宿主完成媒体验收。
 - 首版不引入通用动画 DSL、全能场景框架或整章影片生产线；现有来源与可见文字合同继续约束画面关键含义。
-- 收口遗留：学习率修订页的文字摘要仍遗漏η=0边界；batch12系统页640×240播放失败、机制生成失败及未知动画句柄误报仍保留。详情见[EX11.6–7报告](performance/explorable-explanation-ex11-6-7-20260928.md)与[EX11.8真实模型报告](performance/explorable-explanation-ex11-8-live-20260929.md)。
+- 收口遗留：学习率修订页的文字摘要仍遗漏η=0边界；batch12系统页640×240播放失败、机制生成失败及未知动画句柄误报仍保留。详情见[EX11.6–7报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-6-7-20260928.md)与[EX11.8真实模型报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-8-live-20260929.md)。
 
 
 ## EX11.1–EX11.2 实施记录（2026-09-28）
 
-见 [实现与诊断报告](performance/explorable-explanation-ex11-1-2-20260928.md)。正式库和实际模型历史验证通过。余额恢复后的 v5 模型修订通过尺寸循环、源码分页、252 组数值/图元、6 组实际拖动及桌面/窄屏 Reader 完整操作。640×240 原生滑块实测仍失败，具体原因归 EX11.5；模型超出仅修改尺寸调度的范围及全部历史失败保留。
+见 [实现与诊断报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-1-2-20260928.md)。正式库和实际模型历史验证通过。余额恢复后的 v5 模型修订通过尺寸循环、源码分页、252 组数值/图元、6 组实际拖动及桌面/窄屏 Reader 完整操作。640×240 原生滑块实测仍失败，具体原因归 EX11.5；模型超出仅修改尺寸调度的范围及全部历史失败保留。
 
 
 ## EX11.3–EX11.5 实施记录（2026-09-28）
 
-见 [实施与验证报告](performance/explorable-explanation-ex11-3-5-20260928.md)。实际 Manim 渲染、版本读写复用、取消、三视口正式预览/交付、Reader 实际帧/多演示恢复/追问、播放生命周期均通过。短屏根因为 iframe 被挤到约 1px；保留 160px 最小高度并让宿主面板滚动后，原模型页鼠标、触摸及三视口完整使用链通过。制作方法更新 ex11.v6，补充不依赖隐藏页面帧呈现回调的恢复等待说明。后续入口 EX11.6。
+见 [实施与验证报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-3-5-20260928.md)。实际 Manim 渲染、版本读写复用、取消、三视口正式预览/交付、Reader 实际帧/多演示恢复/追问、播放生命周期均通过。短屏根因为 iframe 被挤到约 1px；保留 160px 最小高度并让宿主面板滚动后，原模型页鼠标、触摸及三视口完整使用链通过。制作方法更新 ex11.v6，补充不依赖隐藏页面帧呈现回调的恢复等待说明。后续入口 EX11.6。
 
 
 
@@ -338,7 +338,7 @@ EX11 完成需要以下结果同时成立：正式供给可用；Agent 实际使
 - [x] C：工具正文按实际投影大小腾出空间；源码可使用现有48KiB活跃结果预算，其他调用保留各自上限；不因固定最大预留提前逐出旧片段。
 - [x] D：更新制作方法与工具合同；用实际失败网页验证精确局部修改、中文范围续读、无效补丁不落盘、旧版本/资源保持和新候选必须重预览，刷新checkpoint。
 
-实施与证据见 [EX11.8 报告](performance/explorable-explanation-ex11-8-20260929.md)。Runtime 411 项、Server Presentation 29 项通过；最终工具结果14项通过；原学习率页精确补丁的三视口预览与交付通过。方法ex11.v11。随后服务恢复，batch13真实模型在两个题目上完成三次局部修订，均无整页write；学习率315组数学及Reader通过，圆盘84组数学及最终端点/恢复/Reader通过，首修的恢复回归与学习率剩余摘要问题保留。详见 [真实模型验证](performance/explorable-explanation-ex11-8-live-20260929.md)；EX11.7独立跨题合同尚未完成。
+实施与证据见 [EX11.8 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-8-20260929.md)。Runtime 411 项、Server Presentation 29 项通过；最终工具结果14项通过；原学习率页精确补丁的三视口预览与交付通过。方法ex11.v11。随后服务恢复，batch13真实模型在两个题目上完成三次局部修订，均无整页write；学习率315组数学及Reader通过，圆盘84组数学及最终端点/恢复/Reader通过，首修的恢复回归与学习率剩余摘要问题保留。详见 [真实模型验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-8-live-20260929.md)；EX11.7独立跨题合同尚未完成。
 
 ## 13. 工程阶段收口（2026-09-29）
 
@@ -346,4 +346,4 @@ EX11 完成需要以下结果同时成立：正式供给可用；Agent 实际使
 **依据**：正式Konva/Manim供给、制作指导、预览交付、版本/现场恢复及收尾已实现；batch13真实Agent在两个题目上完成三次局部补丁交付，修改范围与Reader行为有实际证据。
 **边界**：EX11.7原六个独立生成加plain的全套合同未达成；历史失败与用量保持原记录，工程收口不改写验收结果。
 **后续**：本阶段停止扩批；§11遗留与跨题稳定性纳入后续质量工作，按具体问题开启验证。
-**展开**：[真实模型验证与限制](performance/explorable-explanation-ex11-8-live-20260929.md)、[收口checkpoint](../SESSION_CHECKPOINT_EX11.md)。
+**展开**：[真实模型验证与限制](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex11-8-live-20260929.md)、[收口checkpoint](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/SESSION_CHECKPOINT_EX11.md)。

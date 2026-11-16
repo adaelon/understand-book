@@ -1,1 +1,0 @@
-{"pilot_id":"pilot-B0","allowed":false,"reason":"Coach selection and actual card/source reads occurred, but full example consumption failed: returned 0-6000 and 12000-18000 of 25860 characters with next_offset null. Repair real method pagination before heldout generation; preserve this pilot and its cost."}

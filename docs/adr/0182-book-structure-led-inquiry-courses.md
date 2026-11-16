@@ -124,14 +124,14 @@ BookStructure 已有章节问题及推进方式、跨章主题问题、阶段发
 
 ## 依据
 
-首个实现使用《深入理解 AI Infra》§1.3.1–1.3.2 的计算与读取时间下界，交付一课约 8 分钟的作者估算流程。共享版本、逐阶段揭示、私人恢复、冻结评估和帮助事实已接通；实际 DeepSeek API 产出同合同候选，经独立解题、作者定点修正后在同一播放器完成。第二版将主问题推进为 9 ms 资源升级决策：概念讲解、可保存的连续参数实验、联动二维决策图与可旋转三维下界曲面、工作量变化后的推理和文字修正。真实表达复用后台 Coach 与既有理解记录；仅点击或选项不推断理解。第二版证据见[样课改版记录](../evidence/inquiry-course-v2-20261108/README.md)；2026-11-09 已接通书内双栏、原文回读与携带课程现场的 Agent 插问，见[书内课程验收](../evidence/inquiry-course-reader-20261109/README.md)。完整主题结构恢复、自动调整课程主线和通用演示实例化仍按切片推进。详见[实现与验收记录](../evidence/inquiry-course-20261108/README.md)。
+首个实现使用《深入理解 AI Infra》§1.3.1–1.3.2 的计算与读取时间下界，交付一课约 8 分钟的作者估算流程。共享版本、逐阶段揭示、私人恢复、冻结评估和帮助事实已接通；实际 DeepSeek API 产出同合同候选，经独立解题、作者定点修正后在同一播放器完成。第二版将主问题推进为 9 ms 资源升级决策：概念讲解、可保存的连续参数实验、联动二维决策图与可旋转三维下界曲面、工作量变化后的推理和文字修正。真实表达复用后台 Coach 与既有理解记录；仅点击或选项不推断理解。第二版证据见样课改版记录；2026-11-09 已接通书内双栏、原文回读与携带课程现场的 Agent 插问，见书内课程验收。完整主题结构恢复、自动调整课程主线和通用演示实例化仍按切片推进。详见实现与验收记录。
 
 现有结构：[章节问题与推进](../../packages/core/src/book-structure-planning.ts)、[主题问题与阶段发展](../../packages/core/src/book-structure-themes.ts)、[完整成果与公开投影](../project-book/chapters/06-全书结构与语义候选召回.md#跨章主题需要说明每一章增加了什么)。现有制作资产：[解释方法库](../../skills/presentation/methods/README.md)。
 
 教学方法：[UbD 作者框架说明](https://files.ascd.org/staticfiles/ascd/pdf/siteASCD/publications/ASCD_UBD_whitepaper.pdf)、[ANU 的 POE 活动说明](https://learningandteaching.anu.edu.au/resources/predict-observe-explain-activity/)。这些资料用于明确设计方法，本项目的实际学习效果按样课证据判断。
 
 
-2026-11-12：课程自动范围选择、蓝本、制作、独立解题、来源核验及定点修复已接入现有 Build Engine；管理入口改为“构建课程”，成果导入后随材料发布。共用播放器支持阅读取证、论证、练习与资源实验。证据与范围见[自动课程验收记录](../evidence/course-build-20261112/README.md)。
+2026-11-12：课程自动范围选择、蓝本、制作、独立解题、来源核验及定点修复已接入现有 Build Engine；管理入口改为“构建课程”，成果导入后随材料发布。共用播放器支持阅读取证、论证、练习与资源实验。证据与范围见自动课程验收记录。
 
 
 ### 课程带学的生命周期（2026-11-12）
@@ -146,6 +146,6 @@ BookStructure 已有章节问题及推进方式、跨章主题问题、阶段发
 
 全程带学按活动调节：预测允许猜测，阅读与实验按需帮助，解释针对实际表达，遇到障碍局部补充并返回原任务，应用与迁移沿用原证据要求。没有强制每轮追问，也没有新增每步掌握门槛。
 
-实现及验证见 [课程带学记录](../evidence/course-tutor-20261112/README.md)。
+实现及验证见 课程带学记录。
 
-2026-11-13：本机阅读器可加载当前书目录中的 `inquiry_course.json`，校验实际来源版本与 LID 范围后，复用 InquiryCourse 播放器、私人 CourseRun 与后台 Coach。手工样课和自动构建成果使用相同课件协议；本地加载不冒充自动审题报告，线上 operator 的导入要求保持独立。数学探究可附带弦高、梯度迭代、半平面可行方向三种实验；参数与当轮作答一同保存，独立题按真实原话给分项依据。方法见[数学制课](../../skills/build/course-methods/mathematics.md)，实际范围和验证见[三课记录](../evidence/optimization-three-lessons-20261113/README.md)。
+2026-11-13：本机阅读器可加载当前书目录中的 `inquiry_course.json`，校验实际来源版本与 LID 范围后，复用 InquiryCourse 播放器、私人 CourseRun 与后台 Coach。手工样课和自动构建成果使用相同课件协议；本地加载不冒充自动审题报告，线上 operator 的导入要求保持独立。数学探究可附带弦高、梯度迭代、半平面可行方向三种实验；参数与当轮作答一同保存，独立题按真实原话给分项依据。方法见[数学制课](../../skills/build/course-methods/mathematics.md)，实际范围和验证见三课记录。

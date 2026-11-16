@@ -157,7 +157,7 @@ A1/A2 的具体接口为 `materializeBookStructureContributions`、`BookStructur
 - 程序验证：57 项相关用例分别通过，含两项既有 orchestrator BookStructure 场景；Core TypeScript 通过。长集成使用真实 Executor 两种新任务、现有发布器和 Driver，最后返回 DONE。
 - 392-module Build Engine 编译通过，outside-repo Node/compiled parity、17 个提示词入口和 protocol doctor 通过。没有更新本机安装或原书工作区。
 - 夹具：29 单元、6 局部贡献、28 选择任务、2 关系任务，最终 82,501 字节；最后一个关系任务提交空 delta，质量与发布仍正确完成。64 条索引覆盖全部 2016 个条目对。
-- 成本、原始失败及边界详见 [A1–A4 验收](performance/understand-book-a1-a4-release.md)。
+- 成本、原始失败及边界详见 [A1–A4 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-a1-a4-release.md)。
 
 ## 7 A5 实施与验证
 
@@ -167,4 +167,4 @@ A1/A2 的具体接口为 `materializeBookStructureContributions`、`BookStructur
 - 生产整链使用同一 invocation，从局部阶段到关系提交和 DONE；旧 reduce 文件保留原字节且不计入累计贡献。旧计划确有变动时，沿用 Driver 的 `confirm_current` 持久授权，测试覆盖拒绝过期决策与合法接续。
 - Mastering Rust 的 29 份成果身份均 fresh；28 份 core 完整，`stitch:fragment:0003` 的范围 22–30 仅有 22、30，缺少 23–29，因此该来源未接纳。51 份旧 reduce 仅保留历史。7,534 个历史文件在隔离副本准备前后及原目录逐字节相同。
 - 原 invocation 绑定 `build_plan.v1`，未冻结内部 descriptor plan；不需要改写 plan digest。原目录尚无 `book_structure.json`；已有公共文件的保留与发布失败行为由小书集成覆盖。
-- 14 项定向测试、Core TypeScript 与副本脚本严格 TypeScript 通过；候选均来自固定夹具或既有成果，模型调用 0。完整证据、复跑入口与已知问题见 [A5 验收](performance/understand-book-a5-release.md)。
+- 14 项定向测试、Core TypeScript 与副本脚本严格 TypeScript 通过；候选均来自固定夹具或既有成果，模型调用 0。完整证据、复跑入口与已知问题见 [A5 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-a5-release.md)。

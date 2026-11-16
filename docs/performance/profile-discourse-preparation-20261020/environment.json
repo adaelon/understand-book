@@ -1,9 +1,0 @@
-{
-  "platform": "win32",
-  "arch": "x64",
-  "os": "10.0.19044",
-  "node": "v24.9.0",
-  "cpu": "AMD Ryzen 7 5800H with Radeon Graphics         ",
-  "logical_cpus": 16,
-  "memory_bytes": 14894297088
-}

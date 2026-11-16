@@ -1,6 +1,6 @@
 # ADR-0181 来源知识树与理解果实
 
-2026-11-05 · 已接受，已于 15:55:12 HKT 上线。承接 [ADR-0179](0179-note-thinking-path-and-current-understanding.md)、[音乐伴听](0175-curated-music-prebuild-and-guided-listening.md)及[设计方案](../设计方案-知识树与理解果实.md)。执行进度与验证见[切片方案](../切片方案-知识树与理解果实.md)，线上证据见[发布记录](../performance/knowledge-tree-20261105/deployment/README.md)。
+2026-11-05 · 已接受，已于 15:55:12 HKT 上线。承接 [ADR-0179](0179-note-thinking-path-and-current-understanding.md)、[音乐伴听](0175-curated-music-prebuild-and-guided-listening.md)及[设计方案](../设计方案-知识树与理解果实.md)。执行进度与验证见[切片方案](../切片方案-知识树与理解果实.md)，线上证据见发布记录。
 
 ## 决策
 

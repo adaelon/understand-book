@@ -77,7 +77,7 @@ call `build_retrieval_confirm.v1` with that path, `plan_digest`, and
 Do not infer new embedding execution quotas from earlier samples. `lexical_only` requires no
 provider; `semantic_required` currently supports an explicitly installed local MiniLM via the
 host's `UNDERSTAND_BOOK_EMBEDDING_CONFIG`. The default remains lexical pending SR6 quality
-acceptance. Setup and data/usage boundaries: `docs/performance/semantic-retrieval-sr5-20261001.md`.
+acceptance. [Setup and data/usage boundaries](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/semantic-retrieval-sr5-20261001.md).
 
 Execution requires one current, code-issued `build_plan_path`. Treat that path as an opaque output
 of planning: do not parse, edit, duplicate, or replace the plan in chat.

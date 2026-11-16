@@ -42,15 +42,15 @@ agent-run会读取本地配置并执行真实产品与模型请求，quality路�
 | --- | --- | --- |
 | [LA1—LA6](../../LA1-LA6实施与验收.md) | 证据、来源、交付和恢复的阶段问题 | 用于解释失败与早期修复，当前机制另回读实现 |
 | [LA7—LA10](../../LA7-LA10实施与验收.md)，2026-09-08批次 | 产品共同任务、Text/Tree/Graph同环对照及动作 | LA7与LA9-v2分开；接入探针、配置无效首批和独立修复不拼接成绩 |
-| [EV3—EV4](../../performance/agent-eval-ev3-ev4-20260925.md) | 人工校准与分层题集 | 区分评分依据与真实产品回答 |
-| [EV5—EV6](../../performance/agent-eval-ev5-ev6-20260925.md) | 首个单题诊断与干预 | 只解释固定题目及其对照条件 |
-| [CQ8](../../performance/source-delivery-cq8-20260926.md) | 来源交付及范围表达 | 开发结果与人审校准分开；完整来源不自动消除过强推论 |
-| [EV7](../../performance/agent-eval-ev7-20260926.md) | 范围提示的单变量对照 | 六对十二份首次回答，候选未达到门槛而撤回 |
-| [2026-09-30构建恢复](../../performance/build-control-recovery-20260930.md) | 输入、交接、恢复与准备 | 历史耗时对应记录中的程序和阶段；当前流程按源码判断 |
-| [BSR7](../../performance/book-structure-bsr7.md) | 特定BookStructure成果及后续选择 | 各消费者、所选成果和计量口径分别保留 |
-| [SR6](../../performance/semantic-retrieval-20260930.md) | 构建期语义召回及Gold验收 | 排名改善与完整验收未通过同时记录 |
-| [EX12.4](../../performance/presentation-staged-authoring-ex12-4.md) | 分阶段制作、反馈与完整展开 | 局部制作结果与尚未闭合的原生验收分开 |
-| [EX13.6](../../performance/presentation-context-ex13/ex13-6/README.md) | 原聊天继续修订、确切版本及浏览器操作 | 支持该次同对象revision 2交付，不外推所有模型或长期学习效果 |
+| [EV3—EV4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md) | 人工校准与分层题集 | 区分评分依据与真实产品回答 |
+| [EV5—EV6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md) | 首个单题诊断与干预 | 只解释固定题目及其对照条件 |
+| [CQ8](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/source-delivery-cq8-20260926.md) | 来源交付及范围表达 | 开发结果与人审校准分开；完整来源不自动消除过强推论 |
+| [EV7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md) | 范围提示的单变量对照 | 六对十二份首次回答，候选未达到门槛而撤回 |
+| [2026-09-30构建恢复](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/build-control-recovery-20260930.md) | 输入、交接、恢复与准备 | 历史耗时对应记录中的程序和阶段；当前流程按源码判断 |
+| [BSR7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md) | 特定BookStructure成果及后续选择 | 各消费者、所选成果和计量口径分别保留 |
+| [SR6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/semantic-retrieval-20260930.md) | 构建期语义召回及Gold验收 | 排名改善与完整验收未通过同时记录 |
+| [EX12.4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md) | 分阶段制作、反馈与完整展开 | 局部制作结果与尚未闭合的原生验收分开 |
+| [EX13.6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md) | 原聊天继续修订、确切版本及浏览器操作 | 支持该次同对象revision 2交付，不外推所有模型或长期学习效果 |
 
 时间接近不等于实验条件相同。原始记录中的模型、程序、预算、题集和评分版本决定比较边界，表中日期只是查找入口。
 

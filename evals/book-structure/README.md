@@ -31,7 +31,7 @@ pnpm --filter @understand-book/core exec vitest run test/book-structure-bsr0.tes
 
 ## 实施状态
 
-- BSR0 提取、样本与比较合同已完成，证据见[报告](../../docs/performance/book-structure-bsr0.md)。
+- BSR0 提取、样本与比较合同已完成，证据见[报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr0.md)。
 - 原三个 `it.fails` 已全部转绿：章名和候选保留由 BSR1 实现；依赖反例由 BSR4 真实 B/C 产物、六组来源、补充锚点和完整重放验证。
 - 章节语义取舍已由 BSR2 Codex subagent 真实局部对照验收；主题与依赖已由 BSR4 独立生成和原文核对验收。来源 gate 只验证交付，不负责判断 Adam 是否为 Agent 轮次提交的前置。
 - 原程序组装在相同保留内容重分组时保持内容；实际 9→2 的丢失已发生在模型拼接输出。测试保留了这一区分。
@@ -73,7 +73,7 @@ report 保留旧成品和新结构；comparison.json 只在结果已生成后读
 
 记录区分语义提交次数与实际模型调用量：前者由适配器记录；后者包含 Codex 工具轮次和上下文管理，当前接口不可得。序列化输入/输出估算、真实墙钟、拒绝及原文读取均保存；实际 tokens 未知，不当作零费用或严格成本下降证据。
 
-本次完成 13 次语义提交、0 拒绝，31 个候选选出 27 个章内重点与 15 个宏观路线点；内容验收及成本观测见[报告](../../docs/performance/book-structure-bsr2-codex.md)。`node --import tsx evals/book-structure/replay-subagent.ts docs/performance/book-structure-bsr2-codex-20261001` 从冻结输入重放已保存动作，逐项比较每步交付、状态与最终报告，不调用模型。
+本次完成 13 次语义提交、0 拒绝，31 个候选选出 27 个章内重点与 15 个宏观路线点；内容验收及成本观测见[报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr2-codex.md)。`node --import tsx evals/book-structure/replay-subagent.ts docs/performance/book-structure-bsr2-codex-20261001` 从冻结输入重放已保存动作，逐项比较每步交付、状态与最终报告，不调用模型。
 
 ## BSR3–BSR4 主题与检索对照
 
@@ -94,7 +94,7 @@ C 组使用相同命令，将 B 替换为 C。生成者仅读取 `next` 给出�
 
 `prepare` 的已确认授权记录专用于本次用户选择的实验方式；复用该入口跑新的真实实验前须取得对应授权，不能把旧记录当成新授权。计划存在时拒绝覆盖。每组最多 80 个动作，输入估算 20,000、输出估算 6,500 tokens；本轮 local embedding 独立上限 600 documents／80 queries／160 calls，含失败和重试。只加载已安装模型，不下载权重、不请求外部生成 API、不发布原书。
 
-真实执行记录在 [book-structure-bsr4-20261001](../../docs/performance/book-structure-bsr4-20261001/review.json)，内容和成本结论见 [BSR3–BSR4 报告](../../docs/performance/book-structure-bsr3-bsr4.md)。语义动作次数、序列化估算和真实 embedding usage 分列；Codex 实际 tokens 未知。
+真实执行记录在 [book-structure-bsr4-20261001](../../docs/performance/book-structure-bsr4-20261001/review.json)，内容和成本结论见 [BSR3–BSR4 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr3-bsr4.md)。语义动作次数、序列化估算和真实 embedding usage 分列；Codex 实际 tokens 未知。
 
 原文审阅发现具体遗漏时，先保存初始对照和同一份问题文件，再用 `node --import tsx evals/book-structure/themes.ts reopen OUTPUT_DIR B THEME_REF ISSUE_FILE`（C 同理）重开指定主题；继续原来的 next/submit。输入含原结果与问题，其他主题不变，不重置额度、不再次扫描目录；before-revision 快照和 session 的修订事件参与完整重放。`compare-themes.ts` 在两组完成后读取验收答案，保存 comparison 与两组 verification；来源命中只用于定位，实际内容仍须对照原文。
 
@@ -102,7 +102,7 @@ C 组使用相同命令，将 B 替换为 C。生成者仅读取 `next` 给出�
 
 ## BSR5 正式入口
 
-BSR5 已把上述章节／主题合同接入正式 Engine、BuildPlan 消费者范围、获授权检索准备和三清单发布。确定性集成证据及命令索引见 [BSR5 报告](../../docs/performance/book-structure-bsr5.md)。此目录保留 BSR2/4 局部内容与成本证据；BSR6 前段发现和BSR7实际全书验收、安装交付均已完成，凭据见下文。
+BSR5 已把上述章节／主题合同接入正式 Engine、BuildPlan 消费者范围、获授权检索准备和三清单发布。确定性集成证据及命令索引见 [BSR5 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr5.md)。此目录保留 BSR2/4 局部内容与成本证据；BSR6 前段发现和BSR7实际全书验收、安装交付均已完成，凭据见下文。
 
 ## BSR6 完整章节的新发现
 
@@ -120,9 +120,9 @@ node --import tsx evals/book-structure/discovery.ts replay OUTPUT_DIR
 
 2026-10-01 用户明确选择独立 Codex subagent，最多 80 次提交（含失败／重试）、从首个 next 起 60 分钟。生成者不继承父聊天，只读取 next 提供的 prompt/input，只写自身响应；不读取源码、旧成品、session/report 或验收答案。每次输入、响应、接纳／拒绝、耗时和序列化估算落盘；pending 重用，计时与额度不因恢复重置，连续三次拒绝停止排错。代码版本修正导致的失败同样计入原额度。
 
-report 从当前有效成果重建完整候选目录，逐项验证保存输入和成果；replay 在新的隔离目录按接受顺序重新接纳保存响应，比较每步实际交付、候选身份／内容和所有锚定载荷，不调用模型或 Provider。已有 replay 记录不覆盖。实际 Codex 调用量和 tokens 无法从接口取得，保持未知；序列化估算与提交次数不当作实际模型用量。此入口不调用外部生成 API、embedding 或原书发布。记录位于 [本次计划](../../docs/performance/book-structure-bsr6-20261001/plan.json)，结论见 [BSR6 报告](../../docs/performance/book-structure-bsr6.md)。
+report 从当前有效成果重建完整候选目录，逐项验证保存输入和成果；replay 在新的隔离目录按接受顺序重新接纳保存响应，比较每步实际交付、候选身份／内容和所有锚定载荷，不调用模型或 Provider。已有 replay 记录不覆盖。实际 Codex 调用量和 tokens 无法从接口取得，保持未知；序列化估算与提交次数不当作实际模型用量。此入口不调用外部生成 API、embedding 或原书发布。记录位于 [本次计划](../../docs/performance/book-structure-bsr6-20261001/plan.json)，结论见 [BSR6 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr6.md)。
 
-本次完成 42 次提交（接受 41、拒绝 1），58 分 52.291 秒；完整覆盖 653 叶节点且无缺口／重复，40 个正文任务发现 178 候选。序列化输入／输出估算为 186,318 / 38,545 tokens；实际模型用量未知。[重放](../../docs/performance/book-structure-bsr6-20261001/verification.json)核对所有接纳交付、候选与载荷一致，[原文审阅](../../docs/performance/book-structure-bsr6-20261001/content-review.json)确认九类已知机制及同 LID 不同含义保留，并记录复用 formula 的五处语义误标。BSR7 全书发现加整理、成本对照与正式交付已以独立授权完成，未复用BSR6额度。
+本次完成 42 次提交（接受 41、拒绝 1），58 分 52.291 秒；完整覆盖 653 叶节点且无缺口／重复，40 个正文任务发现 178 候选。序列化输入／输出估算为 186,318 / 38,545 tokens；实际模型用量未知。[重放](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr6-20261001/verification.json)核对所有接纳交付、候选与载荷一致，[原文审阅](../../docs/performance/book-structure-bsr6-20261001/content-review.json)确认九类已知机制及同 LID 不同含义保留，并记录复用 formula 的五处语义误标。BSR7 全书发现加整理、成本对照与正式交付已以独立授权完成，未复用BSR6额度。
 # BSR7 全书入口
 
 `full-book.ts` 管理本次已授权的全书真实执行，Core 负责冻结、接纳、检索准备、质量与发布。当前默认实验模式为 `semantic_required`，使用已安装本地模型；实际 Codex usage 不可见。
@@ -146,11 +146,11 @@ node --import tsx evals/book-structure/verify-reader-full-book.ts WORKSPACE INST
 node --import tsx evals/book-structure/verify-reader-full-book.ts WORKSPACE INSTALLED_BOOK_MCP_EXE ACTIVE_READER_EVIDENCE_DIR --active-reader
 ```
 
-生成代理仅读对应 `prompt_file` 和 `input_file`，不读取 task 文件、实现、旧成果或验收材料。三条发现 lane 使用不同章节与响应文件；各 session 和词法派生共享主运行的开始时间及总提交上限，失败／重试照计。`fork-lexical` 只在接受主题计划、尚未生成主题时执行一次。详细合同、实际全书结果与交付凭据见 [BSR7 报告](../../docs/performance/book-structure-bsr7.md)。新一轮执行仍需自己的授权，不能沿用本轮实验额度。
+生成代理仅读对应 `prompt_file` 和 `input_file`，不读取 task 文件、实现、旧成果或验收材料。三条发现 lane 使用不同章节与响应文件；各 session 和词法派生共享主运行的开始时间及总提交上限，失败／重试照计。`fork-lexical` 只在接受主题计划、尚未生成主题时执行一次。详细合同、实际全书结果与交付凭据见 [BSR7 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)。新一轮执行仍需自己的授权，不能沿用本轮实验额度。
 
 本轮总 token 消耗不设上限，单次任务沿正式输入／输出与传输容量。章节候选页和章节／主题原文目录页各 64 项，按交付的 next_offset 翻页，read 使用稳定原文索引。重放入口须完整 report 为 ready 后执行，已有重放目录不覆盖；保存响应验收不调用模型或 embedding Provider。Reader 验收实际启动指定成品 Book MCP，核对章节顺序、宏观路线、全部章内重点与主题投影；显式入口隔离 memory/private，active-reader 从Reader真实保存的当前书解析并隔离private。输出按连续UTF-8流解码，失败前保存实际投影，避免多字节字符跨Buffer损坏验收证据。
 
-BSR7累计891/1200提交，884接受、7拒绝。两组最终来源、真实fresh重放及Engine发布通过，主交付为embedding组14单元/956重点/345宏观/11主线，已安装程序的新目录完整质量和Reader双入口均通过。生成在授权截止前结束，安装交付凭据集中于 [实际交付报告](../../docs/performance/book-structure-bsr7.md)。
+BSR7累计891/1200提交，884接受、7拒绝。两组最终来源、真实fresh重放及Engine发布通过，主交付为embedding组14单元/956重点/345宏观/11主线，已安装程序的新目录完整质量和Reader双入口均通过。生成在授权截止前结束，安装交付凭据集中于 [实际交付报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)。
 
 两组 ready 后，`compare-full-book.ts` 验证候选目录及共享章节选择相同，将主题生成／收敛成本单独比较；共同发现和章节前段、C 全书成本、B/C 合计提交分别列示。通过主题选择形成的 `depends_on` 可以不同，共享候选正文必须相同。时间区分主题首次交付至最后接纳、真实 embedding 调用耗时和完整 C 运行；目录差异不直接判定语义质量或成本收益。
 

@@ -88,6 +88,6 @@ reader_maintenance export-user /srv/multi-reader reader-a /srv/legacy-export
 
 ## 验证与限制
 
-验证记录见 [MU9 证据](performance/linux-multi-reader-mu9-20260930.md)。MU9 的工具和隔离恢复不等于生产迁移或入口发布。生产输入尚未指定，真实 Linux 掉电、Nginx/TLS 与兼容旧发布二进制的实际切换仍按 MU10/MU11 验收；本工具不修改 systemd/Nginx。恢复到其他机器后，Provider 环境和配置内的外部工具 / 沙箱路径由部署者按 MU11 核对。
+验证记录见 [MU9 证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu9-20260930.md)。MU9 的工具和隔离恢复不等于生产迁移或入口发布。生产输入尚未指定，真实 Linux 掉电、Nginx/TLS 与兼容旧发布二进制的实际切换仍按 MU10/MU11 验收；本工具不修改 systemd/Nginx。恢复到其他机器后，Provider 环境和配置内的外部工具 / 沙箱路径由部署者按 MU11 核对。
 
 没有完整来源副本或明确发布映射的历史先保留在原根 / 备份，待补齐材料再迁入。未知文件按清单审核并保留；不推断内容版本、不替换笔记或成果正文中的路径文字。快照的不可变性由只读文件与工具拒绝覆盖实现，管理员仍可改变文件权限。

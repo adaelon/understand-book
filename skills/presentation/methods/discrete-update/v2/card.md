@@ -28,4 +28,4 @@ method_id: `discrete-update` · revision: `2` · 状态：首批正式库
 
 ## 使用证据与采用
 
-开发材料为 D1 二次函数模型；精确小数恢复检查承接 EX11.8 圆盘历史案例 D2。实际结果见 [SE1 记录](../../../../../docs/performance/explanation-evolution/se1/README.md)。v2 沿用 v1 的示例计算与交互，补充 Author 元数据并登记首批正式库；采用记录见 [模板库说明](../../README.md)。
+开发材料为 D1 二次函数模型；精确小数恢复检查承接 EX11.8 圆盘历史案例 D2。实际结果见 [SE1 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se1/README.md)。v2 沿用 v1 的示例计算与交互，补充 Author 元数据并登记首批正式库；采用记录见 [模板库说明](../../README.md)。

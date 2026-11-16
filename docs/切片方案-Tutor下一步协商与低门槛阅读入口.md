@@ -2,7 +2,7 @@
 
 状态：2026-10-11，TC0、TC1、TC2A 已完成；TC2 工程及工具合同修正完成，真实模型稳定交付、内容质量与真实读者验收未完成；TC3 已完成建议生产／读取与小规模内容验证；TC4 已完成选择接纳与两宿主恢复；TC5 已完成建议宿主、回答纠偏与脚本化真实材料验证；TC6 已完成交互事实与理解证据分流；TC7–TC8 待实施。对应 [ADR-0163](adr/0163-tutor-continuation-and-contextual-reading-entry.md)。
 
-TC0 的实际基线、夹具和预期失败见[基线记录](performance/tutor-continuation-tc0-baseline.md)；TC1 的类型、输入校验、来源快照、兼容及验证见[实施记录](performance/tutor-continuation-tc1.md)；TC2 的直接帮助、首次开启、接续及当前质量问题见[实施记录](performance/tutor-continuation-tc2.md)。[TC2A 实施记录](performance/tutor-continuation-tc2a.md)保存按需指导、回归及两组各三次真实模型结果，[TC3 实施记录](performance/tutor-continuation-tc3.md)保存建议生产／读取及五次实模观察；[TC4 实施记录](performance/tutor-continuation-tc4.md)保存选择消费、两宿主故障恢复与逐操作证据；[TC5 实施记录](performance/tutor-continuation-tc5.md)保存界面、原请求恢复、真实 API 录屏与两次真实材料纠偏。
+TC0 的实际基线、夹具和预期失败见[基线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc0-baseline.md)；TC1 的类型、输入校验、来源快照、兼容及验证见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc1.md)；TC2 的直接帮助、首次开启、接续及当前质量问题见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2.md)。[TC2A 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2a.md)保存按需指导、回归及两组各三次真实模型结果，[TC3 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc3.md)保存建议生产／读取及五次实模观察；[TC4 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc4.md)保存选择消费、两宿主故障恢复与逐操作证据；[TC5 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc5.md)保存界面、原请求恢复、真实 API 录屏与两次真实材料纠偏。
 
 ## 1. 对齐确认
 
@@ -302,13 +302,13 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 **先写的失败用例**：选区点帮助仍要补 prompt；两项选择被归一化成同一输入；choice／回答纠偏被记录为 submit/chat_response；接受结果丢失后重复执行；暂停后旧建议继续生效；题目期间从原文求助后答对被记成独立完成；引用回答的纠偏没有进入实际请求。
 
-**完成证据**：[TC0 基线记录](performance/tutor-continuation-tc0-baseline.md) 已生成。新增 Server 正常基线 5 项、Markdown/PDF 浏览器基线 4 项通过；Server 8 项与浏览器 5 项预期失败已实际运行。既有 Tutor 36、Runtime Tutor 7、Memory 143、Web 142 项及 Web 类型检查通过；既有 MU10 的 2 项失败单列。修改限于测试、夹具和文档，产品行为未改。
+**完成证据**：[TC0 基线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc0-baseline.md) 已生成。新增 Server 正常基线 5 项、Markdown/PDF 浏览器基线 4 项通过；Server 8 项与浏览器 5 项预期失败已实际运行。既有 Tutor 36、Runtime Tutor 7、Memory 143、Web 142 项及 Web 类型检查通过；既有 MU10 的 2 项失败单列。修改限于测试、夹具和文档，产品行为未改。
 
 **边界**：不替换 App/RightRail 整文件，不修改预构建任务或顺带整理无关架构。
 
 ### TC1｜最小合同、来源标识和兼容读取
 
-**状态**：[x]。2026-10-11 完成；[实施与验证](performance/tutor-continuation-tc1.md)。**依赖**：TC0。
+**状态**：[x]。2026-10-11 完成；[实施与验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc1.md)。**依赖**：TC0。
 
 **实际交付**：建议及三种动作合同、回答引用、来源快照、公开视图、两种事件与 16 个生成类型；共用校验与归一化差异保留；旧聊天／Move／事件读取。`current_action` 从本地已保存或多人候选回合的显式快照冻结，真实补充保持独立。Server 49、Runtime 21、Memory 149、Web 82 项通过，Web 类型检查通过；Server 10 项忽略不计通过。
 
@@ -326,7 +326,7 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 ### TC2｜可信选区直接帮助与首次教学入口
 
-**状态**：[ ]，工程实现及工具合同修正完成；Runtime 24、Server 63 项回归通过，最终真实模型两步链路无工具校验错误。持久教学目标仍有数学条件错误，内容质量未通过，真实读者形成性验证待完成。2026-10-11，见 [TC2 实施与验证](performance/tutor-continuation-tc2.md)。**依赖**：TC1。
+**状态**：[ ]，工程实现及工具合同修正完成；Runtime 24、Server 63 项回归通过，最终真实模型两步链路无工具校验错误。持久教学目标仍有数学条件错误，内容质量未通过，真实读者形成性验证待完成。2026-10-11，见 [TC2 实施与验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2.md)。**依赖**：TC1。
 
 **要交付的变化**：用户选择一段文字后，不输入 prompt 即可获得帮助；默认关闭 Tutor 的读者能明确开启，并点击接续原回答。
 
@@ -346,11 +346,11 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 ### TC2A｜按当前任务与状态加载教学指令
 
-**状态**：[x]，2026-10-11 装配实现、定向回归及六次实模观察完成。Runtime 59 通过／1 默认忽略，Server 66 通过／9 默认忽略；首个实际请求估算输入减少 18.72%。按需样本仍有一次未完整教学及条件概括错误，TC2 验收继续保留。见 [实施记录](performance/tutor-continuation-tc2a.md)。**依赖**：TC2 已完成的直接帮助、回答接续与工具合同工程基线。先于 TC3，沿用其余编号。
+**状态**：[x]，2026-10-11 装配实现、定向回归及六次实模观察完成。Runtime 59 通过／1 默认忽略，Server 66 通过／9 默认忽略；首个实际请求估算输入减少 18.72%。按需样本仍有一次未完整教学及条件概括错误，TC2 验收继续保留。见 [实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2a.md)。**依赖**：TC2 已完成的直接帮助、回答接续与工具合同工程基线。先于 TC3，沿用其余编号。
 
 **要交付的变化**：简单讲解和回答接续只携带当前需要的教学流程；导航、理解证据更新、正式评估与演示指导按任务和真实状态展开。可选能力保留简短发现入口，用户中途转向时仍能在同一 Run 获得相应帮助。
 
-**依据**：当前 `agent_prompt` 无条件装入完整导航规则，`tutor::instructions` 在 active 状态下合并多种教学职责。TC2 最终样本的持久目标误写“只有等时才可取算术平均”，随后公开讲解更准确。该样本说明两处表述不一致，尚未证明指令负担是数学错误的原因。原始证据见 [TC2 §5–§6](performance/tutor-continuation-tc2.md)。
+**依据**：当前 `agent_prompt` 无条件装入完整导航规则，`tutor::instructions` 在 active 状态下合并多种教学职责。TC2 最终样本的持久目标误写“只有等时才可取算术平均”，随后公开讲解更准确。该样本说明两处表述不一致，尚未证明指令负担是数学错误的原因。原始证据见 [TC2 §5–§6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2.md)。
 
 **接点**：`crates/runtime/src/tutor.rs:instructions/control_instructions/spec_for_context`、`agent_prompt.rs:policy_modules_for_tools_with_presentation`、`orchestrator.rs:build_sample_request`、`tool_exposure.rs:seed_turn_tool_activations/search_and_activate`、`context_fragment.rs`；Server `teaching.rs` 的冻结上下文；`crates/server/src/tests/tutor_continuation_tests.rs:ActionToolContract`。沿用 AgentRequestPlan、InstructionModule、上下文片段账本和延迟工具发现。
 
@@ -375,7 +375,7 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 ### TC3｜本轮交付附带可验证的下一步建议
 
-**状态**：[x]，2026-10-11 工程、定向回归及小规模内容验证完成。Server Tutor 78 通过／10 忽略，Runtime 59 通过／1 忽略；最终字段说明调整另经 Server 8、Runtime 6 项复核。前两轮重复建议原样保留，v3 推荐和备选均提供正文未完成的步骤；v2 单句无建议样本完整交付，所有读取追加调用为 0。见 [TC3 实施记录](performance/tutor-continuation-tc3.md)。**依赖**：TC1、TC2A。
+**状态**：[x]，2026-10-11 工程、定向回归及小规模内容验证完成。Server Tutor 78 通过／10 忽略，Runtime 59 通过／1 忽略；最终字段说明调整另经 Server 8、Runtime 6 项复核。前两轮重复建议原样保留，v3 推荐和备选均提供正文未完成的步骤；v2 单句无建议样本完整交付，所有读取追加调用为 0。见 [TC3 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc3.md)。**依赖**：TC1、TC2A。
 
 **要交付的变化**：Tutor 可在实际解释之后交付一个具体建议集合，未执行选项不成为已交付教具或学习活动。
 
@@ -391,7 +391,7 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 ### TC4｜选择进入单个 Run，打通两种宿主的恢复
 
-**状态**：[x] 已完成，未提交、未部署。原交付选择、eligible／consumed、Goal 关系、两宿主持久输入和事实补记已接通；四种本地动作的准备中断及已开始执行不重放、多人数个准备窗口和并发选择、原 MU10 恢复用例均有验证。确切命令和证据见 [TC4 实施记录](performance/tutor-continuation-tc4.md)。**依赖**：TC2、TC3。
+**状态**：[x] 已完成，未提交、未部署。原交付选择、eligible／consumed、Goal 关系、两宿主持久输入和事实补记已接通；四种本地动作的准备中断及已开始执行不重放、多人数个准备窗口和并发选择、原 MU10 恢复用例均有验证。确切命令和证据见 [TC4 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc4.md)。**依赖**：TC2、TC3。
 
 **要交付的变化**：进入 Run 的每种类型化动作最多接纳一次执行；选择、回答引用、输入和恢复互相对应。
 
@@ -409,7 +409,7 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 **状态**：[x]，2026-10-11 完成，未提交、未部署。**依赖**：TC4。
 
-**实施结果**：单一建议宿主、可见子集回执、整段／片段纠偏、原题帮助定位和两宿主原请求恢复已接通。17 项浏览器用例、普通／演示／多人 3 条真实 API 路径、历史原回答引用复验及 Web 类型检查／构建通过；两次真实材料纠偏均完整交付并改变讲解重点。组件与服务端分组结果、录屏、截图及失败修正见 [TC5 实施记录](performance/tutor-continuation-tc5.md)。
+**实施结果**：单一建议宿主、可见子集回执、整段／片段纠偏、原题帮助定位和两宿主原请求恢复已接通。17 项浏览器用例、普通／演示／多人 3 条真实 API 路径、历史原回答引用复验及 Web 类型检查／构建通过；两次真实材料纠偏均完整交付并改变讲解重点。组件与服务端分组结果、录屏、截图及失败修正见 [TC5 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc5.md)。
 
 **要交付的变化**：解释结束后，读者能接受具体建议，也能对原回答点击“这一步没跟上”、选择一句话求助、自由改问或返回原文。
 
@@ -427,7 +427,7 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 ### TC6｜选择事实影响讲法，但不污染理解与表现
 
-**状态**：[x]，2026-10-11 完成，未提交、未部署。Server 定向 20、Memory 149、Runtime 34 项通过；真实模型纠正轨迹 completed，新假设替换旧假设并实际改变讲法，能力投影保持。见 [TC6 实施记录](performance/tutor-continuation-tc6.md)。**依赖**：TC4。
+**状态**：[x]，2026-10-11 完成，未提交、未部署。Server 定向 20、Memory 149、Runtime 34 项通过；真实模型纠正轨迹 completed，新假设替换旧假设并实际改变讲法，能力投影保持。见 [TC6 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc6.md)。**依赖**：TC4。
 
 **要交付的变化**：选项被接受会影响下一轮帮助；真实纠正可以修订理解假设；纯选择不加分。
 
@@ -496,7 +496,7 @@ TC2 + TC5 + TC6 → TC7 → TC8
 
 ## 10. 测试入口和建议命令
 
-以下命令是实施时使用的入口。TC0 已运行的确切命令、数量和失败分类见[基线记录](performance/tutor-continuation-tc0-baseline.md#4-命令与实际结果)。`packages/web/package.json:6–12` 已定义 test、test:e2e、typecheck；`crates/server/Cargo.toml:1–6` 的包名为 server。
+以下命令是实施时使用的入口。TC0 已运行的确切命令、数量和失败分类见[基线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc0-baseline.md#4-命令与实际结果)。`packages/web/package.json:6–12` 已定义 test、test:e2e、typecheck；`crates/server/Cargo.toml:1–6` 的包名为 server。
 
 ```bash
 # 既有 Rust 教学和接纳回归；必须检查实际选中/执行的测试数量。

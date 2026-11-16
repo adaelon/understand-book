@@ -10,7 +10,7 @@
 - [排版阅读版](book.html)
 - [章节与写作范围](OUTLINE.md)
 - [来源与核对记录](SOURCES.md)
-- [续写记录](SESSION_CHECKPOINT.md)
+- [续写记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/books/last-hit-positioning/SESSION_CHECKPOINT.md)
 
 网站教学由 Agent 在阅读时生成。本目录提供正文、静态配图、可复算案例及来源，不预先编排网站教学流程。
 

@@ -1,6 +1,6 @@
 # 切片方案：主 Agent 计划执行与教练指导
 
-日期：2026-10-29。对应 [ADR-0176](adr/0176-main-agent-planned-teaching-and-coach-guidance.md)。**MA0–MA5 已实现并上线。** 实际结果统一见[实施报告](performance/main-agent-planned-20261029/README.md)；发布与恢复点见[上线记录](performance/main-agent-planned-20261029/deployment/README.md)。
+日期：2026-10-29。对应 [ADR-0176](adr/0176-main-agent-planned-teaching-and-coach-guidance.md)。**MA0–MA5 已实现并上线。** 实际结果统一见[实施报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/main-agent-planned-20261029/README.md)；发布与恢复点见[上线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/main-agent-planned-20261029/deployment/README.md)。
 
 源码核对基点：`bbf18a8c12bdf7b99ed402cc95195356f376d4e8` 的当前工作树；工作区另有无关修改及未跟踪实验材料。后续执行先查看实际差异，按本文的符号和合同定位，不复原或覆盖其他工作。源码行号会变化，函数与数据类型为主要定位依据。
 
@@ -15,7 +15,7 @@
 ### 1.1 后续 agent 的最短阅读顺序
 
 1. ADR-0176 与本文，确定目标状态、保留边界和当前未完成状态。
-2. [同首稿实验报告](performance/teaching-shared-rules-20261029/README.md)，了解漏检、质量与计时边界。
+2. [同首稿实验报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/teaching-shared-rules-20261029/README.md)，了解漏检、质量与计时边界。
 3. [Goal 工作计划](../crates/runtime/src/goal.rs) 与 [ADR-0155](adr/0155-goal-work-plan-and-version-centered-presentation-context.md)，复用已有数据和工具。
 4. [Runtime 调度](../crates/runtime/src/orchestrator.rs) 的 `review_delivery_candidate`、`tutor.step`、`goal.update` 分支；[服务端教学](../crates/server/src/teaching.rs) 的 `prepare_select/preflight_step/record_agent_review` 和实际交付入口。
 5. [教练调度](../crates/server/src/teaching_coach.rs)、[原阅读恢复](../crates/server/src/teaching_coach/observations.rs)、[审核历史](../crates/memory/src/agent_work.rs)，确认取消审批不会破坏数据接续。
@@ -35,7 +35,7 @@
 
 ### 2.1 性能依据及适用边界
 
-已保存的最新同首稿结果为 181.053 → 225.061 秒、10 → 9 次调用、正文修改 1 → 2 次，总输入减少 23.02%。最终稿独立复核通过，但没有提速。最后样本主 Agent 请求累计约 24.8 秒，事实审核约 181.3 秒，解释审核约 14.3 秒；其余为工具与运行开销。依据见 [comparison.json](performance/teaching-shared-rules-20261029/comparison.json)。
+已保存的最新同首稿结果为 181.053 → 225.061 秒、10 → 9 次调用、正文修改 1 → 2 次，总输入减少 23.02%。最终稿独立复核通过，但没有提速。最后样本主 Agent 请求累计约 24.8 秒，事实审核约 181.3 秒，解释审核约 14.3 秒；其余为工具与运行开销。依据见 [comparison.json](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/teaching-shared-rules-20261029/comparison.json)。
 
 这一组从首次真实事实审核开始，冻结了 1,193 字符首稿及初始 19 段来源。它没有衡量新标准对重新生成首稿的影响，也没有覆盖绘图、演示和跨模型稳定性。新流程移除审核阶段后，不能拿“225 秒减去审核时间”当预测，不能直接与旧边界宣称端到端改善。
 
@@ -225,7 +225,7 @@ flowchart TD
 
 ### MA5：原问题完整对照与独立质量验收
 
-**状态：完成限定对照与验收记录。三组初始配对及三次具体失败驱动的复测共九次；文字本次等待缩短，图板最终交付，整体费用收益未证明，质量限制如实保留。全部样本、逐份质量判断及原生用量见 [实施报告](performance/main-agent-planned-20261029/README.md)。** 同模型、同配置、同材料与用户偏好，分别运行冻结基线和候选，从用户问题接纳开始到实际交付结束。教练可用状态及历史前缀一致，不把同题试跑形成的新记忆带入另一组。
+**状态：完成限定对照与验收记录。三组初始配对及三次具体失败驱动的复测共九次；文字本次等待缩短，图板最终交付，整体费用收益未证明，质量限制如实保留。全部样本、逐份质量判断及原生用量见 [实施报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/main-agent-planned-20261029/README.md)。** 同模型、同配置、同材料与用户偏好，分别运行冻结基线和候选，从用户问题接纳开始到实际交付结束。教练可用状态及历史前缀一致，不把同题试跑形成的新记忆带入另一组。
 
 首组覆盖《失败的逻辑》完整解释、局部追问和一项有真实预览的图板／演示请求；另外验证一次连续教学接续和正式作答，可复用 MA4 的合适夹具。真实调用先做每场景各一组配对；只有波动或具体未解失败会改变判断时追加，并记录原因、费用边界和全部失败。现有授权不包含的新增费用或部署按项目规则处理，不自动扩大实验。
 
@@ -256,7 +256,7 @@ flowchart TD
 
 ## 9. 交付状态、已知限制与文档接续
 
-当前 MA0–MA5 的本地实现、功能回归、九次真实模型对照及浏览器验收记录已完成。各切片状态与完整结果见[实施报告](performance/main-agent-planned-20261029/README.md)；本轮未部署。
+当前 MA0–MA5 的本地实现、功能回归、九次真实模型对照及浏览器验收记录已完成。各切片状态与完整结果见[实施报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/main-agent-planned-20261029/README.md)；本轮未部署。
 
 已有独立审稿发现过真实错误，也出现过漏检。新架构将更多语义判断交给主 Agent，不能保证质量自动不变；计划是执行依据，不能替代取证。表达教练仍有同步成本，后台教学教练仍有模型费用，整体收益以实际计量为准。
 

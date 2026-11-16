@@ -1,6 +1,6 @@
 # 内测 MCP 实施入口
 
-更新时间：2026-10-12。状态：**MCP0–MCP10 已完成并上线**，包含集成、新 Agent、正式 HTTPS、账本及恢复验收。发布入口见 [MCP10 运行单](内测MCP-发布运行单.md)，与 Tutor 工作线的合并见 [整合记录](performance/integration-mcp-tutor-20261012.md)。
+更新时间：2026-10-12。状态：**MCP0–MCP10 已完成并上线**，包含集成、新 Agent、正式 HTTPS、账本及恢复验收。发布入口见 [MCP10 运行单](内测MCP-发布运行单.md)，与 Tutor 工作线的合并见 [整合记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/integration-mcp-tutor-20261012.md)。
 
 ## 工作位置与基线
 
@@ -56,13 +56,13 @@ MCP 产品约定、ADR-0162、切片方案、五个 MCP 术语及实现已与 ma
 
 ## MCP9 已完成
 
-Codex CLI 0.162.0-alpha.2 通过无背景阅读及耗尽停止验收，2 条引用和 3 条消费事实核对通过。补齐双账号／HTTP 购包恢复、真实来源解析和小规模并发；87 项既有 Server 回归、2 项新增用例、Web 126 项、Admin 30 项及构建通过。旧 MU4 样本失败与客户端限制见 [MCP9](内测MCP-MCP9实现.md)、[验收记录](performance/beta-mcp/README.md)。
+Codex CLI 0.162.0-alpha.2 通过无背景阅读及耗尽停止验收，2 条引用和 3 条消费事实核对通过。补齐双账号／HTTP 购包恢复、真实来源解析和小规模并发；87 项既有 Server 回归、2 项新增用例、Web 126 项、Admin 30 项及构建通过。旧 MU4 样本失败与客户端限制见 [MCP9](内测MCP-MCP9实现.md)、[验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/beta-mcp/README.md)。
 
 ## MCP10 已完成
 
 Linux 版本 `mcp10-20261012` 于 2026-10-12 08:53 HKT 上线，schema 12。独立 schema 9 升级、schema 12 成套恢复、旧二进制拒绝新 schema 与旧快照恢复可读均通过。最新生产数据保留 4 个账号、10 个发布、39 条授权、265 个私人文件及 280 条模型费用。
 
-正式 HTTPS 的 11 工具、来源坐标、赠送／消费账本和 1／4／8 路读取通过；8,000 字符页每次 37,738 字节，最大耗时约 2.16 秒，首批仍按 4 个活跃任务规划。两轮赠送／消费各 28 次，原有余额保持，测试凭证已撤销。见 [运行单](内测MCP-发布运行单.md)和 [证据](performance/mcp10-20261012/README.md)。
+正式 HTTPS 的 11 工具、来源坐标、赠送／消费账本和 1／4／8 路读取通过；8,000 字符页每次 37,738 字节，最大耗时约 2.16 秒，首批仍按 4 个活跃任务规划。两轮赠送／消费各 28 次，原有余额保持，测试凭证已撤销。见 [运行单](内测MCP-发布运行单.md)和 [证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp10-20261012/README.md)。
 
 ## 后续衔接
 

@@ -32,4 +32,4 @@ method_id: `discrete-update` · revision: `3` · 状态：联动升级版
 
 ## 使用证据与采用
 
-开发材料为 D1 二次函数模型。历史 v1/v2 的制作与采用见 [SE1 记录](../../../../../docs/performance/explanation-evolution/se1/README.md) 和 [模板库说明](../../README.md)。v3 增加曲线直接定位、误差图联动、切线与分段观察，并采用共用二维状态与恢复核心；本版证据见 [八模板升级记录](../../../../../docs/performance/presentation-method-library-v2/README.md)。
+开发材料为 D1 二次函数模型。历史 v1/v2 的制作与采用见 [SE1 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se1/README.md) 和 [模板库说明](../../README.md)。v3 增加曲线直接定位、误差图联动、切线与分段观察，并采用共用二维状态与恢复核心；本版证据见 [八模板升级记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-method-library-v2/README.md)。

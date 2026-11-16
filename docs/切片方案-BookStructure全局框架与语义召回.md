@@ -1,12 +1,12 @@
 # 切片方案：BookStructure 全局框架与语义召回
 
-状态：设计已接受，2026-10-01；BSR0–BSR6 已完成，含独立 Codex subagent 真实章节／主题内容验收、本地 MiniLM 对照及新书完整章节发现；BSR7 已完成（[交付记录](performance/book-structure-bsr7.md)）。对应 [ADR-0151](adr/0151-book-structure-global-outline-and-semantic-retrieval.md)。BSR0 证据见[真实样本与比较合同](performance/book-structure-bsr0.md)，内容结果见 [BSR3–BSR4](performance/book-structure-bsr3-bsr4.md)，正式接入见 [BSR5](performance/book-structure-bsr5.md)，前段发现见 [BSR6](performance/book-structure-bsr6.md)。
+状态：设计已接受，2026-10-01；BSR0–BSR6 已完成，含独立 Codex subagent 真实章节／主题内容验收、本地 MiniLM 对照及新书完整章节发现；BSR7 已完成（[交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)）。对应 [ADR-0151](adr/0151-book-structure-global-outline-and-semantic-retrieval.md)。BSR0 证据见[真实样本与比较合同](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr0.md)，内容结果见 [BSR3–BSR4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr3-bsr4.md)，正式接入见 [BSR5](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr5.md)，前段发现见 [BSR6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr6.md)。
 
 目标是保住有来源的重要机制，形成可解释的章节推进与跨章主题，并减少重复生成和总构建成本。首轮以 ai-infra 的第 8 章和一条跨章主题验证章节整理与 SR 召回，再接入正式路由和新书前段。最终公共产物继续使用 spine / throughlines / key_stops，沿用现有 BuildStage 与 Harness。
 
 ## 现状与问题基线
 
-审阅对象为 `E:/allwork/download/agent/lifebook/.understand-book/ai-infra-book-complete` 的 2026-10-01 发布结果。仓库 `.understand-book` 下的同名旧副本不作为基线。构建完成见[恢复与发布记录](performance/build-control-recovery-20260930.md)。
+审阅对象为 `E:/allwork/download/agent/lifebook/.understand-book/ai-infra-book-complete` 的 2026-10-01 发布结果。仓库 `.understand-book` 下的同名旧副本不作为基线。构建完成见[恢复与发布记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/build-control-recovery-20260930.md)。
 
 | 观测 | 当前结果 | 对应改动 |
 | --- | --- | --- |
@@ -19,7 +19,7 @@
 
 702 个已接纳任务的预算记录累计估算：任务正文 2,817,329 tokens，语义提示词 507,377 tokens，交付开销 655,467 tokens；候选输出上限均为 1,024 tokens。这些是程序估算，分别保留，不当作计费账单或全部模型调用量。622 次结构来源／依赖引用均可解析，引用完整性与内容组织质量分别判断。
 
-BSR0 已重算上述数据并保存来源路径，形成[可重放基线](performance/book-structure-bsr0.md)。另查得 720 次历史尝试的实际 tokens 全部未知；原书和大体积历史构建目录不随代码复制。
+BSR0 已重算上述数据并保存来源路径，形成[可重放基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr0.md)。另查得 720 次历史尝试的实际 tokens 全部未知；原书和大体积历史构建目录不随代码复制。
 
 ## 已确认边界
 
@@ -128,11 +128,11 @@ BSR0 → BSR1 → BSR2 → BSR3 → BSR4 → BSR5 → BSR6 → BSR7
         保留    真实对照        对照       接入     前段     交付
 ```
 
-BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验收由 BSR2 完成，第二消费者与主题合同由 BSR3/4 实现；最后一个依赖语义反例已替换为真实 B/C 结果及重放校验，不再预期失败；BSR5 已接入正式路由、确认范围、动作重放和发布；BSR6 已替换技术书前段发现并通过完整第 8 章内容验收。BSR7 已完成（[交付记录](performance/book-structure-bsr7.md)）。每片独立保留输入、接纳结果和验证记录，后续只依赖文件状态；完成后更新本节及项目代码链路。
+BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验收由 BSR2 完成，第二消费者与主题合同由 BSR3/4 实现；最后一个依赖语义反例已替换为真实 B/C 结果及重放校验，不再预期失败；BSR5 已接入正式路由、确认范围、动作重放和发布；BSR6 已替换技术书前段发现并通过完整第 8 章内容验收。BSR7 已完成（[交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)）。每片独立保留输入、接纳结果和验证记录，后续只依赖文件状态；完成后更新本节及项目代码链路。
 
 ## BSR0 真实样本与比较合同
 
-**状态**：2026-10-01 完成；[报告](performance/book-structure-bsr0.md)、[重放入口](../evals/book-structure/README.md)、[回归测试](../packages/core/test/book-structure-bsr0.test.ts)。来源重放一致，10 项定向测试通过（含 3 项预期失败合同），Core 类型检查通过。
+**状态**：2026-10-01 完成；[报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr0.md)、[重放入口](../evals/book-structure/README.md)、[回归测试](../packages/core/test/book-structure-bsr0.test.ts)。来源重放一致，10 项定向测试通过（含 3 项预期失败合同），Core 类型检查通过。
 
 **产出**：可重放的 ai-infra 基线、精简回归夹具，以及运行前固定的原文验收依据。
 
@@ -149,7 +149,7 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 ## BSR1 候选保留与确定性组装
 
-**状态**：2026-10-01 完成。贡献派生候选目录、真实标题和引用物化已实现；章号／9→2 反例转绿，顺序、分组和重复应用保持内容与证据。[记录](performance/book-structure-bsr1-bsr2.md)。
+**状态**：2026-10-01 完成。贡献派生候选目录、真实标题和引用物化已实现；章号／9→2 反例转绿，顺序、分组和重复应用保持内容与证据。[记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr1-bsr2.md)。
 
 **产出**：可引用的完整候选目录、真实标题映射和按引用组装的基础能力。
 
@@ -161,7 +161,7 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 ## BSR2 全书框架与章节引用选择
 
-**状态**：2026-10-01 完成。用户选择独立 Codex subagent 执行真实对照：31 候选→27 个章内重点／15 个宏观路线点，9 类机制原文验收通过；13 次语义提交、0 拒绝、约 7 分 5 秒。实际 tokens 不可得，估算与限制单列。[实现](performance/book-structure-bsr1-bsr2.md)、[真实对照](performance/book-structure-bsr2-codex.md)。
+**状态**：2026-10-01 完成。用户选择独立 Codex subagent 执行真实对照：31 候选→27 个章内重点／15 个宏观路线点，9 类机制原文验收通过；13 次语义提交、0 拒绝、约 7 分 5 秒。实际 tokens 不可得，估算与限制单列。[实现](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr1-bsr2.md)、[真实对照](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr2-codex.md)。
 
 **产出**：全书框架草案、第 8 章章节结构，以及第一次真实内容／成本对照。
 
@@ -173,7 +173,7 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 ## BSR3 SR 的第二个消费者
 
-**状态**：2026-10-01 完成。消费者投影身份与缓存槽贯通，短投影通过本地真实 tokenizer；C 实验嵌入 216 个文档和 9 个查询，36 次调用。相关 5 文件 45 项验证通过。[实现与验收](performance/book-structure-bsr3-bsr4.md)。
+**状态**：2026-10-01 完成。消费者投影身份与缓存槽贯通，短投影通过本地真实 tokenizer；C 实验嵌入 216 个文档和 9 个查询，36 次调用。相关 5 文件 45 项验证通过。[实现与验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr3-bsr4.md)。
 
 **产出**：BookStructure 候选投影、混合检索准备及独立缓存槽。
 
@@ -185,7 +185,7 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 ## BSR4 主题工作集与局部对照
 
-**状态**：2026-10-01 完成。真实 B/C 共享 202 候选、四主题目录；最终各 4 主题、25 阶段、8 条有双端来源的依赖，45／46 次提交，均 0 拒绝。原文核对后只重开固定主题，每组 2 次动作补齐分页／共享容量和量化转移联系，其他主题不变；完整重放通过。C 未证明整体收益，保持 `lexical_only`。[内容与成本报告](performance/book-structure-bsr3-bsr4.md)。
+**状态**：2026-10-01 完成。真实 B/C 共享 202 候选、四主题目录；最终各 4 主题、25 阶段、8 条有双端来源的依赖，45／46 次提交，均 0 拒绝。原文核对后只重开固定主题，每组 2 次动作补齐分页／共享容量和量化转移联系，其他主题不变；完整重放通过。C 未证明整体收益，保持 `lexical_only`。[内容与成本报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr3-bsr4.md)。
 
 **产出**：一条完整跨章主题、阅读依赖与词法／混合检索对照；随后覆盖本书主题目录。
 
@@ -197,7 +197,7 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 ## BSR5 正式路由恢复与发布接入
 
-状态：已完成，2026-10-01；[实现、验证与限制](performance/book-structure-bsr5.md)。
+状态：已完成，2026-10-01；[实现、验证与限制](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr5.md)。
 
 **产出**：正式 Engine 可调度、恢复和发布新结构流程，两种 Harness 使用同一 Core 权威。
 
@@ -211,7 +211,7 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 ## BSR6 新书的前段候选发现
 
-**状态**：2026-10-01 完成；[实现、成本与已知限制](performance/book-structure-bsr6.md)。15 文件 76 项定向测试及 Core typecheck 通过；全书 14 单元原文框架先行，完整第 8 章 653 叶节点经 40 个发现任务保留 178 候选。独立 Codex subagent 共 42 次提交（接受 41、拒绝 1），58 分 52.291 秒内完成；九类机制原文验收、同 LID 不同含义及保存响应重放通过，无外部生成 API／embedding／原书发布。实际模型用量未知，估算单列；复用公式的五处误标留定点修正。
+**状态**：2026-10-01 完成；[实现、成本与已知限制](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr6.md)。15 文件 76 项定向测试及 Core typecheck 通过；全书 14 单元原文框架先行，完整第 8 章 653 叶节点经 40 个发现任务保留 178 候选。独立 Codex subagent 共 42 次提交（接受 41、拒绝 1），58 分 52.291 秒内完成；九类机制原文验收、同 LID 不同含义及保存响应重放通过，无外部生成 API／embedding／原书发布。实际模型用量未知，估算单列；复用公式的五处误标留定点修正。
 
 **产出**：从源材料建立完整候选目录，替换反复压缩候选正文的归并树。
 
@@ -225,7 +225,7 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 **产出**：完整 ai-infra 新结构、可复查的质量与成本报告，以及正式入口的交付证据。
 
-**主要位置**：`evals/book-structure/`、相关Core/ReadTools集成测试、构建协议同步与原安装打包入口；实际记录为 [BSR7报告](performance/book-structure-bsr7.md)及 `docs/performance/book-structure-bsr7-20261002/`。
+**主要位置**：`evals/book-structure/`、相关Core/ReadTools集成测试、构建协议同步与原安装打包入口；实际记录为 [BSR7报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)及 `docs/performance/book-structure-bsr7-20261002/`。
 
 **当前状态**：已完成。完整发现与章节选择的14单元946重点／345宏观通过来源验收；unit14正式修订排除5.47GB总读取误标，并在锚定摘要保留准确比较条件，最终主题未回流该误标。完整主题规划正式输入19304/20000。C/B生成及三个正式主题修订完成，两组最终来源验收全部通过、未解决问题为0；真实fresh重放、Engine发布、正式安装及新书Reader/MCP均已通过实际验收。
 
@@ -245,11 +245,11 @@ BSR0–BSR6 已完成：章号及丢点反例由 BSR1 转绿，真实章节验�
 
 ## 已知限制与接手入口
 
-- [SR 最新记录](performance/semantic-retrieval-20260930.md)中 SR1–SR5 及验收工具已实现，SR6 真实对照尚未达到发布要求、长材料待验。共享实现可复用，T5A 身份质量和 BookStructure 主题质量分别验收；当前默认词法模式不因本方案落档改变。
+- [SR 最新记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/semantic-retrieval-20260930.md)中 SR1–SR5 及验收工具已实现，SR6 真实对照尚未达到发布要求、长材料待验。共享实现可复用，T5A 身份质量和 BookStructure 主题质量分别验收；当前默认词法模式不因本方案落档改变。
 - 本书的 138 个候选也已经经过旧归并，有些机制只存在更早片段；BSR0/BSR1 必须保留并补入已确认的来源，不能把该数当完整知识上限。
 - BSR1/2 确定性验证及 Codex 真实章节内容验收已完成；实际模型用量不可得，702 项历史估算与本次序列化估算无法构成同条件严格成本对照。后续实验额度按用户选择的执行方式确认，不沿用其他 SR 实验的剩余额度。
 - BSR7发现历史保留含5.47GB误标的原候选；该候选已退出章节选择，准确条件保留于章节摘要，最终主题来源验收确认该误标未回流。
 - 本轮实际模型usage为null；C/B使用独立生成者，查询内容不同。序列化估算、实际embedding计量和wall时间分别报告，不能据此归因提速或推算严格费用。
 - 当前聊天既有Book MCP连接仍为 `unavailable`／`book_structure.json not attached`，旧连接未附着新书；新安装MCP的显式目录及Reader默认目录的新进程已通过完整验收。
 
-交付证据见 [BSR7报告](performance/book-structure-bsr7.md)及[实验入口](../evals/book-structure/README.md)；历史设计依据见 [BSR6报告](performance/book-structure-bsr6.md)、[BSR5报告](performance/book-structure-bsr5.md)及[BSR3–BSR4内容报告](performance/book-structure-bsr3-bsr4.md)。本轮已收口；后续新生成需独立确认材料和额度，原书及本轮词法对照保留。
+交付证据见 [BSR7报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)及[实验入口](../evals/book-structure/README.md)；历史设计依据见 [BSR6报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr6.md)、[BSR5报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr5.md)及[BSR3–BSR4内容报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr3-bsr4.md)。本轮已收口；后续新生成需独立确认材料和额度，原书及本轮词法对照保留。

@@ -2,7 +2,7 @@
 
 日期：2026-09-08。LA1–LA6 实现和确定性回归完成；真实模型定向复验如实记录成功、未完成和失败。完整 32 题统一回归属于 LA7。
 
-依据：[ADR-0123](adr/0123-lid-foundation-and-reliable-agent-completion.md)、[切片方案](切片方案-LID底座与Agent可靠交付.md)、[原始评测工作记录](agent-loop-eval-worklog.md)。基于 `9e36507` 的未提交工作树，保留前序 V1、Linux 与插件修改；本次本地实现没有部署到 Linux。
+依据：[ADR-0123](adr/0123-lid-foundation-and-reliable-agent-completion.md)、[切片方案](切片方案-LID底座与Agent可靠交付.md)、[原始评测工作记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/agent-loop-eval-worklog.md)。基于 `9e36507` 的未提交工作树，保留前序 V1、Linux 与插件修改；本次本地实现没有部署到 Linux。
 
 ## 实现结果
 
@@ -38,18 +38,18 @@ LA6 的适配器生产序列化原本正确，本次补齐确定性覆盖与 Ser
 
 | 运行目录 | 场景 | 结果与后续处理 |
 | --- | --- | --- |
-| [2026-09-08-la1](../evals/semantic/results/2026-09-08-la1/summary.json) | `source-01..04` | 4/4 实际导航通过 |
-| [2026-09-08-la2](../evals/semantic/results/2026-09-08-la2/summary.json) | `restart-01..04` | 1/4 完整通过；02 准备失败（选区过宽），03 准备通过但位置持久化失败，04 持久化通过但新聊天恢复失败。对应补精确原句选区、Agent 会话保存和记忆发现提示 |
-| [2026-09-08-la3](../evals/semantic/results/2026-09-08-la3/summary.json) | exact-04、concept-03、cross-02/04、formula-01/03 | 2/6 通过；cross-02 超时，其余失败涉及来源未交付或内容/证据不足；补明确来源语法、绑定后缀规范化和真实来源绑定进展 |
-| [2026-09-08-la4](../evals/semantic/results/2026-09-08-la4/summary.json) | concept-02、cross-01/02 | 1/3 通过；concept-02 incomplete，cross-01 内容正确但缺少有效交付来源；随后修复恢复与停止交互 |
-| [2026-09-08-la5](../evals/semantic/results/2026-09-08-la5/summary.json) | concept-02 | 1/1 通过；仍消耗 7 次请求、85,504 tokens，成本问题留给 LA7 统一分账 |
-| [2026-09-08-la6](../evals/semantic/results/2026-09-08-la6/summary.json) | refusal-01..04、restart-02/03 | 拒绝题 3/4 正常完成，01 incomplete；restart-02 准备通过但恢复发生最终协议错误，03 准备/持久化通过但恢复答案未通过。错误没有改判为成功 |
+| [2026-09-08-la1](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la1/summary.json) | `source-01..04` | 4/4 实际导航通过 |
+| [2026-09-08-la2](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la2/summary.json) | `restart-01..04` | 1/4 完整通过；02 准备失败（选区过宽），03 准备通过但位置持久化失败，04 持久化通过但新聊天恢复失败。对应补精确原句选区、Agent 会话保存和记忆发现提示 |
+| [2026-09-08-la3](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la3/summary.json) | exact-04、concept-03、cross-02/04、formula-01/03 | 2/6 通过；cross-02 超时，其余失败涉及来源未交付或内容/证据不足；补明确来源语法、绑定后缀规范化和真实来源绑定进展 |
+| [2026-09-08-la4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la4/summary.json) | concept-02、cross-01/02 | 1/3 通过；concept-02 incomplete，cross-01 内容正确但缺少有效交付来源；随后修复恢复与停止交互 |
+| [2026-09-08-la5](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la5/summary.json) | concept-02 | 1/1 通过；仍消耗 7 次请求、85,504 tokens，成本问题留给 LA7 统一分账 |
+| [2026-09-08-la6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la6/summary.json) | refusal-01..04、restart-02/03 | 拒绝题 3/4 正常完成，01 incomplete；restart-02 准备通过但恢复发生最终协议错误，03 准备/持久化通过但恢复答案未通过。错误没有改判为成功 |
 
 ## 最终固定版本定向复验
 
 程序：`tmp/la-final/server.exe`。目录：`evals/semantic/results/2026-09-08-la1-la6-final`。12 个场景：8 道共同问答及 Chunk 对照、4 道重启任务。运行期间未修改该程序。该批 formula-01 暴露的冒号格式缺口在随后独立快照修复，成绩分开记录。
 
-运行状态 `completed`；[公开逐题报告](../evals/semantic/results/2026-09-08-la1-la6-final/report.md)、[匿名汇总](../evals/semantic/results/2026-09-08-la1-la6-final/summary.json)。
+运行状态 `completed`；[公开逐题报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la1-la6-final/report.md)、[匿名汇总](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la1-la6-final/summary.json)。
 
 | 场景 | Agent 结果 | 失败说明 |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ formula-01 的真实答案把已绑定来源写在冒号之前：`依据书中�
 
 修复程序：`tmp/la-final-colon/server.exe`；单题目录：`evals/semantic/results/2026-09-08-la3-colon`。此改动仅扩展两个标点，不替模型选择证据，未知 ref、代码和引述的原约束保持。
 
-修复后的真实单题运行 `completed`；Agent 0/1，40.07 秒、9 次请求、96,775 tokens，因 `FINALIZATION_TOOL_PROTOCOL_VIOLATION` 失败；Chunk 1/1。[匿名汇总](../evals/semantic/results/2026-09-08-la3-colon/summary.json)。格式缺口已由确定性红绿测试修复，但该次真模没有交付答案，不能宣称此题已端到端通过，也不拿旧快照的通过覆盖当前失败。
+修复后的真实单题运行 `completed`；Agent 0/1，40.07 秒、9 次请求、96,775 tokens，因 `FINALIZATION_TOOL_PROTOCOL_VIOLATION` 失败；Chunk 1/1。[匿名汇总](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la3-colon/summary.json)。格式缺口已由确定性红绿测试修复，但该次真模没有交付答案，不能宣称此题已端到端通过，也不拿旧快照的通过覆盖当前失败。
 
 ## 已知问题与后续
 
@@ -83,4 +83,4 @@ formula-01 的真实答案把已绑定来源写在冒号之前：`依据书中�
 - 真实模型一次抽查不能证明整体质量或成本收益。LA7 应从固定源码重新跑完整 32 题、分列准备/持久化/恢复、检查既有成功样本退化并统计所有请求；LA8–LA10 尚未实施。
 - 本地工作树包含并行 Linux/V1 改动。Linux LX7 已验收的部署快照以其独立报告为准；本报告不代表 LA 变更已发布、安装或部署。
 
-实现链路见[代码链路 LA1–LA6 记录](代码链路.md)，架构见[架构](架构.md)，下一次接手入口见 [SESSION_CHECKPOINT](../SESSION_CHECKPOINT.md)。
+实现链路见[代码链路 LA1–LA6 记录](代码链路.md)，架构见[架构](架构.md)，下一次接手入口见 [SESSION_CHECKPOINT](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/SESSION_CHECKPOINT.md)。

@@ -12,9 +12,9 @@ Rust · TypeScript · Vue 3 · Tauri 2 · MCP
 
 [Quick Start](#quick-start) · [30 秒摘要](#30-秒技术摘要) · [双时序架构](#双时序架构) · [实测结果](#实测而不是预设胜出) · [当前限制](#当前限制)
 
-先看证据：[32 题 / 8 类完整 Agent 评测](evals/semantic/AGENT_EVAL.md) · [单书 2,757 个原文定位单元](evals/semantic/results/2026-09-08-agent-v1/summary.json) · [1,745 条图关系](evals/semantic/results/2026-09-08-agent-v1/summary.json)
+先看证据：[32 题 / 8 类完整 Agent 评测](evals/semantic/AGENT_EVAL.md) · [单书 2,757 个原文定位单元](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-agent-v1/summary.json) · [1,745 条图关系](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-agent-v1/summary.json)
 
-![Understand Book 真实阅读器：原创文本、来源高亮与持久笔记](docs/screenshots/quickstart-reader.png)
+![Understand Book 真实阅读器：原创文本、来源高亮与持久笔记](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/screenshots/quickstart-reader.png?raw=true)
 
 *真实服务与生产前端截图。演示文本、笔记为原创，图谱为预设样例；语义评测使用独立的真实书库。*
 
@@ -56,7 +56,7 @@ flowchart LR
 
 使用完整的 `quantification-essence` 书库，32 题覆盖原文定位、概念解释、跨章节、对比、公式、来源跳转、拒绝与重启。其中 **24 道共同问答**比较普通 Chunk RAG 与完整生产 Agent；4 道实际跳转、4 道 Agent 重启恢复单列。
 
-下表为 **2026-09-08 修复前基线**，模型 `deepseek-v4-flash`，每系统每题一次。Agent 走真实 `/agent/chat`，自主搜索、发现工具、回读、修复和交付；评测器不提供检索种子或参考答案。逐题数据见[完整报告](evals/semantic/results/2026-09-08-agent-v1/report.md)，方法见[评测协议](evals/semantic/AGENT_EVAL.md)。
+下表为 **2026-09-08 修复前基线**，模型 `deepseek-v4-flash`，每系统每题一次。Agent 走真实 `/agent/chat`，自主搜索、发现工具、回读、修复和交付；评测器不提供检索种子或参考答案。逐题数据见[完整报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-agent-v1/report.md)，方法见[评测协议](evals/semantic/AGENT_EVAL.md)。
 
 | 系统 | 证据召回 | 引用支持率¹ | 任务成功率¹ | P95 延迟 | 单任务 Token（均值） |
 | --- | ---: | ---: | ---: | ---: | ---: |
@@ -67,11 +67,11 @@ Agent 在本轮多覆盖了一组参考证据，但没有转化为更好的交�
 
 Agent 专属动作测试中，来源跳转为 **0/4**；四道重启任务的保存/定位准备均未完成，完整恢复为 **0/4**，不能据此断定持久化层丢失数据。正式运行共 325 次被测模型请求，另有 51 次独立判分；重启测试的一条后台画像请求缺失用量，单列为 N/A。
 
-已根据评测修复“普通编号列表被误认成根 LID”的交付误报，25 项来源相关回归通过，修复后的[真实单题验证](evals/semantic/results/2026-09-08-list-marker-fix-probe/report.md)也通过。动作权限传播和无进展恢复仍需改进；单题结果不反写基线。详见[失败链路与改进](evals/semantic/agent-findings.md)，原来的两轮[固定检索消融](evals/semantic/README.md)作为独立实验保留。
+已根据评测修复“普通编号列表被误认成根 LID”的交付误报，25 项来源相关回归通过，修复后的[真实单题验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-list-marker-fix-probe/report.md)也通过。动作权限传播和无进展恢复仍需改进；单题结果不反写基线。详见[失败链路与改进](evals/semantic/agent-findings.md)，原来的两轮[固定检索消融](evals/semantic/README.md)作为独立实验保留。
 
-后续 [LA7 完整回归](evals/semantic/results/2026-09-08-la7/report.md)为 Agent 15/24、Chunk 20/24，实际跳转与重启恢复均 4/4；同时满足回答、引用和动作的来源题为 1/4。后续独立来源修复及真实前端连续阅读七阶段结果见 [LA7–LA10 实施与验收](docs/LA7-LA10实施与验收.md)，不替换上面的旧基线或固定全量样本。
+后续 [LA7 完整回归](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la7/report.md)为 Agent 15/24、Chunk 20/24，实际跳转与重启恢复均 4/4；同时满足回答、引用和动作的来源题为 1/4。后续独立来源修复及真实前端连续阅读七阶段结果见 [LA7–LA10 实施与验收](docs/LA7-LA10实施与验收.md)，不替换上面的旧基线或固定全量样本。
 
-[LA9 同环消融](evals/semantic/results/2026-09-08-la9-v2/report.md)使用相同循环与预算，每组24题：Text 10/24、Tree 11/24、Graph 9/24。Graph 相对 Tree 新增2道成功、失去4道，本次单书结果没有支持扩大图谱默认使用；具体定位路径、成本、标注偏差与预构建成本限制见[裁决](docs/LA7-LA10实施与验收.md#la9-完整结果与裁决)。
+[LA9 同环消融](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la9-v2/report.md)使用相同循环与预算，每组24题：Text 10/24、Tree 11/24、Graph 9/24。Graph 相对 Tree 新增2道成功、失去4道，本次单书结果没有支持扩大图谱默认使用；具体定位路径、成本、标注偏差与预构建成本限制见[裁决](docs/LA7-LA10实施与验收.md#la9-完整结果与裁决)。
 
 ¹ 引用支持率是必要事实中“结论正确且有有效原文引用支持”的比例；无引用计不支持。成功要求全部必要事实与引用通过，拒绝题要求明确不臆造。自然答案由独立模型标注，再核对金标准值、真实答句与引用；来源引用必须能被生产服务解析。参考证据召回、引用支持及完整成功的分母不同，详见协议。
 
@@ -138,4 +138,4 @@ cargo run -p server --bin server -- .understand-book/quantification-essence
 - [架构与设计决策](docs/架构.md)
 - [工具接口](docs/book工具.md)
 - [原创演示文本](examples/quickstart/book.md)
-- [构建控制面实测](docs/performance/understand-book-v1-release.md)
+- [构建控制面实测](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-v1-release.md)

@@ -17,7 +17,7 @@ node evals/semantic/agent-report.mjs evals/semantic/results/my-agent-run
 
 `--book` 可指定书库，默认用户指定的 `.understand-book/quantification-essence`。`--only exact-02,source-02,restart-01` 用于接入预检；预检单列，不拼入主表。已存在的运行目录不可覆写。书库不随仓库发布。
 
-EV4 的独立版本使用 `node evals/semantic/agent-run.mjs --validate --reading-protocol` 核对原文，再用 `--reading-protocol --out <新目录>` 运行全部 8 道单轮题及两个同聊天多轮变体。单轮同时运行 Chunk 与 Resident；多轮只运行 Resident，后一轮信息不会提前进入第一轮请求。新题原文审阅包与校准流程见 [QUALITY_EVAL](QUALITY_EVAL.md)；首轮当前版本成绩与边界见 [EV3–EV4 记录](../../docs/performance/agent-eval-ev3-ev4-20260925.md)。
+EV4 的独立版本使用 `node evals/semantic/agent-run.mjs --validate --reading-protocol` 核对原文，再用 `--reading-protocol --out <新目录>` 运行全部 8 道单轮题及两个同聊天多轮变体。单轮同时运行 Chunk 与 Resident；多轮只运行 Resident，后一轮信息不会提前进入第一轮请求。新题原文审阅包与校准流程见 [QUALITY_EVAL](QUALITY_EVAL.md)；首轮当前版本成绩与边界见 [EV3–EV4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md)。
 
 服务与私有记忆按题隔离，不连接日常 Reader，不回写原始基座。程序沿用已有模型配置，调用会产生费用。主表至少包含 24 次 Chunk 请求；Agent 请求数由实际工具循环决定，不是每题一次。语义标注另需最多 52 次请求，其用量单列。每个 Agent 问答请求超时为 300 秒，失败保留；生产内部的重试、压缩、修复与内层模型请求全部经过记录器。
 

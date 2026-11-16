@@ -2,7 +2,7 @@
 
 2026-10-29 接续：[ADR-0176](0176-main-agent-planned-teaching-and-coach-guidance.md) 已接受、待实施，将主 Agent 的计划与工具循环作为默认交付路径，移出同步内容审阅。本文的教学使命、认知积木、真实来源和学习证据标准继续有效；下文保留原实施记录。
 
-状态：已接受，2026-10-12；同日按 TO 原则修订职责、上下文与验收设计。TB0–TB5 完成；[TB2](../performance/tutor-building-blocks-tb2/README.md)、[TB3](../performance/tutor-building-blocks-tb3/README.md)与 [TB4](../performance/tutor-building-blocks-tb4/README.md)通过工程与 GPT-6.1-Sol 教学内容验收，TO3 已集成。TB4 新增 2 次授权实验，交付可操作教具并沿实际保存现场接续；原始输出与状态恢复、来源配色、解释引用的局部修正分别保留。[TB5](../performance/tutor-building-blocks-tb5/README.md)完成教法与理解视图，实际记录经浏览器纠正并重开，新增模型调用 0。TB6 待实施；模型自主循环、DeepSeek 专项未复验和真人缺席见各片限制。实施与验收见[切片方案](../切片方案-Tutor使命与认知积木.md)。
+状态：已接受，2026-10-12；同日按 TO 原则修订职责、上下文与验收设计。TB0–TB5 完成；[TB2](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb2/README.md)、[TB3](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb3/README.md)与 [TB4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb4/README.md)通过工程与 GPT-6.1-Sol 教学内容验收，TO3 已集成。TB4 新增 2 次授权实验，交付可操作教具并沿实际保存现场接续；原始输出与状态恢复、来源配色、解释引用的局部修正分别保留。[TB5](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-building-blocks-tb5/README.md)完成教法与理解视图，实际记录经浏览器纠正并重开，新增模型调用 0。TB6 待实施；模型自主循环、DeepSeek 专项未复验和真人缺席见各片限制。实施与验收见[切片方案](../切片方案-Tutor使命与认知积木.md)。
 
 Tutor 的核心使命是：**从学习者当前的理解出发，提供他能够理解、操作和组合的认知积木，引导他用这些积木建立新的理解，并逐步能够独立运用。** 知识关系、直观模型、方法、例子和交互教具都可以承担这一作用；判断其价值，要看学习者能够借它完成什么。
 
@@ -25,7 +25,7 @@ Tutor 的核心使命是：**从学习者当前的理解出发，提供他能够
 **命门**：主讲依据真实已给帮助与用户表达，展开本次缺失的连接；数字、公式与引用用于支持该过程。用户明确请求摘要、数据或简短确认时按其范围交付。
 主讲、文字审核和页面审核共用 `tutor_explanation_principle.md`。审核从实际交付中引用已经展开的连接，不能用教材、教师计划或自身推导替作者补全。文字通道保留相关目标、方法、读者背景与教师工作记忆。
 **何时回头**：删去关键过程仍被接受，或正常简短回答被要求扩写时，说明审核尚未可靠区分解释与复述；不能以规则存在、引文真实或工具成功宣称教学完成。
-**展开**：[本次失败与验证](../performance/teaching-explanation-20261025/README.md)。
+**展开**：[本次失败与验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/teaching-explanation-20261025/README.md)。
 
 ## §2 认知积木的归属
 
@@ -142,4 +142,4 @@ Tutor 的核心使命是：**从学习者当前的理解出发，提供他能够
 
 既有交付审阅核对设计、参与理由及正文中的理解断言；接受时返回断言对应的原话引用，运行时拒绝交付引用、空依据和虚构引文。引用存在不等于语义成立，具体判断仍由审阅模型负责。既有记录保留，不能追溯的旧依据不供新设计或动作采用；旧设计仍可读取与修订。
 
-**展开**：[实现与验证](../performance/tutor-interaction-grounding-20261018/implementation.md)。
+**展开**：[实现与验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-interaction-grounding-20261018/implementation.md)。

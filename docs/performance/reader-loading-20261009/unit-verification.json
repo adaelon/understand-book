@@ -1,7 +1,0 @@
-{
-  "command": "pnpm --filter @understand-book/web test -- src/App.startup.test.ts src/NetworkApp.recovery.test.ts src/NetworkApp.recap.test.ts",
-  "test_files_passed": 3,
-  "tests_passed": 25,
-  "typecheck": "passed",
-  "production_build": "passed"
-}

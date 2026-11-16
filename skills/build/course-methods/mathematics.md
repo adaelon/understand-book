@@ -34,4 +34,4 @@
 
 ## 已实现的样课
 
-[最优化三课内容](../../../docs/examples/inquiry-course/optimization-foundations.py)与[验收记录](../../../docs/evidence/optimization-three-lessons-20261113/README.md)。样课工程和数学核对已经完成的部分见记录；学习效果由目标读者实际试学后校准。
+[最优化三课内容](../../../docs/examples/inquiry-course/optimization-foundations.py)与验收记录。样课工程和数学核对已经完成的部分见记录；学习效果由目标读者实际试学后校准。

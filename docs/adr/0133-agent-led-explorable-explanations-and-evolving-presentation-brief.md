@@ -1,6 +1,6 @@
 # ADR-0133 Agent 自主表达设计与可演化的 PresentationBrief
 
-状态：设计方向已接受，2026-09-18；2026-09-25 增补点击稳定性与 Python 绘图。ED1/ED2 已实现并经 Windows 本机定向验收；ED3 的短说明已接入并完成同底座自然请求对照，但表示盲区样本超出预设成本界限，收益未获证实。ED4 的图片投影和门槛已实现，真实模型看到预置差表示截图后提出修订；新候选的两个触屏视口未通过预览，脚本化历史的 Provider 协议问题阻断后续交付，见 [ED3–ED4 记录](../performance/agent-presentation-ed3-ed4-20260925.md)。ED5–ED9 未实施，Brief 为条件性实验；Linux/手机待验。ED1/ED2 验收见 [ED1–ED2](../performance/agent-presentation-ed1-ed2-20260925.md)。
+状态：设计方向已接受，2026-09-18；2026-09-25 增补点击稳定性与 Python 绘图。ED1/ED2 已实现并经 Windows 本机定向验收；ED3 的短说明已接入并完成同底座自然请求对照，但表示盲区样本超出预设成本界限，收益未获证实。ED4 的图片投影和门槛已实现，真实模型看到预置差表示截图后提出修订；新候选的两个触屏视口未通过预览，脚本化历史的 Provider 协议问题阻断后续交付，见 [ED3–ED4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-ed3-ed4-20260925.md)。ED5–ED9 未实施，Brief 为条件性实验；Linux/手机待验。ED1/ED2 验收见 [ED1–ED2](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-ed1-ed2-20260925.md)。
 
 本 ADR 细化 [ADR-0130](0130-agent-rich-presentation-and-read-time-authoring.md)，复用 RP1–RP7 的制作、运行与交付机制；RP8 仍是正式教学接入。实施合同见[切片方案](../切片方案-Agent自主表达设计与PresentationBrief.md)。
 

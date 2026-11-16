@@ -228,14 +228,14 @@ McpUsage = { call_id, user_id, tool, published_book_ref, units: 1,
 **输入与产出**：增加 10 元/1,000 次调用包、12 个月到期、免费优先和到期优先扣除；提供管理员购包与更正 API。
 **落点**：`mcp_usage.rs`、`mcp_pack.rs`、`mcp_packs.sql`、`admin_store.rs`、`admin_api.rs`、`allowance_admin.rs`；管理合同见 MCP4 实现。
 **边界**：本片不接外部支付渠道；收款、购包和模型额度按各自单位记录。
-**验收**：同一操作号重试不重复发包；异常回滚不留下半笔收款；正常空结果计一次；跨月已购余量保留；12 个月到期及多包先到期先扣准确；同账号模型/MCP 两类收款列表与更正均可用。实际运行库测试 `mcp_pack` 及受影响回归；本机构建命令与日志见 [MCP4 验证](performance/mcp4-20261011/README.md)。
+**验收**：同一操作号重试不重复发包；异常回滚不留下半笔收款；正常空结果计一次；跨月已购余量保留；12 个月到期及多包先到期先扣准确；同账号模型/MCP 两类收款列表与更正均可用。实际运行库测试 `mcp_pack` 及受影响回归；本机构建命令与日志见 [MCP4 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp4-20261011/README.md)。
 
 ### MCP5 — 远程 MCP 完整路径
 
 **输入与产出**：连接身份、材料读取和次数账本，提供 `/mcp` 的初始化、工具发现与调用。
 **实现**：2026-10-11 已接通无会话 Streamable HTTP、身份／读取／扣次；新增 6 项及回归 46 项通过。接口、代理待验和购买入口衔接见 [MCP5 实现](内测MCP-MCP5实现.md)。
 **边界**：本片实现声明的协议版本；工具集合按第 4 节固定，未接入 Agent 展示页面。
-**验收**：以协议客户端完成初始化/发现/调用；无 Origin 的有效 Bearer 请求成功，错误 Origin 和无凭证请求拒绝；通知/GET/协议版本响应正确；耗尽不交付内容，记次失败不返回成功；代理保留凭证和协议头。实际 HTTP 客户端与 SQLite 验证已通过；命令及 Nginx 运行待验见 [验证记录](performance/mcp5-20261011/README.md)。
+**验收**：以协议客户端完成初始化/发现/调用；无 Origin 的有效 Bearer 请求成功，错误 Origin 和无凭证请求拒绝；通知/GET/协议版本响应正确；耗尽不交付内容，记次失败不返回成功；代理保留凭证和协议头。实际 HTTP 客户端与 SQLite 验证已通过；命令及 Nginx 运行待验见 [验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp5-20261011/README.md)。
 
 ### MCP6 — Agent 自主使用信息
 
@@ -263,7 +263,7 @@ McpUsage = { call_id, user_id, tool, published_book_ref, units: 1,
 
 ### MCP9 — 集成与新 Agent 验收
 
-**实现**：2026-10-11 已完成；Codex CLI 0.162.0-alpha.2／2025-11-25 自主阅读及耗尽停止通过，引用和 3 条消费事实确定性核对。Server 87 项既有回归、2 项新增集成／并发用例、Web 126 项、Admin 30 项及两端构建通过；旧 MU4 10 项夹具失败单列。[实现与限制](内测MCP-MCP9实现.md)、[证据](performance/beta-mcp/README.md)。
+**实现**：2026-10-11 已完成；Codex CLI 0.162.0-alpha.2／2025-11-25 自主阅读及耗尽停止通过，引用和 3 条消费事实确定性核对。Server 87 项既有回归、2 项新增集成／并发用例、Web 126 项、Admin 30 项及两端构建通过；旧 MU4 10 项夹具失败单列。[实现与限制](内测MCP-MCP9实现.md)、[证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/beta-mcp/README.md)。
 **输入与产出**：在真实多用户宿主、数据库和已发布测试材料上完成完整路径，记录客户端与协议版本。
 **落点**：`mcp_acceptance_tests.rs`、`mcp-source.integration.test.ts`、`scripts/mcp9-codex-acceptance.mjs`、`scripts/verify-mcp9-agent.mjs` 与 `docs/performance/beta-mcp/`。
 **验收**：两个账号分别接入；新 Agent 只拿接入说明与阅读问题，完成选书、定位、读取及可解析引用；空结果换词、原文翻页、免费转付费、全部耗尽、购包后继续、材料撤权均有可观察结果。额度使用接近耗尽的测试夹具，不消耗正式付费次数。
@@ -271,7 +271,7 @@ McpUsage = { call_id, user_id, tool, published_book_ref, units: 1,
 
 ### MCP10 — 发布与运行单
 
-**实现**：2026-10-12 合并提交 `8497f29` 已在正式站点发布。旧／新 schema 成套恢复、4 个账号／10 个发布／280 条模型费用保留、HTTPS 11 工具／来源／28 条赠送消费、8,000 字符页 1／4／8 路并发全部通过。见 [运行单](内测MCP-发布运行单.md)与 [证据](performance/mcp10-20261012/README.md)。
+**实现**：2026-10-12 合并提交 `8497f29` 已在正式站点发布。旧／新 schema 成套恢复、4 个账号／10 个发布／280 条模型费用保留、HTTPS 11 工具／来源／28 条赠送消费、8,000 字符页 1／4／8 路并发全部通过。见 [运行单](内测MCP-发布运行单.md)与 [证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp10-20261012/README.md)。
 **输入与产出**：形成 Linux 数据备份、schema 升级、服务/代理发布及恢复操作步骤；发布版本与实现状态分开记录。
 **落点**：`scripts/linux/nginx-multi-reader.conf.example`、既有构建脚本，新增 `verify-mcp-upgrade.py`、`test-verify-mcp-upgrade.py`、`smoke-mcp-release.py`、`measure-mcp-pages.py` 和 `docs/内测MCP-发布运行单.md`。
 **验收**：备份恢复在临时目录完成；升级后旧账号、材料和模型费用仍可读取；经正式 HTTPS 代理验证 MCP，使用明确标记的赠送次数验证扣次。真实收款只登记已确认的付款。

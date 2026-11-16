@@ -22,7 +22,7 @@
 
 合同测试放在 `mcp_contract_tests.rs`，复用 `remote_mcp_tests.rs` 的真实 HTTP／SQLite／发布材料夹具，覆盖初始化和 11 个工具的发现、共享 schema 保持、从目录取得标识到检索／两页原文／来源 URL 的完整调用，以及已购批次时间、耗尽后发现稳定和各类失败恢复。限流错误映射以直接确定性用例验证。
 
-`mcp_contract` 定向 **5 通过、0 失败、0 忽略**（4 项新增、1 项既有）；读取与远程协议回归 **10 通过、0 失败、0 忽略**。运行结果和环境记录见 [MCP6 验证](performance/mcp6-20261011/README.md)。
+`mcp_contract` 定向 **5 通过、0 失败、0 忽略**（4 项新增、1 项既有）；读取与远程协议回归 **10 通过、0 失败、0 忽略**。运行结果和环境记录见 [MCP6 验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp6-20261011/README.md)。
 
 ## 已知限制
 

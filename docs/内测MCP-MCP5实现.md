@@ -77,9 +77,9 @@ Host／Origin → 本次 Bearer 身份 → JSON-RPC 与工具选择
 
 | 运行 | 结果 |
 | --- | --- |
-| MCP5 `remote_mcp` 定向 | 6 通过，0 失败，0 忽略；[日志](performance/mcp5-20261011/remote-mcp.log) |
-| MCP1–MCP4／控制库／ADM2–ADM3 受影响回归 | 46 通过，0 失败，0 忽略；[日志](performance/mcp5-20261011/regression.log) |
+| MCP5 `remote_mcp` 定向 | 6 通过，0 失败，0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp5-20261011/remote-mcp.log) |
+| MCP1–MCP4／控制库／ADM2–ADM3 受影响回归 | 46 通过，0 失败，0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp5-20261011/regression.log) |
 
 `remote_mcp_tests.rs` 使用真实 TCP HTTP 和临时 SQLite，覆盖初始化版本协商、通知空响应、11 个工具发现、两个账号目录、两凭证共用次数、原文与续页坐标、文本与结构化投影一致、正常空检索和同 id 重读记次、免费转付费、耗尽后购包恢复；协议／身份／Host／Origin 拒绝、缓存撤权、错误参数、无能力、无效 LID、记账触发器故障回滚且不交付正文、两个 HTTP 客户端竞争最后一次、零额度不装载正文，以及私人现场／模型账本零写入。
 
-原读取层四项回归通过，保留嵌套投影拼接与授权分页语义；原网页凭证 API 的 Cookie／CSRF 边界和两类人工收款回归通过。构建命令、缓存保留位置及验证范围见 [验证记录](performance/mcp5-20261011/README.md)。
+原读取层四项回归通过，保留嵌套投影拼接与授权分页语义；原网页凭证 API 的 Cookie／CSRF 边界和两类人工收款回归通过。构建命令、缓存保留位置及验证范围见 [验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp5-20261011/README.md)。

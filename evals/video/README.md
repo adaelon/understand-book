@@ -138,6 +138,6 @@ VI0a 可验证部分与 VI0b 本地音频服务实验完成，音频完整逐字
 
 `node --import tsx evals/video/vi18-verify.ts` 验证全讲覆盖、720 段、原正文、已完成视觉任务恢复次数，并记录真实调用用量、耗时和体积。金额未从 CLI 返回，保留未知。`vi18-reader.mjs SERVER WEB_DIST PUBLISHED_BOOK INSTALL_DIR [VIDEO_RESOURCES]` 验证独立布局的播放、跳转、刷新、原媒体 Range/HEAD。
 
-`apps/desktop/scripts/smoke-video-release.mjs SIDECAR PUBLISHER ORIGINAL_MP4 OUTPUT_DIR [AUDIO_REVIEW]` 验证编译入口、随包工具、实际 Whisper、缺项恢复和原片发布。实际凭据在 [VI18 结果](results/vi18-20261011/)，安装说明见 [VI18](../../docs/视频安装与整讲验收-VI18.md)，当前进度见 [实施状态](../../docs/VI18-实施状态.md)。
+`apps/desktop/scripts/smoke-video-release.mjs SIDECAR PUBLISHER ORIGINAL_MP4 OUTPUT_DIR [AUDIO_REVIEW]` 验证编译入口、随包工具、实际 Whisper、缺项恢复和原片发布。实际凭据在 [VI18 结果](results/vi18-20261011/)，安装说明见 [VI18](../../docs/视频安装与整讲验收-VI18.md)，当前进度见 [实施状态](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/VI18-%E5%AE%9E%E6%96%BD%E7%8A%B6%E6%80%81.md)。
 
 VI18 最终结果（2026-10-11）：543/383/383 个视觉/图谱/讲解任务全部接纳，720 段双语和四项能力全片覆盖。最终 publication `01a129cf-c1b7-72c2-bac7-40f9740fda6f`；`verification.json` 和 `reader.json` 均 passed，Windows NSIS 发布门通过。全部贡献已完整时 semantic 恢复只发布一次，原运行日志由报告路径读取。原生安装升级/WebView、Linux、DSH、读时真模型及完整逐字真值的范围见报告已知问题。

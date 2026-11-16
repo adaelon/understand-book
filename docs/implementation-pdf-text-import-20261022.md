@@ -34,7 +34,7 @@
 
 Windows 上测试进程池采用 `--pool=threads --maxWorkers=1`。首次 OCR 集成发现 Tesseract 7 的语言对象初始化问题，改用其标准 `langPath` 加载本地模型；没有修改第三方库。
 
-界面截图：[桌面](screenshots/pdf-text-import/native-desktop.png)、[窄屏](screenshots/pdf-text-import/native-narrow.png)、[扫描页划线](screenshots/pdf-text-import/scan-highlight.png)。中文 OCR 夹具为项目原创短句的固定栅格图，避免测试机器缺少中文字体时生成空方框。
+界面截图：[桌面](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/screenshots/pdf-text-import/native-desktop.png)、[窄屏](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/screenshots/pdf-text-import/native-narrow.png)、[扫描页划线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/screenshots/pdf-text-import/scan-highlight.png)。中文 OCR 夹具为项目原创短句的固定栅格图，避免测试机器缺少中文字体时生成空方框。
 
 ## 已知边界
 

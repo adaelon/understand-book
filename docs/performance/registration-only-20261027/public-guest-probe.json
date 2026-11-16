@@ -1,4 +1,0 @@
-{
-  "status": 401,
-  "body": "{\"category\":\"authentication\",\"error_code\":\"AUTH_REQUIRED\",\"message\":\"Sign in with an active account\"}"
-}

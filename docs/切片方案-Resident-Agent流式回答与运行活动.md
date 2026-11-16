@@ -431,7 +431,7 @@ Native/ReAct 的 chat、complete、complete_structured 均请求 SSE，逐帧观
 
 Reader 在导航、笔记、高亮、布局及地图写入时推进进程内 revision；RuntimeStatePort 在实际修改边界发布 reader.changed，工具成功 effect 使用 turn_id/step_id 生成稳定事件身份。快照保留状态和实际 effects，取消或失败后仍可见；终局撤销继续使用原聚合 effects。前端只同步观察、不重放写入，按来源书、会话、revision、effect_id 归并；刷新时读取当前 Reader 确认状态，手动视口操作建立当前 revision 边界，过时事件不再定位正文。终局不强制重置视口。
 
-Server Agent 定向 47 项、Web reducer/订阅/组件 22 项通过；Chromium Native/ReAct 两场景通过生成期间来源打开、刷新零重跑、即时笔记、终局来源和已有流式/取消/修复场景。AS9 扩展后的 Reader 54、Runtime 328（3 原有忽略）、Server 259 项通过。日志见 `tmp/as8-server-tests.log`、`tmp/as8-web-tests.log`、`tmp/as8-browser-final.log`、`tmp/as9-rust-tests.log`。AS9 实机与真实模型结果见 [验收记录](agent-streaming-validation.md)。
+Server Agent 定向 47 项、Web reducer/订阅/组件 22 项通过；Chromium Native/ReAct 两场景通过生成期间来源打开、刷新零重跑、即时笔记、终局来源和已有流式/取消/修复场景。AS9 扩展后的 Reader 54、Runtime 328（3 原有忽略）、Server 259 项通过。日志见 `tmp/as8-server-tests.log`、`tmp/as8-web-tests.log`、`tmp/as8-browser-final.log`、`tmp/as9-rust-tests.log`。AS9 实机与真实模型结果见 [验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/agent-streaming-validation.md)。
 
 ## AS9 实施与验证
 
@@ -439,4 +439,4 @@ Server Agent 定向 47 项、Web reducer/订阅/组件 22 项通过；Chromium N
 
 Windows 与 Linux 各完成三题×两入口的真实 `deepseek-v4-flash` 样本；流式首正文均早于 Provider 最后结束，来源与历史一致，usage 有实际记录。跨主机浏览器沿现有代理配置建立隔离 loopback 实例，正式服务未切换。单样本及工具选择差异不用于宣称稳定总耗时收益。
 
-详细数据、测量口径和失败记录见 [验收报告](agent-streaming-validation.md) 与 [机器可读结果](agent-streaming-validation.json)。Linux 构建、浏览器及生命周期日志在 `tmp/as9-linux`；远端独立源码与日志在 `/opt/understand-book/acceptance/as9-20260914`。
+详细数据、测量口径和失败记录见 [验收报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/agent-streaming-validation.md) 与 [机器可读结果](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/agent-streaming-validation.json)。Linux 构建、浏览器及生命周期日志在 `tmp/as9-linux`；远端独立源码与日志在 `/opt/understand-book/acceptance/as9-20260914`。

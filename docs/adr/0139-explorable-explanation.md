@@ -10,7 +10,7 @@
 
 Understand Book 已有富文本制作、HTML/CSS/JavaScript 交互、真实浏览器预览、版本化内容、现场状态和 Python/Matplotlib 静态绘图。EX6 已补充时间定位预览；连续变化目前主要靠候选临时编写，方法指导的增益仍需真实对照确认。
 
-[ED3–ED4 记录](../performance/agent-presentation-ed3-ed4-20260925.md)已有能显现学习率方向差异的交互页面，但制作成本超标，最终文字出现数值错误。新方案以该实际产物为表示基线，分别验证解释方法、连续过渡和制作辅助的新增收益。
+[ED3–ED4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-ed3-ed4-20260925.md)已有能显现学习率方向差异的交互页面，但制作成本超标，最终文字出现数值错误。新方案以该实际产物为表示基线，分别验证解释方法、连续过渡和制作辅助的新增收益。
 
 3Blue1Brown、Ciechanowski 等提供方法参考。目标是把对象连续性、渐进揭示、动态对照、参数探索、轨迹残影、不变量高亮、视角切换、反例、预测后揭示等能力内化给 Agent，保持 Understand Book 的统一视觉语言。
 
@@ -117,7 +117,7 @@ Manim 产品渲染支路保持条件性。2026-09-27 用户确认新增并提前
 
 临时目录和超时不等于代码执行沙箱。
 
-EX9a 于 2026-09-27 完成定向样片与工程对照，见[实际结果](../performance/explorable-explanation-ex9a-manim-comparison-20260927.md)。现阶段保留浏览器主路径，Manim 用于离线讲解样片；跨点停顿、箭头与公式强调属于此次编排收益，不能据此判定引擎独有优势。用户随后明确实时交互需求并确认 EX10；自然请求稳定性未取得，Manim 产品接入仍为条件性。
+EX9a 于 2026-09-27 完成定向样片与工程对照，见[实际结果](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex9a-manim-comparison-20260927.md)。现阶段保留浏览器主路径，Manim 用于离线讲解样片；跨点停顿、箭头与公式强调属于此次编排收益，不能据此判定引擎独有优势。用户随后明确实时交互需求并确认 EX10；自然请求稳定性未取得，Manim 产品接入仍为条件性。
 
 ## §10 PresentationBrief
 
@@ -144,7 +144,7 @@ EX9a 于 2026-09-27 完成定向样片与工程对照，见[实际结果](../per
 - 截取整页前部文字：结果可能位于截断点之后，压缩会丢失参数关系。
 
 **命门**：`preview(read_selector)` 返回的文字、实时参数、数学步号和观察来源整体保留；容量不足时省略整条读取结果并明确请求缩小范围。
-**展开**：[结果读取实现与验证](../performance/explorable-explanation-ex2-result-read-20260927.md)。
+**展开**：[结果读取实现与验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex2-result-read-20260927.md)。
 
 ## §13 二维交互图形库对照
 
@@ -160,9 +160,9 @@ EX9a 于 2026-09-27 完成定向样片与工程对照，见[实际结果](../per
 **何时回头**：同题结果不足以支持采用，或后续跨领域任务出现不同图形需求。
 **实施证据**：工程点线场景通过。第一批 C 因实验装配写入模型历史而耗尽上下文；修复后第二批 B 遇 Provider 输出截断，两批按合同停止。现有 SVG 交付原稿和 Konva 诊断原稿也有必要质量错误，未满足采用门槛。装配移至 test-only Author Write 边界，生产 CSP、大小限制和 ed3.v1 不变。
 
-**第三批补证**：用户要求重做后，B/C 均保存交付版本，真实请求历史验证装配修复有效。C 的动态边界解释和圆点拖动较好，但成本及修订更多，且触控、提交、零位移图形不通过，回执标为不完整。仍不足以采用；见[第三批报告](../performance/explorable-explanation-ex10-svg-konva-batch3-20260928.md)。
+**第三批补证**：用户要求重做后，B/C 均保存交付版本，真实请求历史验证装配修复有效。C 的动态边界解释和圆点拖动较好，但成本及修订更多，且触控、提交、零位移图形不通过，回执标为不完整。仍不足以采用；见[第三批报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex10-svg-konva-batch3-20260928.md)。
 
-**展开**：[EX10 合同、停止条件与采用依据](../切片方案-EX10-Agent二维交互图形库对照.md)、[实际结果与下一入口](../performance/explorable-explanation-ex10-svg-konva-20260928.md)。
+**展开**：[EX10 合同、停止条件与采用依据](../切片方案-EX10-Agent二维交互图形库对照.md)、[实际结果与下一入口](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex10-svg-konva-20260928.md)。
 
 ## §14 通用制作与局部动态演示
 
@@ -174,7 +174,7 @@ EX9a 于 2026-09-27 完成定向样片与工程对照，见[实际结果](../per
 
 **命门**：正式供给、实际模型指导、跨题生成及 Reader 现场共同验收；旧实验失败记录保留。
 **何时回头**：真实生成暴露表示选择、媒体成本或状态恢复问题时，修对应路径并另开验证批次。
-**展开**：[EX11 详细合同](../切片方案-EX11-Konva通用能力与局部动态演示.md)、[实际网站观察](../performance/ciechanowski-observation-plan-20260928.md)。
+**展开**：[EX11 详细合同](../切片方案-EX11-Konva通用能力与局部动态演示.md)、[实际网站观察](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/ciechanowski-observation-plan-20260928.md)。
 
 ## 后果
 

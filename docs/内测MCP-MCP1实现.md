@@ -49,8 +49,8 @@ MCP5 可从 `Authorization.mcp_access` 每次解析远程身份，再经 Publish
 
 | 检查 | 结果 |
 | --- | --- |
-| `cargo test -p server --lib mcp_access` | 最终 6 项通过，0 忽略；[日志](performance/mcp1-20261011/mcp-access-final.log) |
-| `cargo test -p server --lib -- mcp_access auth::tests tests::mu4_tests control_store:: tests::inv7_tests` | 27 通过、10 失败；其中原认证／密码／控制库 22 项通过，当时 MCP1 5 项通过，旧 MU4 10 项在测试准备阶段失败；[日志](performance/mcp1-20261011/server-tests.log) |
+| `cargo test -p server --lib mcp_access` | 最终 6 项通过，0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp1-20261011/mcp-access-final.log) |
+| `cargo test -p server --lib -- mcp_access auth::tests tests::mu4_tests control_store:: tests::inv7_tests` | 27 通过、10 失败；其中原认证／密码／控制库 22 项通过，当时 MCP1 5 项通过，旧 MU4 10 项在测试准备阶段失败；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp1-20261011/server-tests.log) |
 
 新增用例在真实临时 SQLite 中覆盖两账号隔离、创建与列表投影、完整值不落库、单独撤销和重复撤销、账号停用／重新启用、改密和撤销全部授权、过期／退出会话、重启持久性、schema 9→10 升级保值及失败回滚。现有控制库用例另验证 schema 1–8 升级保持原字段并与新库一致。
 

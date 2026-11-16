@@ -1,6 +1,6 @@
 # ADR-0166 专注阅读分页与无感翻页
 
-状态：设计已接受，2026-10-14；FP0–FP6 本地交付完成；FP7 实现已随 2026-10-15 版本上线，完整联合性能验收按用户要求暂停。实施入口：[专注阅读双页与无感翻页切片方案](../切片方案-专注阅读双页与无感翻页.md)，[FP1 基线与冻结预算](../performance/focus-reading-fp1-20261014/README.md)，[FP2 实施证据](../performance/focus-reading-fp2-20261014/README.md)，[FP3 实施证据](../performance/focus-reading-fp3-20261014/README.md)，[FP4 实施证据](../performance/focus-reading-fp4-20261014/README.md)，[FP5 实施证据](../performance/focus-reading-fp5-20261015/README.md)，[FP6 实施证据](../performance/focus-reading-fp6-20261015/README.md)。
+状态：设计已接受，2026-10-14；FP0–FP6 本地交付完成；FP7 实现已随 2026-10-15 版本上线，完整联合性能验收按用户要求暂停。实施入口：[专注阅读双页与无感翻页切片方案](../切片方案-专注阅读双页与无感翻页.md)，[FP1 基线与冻结预算](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp1-20261014/README.md)，[FP2 实施证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp2-20261014/README.md)，[FP3 实施证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp3-20261014/README.md)，[FP4 实施证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp4-20261014/README.md)，[FP5 实施证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp5-20261015/README.md)，[FP6 实施证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp6-20261015/README.md)。
 
 专注阅读在宽窗口显示左右两页，在手机显示单页并支持跟手的覆盖式翻页。**无感响应是交付条件：内容准备、排版和资源解码提前完成，翻页只移动已经就绪的书页；功能正确和性能达标必须同时成立。**
 
@@ -38,7 +38,7 @@
 
 **命门**：正文常驻当前屏、相邻屏及一份受限准备区，正文缓存、DOM、解码图片和 PDF 画布分别受预算约束。准备任务分批让出执行机会；预取只读，不推进已读记录或当前读位。预算冻结与可用运行环境的性能验证先于动效交付。
 **何时回头**：固定负载证明确有解析瓶颈时，评估将纯计算移入 Worker。
-**展开**：[准备链路与资源预算](../切片方案-专注阅读双页与无感翻页.md#4-准备链路与资源预算)、[FP1 实测与资源参数](../performance/focus-reading-fp1-20261014/README.md#冻结预算)。
+**展开**：[准备链路与资源预算](../切片方案-专注阅读双页与无感翻页.md#4-准备链路与资源预算)、[FP1 实测与资源参数](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp1-20261014/README.md#冻结预算)。
 
 ## §3.1 FP2 原文片段与准备批次
 
@@ -50,7 +50,7 @@
 - 保留完整编辑距离轨迹：长链接的隐藏目标扩大临时工作空间。
 
 **命门**：规范游标驱动局部重建，渲染 DOM 保留语法上下文；候选按 768 个语义单位递增，公式保持原子，页边界冻结后不再随补页变化。分页对齐使用可让出的线性工作空间计算，原同步选区路径保留。
-**展开**：[FP2 实施与测量](../performance/focus-reading-fp2-20261014/README.md)。
+**展开**：[FP2 实施与测量](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp2-20261014/README.md)。
 
 ## §3.2 FP3 只读窗口与就绪调度
 
@@ -62,7 +62,7 @@
 - 用全书页面索引处理反向：字号变化使几何过期，并累积全书排版状态。
 
 **命门**：单个未消费读取尾部和最多 128 组规范游标边界共同计入预算；几何变化清空旧边界，原文游标保持连续。新目标替换旧准备，当前可读屏保持到目标真正就绪；字体、图像、来源对齐均有可取消等待，手势和隐藏宿主暂停准备。
-**展开**：[FP3 实施与测量](../performance/focus-reading-fp3-20261014/README.md)。
+**展开**：[FP3 实施与测量](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp3-20261014/README.md)。
 
 ## §3.3 FP4 翻页层与输入接续
 
@@ -74,7 +74,7 @@
 - 工具呼出压缩正文版心：一次工具开关就改变书页边界与读位。
 
 **命门**：`FocusPageTurn` 直接引用当前屏和目标邻屏，预览层保持 inert；确认目标后收尾，结束时回收临时可见状态。有限缓冲在不透明底板下保留布局和绘制记录，每屏隔离布局绘制；隐藏标记与 inert/aria-hidden 隔离来源查询和输入。动画直接使用输入时的时间线，新输入立即接管已确认页。尺寸只在 ResizeObserver 阶段读取，拖动只写位移；工具浮层复用工作区，进入/退出沿规范原文锚点衔接连续阅读。独立行内公式的合流规则由两个呈现分支共享，各叶保留自己的原文范围。
-**展开**：[FP4 实施与测量](../performance/focus-reading-fp4-20261014/README.md)。
+**展开**：[FP4 实施与测量](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp4-20261014/README.md)。
 
 ## §4 选择、笔记与重排
 
@@ -98,7 +98,7 @@
 **命门**：预取/动画屏保持 inert；跨列选择使用当前屏的规范片段与既有对齐。标记在准备阶段生成，原生选择和输入合成期间推迟重排。`reader/position` 由收尾确认异步提交，复用 Reader、异步已读队列和原持久化存储；只记录可见叶及可验证段内字符，不修改逻辑布局。来源往返传保存的规范范围，重复文字不重新猜位置。
 显示调整保留上一种几何在同一锚点的就绪屏，占用原四屏预算的第四个位置；当前屏及前后邻屏仍优先，正式翻页即释放替代几何并恢复向阅读方向多准备一屏。退出先冻结分页实例，再恢复连续布局，保留的一屏移出连续区域且不可交互。几何/原文不变的返回直接复用；来源/现场切换和卸载销毁。资源计数按已完成片段/屏复用，标注变更重算，避免每加入一叶反复遍历整个数学页面。
 
-**展开**：[FP5 实施记录](../performance/focus-reading-fp5-20261015/README.md)。
+**展开**：[FP5 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp5-20261015/README.md)。
 
 ## §5 PDF 跨页准备
 
@@ -117,9 +117,9 @@
 
 PDF 当前文字层保持规范读序，预览文字通过 content-visibility 排除原生选择，标注控件保持 inert。动画时用透明输入遮层接管指针；避免在包含数千透明字形的根节点来回设置继承的 inert／pointer-events。选择、笔记落点及放大平移拥有优先权。完整画布／文字／标注仍是整屏发布条件。
 
-准备画布在绘制完成前不参与浏览器绘制，文字流及文字几何分任务准备。暂停时取消 PDF.js 已排队的候选绘制，收尾后先让当前画面绘制再补页；被取消候选可重新准备。按实际 DPR 分配原版像素，避免 DPR 1 也画满每页两百万像素造成合成帧超时。性能失败、修复与最终指标见 [FP6 实施记录](../performance/focus-reading-fp6-20261015/README.md)。
+准备画布在绘制完成前不参与浏览器绘制，文字流及文字几何分任务准备。暂停时取消 PDF.js 已排队的候选绘制，收尾后先让当前画面绘制再补页；被取消候选可重新准备。按实际 DPR 分配原版像素，避免 DPR 1 也画满每页两百万像素造成合成帧超时。性能失败、修复与最终指标见 [FP6 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp6-20261015/README.md)。
 
-FP6 的 P1–P6 已通过：100次帧记录P95 25.324–37.677ms、最高缺失率0.905%；800次正常翻页零未就绪；120次显示变化P95 21.686–66.997ms；20分13.559秒/601次长读在固定预算内，返回起点的持有资源与初始一致，阅读长任务和交互内准备增量均为0。证据见 [FP6实施记录](../performance/focus-reading-fp6-20261015/README.md)。
+FP6 的 P1–P6 已通过：100次帧记录P95 25.324–37.677ms、最高缺失率0.905%；800次正常翻页零未就绪；120次显示变化P95 21.686–66.997ms；20分13.559秒/601次长读在固定预算内，返回起点的持有资源与初始一致，阅读长任务和交互内准备增量均为0。证据见 [FP6实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp6-20261015/README.md)。
 
 ## §6 性能验收与完成条件
 
@@ -142,7 +142,7 @@ FP6 的 P1–P6 已通过：100次帧记录P95 25.324–37.677ms、最高缺失�
 
 实际帧采集与每帧样式诊断分开。WebView2约165Hz时，观察器的getComputedStyle会把合成动画变成逐帧主线程更新，造成1.24–2.00%的测量干扰；独立帧事件确认移除该采样后两组均0%。浏览器截图450张上限通过已完成操作之间分段采集处理，所有时间戳保留原值；P4的独立画面流可提供已发布新屏的保守上界，缺画面不能换用DOM-ready。
 
-联合矩阵对Chromium桌面/移动、WebView2桌面、WebKit移动分别执行本地/100ms RTT、10Mbps的200次正常翻页；长读分别覆盖Chromium复杂正文、WebView2原版PDF、WebKit移动复杂正文。各平台数字分别保存，不跨平台平均；可用指标继续沿原门槛。完整证据和未测范围见 [FP7联合记录](../performance/focus-reading-fp7-20261015/README.md)。
+联合矩阵对Chromium桌面/移动、WebView2桌面、WebKit移动分别执行本地/100ms RTT、10Mbps的200次正常翻页；长读分别覆盖Chromium复杂正文、WebView2原版PDF、WebKit移动复杂正文。各平台数字分别保存，不跨平台平均；可用指标继续沿原门槛。完整证据和未测范围见 [FP7联合记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp7-20261015/README.md)。
 
 ## 已知限制
 
@@ -154,4 +154,4 @@ FP6 的 P1–P6 已通过：100次帧记录P95 25.324–37.677ms、最高缺失�
 
 ## 2026-10-15 发布决定
 
-用户在已知 FP7 剩余长测与测量限制后，明确要求暂停继续验收并直接发布当前未上线改动。本次上线按该指令执行，不改变 P1–P6 冻结门槛，也不构成 FP7 完整验收通过。已通过和失败证据继续保留在 [FP7 记录](../performance/focus-reading-fp7-20261015/README.md)，发布与回退入口见 [上线记录](../performance/current-release-20261015/README.md)。
+用户在已知 FP7 剩余长测与测量限制后，明确要求暂停继续验收并直接发布当前未上线改动。本次上线按该指令执行，不改变 P1–P6 冻结门槛，也不构成 FP7 完整验收通过。已通过和失败证据继续保留在 [FP7 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/focus-reading-fp7-20261015/README.md)，发布与回退入口见 [上线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/current-release-20261015/README.md)。

@@ -1,6 +1,6 @@
 # 切片方案：多 Harness 预构建与 DeepSeek Harness 适配
 
-状态：**DH1–DH5 源码实现与确定性验收已完成；DH0 剩人工“要求修改”补验。DH6 尚未实施，不作发布支持声明。** 更新：2026-09-26。实际证据见 [兼容报告](performance/dsh-prebuild-compatibility-20260925.md)，续做入口见 [Harness checkpoint](../SESSION_CHECKPOINT_DSH.md)。
+状态：**DH1–DH5 源码实现与确定性验收已完成；DH0 剩人工“要求修改”补验。DH6 尚未实施，不作发布支持声明。** 更新：2026-09-26。实际证据见 [兼容报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-prebuild-compatibility-20260925.md)，续做入口见 [Harness checkpoint](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/SESSION_CHECKPOINT_DSH.md)。
 决策依据：[ADR-0138](adr/0138-multi-harness-prebuild-and-deepseek-harness-adapter.md)。
 
 首版按 DH0–DH6 实施，其中 DH2 分成 DH2a、DH2b 两次独立验收；DH7 的自然语言目标/私有产物规划是后续扩展。本文新增文件、适配器接口和脚本均为拟议名称；DSH 已有 API 以文末固定源码依据为准。
@@ -359,7 +359,7 @@ DH2a、DH2b 分别提交验收结果；完成前者后再引入后者的新行�
 
 ## DH5 — 并发、生命周期竞态、取消与恢复
 
-**实现记录**：见 [2026-09-26 DH5 报告](performance/dsh-dh5-20260926.md)。准备与读取 V2 保存确认的 1–3 并发；Engine controller V1 保存前台所有权及逐 launch 观察。
+**实现记录**：见 [2026-09-26 DH5 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-dh5-20260926.md)。准备与读取 V2 保存确认的 1–3 并发；Engine controller V1 保存前台所有权及逐 launch 观察。
 
 **目标**：将同一闭环扩展到既有 `1..3` 容量范围，故障不能造成重复构建、孤儿执行器或虚假成功。
 
@@ -386,7 +386,7 @@ DH2a、DH2b 分别提交验收结果；完成前者后再引入后者的新行�
 
 ## DH6 — 真实安装、发布资产、质量与回滚门
 
-**分步完成记录（2026-09-27）**：正式包与 Windows Desktop 安装生命周期已完成，见 [DH6 安装报告](performance/dsh-dh6-install-20260926.md)。插件 `0.1.0-rc.2` 与独立 Engine 已在源码目录外验收；官方插件页安装/升级/卸载、完整进程重启、包内取消/卸载/重新启用通过。真实模型质量、带业务进度的 Desktop 重启恢复和受控回滚继续待做，DH6 总项保持未完成。
+**分步完成记录（2026-09-27）**：正式包与 Windows Desktop 安装生命周期已完成，见 [DH6 安装报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/dsh-dh6-install-20260926.md)。插件 `0.1.0-rc.2` 与独立 Engine 已在源码目录外验收；官方插件页安装/升级/卸载、完整进程重启、包内取消/卸载/重新启用通过。真实模型质量、带业务进度的 Desktop 重启恢复和受控回滚继续待做，DH6 总项保持未完成。
 
 **目标**：证明交付的是可安装适配器，而不是只在仓库测试环境有效的脚本。
 

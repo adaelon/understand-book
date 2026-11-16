@@ -1,6 +1,6 @@
 # 完整 Agent 的失败链路
 
-以下结论来自真实生产 `/agent/chat`，不是固定检索脚本。完整指标见 [Agent 报告](results/2026-09-08-agent-v1/report.md)，复现方法见 [协议](AGENT_EVAL.md)。
+以下结论来自真实生产 `/agent/chat`，不是固定检索脚本。完整指标见 [Agent 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-agent-v1/report.md)，复现方法见 [协议](AGENT_EVAL.md)。
 
 24 道共同问答的修复前基线：Chunk 成功 **22/24**，完整 Agent 成功 **13/24**。Agent 的参考证据召回为 88.5%，高于 Chunk 的 84.6%；但其 19/24 的内容正确中有 6 题未交付有效引用，另外 4 题返回未完成、1 题发生 `FINALIZATION_TOOL_PROTOCOL_VIOLATION`。主要缺口在检索之后的执行与交付闭环，不能用召回略高来代替整体成功。
 
@@ -22,7 +22,7 @@ exact-04 已读到“不做预训练”的证据，最终却裸写来源编号�
 
 已据 exact-03 修复一个具体误报：根 LID `1` 与正常编号列表 `1. …` 碰撞，修复器删掉真实 LID 后，列表仍可能令第二次交付失败。新增回归确认普通编号列表可交付，而 `LID 1`、`[1]`、`第1节` 和内部多级编号仍按原合同校验。基线保留的是修复前版本；源码修复不反写历史分数。
 
-来源/交付相关 25 项 Rust 测试通过。基线结束后重新编译当前服务，exact-03 的 [单题真实验证](results/2026-09-08-list-marker-fix-probe/report.md)通过：6 次模型请求、35.14 秒、52,490 Token，交付正确答案和可解析引用。单题验证与确定性回归相互补充，不是修复后全题成绩，也不用于声称整体性能提升。
+来源/交付相关 25 项 Rust 测试通过。基线结束后重新编译当前服务，exact-03 的 [单题真实验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-list-marker-fix-probe/report.md)通过：6 次模型请求、35.14 秒、52,490 Token，交付正确答案和可解析引用。单题验证与确定性回归相互补充，不是修复后全题成绩，也不用于声称整体性能提升。
 
 ## 失败后的恢复与退出成本
 

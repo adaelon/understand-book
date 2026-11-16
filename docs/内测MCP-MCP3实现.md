@@ -76,8 +76,8 @@ Consumption = { call_id, charged_units: 1,
 
 | 运行 | 结果与日志 |
 | --- | --- |
-| `cargo test -p server --lib mcp_usage` | 8 通过、0 失败、0 忽略；[日志](performance/mcp3-20261011/mcp-usage.log) |
-| `cargo test -p server --lib -- control_store:: mcp_access:: mcp_read:: tests::adm2_tests tests::adm3_tests` | 30 通过、0 失败、0 忽略；[日志](performance/mcp3-20261011/regression.log) |
+| `cargo test -p server --lib mcp_usage` | 8 通过、0 失败、0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp3-20261011/mcp-usage.log) |
+| `cargo test -p server --lib -- control_store:: mcp_access:: mcp_read:: tests::adm2_tests tests::adm3_tests` | 30 通过、0 失败、0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp3-20261011/regression.log) |
 
 新增用例使用真实临时 SQLite：首次完整额度、账号隔离与最小消费事实；香港月界／年界／闰年；前置查询后跨月，且时间取值发生在写事务内；两个独立连接同时通过前置余量后竞争最后一次；释放全部服务句柄再重启、替换凭证保持余额；非内容工具、停用账号和消费写入失败无消费／半笔月份；管理员角色、会话、赠送同号重试／字段冲突／跨月重放及失败回滚；schema 10→11 保留凭证与阅读现场且升级失败原子回滚。
 

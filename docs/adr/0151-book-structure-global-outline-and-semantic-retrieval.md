@@ -1,6 +1,6 @@
 # ADR-0151 BookStructure 全局框架、候选保留与语义召回
 
-状态：设计已接受，2026-10-01；BSR0 真实样本与比较合同已完成（[证据](../performance/book-structure-bsr0.md)），BSR1、BSR2 已完成（[实现](../performance/book-structure-bsr1-bsr2.md)、[Codex 真实章节对照](../performance/book-structure-bsr2-codex.md)），BSR3、BSR4 已完成（[真实主题与本地检索对照](../performance/book-structure-bsr3-bsr4.md)），BSR5 已完成（[正式调度、恢复与发布](../performance/book-structure-bsr5.md)），BSR6 已完成（[新书前段发现与完整章节验收](../performance/book-structure-bsr6.md)），BSR7 已完成（[交付记录](../performance/book-structure-bsr7.md)）。实施合同见[切片方案](../切片方案-BookStructure全局框架与语义召回.md)。
+状态：设计已接受，2026-10-01；BSR0 真实样本与比较合同已完成（[证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr0.md)），BSR1、BSR2 已完成（[实现](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr1-bsr2.md)、[Codex 真实章节对照](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr2-codex.md)），BSR3、BSR4 已完成（[真实主题与本地检索对照](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr3-bsr4.md)），BSR5 已完成（[正式调度、恢复与发布](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr5.md)），BSR6 已完成（[新书前段发现与完整章节验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr6.md)），BSR7 已完成（[交付记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)）。实施合同见[切片方案](../切片方案-BookStructure全局框架与语义召回.md)。
 
 承接 [ADR-0044](0044-bookstructure预构建结构地图-带读先总览再停靠.md)、[ADR-0129](0129-append-book-structure-and-reconcile-relations.md) 与 [ADR-0149](0149-构建期语义候选召回与Core-owned-Embedding-Provider.md)。保留程序组装、来源接纳及公共三清单；修订多层摘要归并、局部拼接重写重点和相关组两两展开的构建方式。首轮对象为 technical_learning 的 ai-infra，首个对照覆盖第 8 章及一条跨章主题。
 
@@ -60,7 +60,7 @@
 
 **命门**：输出预算由任务实际产出形状确定；正文、证据和身份按已接纳引用组装，最终仍为 spine、throughlines、key_stops。
 
-完整章选择的引用本身超过已标定传输容量时，以持久接续记录从实际动作边界分段提交引用，最终由Core合并并执行原来源门禁；边界前的冻结与回执保留。真实训练系统章114重点／44宏观选择已复现该限制，分段容量及正式writer回归通过，见[BSR7记录](../performance/book-structure-bsr7.md)。
+完整章选择的引用本身超过已标定传输容量时，以持久接续记录从实际动作边界分段提交引用，最终由Core合并并执行原来源门禁；边界前的冻结与回执保留。真实训练系统章114重点／44宏观选择已复现该限制，分段容量及正式writer回归通过，见[BSR7记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)。
 
 主题规划交付完整章节摘要／问题和全部宏观种子引用，32字预览承担导航，完整候选由检索与inspect交付。种子规划使用紧凑JSON，旧无种子输入保持原字节。14单元来源修订后的345种子实际为19304/20000，正式Core reader容量验收通过。
 **展开**：[内部数据与成品映射](../切片方案-BookStructure全局框架与语义召回.md#内部数据与成品映射)。
@@ -104,11 +104,11 @@
 
 ## 已知限制
 
-SR1–SR5与SR6验收工具已有实现；仓库[SR6记录](../performance/semantic-retrieval-20260930.md)仍为两轮真实Gold未通过发布门槛、长材料待验，默认 `lexical_only`。BSR2已完成第8章真实内容局部验收；BSR4复用旧章卡与部分完整片段完成四主题真实对照及原文定点修订，C未减少动作或估算输入，继续保留词法默认。BSR6完成新书前段及完整第8章发现与内容验收。
+SR1–SR5与SR6验收工具已有实现；仓库[SR6记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/semantic-retrieval-20260930.md)仍为两轮真实Gold未通过发布门槛、长材料待验，默认 `lexical_only`。BSR2已完成第8章真实内容局部验收；BSR4复用旧章卡与部分完整片段完成四主题真实对照及原文定点修订，C未减少动作或估算输入，继续保留词法默认。BSR6完成新书前段及完整第8章发现与内容验收。
 
 BSR7已完成。14单元946章节重点／345宏观重点来源验收通过；本轮按用户选择以embedding模式C优先主交付，同源词法B保留对照。各14单元／11主线，C956重点／49阶段／9依赖／10补点，B948重点／47阶段／7依赖／2补点；三个正式主题修订及C/B最终来源验收均通过、未解决问题为0。真实fresh重放C838个接纳步骤、B799个共享接纳步骤加46个主题步骤共845，输入／候选／结构一致，full quality通过，9111叶节点无缺口，模型及Provider调用均0；两组Engine publication均closed。
 
-真实比较为共享806次提交及C39／B46新增均接纳，总891次含历史7拒绝。C实际embedding2650 documents／12 queries／344 calls、125159 input tokens／15690.6121ms，B为0；主题序列化输入／输出估算C324899／10962、B371792／11568，wall时间C4945835ms／B4446630ms。实际模型usage为null，独立生成者查询不同；这些结果不能归因提速或推算严格费用，也不足以改变产品默认检索模式。完整记录见[BSR7报告](../performance/book-structure-bsr7.md)。
+真实比较为共享806次提交及C39／B46新增均接纳，总891次含历史7拒绝。C实际embedding2650 documents／12 queries／344 calls、125159 input tokens／15690.6121ms，B为0；主题序列化输入／输出估算C324899／10962、B371792／11568，wall时间C4945835ms／B4446630ms。实际模型usage为null，独立生成者查询不同；这些结果不能归因提速或推算严格费用，也不足以改变产品默认检索模式。完整记录见[BSR7报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/book-structure-bsr7.md)。
 
 正式主题修订的Core、两模式重放／比较／Engine集成与新sidecar门禁通过，插件为 `0.1.0+codex.20261003012800`；完整NSIS构建与导出完成，安装包63177800字节。新三个exe／web已安装于 `E:/allwork/Understand Book`，插件实际installed／enabled；CLI缓存访问拒绝后完整published插件复制至新版本cache，旧版本／市场保留。C新书位于 `E:/allwork/download/agent/lifebook/versions/bsr7-20261002/.understand-book/ai-infra-book-complete`，新位置quality／integrity及已安装MCP显式目录、Reader默认目录读取全部通过，原书保留。
 

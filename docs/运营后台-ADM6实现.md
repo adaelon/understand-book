@@ -38,7 +38,7 @@
 
 受影响回归：Runtime **69 通过、0 失败**；Server **95 通过、0 失败、1 忽略**。忽略项为既有 `jl4_kill_child` 子进程入口。覆盖 ADM4–ADM6、传输解析、活动记录、回答来源修复、自动压缩、Tutor、费用并发/恢复、Resident 生命周期、Goal 继续/完成、多人接单、取消与历史保存恢复。
 
-本次相关修改空白检查和新合同本地链接检查通过。可复跑命令见 [checkpoint_ADM](../checkpoint_ADM.md)。
+本次相关修改空白检查和新合同本地链接检查通过。可复跑命令见 [checkpoint_ADM](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/checkpoint_ADM.md)。
 
 ## 已知限制
 

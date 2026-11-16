@@ -1,6 +1,6 @@
 # Agent 富呈现与读时内容制作切片方案
 
-状态：RP0–RP7 完成；RP8 未实施。更新于 2026-09-17。产品与边界决策见 [ADR-0130](adr/0130-agent-rich-presentation-and-read-time-authoring.md)，移动宿主与多环境扩展见 [ADR-0131](adr/0131-mobile-reading-workspace-and-viewport-projection.md) 及其 MW5–MW6，术语见 [CONTEXT](../CONTEXT.md)。RP1 两平台实现与证据见 [验收记录](performance/agent-presentation-rp1-20260916.md)；RP2 验证见 [RP2 记录](performance/agent-presentation-rp2-20260917.md)；RP3 接口、内容编写合同及浏览器证据见 [RP3 记录](performance/agent-presentation-rp3-20260917.md)。RP4 工具、真实模型修正与挂载证据见 [RP4 记录](performance/agent-presentation-rp4-20260917.md)。RP5 现场与追问合同见 [RP5 记录](performance/agent-presentation-rp5-20260917.md)。RP6 持续修改与恢复见 [RP6 记录](performance/agent-presentation-rp6-20260917.md)。RP7 两平台完整验收和复跑见 [RP7 记录](performance/agent-presentation-rp7-20260917.md)。后续模块路径仍是实施候选。
+状态：RP0–RP7 完成；RP8 未实施。更新于 2026-09-17。产品与边界决策见 [ADR-0130](adr/0130-agent-rich-presentation-and-read-time-authoring.md)，移动宿主与多环境扩展见 [ADR-0131](adr/0131-mobile-reading-workspace-and-viewport-projection.md) 及其 MW5–MW6，术语见 [CONTEXT](../CONTEXT.md)。RP1 两平台实现与证据见 [验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp1-20260916.md)；RP2 验证见 [RP2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp2-20260917.md)；RP3 接口、内容编写合同及浏览器证据见 [RP3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp3-20260917.md)。RP4 工具、真实模型修正与挂载证据见 [RP4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp4-20260917.md)。RP5 现场与追问合同见 [RP5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp5-20260917.md)。RP6 持续修改与恢复见 [RP6 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp6-20260917.md)。RP7 两平台完整验收和复跑见 [RP7 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp7-20260917.md)。后续模块路径仍是实施候选。
 
 ## 0 对齐与范围
 
@@ -140,7 +140,7 @@ RP1 未能满足某个平台时，记录具体缺口与下一步适配工作，�
 
 `PresentationPreviewPort::preview(PreviewRequest, CancellationToken) -> PreviewReport | PreviewError` 位于 Runtime，Server 的 `BrowserPreview` 实现一次有界排练。输入候选身份、自包含 HTML 与顺序点击/按键；返回每步 DOM 现场、布局、PNG 和浏览器错误；所有退出路径停止浏览器并清理临时 profile。RP4 已通过 `presentation.author` 接入现有 Resident 运行，制作时在锁外执行该端口。
 
-Windows 使用独立 Edge 进程及 CDP，Tauri 实际源码入口已跑通同一召回率样例，5 项定向测试通过。Server 和桌面二进制包含 `--presentation-preview-probe` 安装探针。运行依赖完整 Edge/Chromium，可经 `UNDERSTAND_BOOK_PREVIEW_BROWSER` 指定；不依赖 Node/Playwright 或 Reader 客户端在线。部署方法、运行原始证据及限制见 [RP1 验收记录](performance/agent-presentation-rp1-20260916.md)。
+Windows 使用独立 Edge 进程及 CDP，Tauri 实际源码入口已跑通同一召回率样例，5 项定向测试通过。Server 和桌面二进制包含 `--presentation-preview-probe` 安装探针。运行依赖完整 Edge/Chromium，可经 `UNDERSTAND_BOOK_PREVIEW_BROWSER` 指定；不依赖 Node/Playwright 或 Reader 客户端在线。部署方法、运行原始证据及限制见 [RP1 验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp1-20260916.md)。
 
 Linux 在原验收服务器的 `understand-book` 服务账户下通过：EPEL 安装 Chromium 138，原生构建、6 项定向测试、相同六步排练及真实 SIGTERM 停止/清理均通过。浏览器 XDG 配置和缓存归本次临时目录，启动失败返回实际 stderr；部署和截图见同一验收记录。RP1 已满足两平台完成判据。
 
@@ -180,13 +180,13 @@ Linux 在原验收服务器的 `understand-book` 服务账户下通过：EPEL �
 
 `/agent/presentation.read` 只投影指定会话、回合已提交回答中实际引用的版本；`PresentationView` 提供内容文件、入口、标题、语义视图、宿主来源标签、假设和初始值。服务端使用同一版本的绑定及既有回答编译器检查保存现场的可见文字和 ref；`/agent/presentation.observe` 保留为显式校验接口。历史提交前检查公开元数据及来源身份冲突；来源打开继续经既有 Reader 接口。
 
-`AgentPresentation.vue` 在独立 iframe 中装配完整版本，`presentation-bridge.js` 在初始化和恢复完成后通知宿主就绪，局部显示随交互直接更新。来源标签按已绑定引用生成，未知来源不可打开；保存失败只显示提示。共同样式及主题由宿主提供；内嵌、展开保持同一运行实例。“文字说明与来源”提供语义读取。2026-10-10 的显示时机修订见 [ADR-0130 §5](adr/0130-agent-rich-presentation-and-read-time-authoring.md#5-即时交互与保存校验2026-10-10)；原始实现证据见 [RP3 记录](performance/agent-presentation-rp3-20260917.md)。RP4 已按这份运行及来源合同接入自包含单页制作。
+`AgentPresentation.vue` 在独立 iframe 中装配完整版本，`presentation-bridge.js` 在初始化和恢复完成后通知宿主就绪，局部显示随交互直接更新。来源标签按已绑定引用生成，未知来源不可打开；保存失败只显示提示。共同样式及主题由宿主提供；内嵌、展开保持同一运行实例。“文字说明与来源”提供语义读取。2026-10-10 的显示时机修订见 [ADR-0130 §5](adr/0130-agent-rich-presentation-and-read-time-authoring.md#5-即时交互与保存校验2026-10-10)；原始实现证据见 [RP3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp3-20260917.md)。RP4 已按这份运行及来源合同接入自包含单页制作。
 
 ### RP4 已实现合同
 
 `presentation_authoring` 经既有能力发现按需启用 `presentation.author`，包含 `write / preview / deliver`。Runtime 传入当前已验证的来源绑定和取消令牌，Server 按制作回合保存不可变候选，在 Reader 锁外执行真实浏览器并验证每步公开语义；失败候选不能交付。制作输入为自包含 HTML，复用共同样式、初始状态及宿主来源标签。
 
-截图以临时视觉消息进入后续 native/react 采样和上下文预算，不写入历史；Runtime 拒绝同批预览后直接交付。成功排练的候选保存为固定版本，终答编译后追加引用，再由既有历史原子提交。现场制作与纠错仍受原运行循环、结果预算、活动和取消治理。真实模型闭环 119,365 ms、7 次采样、累计 185,457 tokens；已知数值、图形与实际回答挂载验证通过。合同、复跑步骤及平台范围见 [RP4 记录](performance/agent-presentation-rp4-20260917.md)。
+截图以临时视觉消息进入后续 native/react 采样和上下文预算，不写入历史；Runtime 拒绝同批预览后直接交付。成功排练的候选保存为固定版本，终答编译后追加引用，再由既有历史原子提交。现场制作与纠错仍受原运行循环、结果预算、活动和取消治理。真实模型闭环 119,365 ms、7 次采样、累计 185,457 tokens；已知数值、图形与实际回答挂载验证通过。合同、复跑步骤及平台范围见 [RP4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp4-20260917.md)。
 
 ### RP5 已实现合同
 
@@ -194,7 +194,7 @@ Linux 在原验收服务器的 `understand-book` 服务账户下通过：EPEL �
 
 页面通过 `window.presentation.registerStateReader(() => ({values, visible_step}))` 提供自定义状态；原生 `change`、按钮/步骤操作完成后保存，异步计算完成可调用 `commitState()`。拖动 `input` 与动画帧只本地计算并沿用既有确定性公开语义检查。明确追问重新同步采集现场，串行保存成功后携带该回执进入既有 Resident 回合；保存错误保留问题并显示原因。
 
-`prepare_agent_chat` 在预提交前读取指定回执，拒绝跨活动会话、版本、来源回合或现场修订混用；将回执与用户回合一起持久化，把该现场、标题、语义说明及假设冻结进 `agent_message`，经原 `run_precommitted_agent_chat` 进入模型请求。后续参数或内容更新不会替换已经选定的现场。模型不接收完整 HTML/JS，结果明确为页面观察，来源仍由既有证据流程取得。浏览器与存储验证见 [RP5 记录](performance/agent-presentation-rp5-20260917.md)。
+`prepare_agent_chat` 在预提交前读取指定回执，拒绝跨活动会话、版本、来源回合或现场修订混用；将回执与用户回合一起持久化，把该现场、标题、语义说明及假设冻结进 `agent_message`，经原 `run_precommitted_agent_chat` 进入模型请求。后续参数或内容更新不会替换已经选定的现场。模型不接收完整 HTML/JS，结果明确为页面观察，来源仍由既有证据流程取得。浏览器与存储验证见 [RP5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp5-20260917.md)。
 
 ### RP6 已实现合同
 
@@ -204,7 +204,7 @@ Linux 在原验收服务器的 `understand-book` 服务账户下通过：EPEL �
 
 `presentation.read` 默认恢复指定内容版本最后保存现场；可传 `saved_state: PresentationFollowUp` 读取某个确切快照，错配会话/回合/版本会被拒绝。恢复信息随 `PresentationView` 一起读取；读错误不会伪装成无现场。页面装配保留原 `initialState`，另外传入 `restoredState`。页面初始化后恢复原生控件、触发其值变化以重新计算，再调用同步 `registerStateRestorer(scene => …)` 恢复自定义参数和步骤。恢复期间不自动保存，不重放点击或 Reader 操作；实际 DOM 仍经过原公开语义检查。新版本首次打开使用已预览的初始值，以后恢复该版本自己的现场。
 
-旧页面没有自定义恢复方法时，宿主恢复原生控件并明确提示自定义参数/步骤恢复能力缺失。完整自定义恢复由新制作合同提供。真实浏览器、私有磁盘重开及制作预览证据见 [RP6 记录](performance/agent-presentation-rp6-20260917.md)。
+旧页面没有自定义恢复方法时，宿主恢复原生控件并明确提示自定义参数/步骤恢复能力缺失。完整自定义恢复由新制作合同提供。真实浏览器、私有磁盘重开及制作预览证据见 [RP6 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp6-20260917.md)。
 
 | 要发现的具体失败 | 验证输入或动作 | 失败后的处理 |
 | --- | --- | --- |

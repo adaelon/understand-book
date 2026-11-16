@@ -1,8 +1,8 @@
 # 音乐 M0 样本与对齐实验
 
-2026-11-11：新增[回答质量对照入口](../answer-quality/README.md)与[八道贝九动机分析题](answer-quality-cases.json)，比较当前产品、同模型直答及 Astra 的文字回答。首轮使用六道开发题，两道保留题不参与本轮调整；真实运行、失败及事实核验见[首轮记录](../../docs/performance/music-answer-quality-20261111/README.md)。
+2026-11-11：新增[回答质量对照入口](../answer-quality/README.md)与[八道贝九动机分析题](answer-quality-cases.json)，比较当前产品、同模型直答及 Astra 的文字回答。首轮使用六道开发题，两道保留题不参与本轮调整；真实运行、失败及事实核验见首轮记录。
 
-2026-11-03：当前贝九改用 Tennstedt 1992 四乐章工程与用户视频音轨，旧 Coates 选段退出当前构建。新入口与验证见[四乐章构建记录](../../docs/performance/beethoven9-tennstedt-20261103/README.md)；下文贝九内容为已弃用方案的历史实验。
+2026-11-03：当前贝九改用 Tennstedt 1992 四乐章工程与用户视频音轨，旧 Coates 选段退出当前构建。新入口与验证见四乐章构建记录；下文贝九内容为已弃用方案的历史实验。
 
 更新：2026-10-23。舒伯特 Vetter 原录音已完成全曲跟谱校准并发布到本机内容库，使用 [schubert-calibrated-curation.json](schubert-calibrated-curation.json) 重建；见[发布与真实播放器验收](../../docs/performance/music-schubert-alignment-20261022/VERIFICATION.md)。保留原谱的八度／变音差异、延续音，以及 19 个未确认独立发声而不亮点的谱音。没有独立人类起音标签，模型一致性不等同绝对误差。贝九仍为待核候选。下文保留 2026-10-22 的 M0 实验过程，旧候选和合成演示结果不代表本次真人录音发布的结果。
 
@@ -26,7 +26,7 @@
 - 总谱来自 [OpenScore Orchestra 官方目录](https://fourscoreandmore.org/openscore/orchestra/)链接的 [Hauptstimme 项目](https://github.com/MarkGotham/Hauptstimme)。第四乐章原 MXL 1,200,879 字节，解压 XML 26,523,258 字节，36 个 part、943 个 measure。谱面 CC0；原文件中的分析标注单列为 CC-By-SA，来源未指定版本。
 - [本次选段](assets/beethoven-op125-4-m93-164.musicxml)保留原第 93–164 小节和 6 个在选段内发声的声部：第一巴松、第一／第二小提琴、中提琴、大提琴、倍大提琴。其余全程休止的声部从选段视图省略；完整原谱保留。选段 515,952 字节、1,249 个谱对象（含休止），其中 1,084 个有音高；没有无音高打击乐音符。
 - 原声是 Albert Coates 指挥的 1923 年演奏、1924 年首次发行的 HMV 录音，由 [Damian J Rogan 于 2024 年转录和修复](https://music.damians78s.co.uk/2024/05/07/albert-coates-conducts-beethovens-9th-1923/)。出版者的两段原 FLAC 分别为 27,176,474／40,249,403 字节，590.213333／858.604263 秒。保留两原件，并按顺序拼成 [完整乐章 MP3](assets/beethoven-op125-4-coates-damian-full.mp3)，23,182,550 字节、封装时长 1,448.85551 秒；没有截去选段之外的音乐。
-- [真实音频子序列 DTW](results/beethoven-chroma-dtw/candidates.json)把 288 个四分拍的选段匹配到原录音约 171.572–289.469 秒。第 117／141 小节候选为 209.355／249.787 秒；分析步长约 49.98 ms、运行 2.597 秒。这些只是定位候选，全部 `pending`，不是音符精度验收。
+- [真实音频子序列 DTW](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/music/results/beethoven-chroma-dtw/candidates.json)把 288 个四分拍的选段匹配到原录音约 171.572–289.469 秒。第 117／141 小节候选为 209.355／249.787 秒；分析步长约 49.98 ms、运行 2.597 秒。这些只是定位候选，全部 `pending`，不是音符精度验收。
 - 三个事件的事实依据是实际总谱及已署名的 Hauptstimme 分析：先跟低弦，再关注中提琴，最后关注第一小提琴。完整乐章其余部分标为 `navigation_only`；未建完整贝九的深度内容。
 
 本样本的录音和带分析标注谱本均标为 **`local_only`**。原 1924 录音按[美国版权局所列 95+5 年规则](https://www.copyright.gov/music-modernization/pre1972-soundrecordings/)已超过该保护期，但这份现代转录明确包含补接音符、修改长号入口等修复，没有明确的开放再发布许可；它未被当作全球可商用的发布录音。谱面本身的 CC0 与保留分析标注的许可分别记录。先完成本机工程验证，发行素材许可仍是未完成内容工作。
@@ -49,15 +49,15 @@ Hauptstimme 附带的 `*_alignment.csv` 对应 IMSLP 729211／484065／736780，
 
 产物：
 
-- [候选对齐](results/schubert-chroma-dtw/candidates.json)：包含全部有音高谱对象、源 ID、谱位、候选音频时刻与方法；整体状态为 `experimental_candidates_not_accepted`。
+- [候选对齐](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/music/results/schubert-chroma-dtw/candidates.json)：包含全部有音高谱对象、源 ID、谱位、候选音频时刻与方法；整体状态为 `experimental_candidates_not_accepted`。
 - [小节候选表](results/schubert-chroma-dtw/measure-candidates.tsv)：可供校准界面先定位；每行仍是未复核候选。
-- [负对照结果](results/schubert-chroma-dtw/negative-control.json)：错谱色度整体移高六半音，平均匹配代价由原谱的 0.4576 增至 0.5677；支持算法确实使用音高内容，不能据此推算毫秒精度。
+- [负对照结果](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/music/results/schubert-chroma-dtw/negative-control.json)：错谱色度整体移高六半音，平均匹配代价由原谱的 0.4576 增至 0.5677；支持算法确实使用音高内容，不能据此推算毫秒精度。
 
 非装饰音产生 380 个不同谱面起音位置；此次局部起音细化未产生先后倒置。47 个装饰音保持 `onset_seconds=null`；声谱局部峰也可能来自同时出现的另一声部。没有独立人工起音真值，因此没有“误差小于某个阈值”的结论，所有候选在接纳前需要复核。
 
 随后运行 [pitch_onset_probe.py](../../scripts/music/pitch_onset_probe.py)，用约 92.9 ms 的短窗和约 4.99 ms 帧步长拟合实际波形中的谐波音高能量。v1 误把同音和弦当成可独立区分的主音；v2 改用和弦中独有的音高作为见证，并限制多装饰音的先后顺序。47 个装饰音得到 44 个非零间隔候选、3 个零间隔缺口，均未接纳。
 
-四张实际频谱曲线图与 [逐项视觉观察](results/schubert-pitch-onsets-v2/visual-review.json)保留在 `results/schubert-pitch-onsets-v2/`。其中 m3／11／51 的对应短音显示先后能量起伏；m4／12／52 的多装饰音可借和弦另一音高改善定位；m38／46 的粗锚点偏移导致选中了更晚的波动，m65／69／73 仍不能分开两次起音。m6／14／54 等还存在前音衰减与装饰音归因歧义。观察是对图中真实录音能量的检查，不能代替独立人工听核。
+四张实际频谱曲线图与 [逐项视觉观察](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/music/results/schubert-pitch-onsets-v2/visual-review.json)保留在 `results/schubert-pitch-onsets-v2/`。其中 m3／11／51 的对应短音显示先后能量起伏；m4／12／52 的多装饰音可借和弦另一音高改善定位；m38／46 的粗锚点偏移导致选中了更晚的波动，m65／69／73 仍不能分开两次起音。m6／14／54 等还存在前音衰减与装饰音归因歧义。观察是对图中真实录音能量的检查，不能代替独立人工听核。
 
 误差口径也写在视觉观察 JSON：按录音版本、出现实例和谱对象 ID 对齐独立标签，分别报告有标签数、缺口、median／p95／max 绝对误差及阈值内比例；装饰音、主音、和弦分开统计。**当前没有独立标签，准确率结果为未测量**，不能拿算法输出作自己的真值。
 
@@ -91,6 +91,6 @@ python scripts/music/prepare_beethoven_curation.py
 
 ## 未完成与实际限制
 
-本 M0 实验没有独立人工音乐听核与起音标签，不把 DTW 代价当成准确率。声谱窗口产生的低频时间模糊、装饰音、同时声部及实际止音均未解决，当前只证明可生成依赖原声的候选。产品界面另有[运行验证记录](results/ui-verification.md)；使用可控合成音验证连续动画，不代表这两份真人录音已达到同样的逐音精度。
+本 M0 实验没有独立人工音乐听核与起音标签，不把 DTW 代价当成准确率。声谱窗口产生的低频时间模糊、装饰音、同时声部及实际止音均未解决，当前只证明可生成依赖原声的候选。产品界面另有[运行验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/music/results/ui-verification.md)；使用可控合成音验证连续动画，不代表这两份真人录音已达到同样的逐音精度。
 
 当前实验按同一时序的谱面路线匹配；对不同反复、删节或插入，必须先确认演奏路径，不能靠扩大 DTW 窗口掩盖。谱面全曲序列与这份录音是否完全一致仍需逐段核对。贝九不得直接沿用钢琴效果作能力结论。

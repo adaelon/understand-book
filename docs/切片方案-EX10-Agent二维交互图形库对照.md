@@ -1,6 +1,6 @@
 # EX10：原生 SVG 与 Konva 的 Agent 同题制作对照
 
-日期：2026-09-28。状态：EX10.1–EX10.4 已完成；三批按停止条件提前结束，第三批 B/C 均保存交付页但质量不通过，C 最终回执不完整，保留 SVG、暂不接入 Konva。[最新第三批报告](performance/explorable-explanation-ex10-svg-konva-batch3-20260928.md)与[可操作入口](performance/ex10-svg-konva/index.html)已交付。原始证据见 [EX10 目录](performance/ex10-svg-konva/)。上位合同见[可探索解释方案](切片方案-可探索解释方法库与连续视觉演示.md)，决策见 [ADR-0139 §13](adr/0139-explorable-explanation.md#13-二维交互图形库对照)。
+日期：2026-09-28。状态：EX10.1–EX10.4 已完成；三批按停止条件提前结束，第三批 B/C 均保存交付页但质量不通过，C 最终回执不完整，保留 SVG、暂不接入 Konva。[最新第三批报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex10-svg-konva-batch3-20260928.md)与[可操作入口](performance/ex10-svg-konva/index.html)已交付。原始证据见 [EX10 目录](performance/ex10-svg-konva/)。上位合同见[可探索解释方案](切片方案-可探索解释方法库与连续视觉演示.md)，决策见 [ADR-0139 §13](adr/0139-explorable-explanation.md#13-二维交互图形库对照)。
 
 ## 1. 目标与完成定义
 
@@ -96,4 +96,4 @@
 
 本刀不把 Konva 设成全部学科的统一绘图方式，不引入三维库、通用动画 DSL 或模板市场。生产默认能力及跨题推广由后续证据决定；EX2、EX7 的独立 Gate 继续有效。
 
-参考：[Konva 官方对象、事件与动画说明](https://konvajs.org/docs/overview.html)、[EX1 浏览器样板](performance/explorable-explanation-ex1-20260927.md)、[EX6 时间预览](performance/explorable-explanation-ex6-20260927.md)、[EX2 结果读取](performance/explorable-explanation-ex2-result-read-20260927.md)、[EX9a 编排对照](performance/explorable-explanation-ex9a-manim-comparison-20260927.md)。
+参考：[Konva 官方对象、事件与动画说明](https://konvajs.org/docs/overview.html)、[EX1 浏览器样板](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex1-20260927.md)、[EX6 时间预览](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex6-20260927.md)、[EX2 结果读取](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex2-result-read-20260927.md)、[EX9a 编排对照](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explorable-explanation-ex9a-manim-comparison-20260927.md)。

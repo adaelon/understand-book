@@ -1,6 +1,6 @@
 # MU11 Linux 多人阅读发布运行单
 
-使用同一源码目录构建 Server、维护工具、执行器和网络 Web；部署配置、数据恢复点和验收结果共同确定可开放的版本。当前实施及门槛见 [MU11 记录](performance/linux-multi-reader-mu11-20261001.md)，既有矩阵见 [MU10](performance/linux-multi-reader-mu10-matrix.md)。
+使用同一源码目录构建 Server、维护工具、执行器和网络 Web；部署配置、数据恢复点和验收结果共同确定可开放的版本。当前实施及门槛见 [MU11 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu11-20261001.md)，既有矩阵见 [MU10](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu10-matrix.md)。
 
 现网已于 2026-10-01 部署到 `https://115.190.121.150`，实际版本、账号、证书续期与恢复点见 [现网运行说明](Linux多人阅读-现网运行说明.md)。
 
@@ -28,7 +28,7 @@
 
 没有域名时可使用 IP HTTPS，但证书须被客户端信任且覆盖该 IP。隔离测试可使用单独的测试 CA / 证书及 SSH 隧道；浏览器忽略证书错误只能证明应用与代理路径，不能签署公网可信 HTTPS 或实体 iPhone 验收。
 
-Nginx 只公开网络 Web 静态目录，所有 `/api/` 原样转发到同一后端；包含 PDF、来源、私人演示和 SSE。模板关闭 Basic Auth、代理缓存及响应缓冲，清除上游身份头，保留应用 Cookie / Origin / CSRF。普通读者 API、别名和禁止入口的权威清单为 `crates/server/src/authorization.rs:capability`；完整路由对抗证据见 [MU4](performance/linux-multi-reader-mu4-20260930.md)。
+Nginx 只公开网络 Web 静态目录，所有 `/api/` 原样转发到同一后端；包含 PDF、来源、私人演示和 SSE。模板关闭 Basic Auth、代理缓存及响应缓冲，清除上游身份头，保留应用 Cookie / Origin / CSRF。普通读者 API、别名和禁止入口的权威清单为 `crates/server/src/authorization.rs:capability`；完整路由对抗证据见 [MU4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu4-20260930.md)。
 
 用 `nginx -t` 检测证书、语法和路径错误，通过后再 reload。匿名 API 必须 401；有效账号可登录；缺 CSRF 或错误 Origin 的写入必须 403；B 读取 A 的现场、聊天、来源和演示必须拒绝。确认 HTTPS 响应的 Cookie 含 Secure / HttpOnly / SameSite，实际 SSE 逐批到达。
 

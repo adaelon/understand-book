@@ -85,7 +85,7 @@
 - 将工具原始返回全文算作已读：预算投影可能只向模型提供部分正文。
 
 **命门**：patch 省略继承、提供即完整替换；新引用须有当前登记及成功采样的正文依据，旧引用沿确切基版继承；无历史记录保持未知。
-**展开**：[SE3 合同与证据](../performance/explanation-evolution/se3/README.md)。
+**展开**：[SE3 合同与证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se3/README.md)。
 
 ## §8 首批模板库登记
 
@@ -97,4 +97,4 @@
 
 **命门**：每单元以作品计算、图形、交互恢复及正式读取完成本批登记；收益与学习效果沿 §4 单独建立证据。
 **何时回头**：真实使用出现方法错选、具体回归或有价值的收益问题时，再启动对应验证。
-**展开**：[首批模板库](../../skills/presentation/methods/README.md)、[制作与验证记录](../performance/presentation-method-library-v1/README.md)。
+**展开**：[首批模板库](../../skills/presentation/methods/README.md)、[制作与验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-method-library-v1/README.md)。

@@ -2,13 +2,13 @@
 
 2026-10-29 接续：[ADR-0176](0176-main-agent-planned-teaching-and-coach-guidance.md) 直接复用本 ADR 的 Goal 工作计划及持久化机制，不新增另一套计划对象。主 Agent 计划执行与交付流程的调整已接受、待实施。
 
-状态：设计已接受，2026-10-02；EX13.0 [离线基线](../performance/presentation-context-ex13/README.md)、EX13.1 [指导追加](../performance/presentation-context-ex13/ex13-1/README.md)、EX13.2 [源码投影](../performance/presentation-context-ex13/ex13-2/README.md)、EX13.3 [Goal 工作计划](../performance/presentation-context-ex13/ex13-3/README.md)、EX13.4 [确切版本修订](../performance/presentation-context-ex13/ex13-4/README.md)、EX13.5 [摘要修复前缀](../performance/presentation-context-ex13/ex13-5/README.md)已完成，[EX13.6 原生接续](../performance/presentation-context-ex13/ex13-6/README.md)也已完成。实施合同见 [EX13 切片方案](../切片方案-EX13-Goal工作计划与演示修订上下文.md)。
+状态：设计已接受，2026-10-02；EX13.0 [离线基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/README.md)、EX13.1 [指导追加](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-1/README.md)、EX13.2 [源码投影](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-2/README.md)、EX13.3 [Goal 工作计划](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-3/README.md)、EX13.4 [确切版本修订](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-4/README.md)、EX13.5 [摘要修复前缀](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-5/README.md)已完成，[EX13.6 原生接续](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md)也已完成。实施合同见 [EX13 切片方案](../切片方案-EX13-Goal工作计划与演示修订上下文.md)。
 
 承接 [ADR-0136](0136-resident-goal-lifecycle-and-delivery-completion.md) 的用户要求与工作判断分离、[ADR-0154](0154-presentation-global-framework-and-staged-authoring.md) 的复杂解释制作方法，以及[调用成本计划](../计划-调用成本与DeepSeek适配.md)的动态状态追加原则。
 
 ## 背景
 
-[EX12.4](../performance/presentation-staged-authoring-ex12-4.md) 已跑通关键局部、反馈、全文展开与 review，但范围遗漏和数值修正仍依赖外部反馈。现有 Goal 只有工作焦点与下一步，没有逐项进度；阶段指导变化改写前部 instructions，当前回合的旧 write HTML 持续参与采样，修订入口无条件加入整篇可读正文。最终补丁原生验收被 DeepSeek 402 阻断，不能据此宣称 EX12.4 完成。
+[EX12.4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md) 已跑通关键局部、反馈、全文展开与 review，但范围遗漏和数值修正仍依赖外部反馈。现有 Goal 只有工作焦点与下一步，没有逐项进度；阶段指导变化改写前部 instructions，当前回合的旧 write HTML 持续参与采样，修订入口无条件加入整篇可读正文。最终补丁原生验收被 DeepSeek 402 阻断，不能据此宣称 EX12.4 完成。
 
 ## §1 任务与制作方法
 
@@ -39,7 +39,7 @@
 **命门**：固定资源指导与任务设计数据保持权限层次；最新选择生效，旧选择失效，压缩后当前指导可恢复。
 **展开**：[目标请求结构](../切片方案-EX13-Goal工作计划与演示修订上下文.md#3-目标请求结构)。
 
-2026-10-21 请求布局补充：`SessionStable` 保持在基础规则之后；`TurnFrozen` 放在旧历史或 checkpoint 之后、本回合真实用户问题之前；`Dynamic` 继续沿原采样锚点追加。片段角色、回合冻结和原始历史不变。Tutor schema 示例使用固定占位引用，实际 action/fact 引用从当前 learner context 取得；合法操作仍按当前状态约束。实测与质量判断见 [原题及连续追问](../performance/web-search-jsonl/cache-optimization.md)。
+2026-10-21 请求布局补充：`SessionStable` 保持在基础规则之后；`TurnFrozen` 放在旧历史或 checkpoint 之后、本回合真实用户问题之前；`Dynamic` 继续沿原采样锚点追加。片段角色、回合冻结和原始历史不变。Tutor schema 示例使用固定占位引用，实际 action/fact 引用从当前 learner context 取得；合法操作仍按当前状态约束。实测与质量判断见 [原题及连续追问](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/web-search-jsonl/cache-optimization.md)。
 
 ## §4 历史裁剪与版本修订
 
@@ -67,4 +67,4 @@ ADR-0136 的工作判断扩展为可修订工作项，所有权、用户依据�
 
 ## 已知限制
 
-本 ADR 的 EX13.0–EX13.6 已完成，EX12.4 最终原生验收通过。真实接续保留原 Goal 要求、来源和同对象版本；缓存与费用仅报告已发生样本，不推断一般收益。EX12.5 部署与 Reader 连续使用待完成，状态以 [checkpoint](../../checkpoint_ex.md) 为准。
+本 ADR 的 EX13.0–EX13.6 已完成，EX12.4 最终原生验收通过。真实接续保留原 Goal 要求、来源和同对象版本；缓存与费用仅报告已发生样本，不推断一般收益。EX12.5 部署与 Reader 连续使用待完成，状态以 [checkpoint](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/checkpoint_ex.md) 为准。

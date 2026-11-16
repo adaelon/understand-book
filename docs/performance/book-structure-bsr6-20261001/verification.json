@@ -1,9 +1,0 @@
-{
-  "status": "passed",
-  "accepted_steps": 41,
-  "same_inputs": true,
-  "same_candidates": true,
-  "same_payloads": true,
-  "model_calls": 0,
-  "provider_calls": 0
-}

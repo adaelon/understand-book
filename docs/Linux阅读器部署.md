@@ -4,7 +4,7 @@
 
 应用账号和授权书库使用独立的 [MU4 多人候选入口](Linux多人阅读-MU4候选入口.md)；本文的单读者命令与 Basic Auth 配置保持原用途，多人上线仍须通过 MU10/MU11。
 
-多人构建、systemd/Nginx、IP HTTPS、停写迁入及回滚按 [MU11 发布运行单](Linux多人阅读-MU11发布运行单.md) 操作；当前隔离实机结果与开放门槛见 [MU11 记录](performance/linux-multi-reader-mu11-20261001.md)。
+多人构建、systemd/Nginx、IP HTTPS、停写迁入及回滚按 [MU11 发布运行单](Linux多人阅读-MU11发布运行单.md) 操作；当前隔离实机结果与开放门槛见 [MU11 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu11-20261001.md)。
 
 2026-10-02 当前多人正式版本为 `ex13-jl-20261002`，已上线 EX12 / EX13 / JL、网络前端与选定 revision 2。实际路径、数据备份、聊天入口及剩余验收范围以 [本次发布记录](Linux上线-EX12-EX13-JL.md) 为准；下文保留单读者部署方法。
 
@@ -154,7 +154,7 @@ PDF 阶段通过后，停止服务并观察 memory/session 磁盘记录，再启
 
 ### 移动阅读发布核对
 
-移动工作区的本地定向验证见 [MW2](performance/mobile-workspace-mw2-20260918.md)、[MW3](performance/mobile-workspace-mw3-20260918.md)、[MW7](performance/mobile-workspace-mw7-20260918.md) 与 [MW9](performance/mobile-workspace-mw9-20260918.md)；当前整体状态见 [MW8](performance/mobile-workspace-mw8-20260918.md)。部署时必须从同一 release 目录构建 Web 与 Server，记录 `git rev-parse HEAD`、systemd `WorkingDirectory/ExecStart` 和 `UNDERSTAND_BOOK_WEB_DIST`，再从真实认证入口核对页面、API、PDF 资源及 Agent 事件流。不要用本地 HEAD 推断线上版本。
+移动工作区的本地定向验证见 [MW2](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mobile-workspace-mw2-20260918.md)、[MW3](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mobile-workspace-mw3-20260918.md)、[MW7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mobile-workspace-mw7-20260918.md) 与 [MW9](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mobile-workspace-mw9-20260918.md)；当前整体状态见 [MW8](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mobile-workspace-mw8-20260918.md)。部署时必须从同一 release 目录构建 Web 与 Server，记录 `git rev-parse HEAD`、systemd `WorkingDirectory/ExecStart` 和 `UNDERSTAND_BOOK_WEB_DIST`，再从真实认证入口核对页面、API、PDF 资源及 Agent 事件流。不要用本地 HEAD 推断线上版本。
 
 切换前在隔离实例完成以下核对：
 

@@ -347,7 +347,7 @@ T7 脚本使用合成输入与固定候选，检查四工具协议、重复提�
 
 ### 一次真实发布怎样改变“已经验证”的含义
 
-[2026-10-01 MU11 实施记录](../../performance/linux-multi-reader-mu11-20261001.md)提供了很具体的分阶段证据。早期隔离验证把 dev 构建的五个程序放进候选目录的 `target/release`，只是为了复用 launcher；记录明确说明目录名不等于优化构建。随后正式构建才生成 release 产物。[正式收据](../../performance/linux-multi-reader-mu11-20261001/production-build-receipt.txt)保存 profile=release、最终源码根与 working-tree-source-copy，基线是当时的 5e10516。
+[2026-10-01 MU11 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu11-20261001.md)提供了很具体的分阶段证据。早期隔离验证把 dev 构建的五个程序放进候选目录的 `target/release`，只是为了复用 launcher；记录明确说明目录名不等于优化构建。随后正式构建才生成 release 产物。[正式收据](../../performance/linux-multi-reader-mu11-20261001/production-build-receipt.txt)保存 profile=release、最终源码根与 working-tree-source-copy，基线是当时的 5e10516。
 
 同一记录还揭示另一种可达失败：初次部署有在线服务，却遗漏 presentation-sandbox.json 与宿主的 systemd 权限，网络制作处于 not_configured。补齐同 release worker、独立运行时和宿主权限后，才在实际服务账号下验证浏览器、Python 渲染、取消和回收。[原始集成日志](../../performance/linux-multi-reader-mu11-20261001/production-render-integration.log)记载四个用例通过，测试进程耗时 57.27 秒。这个时间属于那次集成测试，不能解释成一次演示的制作延迟。
 

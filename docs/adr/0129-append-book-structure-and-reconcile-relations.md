@@ -1,6 +1,6 @@
 # ADR-0129 BookStructure 追加组装与关系增量
 
-状态：A1–A5 已实现（2026-09-14）；A5 复用与恢复验收见 [记录](../performance/understand-book-a5-release.md)。A6 真实模型验收待实施，Mastering Rust 的一份旧局部成果缺少七个 core 单元，须先定点修复。承接 ADR-0044、0124，替换全书拼接结果的递归整表汇总；单元提取仍沿用现有流程。
+状态：A1–A5 已实现（2026-09-14）；A5 复用与恢复验收见 [记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-a5-release.md)。A6 真实模型验收待实施，Mastering Rust 的一份旧局部成果缺少七个 core 单元，须先定点修复。承接 ADR-0044、0124，替换全书拼接结果的递归整表汇总；单元提取仍沿用现有流程。
 
 ## §1 产物组装
 

@@ -1,6 +1,6 @@
 # ADR-0130 Agent 富呈现与读时内容制作
 
-状态：产品方向与呈现边界已接受，2026-09-16；RP1 预览端口及 Windows/Tauri、Linux 实机验证完成；RP2 私有版本与历史引用、RP3 富回答与来源于 2026-09-17 完成。RP3 通过 Windows 真实浏览器及相关回归；RP4 Resident 现场制作、真实模型运行故障修正与交付于 2026-09-17 完成，见 [RP4 验收](../performance/agent-presentation-rp4-20260917.md)。RP5 当前状态追问及最终 Server/浏览器回归于 2026-09-17 完成，见 [RP5 验收](../performance/agent-presentation-rp5-20260917.md)。RP6 持续修改与恢复于 2026-09-17 完成，见 [RP6 验收](../performance/agent-presentation-rp6-20260917.md)。RP7 Windows/Tauri 与 Linux 完整真实模型验收于 2026-09-17 完成，见 [RP7 验收](../performance/agent-presentation-rp7-20260917.md)。实施入口：[切片方案](../切片方案-Agent富呈现与读时内容制作.md)。移动宿主、低高度与触控环境的边界由 [ADR-0131](0131-mobile-reading-workspace-and-viewport-projection.md) 承接；MW1–MW3 不改写 RP1–RP7 的完成记录，RP 宿主连续性及多环境预览仍按 MW5–MW6 实施。
+状态：产品方向与呈现边界已接受，2026-09-16；RP1 预览端口及 Windows/Tauri、Linux 实机验证完成；RP2 私有版本与历史引用、RP3 富回答与来源于 2026-09-17 完成。RP3 通过 Windows 真实浏览器及相关回归；RP4 Resident 现场制作、真实模型运行故障修正与交付于 2026-09-17 完成，见 [RP4 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp4-20260917.md)。RP5 当前状态追问及最终 Server/浏览器回归于 2026-09-17 完成，见 [RP5 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp5-20260917.md)。RP6 持续修改与恢复于 2026-09-17 完成，见 [RP6 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp6-20260917.md)。RP7 Windows/Tauri 与 Linux 完整真实模型验收于 2026-09-17 完成，见 [RP7 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-presentation-rp7-20260917.md)。实施入口：[切片方案](../切片方案-Agent富呈现与读时内容制作.md)。移动宿主、低高度与触控环境的边界由 [ADR-0131](0131-mobile-reading-workspace-and-viewport-projection.md) 承接；MW1–MW3 不改写 RP1–RP7 的完成记录，RP 宿主连续性及多环境预览仍按 MW5–MW6 实施。
 
 普通回答需要更清楚的重点、比较与图文组织，阅读过程还需要交互讲解、可运行教具和持续更新的内容。首版允许 Resident Agent 在回答内容区域内遵循共同样式，现场编写、预览和修改 HTML/CSS/JavaScript；可复用组件用于减少重复工作。
 
@@ -66,4 +66,4 @@
 - 合并显示确认请求：仍使局部交互依赖网络往返。
 
 **命门**：宿主根据已绑定引用生成来源标签并核对来源操作；保存、追问仍验证已交付版本、来源和现场文字，失败单独提示。
-**展开**：[真实演示回归与实现](../performance/presentation-immediate-20261010.md)。
+**展开**：[真实演示回归与实现](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-immediate-20261010.md)。

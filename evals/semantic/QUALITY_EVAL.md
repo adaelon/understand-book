@@ -34,7 +34,7 @@ node evals/semantic/diagnostic-run.mjs --out evals/semantic/quality-results/my-d
 
 命令只读首轮 `run.json` 与正式评分包，EV5 在隔离 Reader 中经真实 `book.search_text` 和 `book.text` 预供原文，EV6 从自然运行的实际模型请求提取 canonical 原文交给共同回答器。前两次 EV5 工具选择由诊断脚本给出，后续为真实模型；产品、诊断、Judge 用量分开。输出包含原文和请求，必须留在 Git 忽略的 `quality-results`。`--ev5-only` 只运行充分原文探针；输入可用 `--run`、`--formal`、`--book` 指定。
 
-评委事实槽若与其准确、完整、来源维度互相冲突，诊断标记评分无效，不把自由文本与冻结枚举不一致算作产品失败。对已保存的原始评委输出用 `diagnostic-reconcile.mjs --ev5 <目录> --ev6 <目录> --out <新文件>` 作无新模型调用的复核；旧报告保留。首个探针、实际结果与限制见 [EV5–EV6 记录](../../docs/performance/agent-eval-ev5-ev6-20260925.md)。
+评委事实槽若与其准确、完整、来源维度互相冲突，诊断标记评分无效，不把自由文本与冻结枚举不一致算作产品失败。对已保存的原始评委输出用 `diagnostic-reconcile.mjs --ev5 <目录> --ev6 <目录> --out <新文件>` 作无新模型调用的复核；旧报告保留。首个探针、实际结果与限制见 [EV5–EV6 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md)。
 
 ## EV3–EV4 校准与新题集
 
@@ -54,7 +54,7 @@ node evals/semantic/quality-run.mjs judge --protocol task-v1 --out evals/semanti
 node evals/semantic/quality-run.mjs calibrate --protocol task-v1 --out evals/semantic/quality-results/reading-v1-evaluation
 ```
 
-正式评分使用另一份完整产品运行和**新的** `prepare` 目录，并以 `judge --calibration-from <已通过校准的目录>` 调用。程序核对相同评委配置、协议、获准用途与任务范围；未获准范围不运行评分。两种用途独立批准；未获准的绝对评分不妨碍已获准的偏好比较。历史探索性作业不得混入正式目录。2026-09-25 两份校准已通过，首轮当前版本正式评分见[EV3–EV4 记录](../../docs/performance/agent-eval-ev3-ev4-20260925.md)。
+正式评分使用另一份完整产品运行和**新的** `prepare` 目录，并以 `judge --calibration-from <已通过校准的目录>` 调用。程序核对相同评委配置、协议、获准用途与任务范围；未获准范围不运行评分。两种用途独立批准；未获准的绝对评分不妨碍已获准的偏好比较。历史探索性作业不得混入正式目录。2026-09-25 两份校准已通过，首轮当前版本正式评分见[EV3–EV4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md)。
 
 ## EV1–EV2 显式任务协议
 
@@ -66,7 +66,7 @@ node evals/semantic/quality-run.mjs judge --protocol task-v1 --out evals/semanti
 node evals/semantic/quality-run.mjs report --protocol task-v1 --out evals/semantic/quality-results/my-task-run
 ```
 
-新协议默认仍读取冻结 LA7 `run.json`；`prepare` 可用 `--run`、`--book` 指向同源运行与书库。输出含原文和答案，留在 Git 忽略目录。当前实施与三案探索性差异见[EV1–EV2 记录](../../docs/performance/agent-eval-ev1-ev2-20260925.md)。
+新协议默认仍读取冻结 LA7 `run.json`；`prepare` 可用 `--run`、`--book` 指向同源运行与书库。输出含原文和答案，留在 Git 忽略目录。当前实施与三案探索性差异见[EV1–EV2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev1-ev2-20260925.md)。
 
 ## 范围与状态
 

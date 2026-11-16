@@ -108,6 +108,6 @@
 ## 已知限制
 
 - MCP0–MCP10 已于 2026-10-12 上线，正式接入页为 [MCP 接入](https://understandbook.top/?account=mcp)。账号页面与来源打开见 [MCP7](内测MCP-MCP7实现.md)，备份／恢复和部署证据见 [发布运行单](内测MCP-发布运行单.md)。来源 URL 应与结构化定位一起保存。
-- Codex CLI 0.162.0-alpha.2 已通过本机 Streamable HTTP 完整阅读、翻页、引用和额度耗尽验收；需在客户端允许该 MCP 的读取工具。Claude Code 2.1.196 已通过初始化／工具发现，完整阅读因模型服务凭证 401 尚未验收。[客户端记录](performance/beta-mcp/README.md)。
+- Codex CLI 0.162.0-alpha.2 已通过本机 Streamable HTTP 完整阅读、翻页、引用和额度耗尽验收；需在客户端允许该 MCP 的读取工具。Claude Code 2.1.196 已通过初始化／工具发现，完整阅读因模型服务凭证 401 尚未验收。[客户端记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/beta-mcp/README.md)。
 - 正式 HTTPS 代理已通过协议、来源和扣次验收；凭证占位值必须替换为本人创建的值。首批按 4 个活跃读取任务规划。
 - 服务端提交消费后连接中断，已记次数保留；再次成功请求会另计一次，复用 JSON-RPC id 不会去重。

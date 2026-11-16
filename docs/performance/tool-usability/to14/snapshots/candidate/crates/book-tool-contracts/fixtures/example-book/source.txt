@@ -1,3 +1,0 @@
-The alpha threshold activates only when the value is greater than 10.
-The beta threshold activates when the value is at least 10.
-Compare each threshold using the observed conditions.

@@ -1,6 +1,6 @@
 # ADR-0128 主任务诊断子代理调用并指导纠错
 
-状态：R1–R4 已实现并通过程序、编译安装和实时宿主纠错验收（2026-09-14）；[R4 证据](../performance/understand-book-r4-release.md)。承接 ADR-0117、0121、0125；细化构建主任务的诊断读取边界。
+状态：R1–R4 已实现并通过程序、编译安装和实时宿主纠错验收（2026-09-14）；[R4 证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-r4-release.md)。承接 ADR-0117、0121、0125；细化构建主任务的诊断读取边界。
 
 ## §1 异常诊断
 

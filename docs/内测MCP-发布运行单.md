@@ -1,6 +1,6 @@
 # 内测 MCP 发布与恢复运行单
 
-2026-10-12（Asia/Hong_Kong）。**MCP0–MCP10 已完成并上线。** 08:53:21 切换完成，08:57:06 完成公网与账本复核；发布窗口约 16.7 秒。完整证据见 [MCP10 验收记录](performance/mcp10-20261012/README.md)。
+2026-10-12（Asia/Hong_Kong）。**MCP0–MCP10 已完成并上线。** 08:53:21 切换完成，08:57:06 完成公网与账本复核；发布窗口约 16.7 秒。完整证据见 [MCP10 验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp10-20261012/README.md)。
 
 ## 本次发布
 
@@ -52,7 +52,7 @@ PYTHONPATH=/opt/understand-book/acceptance/adm10-20261008/python-deps \
 
 恢复副本会保留 `presentation-sandbox.json`，其中的 `instance` 也原样保留。每个独立运行的实例必须在启动前改为独立名称，例如 `mcp10-measure`；生产的 `reader` 不能给演练复用。该值同时决定 `/var/tmp/ub-render-<instance>`、systemd slice 和待清理任务，不是只用于日志的标签。独立数据根与端口不能隔离这些资源。
 
-先完成离线数据保留比较，再修改副本的执行器配置；不要修改备份。实例名限 1–32 个 ASCII 字母、数字或连字符。副本配置指向对应 release 的 worker，使用实际服务账户启动与验证。制作验收需要单独实例的真实 write／preview／deliver；原文与 MCP 验收不能替代制作验收。2026-10-13 已修正服务器历史 `rehearse.py` 与 `check-measure-cli.py` 的启动配置，故障与修复见 [演示环境恢复记录](performance/presentation-recovery-20261013/README.md)。
+先完成离线数据保留比较，再修改副本的执行器配置；不要修改备份。实例名限 1–32 个 ASCII 字母、数字或连字符。副本配置指向对应 release 的 worker，使用实际服务账户启动与验证。制作验收需要单独实例的真实 write／preview／deliver；原文与 MCP 验收不能替代制作验收。2026-10-13 已修正服务器历史 `rehearse.py` 与 `check-measure-cli.py` 的启动配置，故障与修复见 [演示环境恢复记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-recovery-20261013/README.md)。
 
 **不能把旧二进制直接切到 schema 12。** 旧版本的实际行为由本次演练记录。需要回到 schema 9 时，旧二进制只能使用兼容的 schema 9 成套恢复点。发布后若已有新账号、聊天、笔记、赠送、收款、调用包或消费，旧快照不含这些事实；不得用旧备份覆盖或丢弃当前根。先停写并以新版完整备份，优先修复当前版本或发布仍支持 schema 12 的版本。任何需要降回 schema 9 的操作都必须先明确保留、迁移和核对新增事实的方法。
 
@@ -60,7 +60,7 @@ PYTHONPATH=/opt/understand-book/acceptance/adm10-20261008/python-deps \
 
 - Windows／Linux 比较工具 5 项针对性测试通过；Linux Reader、Admin 和五个程序构建通过。
 - schema 9 → 12 比较通过；schema 12 → 12 恢复保留凭证、15 条消费、赠送、1 个模拟调用包及其收款。恢复后登录与余额／收款 API 一致。旧程序打开 schema 12 返回 `CONTROL_SCHEMA_INCOMPATIBLE`、退出码 2；旧 schema 9 快照恢复后原账号可读 10 个发布。
-- 最新生产快照保留 4 个账号、10 个发布、39 条授权、67 个工作区、4 个模型额度期、280 条模型费用及报告；1,738 个文件中包含 265 个私人文件、4 个 SQLite 文件。实际逐行／逐文件比较见 [production-preservation.json](performance/mcp10-20261012/production-preservation.json)。
+- 最新生产快照保留 4 个账号、10 个发布、39 条授权、67 个工作区、4 个模型额度期、280 条模型费用及报告；1,738 个文件中包含 265 个私人文件、4 个 SQLite 文件。实际逐行／逐文件比较见 [production-preservation.json](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp10-20261012/production-preservation.json)。
 - 正式 HTTPS 完成无 Origin Bearer、11 工具、通知／错误协议、原文与 Reader UTF-16 来源核对；首页、接入深链接、后台及资源版本匹配，原书目录和模型额度与发布前一致，PDF Range 和 Tutor 就绪接口正常。
 - 公网完整页每次 8,000 字符、37,738 字节；1／4／8 路全部成功，最大耗时分别 1.641／2.053／2.163 秒，包含客户端网络与 TLS。首批仍按 4 个活跃任务规划。
 - 生产账本恰有 28 条免费消费（检索 1、原文 27），2 次赠送共 28 次，reader 剩余仍为 1,000 次；付费消费 0、新增模型费用 0、正式收款 0。两个测试凭证已撤销，测试会话已退出。
@@ -69,5 +69,5 @@ PYTHONPATH=/opt/understand-book/acceptance/adm10-20261008/python-deps \
 
 - 首批仍按 4 个活跃 MCP 读取任务规划；1／4／8 路验收只测本次材料、响应大小和网络，不构成持续吞吐承诺。
 - Tutor TC7／TC8 的真实读者、工程矩阵和旧教学事件兼容验收尚未完成；此次应用发布不等于这些切片完成。
-- 整合时保留 1 项原有 Core BookStructure 路线测试失败，详见 [整合记录](performance/integration-mcp-tutor-20261012.md)。MCP10 不修改该构建路线。
+- 整合时保留 1 项原有 Core BookStructure 路线测试失败，详见 [整合记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/integration-mcp-tutor-20261012.md)。MCP10 不修改该构建路线。
 - 本轮不调用模型，不新增正式收款；MCP9 的新 Agent 阅读验收与本轮 HTTPS 协议验收分别记录。Computer Use 保持停止，网页验收以资源和接口为准。

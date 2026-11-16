@@ -1,1 +1,0 @@
-动态图案在两秒内持续变化。A test pattern changes over two seconds.

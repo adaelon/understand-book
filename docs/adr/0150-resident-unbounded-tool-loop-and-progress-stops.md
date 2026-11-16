@@ -40,7 +40,7 @@
 
 教学未完成的终态保存真实的宿主停止原因，最后工具诊断继续留在内部消息与交付诊断中。`AGENT_NO_PROGRESS` 接入已有未完成交付；显式 `TURN_LIMIT_EXCEEDED` 不再借教学错误触发额外采样。普通文本草稿支持以 `move_changes` 修改参与方式、邀请和教练调整，宿主重建完整选择并沿原链路校验。工具声明保持同一模式内稳定，草稿与错误状态只追加进历史，避免纠错破坏已发送前缀。终态公开投影按错误类别提供用户文案，历史内部诊断保留。
 
-原因、重放与验证见 [矩阵范数纠错记录](../performance/tutor-error-stop-20261101/README.md)。
+原因、重放与验证见 [矩阵范数纠错记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-error-stop-20261101/README.md)。
 
 ### 2026-10-18 内部失败后的可用交付
 
@@ -52,7 +52,7 @@
 
 同轮压缩改为实际窗口的常规水位；压缩生成失败而原请求仍能容纳时继续。PreTurn 在追加当前用户问题前覆盖上一轮遗留的用户单条历史，避免只因这一条后来变成可压缩历史而重复压缩整段。
 
-本次真实回合耗时与验证记录见 [交付恢复与压缩修复](../performance/delivery-recovery-20261018/README.md)。
+本次真实回合耗时与验证记录见 [交付恢复与压缩修复](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/delivery-recovery-20261018/README.md)。
 
 ### 2026-10-11 教学校验后的有限恢复
 

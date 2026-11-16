@@ -1,7 +1,0 @@
-{
-  "migration_copy_removed": true,
-  "temporary_swap_removed": true,
-  "live_service": "active",
-  "rollback_backup": "/opt/understand-book/backups/full-release-20261019",
-  "free_bytes": 2007273472
-}

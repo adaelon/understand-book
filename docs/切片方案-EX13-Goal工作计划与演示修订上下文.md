@@ -1,12 +1,12 @@
 # EX13：Goal 工作计划与演示修订上下文
 
-日期：2026-10-02。状态：**EX13.0–EX13.6 已完成。** [基线、比较入口与验证](performance/presentation-context-ex13/README.md)、[EX13.2 记录](performance/presentation-context-ex13/ex13-2/README.md)、[EX13.3 记录](performance/presentation-context-ex13/ex13-3/README.md)、[EX13.4 记录](performance/presentation-context-ex13/ex13-4/README.md)与 [EX13.5 记录](performance/presentation-context-ex13/ex13-5/README.md)已落盘；决策见 [ADR-0155](adr/0155-goal-work-plan-and-version-centered-presentation-context.md)。
+日期：2026-10-02。状态：**EX13.0–EX13.6 已完成。** [基线、比较入口与验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/README.md)、[EX13.2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-2/README.md)、[EX13.3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-3/README.md)、[EX13.4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-4/README.md)与 [EX13.5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-5/README.md)已落盘；决策见 [ADR-0155](adr/0155-goal-work-plan-and-version-centered-presentation-context.md)。
 
 任务目标是让 Resident 在连续制作和修改演示页时，始终知道用户要求、当前进度、正在修改的确切版本与剩余问题，同时减少重复输入、请求前缀变化和不必要的压缩成本。实施沿用现有 Goal、模型循环、工具协议、内容存储、会话日志与交付合同。
 
 优先顺序为：冻结现有证据 → 稳定指导前缀 → 裁剪当前回合的旧候选源码 → Goal 内加入工作计划 → 收敛确切版本修订上下文 → 优化摘要请求 → 有限的真实接续验收。前五步可以先用录制数据、受控模型和本地浏览器完成验证。
 
-[EX12.4](performance/presentation-staged-authoring-ex12-4.md) 的最终修正补丁已在 [EX13.6](performance/presentation-context-ex13/ex13-6/README.md) 完成原生交付与独立内容验收；同对象 revision 2 已保存。原 25 次对照未重跑。EX12.5 的 Linux Reader 连续使用验收仍未开始。
+[EX12.4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md) 的最终修正补丁已在 [EX13.6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md) 完成原生交付与独立内容验收；同对象 revision 2 已保存。原 25 次对照未重跑。EX12.5 的 Linux Reader 连续使用验收仍未开始。
 
 ## 1. 已确认的产品边界
 
@@ -27,7 +27,7 @@
 
 ## 2. 已有实现与问题证据
 
-本节表格为 EX13.0 冻结时的实现与问题证据；EX13.1 的当前实现见第 6 节及[验证记录](performance/presentation-context-ex13/ex13-1/README.md)。以下事实来自 2026-10-02 工作树和已经保存的 EX12.4 请求。基准提交为 `5e10516`，但 EX12 实现包含未提交修改，因此不能仅凭该提交复原本次基线；接手时还需使用本工作树与相应录制材料。
+本节表格为 EX13.0 冻结时的实现与问题证据；EX13.1 的当前实现见第 6 节及[验证记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-1/README.md)。以下事实来自 2026-10-02 工作树和已经保存的 EX12.4 请求。基准提交为 `5e10516`，但 EX12 实现包含未提交修改，因此不能仅凭该提交复原本次基线；接手时还需使用本工作树与相应录制材料。
 
 | 当前实现 | 已经解决的事 | EX13 需要补的部分 |
 | --- | --- | --- |
@@ -55,9 +55,9 @@
 
 该实验后段仍携带两次 write 的 HTML，分别为 18,486 和 31,850 字符，共 50,336 字符。这是字符数，不是 token 数。完整页面候选已经保存后，旧原型源码仍随多次预览采样重复发送，是本次裁剪的具体对象。
 
-EX12.4 共出现 19 次结构化压缩调用，已知输入 395,960 token、输出 343,752 token；输出包含 reasoning。原最终接续中的一次 37,269 输出因引用输入中不存在的 source ID 被拒绝，一次修复输出 47,810 后通过。EX13.0 已按原始录制更正此前“重复 source ID”的误记，详见[离线基线](performance/presentation-context-ex13/README.md)。继续放大输出上限不能消除输入重复、结构冗余和修复成本。
+EX12.4 共出现 19 次结构化压缩调用，已知输入 395,960 token、输出 343,752 token；输出包含 reasoning。原最终接续中的一次 37,269 输出因引用输入中不存在的 source ID 被拒绝，一次修复输出 47,810 后通过。EX13.0 已按原始录制更正此前“重复 source ID”的误记，详见[离线基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/README.md)。继续放大输出上限不能消除输入重复、结构冗余和修复成本。
 
-已有实现、实验条件与原始消耗以 [EX12.4 报告](performance/presentation-staged-authoring-ex12-4.md) 为准。v5 已实际进入 review；发现完整范围仍有遗漏，不能归因为“根本没串读”。
+已有实现、实验条件与原始消耗以 [EX12.4 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md) 为准。v5 已实际进入 review；发现完整范围仍有遗漏，不能归因为“根本没串读”。
 
 ## 3. 目标请求结构
 
@@ -151,7 +151,7 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 ### EX13.0：从现有请求建立可复用的离线基线
 
-**实施结果（2026-10-02）**：[compare.py](performance/presentation-context-ex13/compare.py) 支持固定样本重放与任意两份同类型录制比较；[baseline.json](performance/presentation-context-ex13/baseline.json) 保存五个请求的分类体积、usage、有序首差、阶段/工具与裁剪变化、两次 write 的成功回执及源码落点、feedback5 摘要修复与确切版本补丁关联。8 项测试通过，新增模型调用 0。三个阶段切换首差均在 instructions 字符 10,846；13→28 区间有 9 个旧结果裁剪，后段仍携带两份共 50,336 字符 HTML。测量口径与证据更正见[说明](performance/presentation-context-ex13/README.md)。
+**实施结果（2026-10-02）**：[compare.py](performance/presentation-context-ex13/compare.py) 支持固定样本重放与任意两份同类型录制比较；[baseline.json](performance/presentation-context-ex13/baseline.json) 保存五个请求的分类体积、usage、有序首差、阶段/工具与裁剪变化、两次 write 的成功回执及源码落点、feedback5 摘要修复与确切版本补丁关联。8 项测试通过，新增模型调用 0。三个阶段切换首差均在 instructions 字符 10,846；13→28 区间有 9 个旧结果裁剪，后段仍携带两份共 50,336 字符 HTML。测量口径与证据更正见[说明](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/README.md)。
 
 **交付**：新增 `docs/performance/presentation-context-ex13/` 的基线说明与紧凑统计，配套可重放录制输入的测试 fixture 或脚本。保留原始 EX12.4 目录，只引用或抽取必要样本。
 
@@ -165,7 +165,7 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 ### EX13.1：稳定共同指导，把变更移到后部
 
-**实施结果（2026-10-02）**：共同模块保持前部 instructions；固定阶段/技术资源在采样锚点以 system 指导事件追加，重复选择不重复正文。每次采样投影当前 phase/needs，framework/focus 保持 user 数据；交付与禁用工具的收尾采样显式失效，后续合法制作重新启用。压缩保留原锚点，同次重建去重与 Goal 补交付的新采样分别处理。受控 9 对 Native/ReAct 请求均保留既有文本前缀，Runtime 440 项通过、3 忽略，最终制作链路 10 项通过；离线脚本 10 项通过。录制、体积增长和验证边界见[EX13.1 记录](performance/presentation-context-ex13/ex13-1/README.md)。新增模型调用 0。
+**实施结果（2026-10-02）**：共同模块保持前部 instructions；固定阶段/技术资源在采样锚点以 system 指导事件追加，重复选择不重复正文。每次采样投影当前 phase/needs，framework/focus 保持 user 数据；交付与禁用工具的收尾采样显式失效，后续合法制作重新启用。压缩保留原锚点，同次重建去重与 Goal 补交付的新采样分别处理。受控 9 对 Native/ReAct 请求均保留既有文本前缀，Runtime 440 项通过、3 忽略，最终制作链路 10 项通过；离线脚本 10 项通过。录制、体积增长和验证边界见[EX13.1 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-1/README.md)。新增模型调用 0。
 
 **代码入口**：
 
@@ -189,7 +189,7 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 ### EX13.2：裁剪当前回合中已经有可靠落点的旧源码
 
-**实施结果（2026-10-02）**：`ActiveToolResultLedger::insert_call` 绑定成功保存回执与调用，首次采样保留完整源码，之后只在模型投影移除 html/readable_content，保留当前运行候选的读取入口及原元数据。最近 patch 的 edits 保留到明确以它为基底的成功后继被采样；独立 write 不推断替代关系。结果正文淘汰后定位仍在，压缩后工具配对、原始消息和 required source 覆盖通过验证。使用原两份 HTML 的受控末次请求 128,457→52,654 字节（−59.01%）；Native/ReAct 序列化也已核对。Runtime 443 项、Server 编辑/真实存储 4 项、离线录制测试 1 项通过，新增模型调用 0；详见 [EX13.2 记录](performance/presentation-context-ex13/ex13-2/README.md)。
+**实施结果（2026-10-02）**：`ActiveToolResultLedger::insert_call` 绑定成功保存回执与调用，首次采样保留完整源码，之后只在模型投影移除 html/readable_content，保留当前运行候选的读取入口及原元数据。最近 patch 的 edits 保留到明确以它为基底的成功后继被采样；独立 write 不推断替代关系。结果正文淘汰后定位仍在，压缩后工具配对、原始消息和 required source 覆盖通过验证。使用原两份 HTML 的受控末次请求 128,457→52,654 字节（−59.01%）；Native/ReAct 序列化也已核对。Runtime 443 项、Server 编辑/真实存储 4 项、离线录制测试 1 项通过，新增模型调用 0；详见 [EX13.2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-2/README.md)。
 
 **代码入口**：`orchestrator.rs:provider_history_projection / history_projection_through / messages_with_context_fragments`，`tool_result.rs:ActiveToolResultLedger`，Server `presentation_author.rs` 的 write / patch 成功回执和 `redact_history`。
 
@@ -207,7 +207,7 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 ### EX13.3：Goal 增加可恢复的工作计划
 
-**实施结果（2026-10-02）**：`GoalWorkItem` 与 working.items 实现原子替换、省略保留、空列表清空、完整参数校验及同值不增 revision；最新投影包含工作项与未决问题。复用 GoalUpdated / TurnFinished、changed_goals 及新运行 Goal 装载，压缩不改写计划或 requirements。Web 类型同步，制作指导升级为 `ex13.v1`。Runtime 447 项通过、3 忽略；完整持久化和 Web 结果、Native/ReAct 请求见 [EX13.3 记录](performance/presentation-context-ex13/ex13-3/README.md)。新增模型调用 0。
+**实施结果（2026-10-02）**：`GoalWorkItem` 与 working.items 实现原子替换、省略保留、空列表清空、完整参数校验及同值不增 revision；最新投影包含工作项与未决问题。复用 GoalUpdated / TurnFinished、changed_goals 及新运行 Goal 装载，压缩不改写计划或 requirements。Web 类型同步，制作指导升级为 `ex13.v1`。Runtime 447 项通过、3 忽略；完整持久化和 Web 结果、Native/ReAct 请求见 [EX13.3 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-3/README.md)。新增模型调用 0。
 
 **代码入口**：
 
@@ -225,7 +225,7 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 ### EX13.4：修订只装入确切基底、当前问题与可恢复材料
 
-**实施结果（2026-10-02）**：追问保留确切 receipt、标题、完整现场、假设和实际内容入口；正文通过 `file="readable_content"` 按需读取/搜索并支持预算续读。write 实现显式新建与 receipt 基底匹配，遗漏或冲突返回可修正参数错误；显式新建候选可继续 patch，来源和跨运行资格沿原合同。制作指导更新为 ex13.v2。受控追问 37,142→1,706 字节，Goal 要求及未完成项保留；Runtime 449 项、Server 版本/编辑 23 项通过，真实模型调用 0。见 [EX13.4 记录](performance/presentation-context-ex13/ex13-4/README.md)。
+**实施结果（2026-10-02）**：追问保留确切 receipt、标题、完整现场、假设和实际内容入口；正文通过 `file="readable_content"` 按需读取/搜索并支持预算续读。write 实现显式新建与 receipt 基底匹配，遗漏或冲突返回可修正参数错误；显式新建候选可继续 patch，来源和跨运行资格沿原合同。制作指导更新为 ex13.v2。受控追问 37,142→1,706 字节，Goal 要求及未完成项保留；Runtime 449 项、Server 版本/编辑 23 项通过，真实模型调用 0。见 [EX13.4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-4/README.md)。
 
 **代码入口**：`crates/server/src/presentation_api.rs:follow_up_context`，Server `presentation_author.rs` 的 read / search / write / patch，Runtime `presentation_author.rs:AuthorRequest / spec`，`agent_run.rs` 的预备上下文与相关 Server 用例。
 
@@ -241,7 +241,7 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 ### EX13.5：优化摘要请求，保持来源覆盖合同
 
-**实施结果（2026-10-02）**：固定摘要规则，诊断追加在原输入之后；`generation_input` 保留来源材料、顺序、覆盖与证据约束，只移除四个运行时管理字段。预算与实际发送复用同一投影，修复尾部纳入输入预算。原 feedback5 的 237 个来源、84 个 required source 保持；原错误摘要拒绝，原修复摘要通过，最多一次修复。首轮 system + user 156,803→156,655 UTF-8 字节，修复保持全部规则与材料前缀；Native/ReAct 本地 HTTP 已验证。Runtime 453 通过、3 忽略，新增真实模型调用 0；详见 [EX13.5 记录](performance/presentation-context-ex13/ex13-5/README.md)。
+**实施结果（2026-10-02）**：固定摘要规则，诊断追加在原输入之后；`generation_input` 保留来源材料、顺序、覆盖与证据约束，只移除四个运行时管理字段。预算与实际发送复用同一投影，修复尾部纳入输入预算。原 feedback5 的 237 个来源、84 个 required source 保持；原错误摘要拒绝，原修复摘要通过，最多一次修复。首轮 system + user 156,803→156,655 UTF-8 字节，修复保持全部规则与材料前缀；Native/ReAct 本地 HTTP 已验证。Runtime 453 通过、3 忽略，新增真实模型调用 0；详见 [EX13.5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-5/README.md)。
 
 **代码入口**：`crates/runtime/src/compaction.rs:CompactionRequest / call_generator / validate_draft / request_input_tokens`，`auto_compaction.rs`，`orchestrator.rs:maybe_auto_compact`，现有模型适配器的 `complete_structured(CompletionRequest)`。
 
@@ -261,7 +261,7 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 ### EX13.6：有限真实接续与整体收口
 
-**实施结果（2026-10-02）**：用户授权沿用原 DeepSeek 配置、总支出不超过 9 元。恢复原聊天、Goal、检查点与确切现场，原生应用原 11 项补丁及一项公式补充；三环境 preview、后续图片观察、local→review、同对象 revision 2 交付完成，独立三环境七路径通过。真实接续检出的旧历史被补入 new_object:null 导致检查点失效已修复，Runtime 454 项通过。累计提供方调用 22 次，按空闲价估算 0.93951468 元、高峰价保守累计 1.87902936 元，余额净减 0.59 元单列；一次自然压缩首轮通过。请求、失败、费用限制与验收见 [EX13.6 记录](performance/presentation-context-ex13/ex13-6/README.md)。
+**实施结果（2026-10-02）**：用户授权沿用原 DeepSeek 配置、总支出不超过 9 元。恢复原聊天、Goal、检查点与确切现场，原生应用原 11 项补丁及一项公式补充；三环境 preview、后续图片观察、local→review、同对象 revision 2 交付完成，独立三环境七路径通过。真实接续检出的旧历史被补入 new_object:null 导致检查点失效已修复，Runtime 454 项通过。累计提供方调用 22 次，按空闲价估算 0.93951468 元、高峰价保守累计 1.87902936 元，余额净减 0.59 元单列；一次自然压缩首轮通过。请求、失败、费用限制与验收见 [EX13.6 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/ex13-6/README.md)。
 
 **开始条件**：相关确定性测试通过，提供方可用，真实调用范围与最高支出明确；本次已满足并完成，成功后停止调用。
 
@@ -283,9 +283,9 @@ EX13.4 已增加 `write.new_object: true` 表达明确的新建选择，仅在�
 
 改运行代码后使用受控 ModelAdapter 验证组装与行为，用录制请求比较输入体积与前缀，用现有严格解析验证摘要。只有修改页面运行或预览行为才运行对应浏览器用例；不为纯请求排布变化重新运行全部数值、整套端到端和 25 次付费矩阵。
 
-EX13.0 的[离线基线](performance/presentation-context-ex13/README.md)已成为 EX13.1–EX13.5 的共同观察入口。每片记录“改动前后的实际请求、具体失败是否消失、仍未验证什么”；通过后进入下一片，不反复扩大已定论检查。
+EX13.0 的[离线基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-context-ex13/README.md)已成为 EX13.1–EX13.5 的共同观察入口。每片记录“改动前后的实际请求、具体失败是否消失、仍未验证什么”；通过后进入下一片，不反复扩大已定论检查。
 
-冷启动读序：本方案第 2、6 节 → [ADR-0155](adr/0155-goal-work-plan-and-version-centered-presentation-context.md) → [EX12.4 报告](performance/presentation-staged-authoring-ex12-4.md) → 对应小片代码入口。需要既有合同才读 [Goal 原方案](切片方案-Resident-Goal目标维持与交付闭环.md)、[EX12 方案](切片方案-演示页全局框架与分阶段制作.md) 与 [调用成本计划](计划-调用成本与DeepSeek适配.md)。
+冷启动读序：本方案第 2、6 节 → [ADR-0155](adr/0155-goal-work-plan-and-version-centered-presentation-context.md) → [EX12.4 报告](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/presentation-staged-authoring-ex12-4.md) → 对应小片代码入口。需要既有合同才读 [Goal 原方案](切片方案-Resident-Goal目标维持与交付闭环.md)、[EX12 方案](切片方案-演示页全局框架与分阶段制作.md) 与 [调用成本计划](计划-调用成本与DeepSeek适配.md)。
 
 **下一步为 EX12.5**：读取 EX13.6 的 revision 2、验收记录与原 EX12.5 合同，在目标 Linux Reader 推进长页操作、保存重开和后续局部修订。
 

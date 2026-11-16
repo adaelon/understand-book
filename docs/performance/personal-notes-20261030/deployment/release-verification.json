@@ -1,9 +1,0 @@
-{
-  "status": "passed",
-  "verified_at_utc": "2026-10-30T03:43:43.616899+00:00",
-  "installed_files_match_verified_sources": {
-    "source.tar.gz": 128,
-    "web-dist.tar.gz": 290
-  },
-  "model_requests": 0
-}

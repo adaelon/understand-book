@@ -1,8 +1,8 @@
 # Linux 原生多人阅读与无 Redis 首版切片方案
 
-日期：2026-09-29；合同修订：2026-09-30。状态：MU0、MU1a–MU1c、MU2–MU6d 已完成本地实现与定向验证；MU7 已完成实现及 Linux 实机隔离验收；MU8 已完成前端接线与本地 HTTPS 双浏览器验证；MU9 已完成离线工具与本地隔离迁入 / 恢复验证，见 [MU9 记录](performance/linux-multi-reader-mu9-20260930.md)；MU10 实现与报告已交付，完整发布门槛未通过，见 [MU10 记录](performance/linux-multi-reader-mu10-20260930.md)；MU11 已完成优化构建、可信 IP HTTPS、生产迁入与入口切换，预构建失败按用户决定不挡此次部署，见 [MU11 记录](performance/linux-multi-reader-mu11-20261001.md)。MU1、MU6 分别按三个、四个子切片交付。
+日期：2026-09-29；合同修订：2026-09-30。状态：MU0、MU1a–MU1c、MU2–MU6d 已完成本地实现与定向验证；MU7 已完成实现及 Linux 实机隔离验收；MU8 已完成前端接线与本地 HTTPS 双浏览器验证；MU9 已完成离线工具与本地隔离迁入 / 恢复验证，见 [MU9 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu9-20260930.md)；MU10 实现与报告已交付，完整发布门槛未通过，见 [MU10 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu10-20260930.md)；MU11 已完成优化构建、可信 IP HTTPS、生产迁入与入口切换，预构建失败按用户决定不挡此次部署，见 [MU11 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu11-20261001.md)。MU1、MU6 分别按三个、四个子切片交付。
 
-决策入口：[ADR-0147](adr/0147-linux-multi-reader-service-without-redis.md)。已交付范围和证据见 [MU0/MU1a 记录](performance/linux-multi-reader-mu0-20260930.md)、[MU1b/MU1c 记录](performance/linux-multi-reader-mu1bc-20260930.md)、[MU2 记录](performance/linux-multi-reader-mu2-20260930.md)及下列各片记录。MU2 建立服务元数据基础表，MU3 补发布登记与默认目录，MU4 接通鉴权，MU5 接通现场生命周期与用户级 Tutor；活动接单转换及后续端点仍按对应切片实施。
+决策入口：[ADR-0147](adr/0147-linux-multi-reader-service-without-redis.md)。已交付范围和证据见 [MU0/MU1a 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu0-20260930.md)、[MU1b/MU1c 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu1bc-20260930.md)、[MU2 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu2-20260930.md)及下列各片记录。MU2 建立服务元数据基础表，MU3 补发布登记与默认目录，MU4 接通鉴权，MU5 接通现场生命周期与用户级 Tutor；活动接单转换及后续端点仍按对应切片实施。
 
 ## 0. 已确认范围与交付边界
 
@@ -10,7 +10,7 @@
 
 **已确认的技术取舍**：首版不使用 Redis；服务级 SQLite + 现有用户私有持久存储 + 进程内有界缓存、调度与事件通道。保留现有读时 Agent、来源证据闸、Rich Presentation、Tutor、预构建插件与桌面产品。
 
-**交付边界**：本方案规定多人服务的实施合同、依赖与验收；当前已交付 MU0–MU5、MU6a–MU6d 的持久接单、取消/删除、公平调度与观察恢复；MU7 受限制作已通过四组 Linux 实机验收；MU8 已完成登录、多现场和断线连续性。MU9 离线迁入、备份与回滚已交付；当前收口 **MU10 完整发布门槛**，接手入口见 [SESSION_CHECKPOINT](../SESSION_CHECKPOINT.md)；[RE1–RE6](切片方案-阅读体验排版批注与动效.md) 已实现，RE7 正式验收继续保留，MU10 / MU11 尚有 Core 全量稳定性、正式容量与实体设备的未验范围；入口已上线。MU8 接口与证据见 [前端连续性](Linux多人阅读-MU8前端连续性.md)、[验收记录](performance/linux-multi-reader-mu8-20260930.md)。制作接口与验证见 [MU7 接口](Linux多人阅读-MU7受限制作.md) 和 [MU7 证据](performance/linux-multi-reader-mu7-20260930.md)。运行接口见 [MU6](Linux多人阅读-MU6运行接口.md)，验证范围见 [MU6c–MU6d](performance/linux-multi-reader-mu6cd-20260930.md)。
+**交付边界**：本方案规定多人服务的实施合同、依赖与验收；当前已交付 MU0–MU5、MU6a–MU6d 的持久接单、取消/删除、公平调度与观察恢复；MU7 受限制作已通过四组 Linux 实机验收；MU8 已完成登录、多现场和断线连续性。MU9 离线迁入、备份与回滚已交付；当前收口 **MU10 完整发布门槛**，接手入口见 [SESSION_CHECKPOINT](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/SESSION_CHECKPOINT.md)；[RE1–RE6](切片方案-阅读体验排版批注与动效.md) 已实现，RE7 正式验收继续保留，MU10 / MU11 尚有 Core 全量稳定性、正式容量与实体设备的未验范围；入口已上线。MU8 接口与证据见 [前端连续性](Linux多人阅读-MU8前端连续性.md)、[验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu8-20260930.md)。制作接口与验证见 [MU7 接口](Linux多人阅读-MU7受限制作.md) 和 [MU7 证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu7-20260930.md)。运行接口见 [MU6](Linux多人阅读-MU6运行接口.md)，验证范围见 [MU6c–MU6d](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu6cd-20260930.md)。
 
 **ChangeType**：`[边界重构] [权限边界新增] [持久化扩展] [迁移]`。
 
@@ -417,7 +417,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU0 — 基线、威胁模型和清单
 
-**状态**：2026-09-30 完成；128 项入口、107 处隐式状态/进程引用、原工作树差异、依赖与测试基线、夹具和部署预算见 [MU0/MU1a 记录](performance/linux-multi-reader-mu0-20260930.md)。
+**状态**：2026-09-30 完成；128 项入口、107 处隐式状态/进程引用、原工作树差异、依赖与测试基线、夹具和部署预算见 [MU0/MU1a 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu0-20260930.md)。
 
 **目标**：在改动前冻结真实入口、隐式全局状态和可验证验收基线。
 
@@ -441,7 +441,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU1a — 用户权威状态归属
 
-**状态**：2026-09-30 完成本地实现与验证；UserRuntime / ServiceState 已落地，完整 Server 回归 346 通过、0 失败、43 原有忽略，最后补强的 MCP 访客断言单独通过。详细范围及后续门槛见 [MU0/MU1a 记录](performance/linux-multi-reader-mu0-20260930.md)。
+**状态**：2026-09-30 完成本地实现与验证；UserRuntime / ServiceState 已落地，完整 Server 回归 346 通过、0 失败、43 原有忽略，最后补强的 MCP 访客断言单独通过。详细范围及后续门槛见 [MU0/MU1a 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu0-20260930.md)。
 
 **输入 / 产出**：现有 AppState 的私人持久对象 → 一个本地固定身份下的 UserRuntime，以及独立服务配置。Memory、History、Learning 访问及私人演示 / 成果只保留一个权威写入口。
 
@@ -451,7 +451,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU1b — 阅读现场与聊天选择归属
 
-**状态**：2026-09-30 完成本地实现与验证；验收范围、首次失败与修复复验见 [MU1b/MU1c 记录](performance/linux-multi-reader-mu1bc-20260930.md)。
+**状态**：2026-09-30 完成本地实现与验证；验收范围、首次失败与修复复验见 [MU1b/MU1c 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu1bc-20260930.md)。
 
 **输入 / 产出**：MU1a 的用户状态 + 原 Book / Reader → ReaderWorkspace 持有 Book、Reader、selected_chat 和 generation；本地宿主显式使用一个现场。
 
@@ -461,7 +461,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU1c — Run 的受限状态端口
 
-**状态**：2026-09-30 完成本地实现与验证；验收范围、首次失败与修复复验见 [MU1b/MU1c 记录](performance/linux-multi-reader-mu1bc-20260930.md)。
+**状态**：2026-09-30 完成本地实现与验证；验收范围、首次失败与修复复验见 [MU1b/MU1c 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu1bc-20260930.md)。
 
 **输入 / 产出**：MU1a / MU1b 的明确归属 → 固定 RunScope、ReaderInputSnapshot 和 §5.3 的私人提交 / 现场读取 / 效果端口。
 
@@ -471,7 +471,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU2 — 用户私人路径与服务数据库
 
-实施状态（2026-09-30）：本地实现与验证完成，见 [MU2 验收](performance/linux-multi-reader-mu2-20260930.md)。确认有效期 10 分钟，闲置回收门槛 30 分钟，常驻用户上限 10；实际 SQLite 3.53.2。合并不同用例验证 490 项通过、43 项原有忽略，首次全量的 24 项失败已在隔离临时根复验通过。网络身份/现场接入与 Linux 实机验收仍归后续切片。
+实施状态（2026-09-30）：本地实现与验证完成，见 [MU2 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu2-20260930.md)。确认有效期 10 分钟，闲置回收门槛 30 分钟，常驻用户上限 10；实际 SQLite 3.53.2。合并不同用例验证 490 项通过、43 项原有忽略，首次全量的 24 项失败已在隔离临时根复验通过。网络身份/现场接入与 Linux 实机验收仍归后续切片。
 
 **目标**：建立可持久化、可复用的用户范围，而不是“每个窗口一份文件”。
 
@@ -487,7 +487,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU3 — 只读发布书库与资源寻址
 
-**状态**：2026-09-30 完成本地实现与验证，见 [MU3 验收](performance/linux-multi-reader-mu3-20260930.md)。离线 import/default/grant、完整材料清单、readiness、现场/Run/历史绑定与存活引用容量已接通；schema 2 新增默认发布表。缺省 20 个存活 Book、2 GiB 估算计费；HTTP 身份/现场挂接与 Linux 只读挂载实机验收留在后续阶段。
+**状态**：2026-09-30 完成本地实现与验证，见 [MU3 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu3-20260930.md)。离线 import/default/grant、完整材料清单、readiness、现场/Run/历史绑定与存活引用容量已接通；schema 2 新增默认发布表。缺省 20 个存活 Book、2 GiB 估算计费；HTTP 身份/现场挂接与 Linux 只读挂载实机验收留在后续阶段。
 
 **目标**：把工作目录式阅读入口变成授权材料对象读取，消除全局 book_dir 和原地更新竞态。
 
@@ -503,7 +503,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU4 — 应用登录与全入口授权
 
-**状态**：2026-09-30 完成本地实现与验证。显式多人 Host、离线账号管理、schema 2 会话、CSRF/Origin/限流、统一能力白名单、材料/私人对象读取和授权 SSE 已接通；最小登录页有账号切换与异步结果失效保护。网络现场和活动 Run 接单分别沿 MU5/MU6 接入，未启用操作不回退本地路径。真实 HTTP、定向/完整回归和浏览器证据见 [MU4 记录](performance/linux-multi-reader-mu4-20260930.md)，命令见 [候选入口](Linux多人阅读-MU4候选入口.md)。
+**状态**：2026-09-30 完成本地实现与验证。显式多人 Host、离线账号管理、schema 2 会话、CSRF/Origin/限流、统一能力白名单、材料/私人对象读取和授权 SSE 已接通；最小登录页有账号切换与异步结果失效保护。网络现场和活动 Run 接单分别沿 MU5/MU6 接入，未启用操作不回退本地路径。真实 HTTP、定向/完整回归和浏览器证据见 [MU4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu4-20260930.md)，命令见 [候选入口](Linux多人阅读-MU4候选入口.md)。
 
 **目标**：所有可触及用户或材料数据的请求都有可信身份和一致的权限检查。
 
@@ -519,7 +519,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU5 — 多窗口现场、失效读写与 Tutor 范围
 
-**状态**：2026-09-30 完成本地实现与验证。授权 HTTP 已接通创建、恢复、挂接、分叉、接管、Reader、演示附属页及用户级 Tutor；schema 3 的版本化检查点使用 CAS 和服务端提交序列。常驻现场每用户 4、全局 20，闲置 15 分钟卸载，活引用与未结接单阻止回收；全部材料仍经 MU3 容量入口。受限 `NetworkRunPort` 已验证旧运行私人归属、失效 Reader 效果和 Tutor 控制版本，活动执行接线留 MU6。证据见 [MU5 记录](performance/linux-multi-reader-mu5-20260930.md)，使用合同见[现场接口](Linux多人阅读-MU5现场接口.md)。
+**状态**：2026-09-30 完成本地实现与验证。授权 HTTP 已接通创建、恢复、挂接、分叉、接管、Reader、演示附属页及用户级 Tutor；schema 3 的版本化检查点使用 CAS 和服务端提交序列。常驻现场每用户 4、全局 20，闲置 15 分钟卸载，活引用与未结接单阻止回收；全部材料仍经 MU3 容量入口。受限 `NetworkRunPort` 已验证旧运行私人归属、失效 Reader 效果和 Tutor 控制版本，活动执行接线留 MU6。证据见 [MU5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu5-20260930.md)，使用合同见[现场接口](Linux多人阅读-MU5现场接口.md)。
 
 **目标**：同一人多个窗口不互相抢书，且私人学习仍连续。
 
@@ -543,7 +543,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU6a — 单执行槽下的持久接单与恢复
 
-**状态**：2026-09-30 完成本地实现与验证。schema 4、owner/request key 直接比较、冻结 Pending Turn/教学回执、queued 后接受、单槽领取、启动对账和旧 chat 共用核心已接通。真实 Host、本地 fake Provider 与提交点故障注入见 [MU6a–MU6b 记录](performance/linux-multi-reader-mu6ab-20260930.md)，接口见 [MU6 运行接口](Linux多人阅读-MU6运行接口.md)。
+**状态**：2026-09-30 完成本地实现与验证。schema 4、owner/request key 直接比较、冻结 Pending Turn/教学回执、queued 后接受、单槽领取、启动对账和旧 chat 共用核心已接通。真实 Host、本地 fake Provider 与提交点故障注入见 [MU6a–MU6b 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu6ab-20260930.md)，接口见 [MU6 运行接口](Linux多人阅读-MU6运行接口.md)。
 
 **输入 / 产出**：MU5 的受限上下文 + 请求键 → §6.1–§6.4 的准备、queued、claimed、终态提交与对账；旧 /agent/chat 等待相同接单核心。
 
@@ -553,7 +553,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU6b — 取消、聊天删除与未保存结果
 
-**状态**：2026-09-30 完成本地实现与验证。queued 取消与领取共享竞争边界，claimed 协作退出；unsaved 保留原结果和占位，retry-save 不调模型；删除清除所有相关现场选择并关闭旧键，History 已提交后的清理中断可恢复。验证和平台限制同 [MU6a–MU6b 记录](performance/linux-multi-reader-mu6ab-20260930.md)。下一片为 MU6c。
+**状态**：2026-09-30 完成本地实现与验证。queued 取消与领取共享竞争边界，claimed 协作退出；unsaved 保留原结果和占位，retry-save 不调模型；删除清除所有相关现场选择并关闭旧键，History 已提交后的清理中断可恢复。验证和平台限制同 [MU6a–MU6b 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu6ab-20260930.md)。下一片为 MU6c。
 
 **输入 / 产出**：MU6a 接单状态及终态入口 → 指定回合取消、§5.4 多人聊天删除和 unsaved 占位处理。
 
@@ -563,7 +563,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU6c — 多用户公平调度与资源限制
 
-**状态**：2026-09-30 完成本地实现与定向验证。统一配置、用户轮转份额、实际模型许可、单轮预算/usage、同步 HTTP 等待隔离已接通；未开放制作入口和 Linux 容量验收边界见 [MU6c–MU6d 记录](performance/linux-multi-reader-mu6cd-20260930.md)。
+**状态**：2026-09-30 完成本地实现与定向验证。统一配置、用户轮转份额、实际模型许可、单轮预算/usage、同步 HTTP 等待隔离已接通；未开放制作入口和 Linux 容量验收边界见 [MU6c–MU6d 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu6cd-20260930.md)。
 
 **输入 / 产出**：已通过恢复和生命周期测试的单槽核心 → 按用户轮转的有界队列、用户 / 全局运行上限及独立模型 / 预览 / 绘图 / 动画资源槽。
 
@@ -573,7 +573,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU6d — SSE 与跨重启观察恢复
 
-**状态**：2026-09-30 完成本地实现与定向验证。排队至终态连续授权 SSE、用户/全局观察容量、epoch 游标和重置快照已接通；完整 Vue 连续性仍归 MU8。证据见 [MU6c–MU6d 记录](performance/linux-multi-reader-mu6cd-20260930.md)。
+**状态**：2026-09-30 完成本地实现与定向验证。排队至终态连续授权 SSE、用户/全局观察容量、epoch 游标和重置快照已接通；完整 Vue 连续性仍归 MU8。证据见 [MU6c–MU6d 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu6cd-20260930.md)。
 
 **输入 / 产出**：MU6a–MU6c 的持久状态和原运行事件 → 多用户授权观察、有界缓冲 / 快照及重启游标处理。
 
@@ -583,7 +583,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU7 — 受限绘图、动画与浏览器预览
 
-**状态（2026-09-30）**：实现与定向验收完成，未部署现网。Linux 4 项、本地相关回归 84 项、Vitest 7 项、Playwright 6 项通过；配置、边界及限制见 [MU7 接口](Linux多人阅读-MU7受限制作.md) 与 [MU7 证据](performance/linux-multi-reader-mu7-20260930.md)。
+**状态（2026-09-30）**：实现与定向验收完成，未部署现网。Linux 4 项、本地相关回归 84 项、Vitest 7 项、Playwright 6 项通过；配置、边界及限制见 [MU7 接口](Linux多人阅读-MU7受限制作.md) 与 [MU7 证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu7-20260930.md)。
 
 **目标**：保留丰富演示能力，但不让模型生成代码成为跨用户入口。
 
@@ -599,7 +599,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU8 — 前端登录、多现场与断线连续性
 
-**状态**：2026-09-30 完成实现和本地 HTTPS Chromium/WebKit 验证。原键恢复、多标签页、附属演示、来源和 PDF 账号切换已覆盖；真实 iPhone/Nginx 与生产恢复仍按 MU11 门槛验收。见 [接口](Linux多人阅读-MU8前端连续性.md) 与 [证据](performance/linux-multi-reader-mu8-20260930.md)。
+**状态**：2026-09-30 完成实现和本地 HTTPS Chromium/WebKit 验证。原键恢复、多标签页、附属演示、来源和 PDF 账号切换已覆盖；真实 iPhone/Nginx 与生产恢复仍按 MU11 门槛验收。见 [接口](Linux多人阅读-MU8前端连续性.md) 与 [证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu8-20260930.md)。
 
 **目标**：让后端隔离在真实浏览器使用中成立，不只停留在 API 测试。
 
@@ -617,7 +617,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU9 — 旧单读者数据迁入、备份与回滚
 
-**实施状态**：`reader_maintenance` 已提供 preview / migrate / backup / restore / export-user；参数与操作记录见 [MU9 说明](Linux多人阅读-MU9迁移恢复.md)，T60–T64 的本地隔离证据见 [MU9 记录](performance/linux-multi-reader-mu9-20260930.md)。MU11 已查明生产源并选定 reader 为唯一迁入账号，隔离导出已由实际旧发布二进制读取；完整生产映射与入口切换现已执行，原资料与恢复点保留。
+**实施状态**：`reader_maintenance` 已提供 preview / migrate / backup / restore / export-user；参数与操作记录见 [MU9 说明](Linux多人阅读-MU9迁移恢复.md)，T60–T64 的本地隔离证据见 [MU9 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu9-20260930.md)。MU11 已查明生产源并选定 reader 为唯一迁入账号，隔离导出已由实际旧发布二进制读取；完整生产映射与入口切换现已执行，原资料与恢复点保留。
 
 **目标**：将现有使用者的数据无歧义迁入一个明确账号，保留恢复路径。
 
@@ -633,7 +633,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU10 — 对抗、故障、跨平台与容量验收
 
-**实施状态（2026-10-01）**：测试设施、真实进程终止 / ENOSPC / 非 root 权限 / busy / 慢 SSE、跨平台回归和五分钟容量诊断已完成，见 [MU10 记录](performance/linux-multi-reader-mu10-20260930.md)、[I01–I15 / T01–T79 矩阵](performance/linux-multi-reader-mu10-matrix.md) 与 [操作说明](Linux多人阅读-MU10验收.md)。修复普通用户发布包、首次聊天恢复选区与网络 Reader 来源复核异常。**完整发布门槛未通过**：MU11 已补齐教学夹具、DSH 35 项与一次真实 Provider；Core 全量 1061 通过 / 1 超时，该文件单独 25 通过。指定容量机器 / 完整渲染混合负载及正式发布条件仍缺，后续证据见 MU11 记录。
+**实施状态（2026-10-01）**：测试设施、真实进程终止 / ENOSPC / 非 root 权限 / busy / 慢 SSE、跨平台回归和五分钟容量诊断已完成，见 [MU10 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu10-20260930.md)、[I01–I15 / T01–T79 矩阵](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu10-matrix.md) 与 [操作说明](Linux多人阅读-MU10验收.md)。修复普通用户发布包、首次聊天恢复选区与网络 Reader 来源复核异常。**完整发布门槛未通过**：MU11 已补齐教学夹具、DSH 35 项与一次真实 Provider；Core 全量 1061 通过 / 1 超时，该文件单独 25 通过。指定容量机器 / 完整渲染混合负载及正式发布条件仍缺，后续证据见 MU11 记录。
 
 **目标**：用可重现证据证明隔离和恢复，而不是用两张登录截图交付。
 
@@ -649,7 +649,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ### MU11 — Linux 发布、真实 HTTPS 与交付记录
 
-**实施状态（2026-10-01）**：显式启动、同目录构建、systemd / Nginx 模板、[运行单](Linux多人阅读-MU11发布运行单.md) 与真实 Linux 隔离部署已交付。两账号、TLS / SSE、一次真实 Provider、备份恢复、旧 release 读取、禁用账号、切发布包保留旧引用及强杀重启通过；修复备份修改共享父目录权限、目录同名发布版本不可区分的问题。前期隔离候选使用 dev 构建；随后已用优化 release 完成 9 份材料、449 条记忆、17 段对话的生产迁入，入口为 https://115.190.121.150。现网操作见 [运行说明](Linux多人阅读-现网运行说明.md)，剩余未验范围见 [MU11 记录](performance/linux-multi-reader-mu11-20261001.md)。
+**实施状态（2026-10-01）**：显式启动、同目录构建、systemd / Nginx 模板、[运行单](Linux多人阅读-MU11发布运行单.md) 与真实 Linux 隔离部署已交付。两账号、TLS / SSE、一次真实 Provider、备份恢复、旧 release 读取、禁用账号、切发布包保留旧引用及强杀重启通过；修复备份修改共享父目录权限、目录同名发布版本不可区分的问题。前期隔离候选使用 dev 构建；随后已用优化 release 完成 9 份材料、449 条记忆、17 段对话的生产迁入，入口为 https://115.190.121.150。现网操作见 [运行说明](Linux多人阅读-现网运行说明.md)，剩余未验范围见 [MU11 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu11-20261001.md)。
 
 **目标**：把通过隔离测试的同一版本发布到真实入口，并能安全停止、回滚和恢复。
 
@@ -665,7 +665,7 @@ RE 的排版、批注与动效可与 MU 分段并行，完整交叉合同见 [RE
 
 ## 9. 端到端验收矩阵
 
-本表定义完整候选版本的验收矩阵。分阶段执行证据见 MU0–MU5 的报告；[MU4 记录](performance/linux-multi-reader-mu4-20260930.md)列明 HTTP/身份/观察边界，[MU5 记录](performance/linux-multi-reader-mu5-20260930.md)列明多现场、持久恢复、失效读写和 Tutor 证据。活动执行、完整浏览器连续性及真实部署项仍待后续切片。测试 ID 用于结果追踪，不自动表示通过。至少采用用户 A/B、现场 A1/A2/B1、材料 X/Y、两个不兼容内容版本与同内容两次能力发布包；测试材料不得含真实私人资料。
+本表定义完整候选版本的验收矩阵。分阶段执行证据见 MU0–MU5 的报告；[MU4 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu4-20260930.md)列明 HTTP/身份/观察边界，[MU5 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu5-20260930.md)列明多现场、持久恢复、失效读写和 Tutor 证据。活动执行、完整浏览器连续性及真实部署项仍待后续切片。测试 ID 用于结果追踪，不自动表示通过。至少采用用户 A/B、现场 A1/A2/B1、材料 X/Y、两个不兼容内容版本与同内容两次能力发布包；测试材料不得含真实私人资料。
 
 | ID | 场景 / 注入 | 必须观察到的结果 | 责任切片 |
 | --- | --- | --- | --- |

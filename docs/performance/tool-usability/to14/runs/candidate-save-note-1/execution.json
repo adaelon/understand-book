@@ -1,8 +1,0 @@
-{
-  "name": "candidate-save-note-1",
-  "version": "candidate",
-  "task": "save-note",
-  "repetition": 1,
-  "exit_code": 0,
-  "batch": "coverage_completion"
-}

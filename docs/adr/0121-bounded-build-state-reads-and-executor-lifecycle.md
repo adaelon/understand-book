@@ -1,14 +1,14 @@
 # ADR-0121 有界构建状态读取与 Executor 生命周期
 
-Status: Accepted design, 2026-09-07；D0/B1、L1/L2、P1–P4、V1 实现与候选验收完成（2026-09-08）。P1–P4 的 180 项回归与同规模测量见[有界读取验收](../performance/understand-book-p1-p4-control-plane.md)；compiled/隔离安装、两轮六单元真实宿主、恢复与计时见 [V1 验收](../performance/understand-book-v1-release.md)。旧程序宿主 A/B、模型 child 故障注入及正式安装/真实书续跑未验证。
+Status: Accepted design, 2026-09-07；D0/B1、L1/L2、P1–P4、V1 实现与候选验收完成（2026-09-08）。P1–P4 的 180 项回归与同规模测量见[有界读取验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-p1-p4-control-plane.md)；compiled/隔离安装、两轮六单元真实宿主、恢复与计时见 [V1 验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-v1-release.md)。旧程序宿主 A/B、模型 child 故障注入及正式安装/真实书续跑未验证。
 Extends: ADR-0116 的测量与传输优化、ADR-0117 的恢复代际与结果复用。
 Revises: 日常状态计算中的准备副作用、V4 单工作单元完成后的 Executor 交接约束；不改变语义结果身份。
 
-B1 的代表性夹具、四轮样本、实际源码快照和验收记录见[可复跑控制面基线](../performance/understand-book-b1-control-plane.md)。
+B1 的代表性夹具、四轮样本、实际源码快照和验收记录见[可复跑控制面基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-b1-control-plane.md)。
 
-L1/L2 的六单元持久提交、连接拒绝恢复闭环、发布投影与 compiled stdio 证据见[生命周期验收](../performance/understand-book-l1-l2-lifecycle.md)。
+L1/L2 的六单元持久提交、连接拒绝恢复闭环、发布投影与 compiled stdio 证据见[生命周期验收](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-l1-l2-lifecycle.md)。
 
-Mastering Rust 的真实运行已使用四次 MCP 调用，但三条成功任务的工具耗时平均仍为 187.58 秒。真实状态副本的暖快照耗时 17.51 秒，并产生 6,315 次针对已有文件的失败创建；原任务的三槽平均占用率约 38.36%。选择先缩小重复状态工作并修复执行器交接，而不是继续放大 transport batch 或恢复长期 worker。事实与限制见[基线](../performance/understand-book-20260907-control-plane-baseline.json)，实施见[切片方案](../切片方案-预构建控制面有界读取与执行器补位.md)。
+Mastering Rust 的真实运行已使用四次 MCP 调用，但三条成功任务的工具耗时平均仍为 187.58 秒。真实状态副本的暖快照耗时 17.51 秒，并产生 6,315 次针对已有文件的失败创建；原任务的三槽平均占用率约 38.36%。选择先缩小重复状态工作并修复执行器交接，而不是继续放大 transport batch 或恢复长期 worker。事实与限制见[基线](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/understand-book-20260907-control-plane-baseline.json)，实施见[切片方案](../切片方案-预构建控制面有界读取与执行器补位.md)。
 
 ## §1 准备与读取的职责
 
@@ -37,7 +37,7 @@ Mastering Rust 的真实运行已使用四次 MCP 调用，但三条成功任务
 画像任务目录在同一个原子写入中保存既有计划摘要；后续补位直接复用，普通完成、删除或租约变化不重算。
 段落重路由后直接比较任务描述，内容变化才清除摘要并重算；来源、策略与发布失效仍走原路由。
 旧目录缺少摘要时从已有描述补齐，不新建 BuildPlan 或 invocation。摘要单独存放在目录头，旧引擎重写目录会丢弃该提示。
-性能和恢复证据见[计划摘要复用测量](../performance/automatic-build-digest-reuse-20261021.md)。
+性能和恢复证据见[计划摘要复用测量](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/automatic-build-digest-reuse-20261021.md)。
 
 2026-10-24 修订：同一次 Driver 决策内，plan、doctor、next 与派发重放复用 `loadDriverState` 已验证的来源 target。
 每个新请求及准备、写入、恢复后的状态刷新仍重新解析来源；不把该 target 保存为跨请求缓存。
@@ -116,4 +116,4 @@ Mastering Rust 的真实运行已使用四次 MCP 调用，但三条成功任务
 关联到后续实际派发的 handoff，再由首次 `generation.start` 在 GENERATE 结果持久化就绪后记录终点。
 首次容量与终态补位分别计数；多工作单元 handoff 只消费一次容量观察，重放不重置时间，旧数据缺失不填零。
 分项记录容量观察到 ready、本轮调度、ready 到 open、open 到 GENERATE 就绪；该端点不代表模型首 token。
-观测落盘不参与租约、调度或恢复决定。基线、候选、回归与开销见[首批预构建提速测量](../performance/prebuild-first-batch-20261023/README.md)。
+观测落盘不参与租约、调度或恢复决定。基线、候选、回归与开销见[首批预构建提速测量](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/prebuild-first-batch-20261023/README.md)。

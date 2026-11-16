@@ -94,12 +94,12 @@ URL 查询参数由 URL 编码器生成；坐标均为规范原文的绝对 UTF-
 
 | 运行 | 结果与日志 |
 | --- | --- |
-| `cargo test -p read-tools --lib mcp_text_page` | 3 通过，0 忽略；[日志](performance/mcp2-20261011/text-page.log) |
-| `cargo test -p server --lib mcp_read` | 4 通过，0 忽略；[日志](performance/mcp2-20261011/mcp-read.log) |
-| `cargo test -p read-tools --lib` | 171 通过，1 项因缺真实书籍样本失败；[日志](performance/mcp2-20261011/read-tools-regression.log) |
-| `cargo test -p server --lib -- mcp::tests tests::mu3_tests search_text_rest_mcp_and_resident_contracts_have_parity search_text_real_book_mcp_pages_match_the_core_result` | 27 通过，2 失败（旧 schema 断言、缺真实样本）；[日志](performance/mcp2-20261011/server-regression.log) |
-| `cargo test -p read-tools --lib search_text_real_book_replays_all_formula_occurrences` | 补齐样本后 1 通过；[日志](performance/mcp2-20261011/real-book-read-tools.log) |
-| `cargo test -p server --lib search_text_real_book_mcp_pages_match_the_core_result` | 补齐样本后 1 通过；[日志](performance/mcp2-20261011/real-book-mcp.log) |
+| `cargo test -p read-tools --lib mcp_text_page` | 3 通过，0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp2-20261011/text-page.log) |
+| `cargo test -p server --lib mcp_read` | 4 通过，0 忽略；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp2-20261011/mcp-read.log) |
+| `cargo test -p read-tools --lib` | 171 通过，1 项因缺真实书籍样本失败；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp2-20261011/read-tools-regression.log) |
+| `cargo test -p server --lib -- mcp::tests tests::mu3_tests search_text_rest_mcp_and_resident_contracts_have_parity search_text_real_book_mcp_pages_match_the_core_result` | 27 通过，2 失败（旧 schema 断言、缺真实样本）；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp2-20261011/server-regression.log) |
+| `cargo test -p read-tools --lib search_text_real_book_replays_all_formula_occurrences` | 补齐样本后 1 通过；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp2-20261011/real-book-read-tools.log) |
+| `cargo test -p server --lib search_text_real_book_mcp_pages_match_the_core_result` | 补齐样本后 1 通过；[日志](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/mcp2-20261011/real-book-mcp.log) |
 
 新增用例覆盖真实 SQLite 的账号隔离、目录完整续页、同书不同发布的实际元数据与来源隔离、缓存撤权、账号停用、私人目录／工作区零创建，以及跨 LID、非 BMP 字符、页长与 UTF-16 坐标。结构、导读、论文元数据、词表、论文阅读指引及概念投影经全部续页拼回后与原完整投影逐值相同；检索在两种页长下遍历全部续页分支，无遗漏或重复。
 

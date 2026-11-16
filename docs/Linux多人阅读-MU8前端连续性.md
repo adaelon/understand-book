@@ -44,6 +44,6 @@ Run 描述带原 workspace、generation 和发布绑定。SSE 将 `Last-Event-ID
 
 ## 验证与限制
 
-验证命令、通过数与故障修正见 [MU8 验收记录](performance/linux-multi-reader-mu8-20260930.md)。浏览器测试运行真实 Vue 构建、真实 Rust HTTP 服务与固定模型替身，Cookie/CSRF、工作区和私人存储均走真实入口；测试夹具通过 Node HTTPS 服务器向真实 Rust 服务转发，浏览器自行接受 Secure/HttpOnly Cookie；仅使用本地测试证书。
+验证命令、通过数与故障修正见 [MU8 验收记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/linux-multi-reader-mu8-20260930.md)。浏览器测试运行真实 Vue 构建、真实 Rust HTTP 服务与固定模型替身，Cookie/CSRF、工作区和私人存储均走真实入口；测试夹具通过 Node HTTPS 服务器向真实 Rust 服务转发，浏览器自行接受 Secure/HttpOnly Cookie；仅使用本地测试证书。
 
 真实 Nginx TLS、实体 iPhone Safari 的选择/键盘/后台行为、生产进程断电恢复和五分钟容量门槛仍属于 MU10/MU11。浏览器视口与 WebKit 验证不替代设备验收。本切片未部署生产服务、迁移个人数据或调用付费模型。翻译、本地化与独立后台复核保持原多人能力边界。

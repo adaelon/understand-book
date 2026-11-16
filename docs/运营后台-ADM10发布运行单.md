@@ -2,7 +2,7 @@
 
 日期：2026-10-08，Asia/Hong_Kong。状态：已完成发布演练及正式上线；费用差额按实际证据保留，详见验收记录。
 
-2026-10-09 入口更新：阅读器 `https://understandbook.top/`、后台 `https://understandbook.top/admin/`，旧 IP HTTPS 地址自动跳转。发布版本仍为 ADM10，域名、证书和后端 Origin 的配置及回退见 [域名接入记录](performance/domain-20261009/README.md)。下文 IP 地址保留为当次发布历史。
+2026-10-09 入口更新：阅读器 `https://understandbook.top/`、后台 `https://understandbook.top/admin/`，旧 IP HTTPS 地址自动跳转。发布版本仍为 ADM10，域名、证书和后端 Origin 的配置及回退见 [域名接入记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/domain-20261009/README.md)。下文 IP 地址保留为当次发布历史。
 
 ## 已确认的首批配置
 
@@ -57,7 +57,7 @@ schema 8 不交给旧二进制写入。若尚无新业务写入，可用旧版�
 - 短答、长交互呈现及3次含图片观察的发送完成，共21次调用，均结算。用量折算0.721157元；Provider 最新余额减少0.55元，用户图表0.54元；差额0.171157元待逐请求账单解释，未据此改价。演练留在独立候选根，预算3元内。
 - reader/puff/adaelon/admin 各赠送10元，有效期2026-10-08 22:26:37至2026-11-07 22:26:37香港；9默认材料保留。最新旧库快照为 `/opt/understand-book/backups/adm10-production-20261008/service-snapshot`。
 - 正式后台 `https://115.190.121.150/admin/`，用户名admin；凭证交付至用户私人目录 `C:/Users/Lenovo/.understand-book/adm10-admin-credentials.json`，仓库不保存密码。
-- 完整回执、费用和截图见 [发布证据](performance/adm10-release-20261008/README.md)。
+- 完整回执、费用和截图见 [发布证据](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/adm10-release-20261008/README.md)。
 
 ## 已知限制
 

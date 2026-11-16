@@ -56,7 +56,7 @@ $env:MU11_BASH='D:/Program Files/Git/bin/bash.exe'; python scripts/linux/test-bu
 
 浏览器候选：显式运行 `adm7_candidate_host -- --ignored --nocapture`，设置绝对 `ADM7_CANDIDATE_INFO`。该测试启动临时真实服务与 A/B 夹具账号（密码 `fixture-only-password`），B 为管理员；本地费用夹具只经过真实费用端口，不发送模型请求。测试 Host 为 `https://localhost:18443`，后端 `127.0.0.1:18788`；临时 Nginx 从正式模板只替换监听地址、Host、证书和静态根。装配 Admin 后运行 `node scripts/linux/smoke-admin.mjs` 和 `node scripts/linux/smoke-admin-identity.mjs`；候选 info 放在 `ADM7_EVIDENCE/info.json`，默认 `tmp/adm7-candidate`。创建与 info 同名的 `.stop` 文件结束候选宿主。
 
-证据：`tmp/adm7-{admin-build,reader-build,admin-tests,rust-tests,rust-query}.log`；`tmp/adm7-candidate/{result,identity-result}.json`、`account-desktop.png`、`account-mobile.png`。临时服务已停止。可交接入口见 [checkpoint_ADM](../checkpoint_ADM.md)。
+证据：`tmp/adm7-{admin-build,reader-build,admin-tests,rust-tests,rust-query}.log`；`tmp/adm7-candidate/{result,identity-result}.json`、`account-desktop.png`、`account-mobile.png`。临时服务已停止。可交接入口见 [checkpoint_ADM](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/checkpoint_ADM.md)。
 
 ## 已知限制
 

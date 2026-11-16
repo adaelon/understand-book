@@ -1,6 +1,6 @@
 # ADR-0148 阅读排版、正文批注与交互动效
 
-状态：设计方向已接受，2026-09-30；RE0 文档交付，RE1–RE6 已实现并完成本地浏览器及 MU8 集成验证，RE7 待验收。证据见 [RE1–RE2](../performance/reader-re1-re2-20260930.md)、[RE3–RE4](../performance/reader-re3-re4-20260930.md)、[RE5–RE6](../performance/reader-re5-re6-20260930.md)。
+状态：设计方向已接受，2026-09-30；RE0 文档交付，RE1–RE6 已实现并完成本地浏览器及 MU8 集成验证，RE7 待验收。证据见 [RE1–RE2](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/reader-re1-re2-20260930.md)、[RE3–RE4](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/reader-re3-re4-20260930.md)、[RE5–RE6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/reader-re5-re6-20260930.md)。
 
 阅读器采用“精排书页＋安静的研究工作台”：保留暖纸色与珊瑚色强调，正文获得独立的字体、版心和段落节奏，工具按任务展开。实施合同与初始参数见[阅读体验切片方案](../切片方案-阅读体验排版批注与动效.md)。
 

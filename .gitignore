@@ -85,15 +85,25 @@ playwright-report/
 /ah6-live-handoff-*.json
 /server-*.log
 
-# Raw model requests and private browser/deployment state stay local
-/docs/performance/**/requests/
-# Raw verification logs and release snapshots stay local; reports and screenshots are versioned.
-/docs/performance/**/*.log
-/docs/performance/**/*.patch
-/docs/performance/**/*.tar.gz
+# Generated verification output stays local; required regression fixtures are tracked explicitly.
+/docs/performance/
+/docs/evidence/
+/docs/screenshots/
+/evals/*/results/
+/examples/optimization-practice/verification/
 *.private.json
 *.private.env
 *.private.log
+
+# Session handoffs and local diagnostics
+SESSION_CHECKPOINT*.md
+checkpoint_*.md
+/docs/*checkpoint*.md
+/*.log
+/.course-*
+/.tmp-*
+/packages/web/.tmp-*
+/packages/web/bugfix-learning-ui-preview.html
 
 # Local input books and original audio are not release artifacts
 /AI-Infra-Book-offline/
@@ -101,6 +111,5 @@ playwright-report/
 /evals/music/assets/*.flac
 /evals/music/assets/*.mp3
 /evals/music/assets/*.wav
-/.cache/voice-small/
-/.cache/local-debug-animation/
-/.cache/pip/
+/.cache/
+/.tools/

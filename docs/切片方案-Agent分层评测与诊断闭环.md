@@ -1,6 +1,6 @@
 # Agent 分层评测与诊断闭环：实施切片
 
-状态：**EV0–EV6 已实施；CQ 工程阶段性收尾，引用覆盖与全书否定仍有未通过行为项；EV7 首轮单变量配对实验完成，候选未达保留门槛并已撤回**，2026-09-26。对应 [ADR-0137](adr/0137-stratified-reading-evals-and-diagnostic-improvement.md)。当前范围和结果见 [EV7 记录](performance/agent-eval-ev7-20260926.md)。
+状态：**EV0–EV6 已实施；CQ 工程阶段性收尾，引用覆盖与全书否定仍有未通过行为项；EV7 首轮单变量配对实验完成，候选未达保留门槛并已撤回**，2026-09-26。对应 [ADR-0137](adr/0137-stratified-reading-evals-and-diagnostic-improvement.md)。当前范围和结果见 [EV7 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md)。
 
 ## 目标与完成标准
 
@@ -22,7 +22,7 @@
 | `provider-recorder.mjs`、`eval-timing.mjs` | 实际 Provider 输入/用量、产品调用时间 |
 | [ADR-0134](adr/0134-optional-langsmith-observability-and-evaluation.md) | 可选观测与评测投影，本地结果仍拥有评分语义 |
 
-2026-09-08 的 [LA7](../evals/semantic/results/2026-09-08-la7/report.md)记录 Chunk 20/24、Agent 15/24，参考证据召回分别为 84.6% 与 100%。Agent 九道未通过题的主要阻断为：六道 incomplete/运行错误，两道旧判分问题，一道内容正确但来源未交付。部分 incomplete 记录含正确核心结论，不证明它已成为完整用户交付。逐题原因为[LA7 验收记录](LA7-LA10实施与验收.md)中的历史观察，不自动转成当前代码缺陷。
+2026-09-08 的 [LA7](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/evals/semantic/results/2026-09-08-la7/report.md)记录 Chunk 20/24、Agent 15/24，参考证据召回分别为 84.6% 与 100%。Agent 九道未通过题的主要阻断为：六道 incomplete/运行错误，两道旧判分问题，一道内容正确但来源未交付。部分 incomplete 记录含正确核心结论，不证明它已成为完整用户交付。逐题原因为[LA7 验收记录](LA7-LA10实施与验收.md)中的历史观察，不自动转成当前代码缺陷。
 
 本地 `quality-results/2026-09-16-la7-quality-v2` 为部分探索性复评：计划 41 次 Judge 调用，已记录 11 次，六道校准题仍是 draft_not_human_gold。该状态不构成质量基线；私有材料不进入公开文档。
 
@@ -107,18 +107,18 @@ EV3 + EV4 + 所需诊断 → EV7 当前版本改进闭环
 
 | 切片 | 状态 | 交付 |
 |---|---|---|
-| EV0 | 已完成 | 历史九案分类、三案人工复核候选材料；[实施记录](performance/agent-eval-ev0-la7-20260925.md) |
-| EV1 | 已完成 | 显式任务要求、四层与交互条件合同；[实施记录](performance/agent-eval-ev1-ev2-20260925.md) |
-| EV2 | 已完成 | 逐要求评分、独立产品/评分状态、可复评分报告；[实施记录](performance/agent-eval-ev1-ev2-20260925.md) |
-| EV3 | 人审与两份分用途校准完成，两个绝对范围未批准 | 按用途和任务范围的校准门禁；[实施记录](performance/agent-eval-ev3-ev4-20260925.md) |
-| EV4 | 题集人审与首轮当前版本运行完成 | 8 道分层题及两个短多轮变体；[实施记录](performance/agent-eval-ev3-ev4-20260925.md) |
-| EV5 | 首个探针完成，任务判定未决 | 充分证据下的交付诊断；[实施记录](performance/agent-eval-ev5-ev6-20260925.md) |
-| EV6 | 首个探针完成，单侧判定未决 | 实际取证结果的共同回答器诊断；[实施记录](performance/agent-eval-ev5-ev6-20260925.md) |
+| EV0 | 已完成 | 历史九案分类、三案人工复核候选材料；[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev0-la7-20260925.md) |
+| EV1 | 已完成 | 显式任务要求、四层与交互条件合同；[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev1-ev2-20260925.md) |
+| EV2 | 已完成 | 逐要求评分、独立产品/评分状态、可复评分报告；[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev1-ev2-20260925.md) |
+| EV3 | 人审与两份分用途校准完成，两个绝对范围未批准 | 按用途和任务范围的校准门禁；[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md) |
+| EV4 | 题集人审与首轮当前版本运行完成 | 8 道分层题及两个短多轮变体；[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md) |
+| EV5 | 首个探针完成，任务判定未决 | 充分证据下的交付诊断；[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md) |
+| EV6 | 首个探针完成，单侧判定未决 | 实际取证结果的共同回答器诊断；[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md) |
 | EV7 | 首轮实验完成；四对迁移题一改善、两持平、一未决，候选撤回 | 十二份完整配对结果、新题族及简单回归；未证明整体提升 |
 
 ## EV0 历史失败复核
 
-**实施结果**：九道旧失败已逐题核对；五道 incomplete、一道终答协议错误、两道旧判分问题、一道来源交付失败。三案本地复核包保存原答、必要原文、实际来源与旧判分，人工标签仍为候选。旧报告及旧成绩保持原样，详见[EV0 记录](performance/agent-eval-ev0-la7-20260925.md)。
+**实施结果**：九道旧失败已逐题核对；五道 incomplete、一道终答协议错误、两道旧判分问题、一道来源交付失败。三案本地复核包保存原答、必要原文、实际来源与旧判分，人工标签仍为候选。旧报告及旧成绩保持原样，详见[EV0 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev0-la7-20260925.md)。
 
 **范围与输入**：只读 LA7 原始运行、旧报告与现有质量复评；核对九道未通过题。首批三案选择 `contrast-04`（来源交付）、`contrast-03`（旧判分误杀）、`cross-02`（关系解释与判分截断）。
 
@@ -146,7 +146,7 @@ EV3 + EV4 + 所需诊断 → EV7 当前版本改进闭环
 
 **实施结果**：`quality-run.mjs --protocol task-v1` 使用 `task-quality.mjs` 和独立版本目录，从旧 `run.json` 只读准备 56 个系统样本，单答案绝对评分与双顺序偏好分成不同请求。逐要求结果保存 `verdict`、`assessment_status`、原因、答案片段、来源及效果引用。产品 `error`/`incomplete`、最终修复交付、内容、引用/动作和评分故障分别保留；旧 `historical-v2` 入口与旧报告不改写。
 
-**固定历史包**：本地 `evals/semantic/quality-results/2026-09-25-ev1-ev2-la7-final/` 保存匿名包、原始评分尝试和新旧逐题差异报告。三次探索性绝对评分中，`contrast-03` 暂定通过，`contrast-04` 内容满足但来源未满足，`cross-02` 输出格式无效而保持未决。均非人工金标；完整报告分母含产品失败、未运行和无效评分。详见[实施记录](performance/agent-eval-ev1-ev2-20260925.md)。
+**固定历史包**：本地 `evals/semantic/quality-results/2026-09-25-ev1-ev2-la7-final/` 保存匿名包、原始评分尝试和新旧逐题差异报告。三次探索性绝对评分中，`contrast-03` 暂定通过，`contrast-04` 内容满足但来源未满足，`cross-02` 输出格式无效而保持未决。均非人工金标；完整报告分母含产品失败、未运行和无效评分。详见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev1-ev2-20260925.md)。
 
 **验证结果**：新旧质量测试与 semantic 测试通过；覆盖修复后实际交付、必要项失败与其他项 unknown、来源/动作失败、无效 JSON、单次配对失败和顺序分歧。未运行大批模型，也未修改生产 Agent。
 
@@ -160,7 +160,7 @@ EV3 + EV4 + 所需诊断 → EV7 当前版本改进闭环
 
 ## EV3 按用途校准评委
 
-**实施结果**：`task-calibration.mjs` 按绝对合格与双顺序偏好生成分用途判例；历史三案实际交付与否定反转、引用误导、漏条件、简答和拒绝等构成 13 案。新题校准包覆盖各层级与多轮条件。`task-quality-run.mjs` 提供校准作业、人工规则判定与 family/层级/交互条件精确范围门禁。关键错误误放会阻断绝对评分，即使普通分歧预算尚有余额；偏好失败不抹去独立绝对判定。用户已确认全部正反标签，两份校准分别通过；两个格式无效判例的绝对评分范围保持未批准，偏好范围独立获准。详见[实施记录](performance/agent-eval-ev3-ev4-20260925.md)。
+**实施结果**：`task-calibration.mjs` 按绝对合格与双顺序偏好生成分用途判例；历史三案实际交付与否定反转、引用误导、漏条件、简答和拒绝等构成 13 案。新题校准包覆盖各层级与多轮条件。`task-quality-run.mjs` 提供校准作业、人工规则判定与 family/层级/交互条件精确范围门禁。关键错误误放会阻断绝对评分，即使普通分歧预算尚有余额；偏好失败不抹去独立绝对判定。用户已确认全部正反标签，两份校准分别通过；两个格式无效判例的绝对评分范围保持未批准，偏好范围独立获准。详见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md)。
 
 **依赖**：EV2。**位置**：`quality-core.mjs:assessCalibration`、`quality-run.mjs`、`quality.test.mjs`、`QUALITY_EVAL.md`；人工材料保留私有目录。
 
@@ -174,7 +174,7 @@ EV3 + EV4 + 所需诊断 → EV7 当前版本改进闭环
 
 ## EV4 分层题与多轮任务
 
-**实施结果**：`reading-dataset.mjs` 以防过拟合和目标/损失对齐两条真实原文链，各冻结 L1–L4 一题及同 family 的多轮纠正变体。`agent-run.mjs --reading-protocol` 逐轮投影用户输入，保持同一生产聊天；`task-quality.mjs` 将新运行准备为 10 题、18 个系统样本。用户已确认私有 `reading-review` 的题面、合格答案和关键错答。首轮当前版本完整运行后，因一个产品交付失败，形成 31 个评分作业；其中 30 个获准运行，29 个有效，1 个评委输出无效，1 个未获批准。完整分母与逐要求结果见[实施记录](performance/agent-eval-ev3-ev4-20260925.md)。
+**实施结果**：`reading-dataset.mjs` 以防过拟合和目标/损失对齐两条真实原文链，各冻结 L1–L4 一题及同 family 的多轮纠正变体。`agent-run.mjs --reading-protocol` 逐轮投影用户输入，保持同一生产聊天；`task-quality.mjs` 将新运行准备为 10 题、18 个系统样本。用户已确认私有 `reading-review` 的题面、合格答案和关键错答。首轮当前版本完整运行后，因一个产品交付失败，形成 31 个评分作业；其中 30 个获准运行，29 个有效，1 个评委输出无效，1 个未获批准。完整分母与逐要求结果见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev3-ev4-20260925.md)。
 
 **依赖**：EV1/EV2；正式结果依 EV3 覆盖新范围。**位置**：独立版本的题集文件（建议 `reading-dataset.mjs`），`agent-run.mjs` 的显式协议选择；多轮执行保持同一生产聊天与隔离记忆，前端动作复用已有 continuous-reading 入口。
 
@@ -186,7 +186,7 @@ EV3 + EV4 + 所需诊断 → EV7 当前版本改进闭环
 
 ## EV5 充分证据下的交付诊断
 
-**实施结果**：`diagnostic-run.mjs` 对当前 `target-l2` 来源支持失败提供独立诊断。前两次脚本化模型工具选择只把固定原文短语交给真实 `book.search_text`，再复制其返回 LID 调用真实 `book.text`；660 字符必要原文被接纳并进入第三次模型请求。后续模型正常回答、来源可解析；原始评委判来源满足，但事实槽枚举与其他维度冲突，完整任务经无新调用复核为未决。原始失败尝试、费用和任务分母独立保存，见[实施记录](performance/agent-eval-ev5-ev6-20260925.md)。
+**实施结果**：`diagnostic-run.mjs` 对当前 `target-l2` 来源支持失败提供独立诊断。前两次脚本化模型工具选择只把固定原文短语交给真实 `book.search_text`，再复制其返回 LID 调用真实 `book.text`；660 字符必要原文被接纳并进入第三次模型请求。后续模型正常回答、来源可解析；原始评委判来源满足，但事实槽枚举与其他维度冲突，完整任务经无新调用复核为未决。原始失败尝试、费用和任务分母独立保存，见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md)。
 
 **依赖**：EV2/EV3 和已确认充分的原文材料。**位置**：建议 `diagnostic-run.mjs`；复用生产 read-tools、证据接纳与来源编译路径，确有必要的 Runtime 诊断接入单独提交。
 
@@ -198,7 +198,7 @@ EV3 + EV4 + 所需诊断 → EV7 当前版本改进闭环
 
 ## EV6 实际取证结果的共同回答器诊断
 
-**实施结果**：`diagnostic-core.mjs` 只从两组自然运行的真实模型请求与已接纳工具正文抽取 canonical 原文，按原书顺序合并、统一 6000 UTF-16 字符预算。`target-l2` Chunk / Resident 分别送入 5550 / 1362 字符，均无截断；同一回答器与模型下 Resident 通过，Chunk 因事实槽与维度冲突未决，双顺序偏好平局。该结果只支持检查自然产品后续引用组织，不支持声称某组证据更优。见[实施记录](performance/agent-eval-ev5-ev6-20260925.md)。
+**实施结果**：`diagnostic-core.mjs` 只从两组自然运行的真实模型请求与已接纳工具正文抽取 canonical 原文，按原书顺序合并、统一 6000 UTF-16 字符预算。`target-l2` Chunk / Resident 分别送入 5550 / 1362 字符，均无截断；同一回答器与模型下 Resident 通过，Chunk 因事实槽与维度冲突未决，双顺序偏好平局。该结果只支持检查自然产品后续引用组织，不支持声称某组证据更优。见[实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev5-ev6-20260925.md)。
 
 **依赖**：EV2/EV3；可使用 EV5 已核对的案例，独立于其干预成绩。**位置**：`diagnostic-run.mjs`、现有 Chunk 回答器/记录器及新报告路径。
 
@@ -226,7 +226,7 @@ EV3 + EV4 + 所需诊断 → EV7 当前版本改进闭环
 
 每个切片单独记录实施状态、真实入口、定向验证与尚未解决项；更新对应代码链路。原始运行、评分尝试和人工标签分开保存，更新评分无需重跑产品。新增执行命令由对应切片实现后写入本方案，现有 `pnpm eval:semantic:test` 与 `pnpm eval:quality:test` 是两套独立回归入口。
 
-本轮闭环结果见 [EV7 记录](performance/agent-eval-ev7-20260926.md)：十二份首次回答完成，四对迁移题一对范围改善、两对持平、一对未决，候选另有未核验章节内容断言；未达到预设保留条件，已撤回并恢复 CQ8 基线。本轮实验结束。原作业和旧报告保留；CQ8 的绝对校准只覆盖获准范围，不自动批准新题族或偏好评分。整体改善仍未证明。
+本轮闭环结果见 [EV7 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/agent-eval-ev7-20260926.md)：十二份首次回答完成，四对迁移题一对范围改善、两对持平、一对未决，候选另有未核验章节内容断言；未达到预设保留条件，已撤回并恢复 CQ8 基线。本轮实验结束。原作业和旧报告保留；CQ8 的绝对校准只覆盖获准范围，不自动批准新题族或偏好评分。整体改善仍未证明。
 
 新评测格式先服务本地报告。ADR-0134 的现有导入器继续支持原合同；未适配的新格式明确不导入，不静默丢字段。若后续需要云端投影，另做窄切片映射新状态并验证时间、分母和授权，导入器不拥有重跑或重新判分权。
 

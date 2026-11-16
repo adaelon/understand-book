@@ -69,4 +69,4 @@ pnpm eval:case <私有 manifest.json> <新的私有输出目录>
 
 ## 验收入口
 
-首个真实案例及私有接手路径见 [SE6 记录](../../docs/performance/explanation-evolution/se6/README.md)。12 项整理器用例覆盖确切关联、继承、无现场、未读方法、改选/撤回、失效材料、选定运行读取及公开投影；相关证据解析和用量回归一并运行。历史页面重放通过现有 `presentationDocument` 与快照桥接，不运行新模型请求。
+首个真实案例及私有接手路径见 [SE6 记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/explanation-evolution/se6/README.md)。12 项整理器用例覆盖确切关联、继承、无现场、未读方法、改选/撤回、失效材料、选定运行读取及公开投影；相关证据解析和用量回归一并运行。历史页面重放通过现有 `presentationDocument` 与快照桥接，不运行新模型请求。

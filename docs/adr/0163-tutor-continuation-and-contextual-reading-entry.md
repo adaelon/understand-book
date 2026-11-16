@@ -1,6 +1,6 @@
 # ADR-0163 Tutor 下一步协商与低门槛阅读入口
 
-状态：已确认设计；TC0、TC1、TC2A 已完成；TC2 工程入口已实现，真实模型稳定交付与内容质量未通过，形成性验收未进行；TC3 建议生产／读取及小规模内容验证完成；TC4 选择接纳与两宿主恢复完成；TC5 建议宿主、回答纠偏与脚本化真实材料验证完成；TC6 交互事实与理解证据分流及真实模型修订轨迹完成；TC7–TC8 待实施。日期：2026-10-11。见 [TC0 基线记录](../performance/tutor-continuation-tc0-baseline.md)、[TC1 实施记录](../performance/tutor-continuation-tc1.md)、[TC2 实施记录](../performance/tutor-continuation-tc2.md)、[TC2A 实施记录](../performance/tutor-continuation-tc2a.md)、[TC3 实施记录](../performance/tutor-continuation-tc3.md)、[TC4 实施记录](../performance/tutor-continuation-tc4.md)、[TC5 实施记录](../performance/tutor-continuation-tc5.md)及 [TC6 实施记录](../performance/tutor-continuation-tc6.md)。
+状态：已确认设计；TC0、TC1、TC2A 已完成；TC2 工程入口已实现，真实模型稳定交付与内容质量未通过，形成性验收未进行；TC3 建议生产／读取及小规模内容验证完成；TC4 选择接纳与两宿主恢复完成；TC5 建议宿主、回答纠偏与脚本化真实材料验证完成；TC6 交互事实与理解证据分流及真实模型修订轨迹完成；TC7–TC8 待实施。日期：2026-10-11。见 [TC0 基线记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc0-baseline.md)、[TC1 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc1.md)、[TC2 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2.md)、[TC2A 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2a.md)、[TC3 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc3.md)、[TC4 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc4.md)、[TC5 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc5.md)及 [TC6 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc6.md)。
 
 实施入口：[切片方案—Tutor 下一步协商与低门槛阅读入口](../切片方案-Tutor下一步协商与低门槛阅读入口.md)。
 
@@ -150,7 +150,7 @@ AgentChatMeta 增加 `teaching_choice={delivery_ref, option_id}`；`entry_action
 
 用户自然表达的卡点、复述与纠正，可继续按原文及事实依据生成 `nature=hypothesis`，通过 `teaching_implication` 影响讲法。正式作答才沿原冻结合同进入 Performance 路径。更新 `teaching_recent`、trace 摘要、回读与投影过滤，使新事件既不遗漏，也不污染已有证据。
 
-TC6 将近期交互与认知待办分开：待办及假设引文取真实用户表达，助手交付不能单独支持假设；展示、选择与纯操作仍可回读。后台画像审核、历史回填和待审核上下文只引用真实补充，动作单列且保留回合序号。实现和验证见 [TC6](../performance/tutor-continuation-tc6.md)。
+TC6 将近期交互与认知待办分开：待办及假设引文取真实用户表达，助手交付不能单独支持假设；展示、选择与纯操作仍可回读。后台画像审核、历史回填和待审核上下文只引用真实补充，动作单列且保留回合序号。实现和验证见 [TC6](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc6.md)。
 
 首版有当前待作答正式活动时，不提供另起路线的 continuation。服务端同时检查原文直接帮助与回答接续：若选区与该活动目标范围相交，或原回答属于该活动及其已关联帮助，则返回原活动的提示／揭示入口，不另起解释 Run。旧对象式活动使用原冻结评分来源范围。判定使用现有会话、焦点、来源版本与活动事实；暂停或关闭 Tutor 不解除原题的帮助归属，历史无关未答题不阻塞普通解释。
 
@@ -172,7 +172,7 @@ TC6 将近期交互与认知待办分开：待办及假设引文取真实用户�
 
 新增轻量 `TutorContinuation` 宿主组件，与 `TutorActivities` 分工：前者承接未来帮助选择，后者承接当前活动作答与帮助。一个建议集合只出现一个主入口；普通回答与演示工作区不重复渲染。演示只通过原宿主桥请求操作，不让生成 HTML 任意调用教学 API。
 
-TC5 已接入按原 turn／演示版本过滤的公开建议投影、可见选项回执和整段／片段纠偏。本地浏览器持久保留原类型化请求，刷新先查询原接纳，再由用户显式重试；多人复用原提交恢复入口。见 [TC5 实施与验证](../performance/tutor-continuation-tc5.md)。
+TC5 已接入按原 turn／演示版本过滤的公开建议投影、可见选项回执和整段／片段纠偏。本地浏览器持久保留原类型化请求，刷新先查询原接纳，再由用户显式重试；多人复用原提交恢复入口。见 [TC5 实施与验证](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc5.md)。
 
 首版不主动出小测、不弹出能力问卷，不新增“学习模式选择器”。自由输入、纠偏、停止、返回原文始终可用。跳过、返回阅读或没有选择都不形成“不懂/已懂”的判断。
 
@@ -203,6 +203,6 @@ TC5 已接入按原 turn／演示版本过滤的公开建议投影、可见选�
 - 只凭工具可见性加载发现规则：会重新引入 ADR-0104 的首轮导航循环依赖。
 - 同时改变目标提交时序或新增分类模型：无法单独判断指令装配的影响。
 
-**命门**：沿用请求计划、上下文片段与工具发现；冻结数据与采样指导分开，共用证据约束及短入口保留。真实用户表达或理解回读展开更新流程；真实未评估提交展开正式评估，成功后失效；导航按激活能力、演示按阶段加载。显式带读预激活、原文与操作权限不变。见 [ADR-0104 §2](0104-intent-seeded-guided-reading-tool-exposure-and-resident-navigation-policy.md#2-常驻发现入口与按需导航规则)及 [TC2A 实施记录](../performance/tutor-continuation-tc2a.md)。
+**命门**：沿用请求计划、上下文片段与工具发现；冻结数据与采样指导分开，共用证据约束及短入口保留。真实用户表达或理解回读展开更新流程；真实未评估提交展开正式评估，成功后失效；导航按激活能力、演示按阶段加载。显式带读预激活、原文与操作权限不变。见 [ADR-0104 §2](0104-intent-seeded-guided-reading-tool-exposure-and-resident-navigation-policy.md#2-常驻发现入口与按需导航规则)及 [TC2A 实施记录](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/tutor-continuation-tc2a.md)。
 **何时回头**：受支持的带读、自由表达、理解更新或评估因流程未加载而失败时，修正入口和触发条件；数学错误未改善时独立保留内容问题。
 **展开**：[切片方案 TC2A](../切片方案-Tutor下一步协商与低门槛阅读入口.md#tc2a按当前任务与状态加载教学指令)。

@@ -2,7 +2,7 @@
 
 在 DeepSeek Harness 中确认并执行 Understand Book 的标准预构建计划。DSH 提供模型和原生 child；Build Engine 负责计划、预算、候选接纳、质量门和发布。
 
-当前提供 Windows x64 预发布包 `0.1.0-rc.3`，增加课程构建入口，支持合同仍为官方 DSH Desktop `0.1.7-rc.2`。插件与 Engine 分开交付，运行时不需要源码仓库或全局 Node/Bun/Cargo。课程流程已通过受控候选验证，详见[课程构建记录](../../docs/evidence/course-build-20261112/README.md)。真实模型完整构建与语义质量验收仍属于 DH6 后续工作。
+当前提供 Windows x64 预发布包 `0.1.0-rc.3`，增加课程构建入口，支持合同仍为官方 DSH Desktop `0.1.7-rc.2`。插件与 Engine 分开交付，运行时不需要源码仓库或全局 Node/Bun/Cargo。课程流程已通过受控候选验证，详见课程构建记录。真实模型完整构建与语义质量验收仍属于 DH6 后续工作。
 
 ## Windows Desktop 安装
 
@@ -57,7 +57,7 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 `"retrieval":{"retrieval_mode":"semantic_required","budget":{"max_documents":12,"max_queries":4,"max_calls":12}}`。
 确认框会展示实际模型、local 数据去向、一跳对象投影/query 范围、未知工作量与明确额度；批准后才执行。
 失败和重试均计入额度。`lexical_only` 无需模型配置，可将这些额度设为 0；默认仍使用词法路径。
-安装文件格式、当前本地 adapter 和 SR6 验收限制见 [SR5 说明](../../docs/performance/semantic-retrieval-sr5-20261001.md)。
+安装文件格式、当前本地 adapter 和 SR6 验收限制见 [SR5 说明](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/docs/performance/semantic-retrieval-sr5-20261001.md)。
 
 ## 并发与恢复
 

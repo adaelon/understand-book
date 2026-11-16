@@ -71,7 +71,7 @@ schema 7 从 6 顺序升级：`model_call_charges` 新增 revision、needs_recon
 
 ADM5 专项 **11 通过、0 失败**，覆盖真实 SQLite 独立连接并发预占、超预占据实扣减、完整/冲突回执幂等、未知与迟到用量、跨期结算、免扣及追加更正、revision 冲突、失败回滚、schema 6 升级、读者隔离、真实 HTTP 重试以及历史保存失败后的重启。
 
-服务端受影响回归首轮 96 通过、1 失败、1 忽略；失败的 `formal_admission_exports_usage_diagnostics_and_terminal_states` 旧夹具没有配置费用准入。补齐测试费率/额度并保留原断言后，ADM5、该观测测试、真实 Provider 宿主测试及 schema 约束共 **14 项定向复测全部通过**；受影响集合的 97 个可执行测试均已通过。忽略项是既有 JL4 子进程专用入口。Runtime 受影响回归 **23 通过、0 失败**。完整命令见 [checkpoint_ADM](../checkpoint_ADM.md)。
+服务端受影响回归首轮 96 通过、1 失败、1 忽略；失败的 `formal_admission_exports_usage_diagnostics_and_terminal_states` 旧夹具没有配置费用准入。补齐测试费率/额度并保留原断言后，ADM5、该观测测试、真实 Provider 宿主测试及 schema 约束共 **14 项定向复测全部通过**；受影响集合的 97 个可执行测试均已通过。忽略项是既有 JL4 子进程专用入口。Runtime 受影响回归 **23 通过、0 失败**。完整命令见 [checkpoint_ADM](https://github.com/adaelon/understand-book/blob/625b4405af3b011e87d4eb256f819c8075f88613/checkpoint_ADM.md)。
 
 新增文件与本次相关修改的空白检查、新实现合同的本地文档链接检查通过。没有执行真实 Provider 请求。
 
