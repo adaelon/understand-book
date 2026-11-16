@@ -8,7 +8,7 @@ Understand Book 从书籍、课程和学习者自己的问题出发，探索一�
 
 我们希望借助 Agent 降低教学内容与工具的制作成本，让更多具体的学习问题，都能得到合适的例子、实验、可视化和练习。我们欢迎任何领域的学习者、教师、研究者与开发者一起参与，把自己的知识和经验变成他人能够学懂、动手尝试的内容。
 
-[教学原则](#教学原则) · [教学示例](#教学示例) · [Quick Start](#quick-start) · [参与贡献](#参与贡献) · [技术实现](#30-秒技术摘要) · [当前限制](#当前限制)
+[教学原则](#教学原则) · [教学示例](#教学示例) · [学习材料](#下载学习材料) · [Quick Start](#quick-start) · [参与贡献](#参与贡献) · [技术实现](#30-秒技术摘要) · [当前限制](#当前限制)
 
 ## 教学原则
 
@@ -38,6 +38,17 @@ Agent 让我们可以尝试为一个具体的理解困难，制作一件专门�
 | [最优化期末练习](examples/optimization-practice/README.md) | 写出思路、就某一步求助、提交答案，再根据具体反馈改答 | 使用阅读器，需要对应的已构建教材与模型配置 |
 | [原创阅读演示](examples/quickstart/book.md) | 阅读原文、添加笔记与高亮，配置模型后围绕选区提问 | 按下方 Quick Start 启动；基础阅读无需模型 |
 
+## 下载学习材料
+
+原书、音频、乐谱与对应的阅读预构建数据已整理为可下载的资料包。解压后可以直接用本地阅读器打开，目录选择、材料来源与预构建范围见[学习材料说明](materials/README.md)。
+
+| 材料 | 下载 |
+| --- | --- |
+| 最优化方法 I：复习讲义与历年考试题，含 Markdown、PDF 与预构建 | [下载 ZIP · 1.4 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/optimization-review.zip) |
+| 贝多芬第九交响曲全部四个乐章，含音频、乐谱与音乐预构建 | [下载 ZIP · 311.1 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/beethoven-symphony-9.zip) |
+| 深入理解 AI Infra：量化分析与系统设计，含原书、插图与预构建 | [下载 ZIP · 15.7 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/ai-infra-book.zip) |
+| A Survey of Agent Memory in the Second Half，含原 PDF 与阅读预构建 | [下载 ZIP · 22.5 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/agent-memory-paper.zip) |
+
 ## Quick Start
 
 Windows 本地完整运行时 debug 包见[本地 Debug 使用与构建说明](apps/local-debug/README.md)：本机运行 Reader 和 AI 引擎，在设置中配置自己的模型接口，无需连接线上业务服务器。
@@ -57,7 +68,7 @@ cargo run -p server --bin server -- .understand-book/quickstart-demo
 
 已有预构建书库可将启动命令末尾的路径替换为实际书库目录。
 
-原书不随仓库分发。新书构建与 Windows 打包见[预构建说明](docs/预购建流程.md)和[桌面发行说明](apps/desktop/README.md)。生成原创演示使用真实分段器，但不调用模型，不代替正式预构建。
+现成原书与预构建可从上方资料包下载。准备自己的资料与 Windows 打包见[预构建说明](docs/预购建流程.md)和[桌面发行说明](apps/desktop/README.md)。生成原创演示使用真实分段器，但不调用模型，不代替正式预构建。
 
 网站、云端与本地阅读器、桌面本机书库支持中文和 English，可在页面的语言菜单切换；管理后台保持中文。默认中文，选择保存在当前浏览器，分享链接也可使用 `?lang=en` 或 `?lang=zh-CN`。切换会重新载入当前页面。
 
