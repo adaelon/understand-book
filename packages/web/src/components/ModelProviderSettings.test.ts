@@ -42,7 +42,7 @@ describe('model service settings', () => {
     const api = client({ configured: false, source: 'unconfigured', settings: null });
     const wrapper = mount(ModelProviderSettings, { props: { client: api } });
     await flushPromises();
-    await wrapper.get('button').trigger('click');
+    await wrapper.get('[data-testid=new-provider-custom]').trigger('click');
     await wrapper.get('[data-testid=service-name]').setValue('Local model');
     await wrapper.get('[data-testid=service-url]').setValue('http://localhost:11434/v1');
     await wrapper.get('[data-testid=service-auth]').setValue('none');
@@ -61,6 +61,40 @@ describe('model service settings', () => {
     expect(input.bindings.default_model).toBe(input.models[0].id);
     expect(api.test).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('已保存并应用');
+  });
+
+  it('selects a provider and its returned model before saving, keeping credentials scoped to that service', async () => {
+    const api = { ...client({ configured: false, source: 'unconfigured', settings: null }), listModels: vi.fn().mockResolvedValue({ models: ['example-id'], has_more: false }) };
+    const wrapper = mount(ModelProviderSettings, { props: { client: api } });
+    await flushPromises();
+    await wrapper.get('[data-testid=new-provider-anthropic]').trigger('click');
+    expect((wrapper.get('[data-testid=model-protocol]').element as HTMLSelectElement).value).toBe('anthropic_messages');
+    await wrapper.get('[data-testid=service-key]').setValue('test-only');
+    expect(api.listModels).not.toHaveBeenCalled();
+    await wrapper.get('[data-testid=list-models]').trigger('click');
+    await flushPromises();
+    await wrapper.get('[data-testid=available-models]').setValue('example-id');
+    expect((wrapper.get('[data-testid=model-id]').element as HTMLInputElement).value).toBe('example-id');
+    expect(api.save).not.toHaveBeenCalled();
+    await wrapper.get('[data-testid=service-url]').setValue('https://new.example');
+    expect(wrapper.find('[data-testid=available-models]').exists()).toBe(false);
+  });
+
+  it('keeps manual entry available after a directory error and cancels the new provider independently', async () => {
+    const api = { ...client(), listModels: vi.fn().mockRejectedValue(new Error('HTTP 404')) };
+    const wrapper = mount(ModelProviderSettings, { props: { client: api } });
+    await flushPromises();
+    await wrapper.get('.add-provider').trigger('click');
+    await wrapper.get('[data-testid=new-provider-ollama]').trigger('click');
+    expect(wrapper.find('[data-testid=service-key]').exists()).toBe(false);
+    await wrapper.get('[data-testid=list-models]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('可手动填写模型 ID');
+    await wrapper.get('[data-testid=model-id]').setValue('installed:latest');
+    await wrapper.get('.connection-title button').trigger('click');
+    expect((wrapper.get('[data-testid=default-model]').element as HTMLSelectElement).value).toBe('model-a');
+    expect(wrapper.get('[data-testid=save-model-settings]').attributes('disabled')).toBeDefined();
+    expect(api.save).not.toHaveBeenCalled();
   });
 
   it('keeps failed-save input and offers an explicit draft test', async () => {
@@ -95,6 +129,16 @@ describe('model service settings', () => {
     expect((wrapper.get('[data-testid=model-id]').element as HTMLInputElement).value).toBe('candidate-model');
     expect(wrapper.get('[role=status]').text()).toContain('草稿文本生成通过，配置尚未保存');
     expect(wrapper.text()).toContain('有未保存的更改');
+  });
+
+  it('opens the default model when it is the second one on the same service', async () => {
+    const initial = configured();
+    const settings = initial.settings!;
+    settings.models.push({ ...settings.models[0], id: 'model-b', model_id: 'my-default' });
+    settings.bindings.default_model = 'model-b';
+    const wrapper = mount(ModelProviderSettings, { props: { client: client(initial) } });
+    await flushPromises();
+    expect((wrapper.get('[data-testid=model-id]').element as HTMLInputElement).value).toBe('my-default');
   });
 
   it('drops Chat-only and legacy reasoning parameters when switching the draft protocol', async () => {

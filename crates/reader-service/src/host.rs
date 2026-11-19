@@ -1860,12 +1860,15 @@ fn start_server_with_initial_models(
                             }
                             continue;
                         }
-                        if matches!(api_url.as_str(), "/model-settings" | "/model-settings/test") {
+                        if matches!(api_url.as_str(), "/model-settings" | "/model-settings/test" | "/model-settings/catalog") {
                             let result: Result<serde_json::Value,String> = if api_url.ends_with("/test") && method=="POST" {
                                 serde_json::from_str::<crate::model_settings::ModelTestRequest>(&body).map_err(|e|e.to_string()).and_then(|request| {
                                     let settings=crate::model_settings::prepare_test_settings(review_coordinator.settings_snapshot(),request.input)?;
                                     crate::model_settings::test_model(&settings,&request.model_config_id)
                                 })
+                            } else if api_url=="/model-settings/catalog" && method=="POST" {
+                                serde_json::from_str(&body).map_err(|e| e.to_string()).and_then(|input|
+                                    crate::model_catalog::list(review_coordinator.settings_snapshot().as_ref(), input))
                             } else if api_url=="/model-settings" && method=="GET" {
                                 Ok(review_coordinator.settings_status())
                             } else if api_url=="/model-settings" && method=="POST" {
@@ -2156,7 +2159,7 @@ fn is_api_url(url: &str) -> bool {
         || path.starts_with("/local-agent/")
         || path.starts_with("/personal/")
         || path == "/learning-task"
-        || matches!(path, "/model-settings" | "/model-settings/test")
+        || matches!(path, "/model-settings" | "/model-settings/test" | "/model-settings/catalog")
         || path.starts_with("/books/")
         || path.starts_with("/reader/")
         || path.starts_with("/memory/")

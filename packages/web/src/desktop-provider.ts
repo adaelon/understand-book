@@ -75,6 +75,7 @@ export interface ModelSettingsClient {
   load(): Promise<ModelSettingsStatus>;
   save(input: ModelSettings): Promise<ModelSettingsStatus>;
   test(modelConfigId: string, input?: ModelSettings): Promise<ModelTestResult>;
+  listModels?(service: ModelServiceSettings, protocol: ModelApiProtocol): Promise<{ models: string[]; has_more: boolean }>;
 }
 
 export function emptyModelSettings(): ModelSettings {

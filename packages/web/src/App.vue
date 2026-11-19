@@ -571,7 +571,7 @@ async function chooseLocalAgent(event: Event) {
   const select = event.currentTarget as HTMLSelectElement;
   const id = select.value;
   select.value = localAgents.selected.value;
-  if (id === ':settings') { await openDesktopSettings(); return; }
+  if (id === ':settings') { await openDesktopSettings('general'); return; }
   const settings = await localAgents.request({action: 'select', id: id || null});
   if (!settings) banner.value = localAgents.error.value;
 }
@@ -581,13 +581,14 @@ function readyToUseAgent() {
   return false;
 }
 async function openFailedAgentSettings(id?: string) {
-  await openDesktopSettings();
+  await openDesktopSettings('general');
   await nextTick();
   if (id) await localAgentSettingsRef.value?.testAgent(id);
 }
 const nativeSettings = '__TAURI_INTERNALS__' in window;
 const readerOnly = ref(false);
 const desktopSettingsOpen = ref(false);
+const desktopSettingsSection = ref<'models' | 'general'>('models');
 const desktopLibraryRoot = ref("");
 const desktopLibraryAvailable = ref(true);
 const desktopLibraryChanging = ref(false);
@@ -2799,6 +2800,7 @@ async function init() {
     desktopNeedsBook.value = Boolean(desktop && !desktop.active_book);
     activeBookDir.value = desktop?.book_dir ?? null;
     if (desktopLibraryNeedsSelection(desktop)) {
+      desktopSettingsSection.value = 'general';
       desktopSettingsOpen.value = true;
       bookPickerOpen.value = false;
       return;
@@ -2981,7 +2983,8 @@ async function refreshCodexPluginStatus() {
   }
 }
 
-async function openDesktopSettings() {
+async function openDesktopSettings(section: 'models' | 'general' = 'models') {
+  desktopSettingsSection.value = section === 'general' ? 'general' : 'models';
   desktopSettingsOpen.value = true;
   if (nativeSettings) await refreshCodexPluginStatus();
 }
@@ -2992,6 +2995,7 @@ function closeDesktopSettings() {
 }
 
 const desktopModelSettingsClient: ModelSettingsClient = {
+  listModels: (service, api_protocol) => localRequest('POST', '/model-settings/catalog', { service, api_protocol }),
   load: () => nativeSettings ? invokeDesktop("desktop_model_settings") : localRequest('GET', '/model-settings'),
   save: input => nativeSettings ? invokeDesktop("save_desktop_model_settings", { input }) : localRequest('POST', '/model-settings', input),
   test: (modelConfigId, input) => nativeSettings ? invokeDesktop("test_desktop_model", { modelConfigId, input }) : localRequest('POST', '/model-settings/test', { model_config_id: modelConfigId, input }),
@@ -6641,7 +6645,15 @@ watch(sending, (next,previous) => { if (previous && !next) {
             @click="closeDesktopSettings"
           >×</button>
         </header>
+        <nav v-if="nativeSettings || localAgentHost" class="desktop-settings-sections" :aria-label="uiText('设置分类')">
+          <button type="button" :aria-pressed="desktopSettingsSection === 'models'" @click="desktopSettingsSection = 'models'">{{ uiText('AI 模型') }}</button>
+          <button type="button" :aria-pressed="desktopSettingsSection === 'general'" @click="desktopSettingsSection = 'general'">{{ uiText('书库与工具') }}</button>
+        </nav>
         <div class="desktop-settings-body">
+          <div v-show="desktopSettingsSection === 'models'">
+            <ModelProviderSettings :client="desktopModelSettingsClient" @busy="desktopProviderSaving = $event" />
+          </div>
+          <div v-show="desktopSettingsSection === 'general'">
           <div v-if="nativeSettings" class="desktop-settings-section">
             <div class="desktop-settings-row">
               <div>
@@ -6669,9 +6681,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
           <div v-if="localAgentHost" class="desktop-settings-section">
             <LearningExtensions @open="dir => { closeDesktopSettings(); if (!desktopSettingsOpen) void submitOpenBook(dir); }" />
           </div>
-          <div class="desktop-settings-section">
-            <ModelProviderSettings :client="desktopModelSettingsClient" @busy="desktopProviderSaving = $event" />
-          </div>
+
           <div v-if="nativeSettings && managedBuildEngine" class="desktop-settings-section">
             <div class="desktop-settings-row">
               <div>
@@ -6706,6 +6716,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
             <p v-else-if="codexPluginStatus" class="desktop-settings-message">{{ codexPluginStatus.message }}</p>
             <p v-if="codexPluginStatus?.codex_path" class="desktop-settings-path">{{ codexPluginStatus.codex_path }}</p>
             <p v-if="codexPluginError" class="book-picker-error">{{ codexPluginError }}</p>
+          </div>
           </div>
         </div>
       </section>
@@ -7479,7 +7490,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
 }
 .local-agent-picker { max-width:9.5rem; min-height:30px; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:transparent; font:inherit; font-size:.78rem; }
 .desktop-settings-dialog {
-  width: min(32rem, 94vw);
+  width: min(56rem, 94vw);
   max-height: min(90vh, 48rem);
   display: flex;
   flex-direction: column;
@@ -7500,6 +7511,9 @@ watch(sending, (next,previous) => { if (previous && !next) {
   margin: 0;
   font-size: 1rem;
 }
+.desktop-settings-sections { display: flex; flex: 0 0 auto; gap: 18px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+.desktop-settings-sections button { padding: 10px 2px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--steel); font: 500 14px var(--sans); cursor: pointer; }
+.desktop-settings-sections button[aria-pressed=true] { color: var(--brand-accent-deep); border-bottom-color: var(--brand-accent); }
 .desktop-settings-body {
   min-height: 0;
   overflow-y: auto;

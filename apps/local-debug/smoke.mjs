@@ -35,7 +35,28 @@ await writeFile(path.join(book, 'source.txt'), source);
 await writeFile(path.join(book, 'base.json'), JSON.stringify({ book_id: 'local-debug-smoke',
   lid_nodes: [{ lid: '1', path: [1], kind: 'paragraph', span: { start: 0, end: source.length }, children: [] }], graph_nodes: [], graph_edges: [] }));
 const calls = [];
+const directoryCalls = [];
 const model = createServer(async (req, res) => {
+  if (req.method === 'GET' && req.url === '/v1/models') {
+    directoryCalls.push({ authenticated: req.headers.authorization === 'Bearer local-test-key' });
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ data: [{ id: 'local-smoke-model' }, { id: 'local-feedback-model' }] }));
+    return;
+  }
+  if (req.method === 'GET') {
+    const endpoint = new URL(req.url, 'http://127.0.0.1').pathname;
+    let body;
+    if (endpoint === '/v1/models' && req.headers['x-api-key'] === 'catalog-fixture' && req.headers['anthropic-version'] === '2023-06-01') {
+      body = { data: [{ id: 'claude-fixture' }], has_more: true };
+    } else if (endpoint === '/v1beta/models' && req.headers['x-goog-api-key'] === 'catalog-fixture') {
+      body = { models: [{ name: 'models/gemini-fixture', supportedGenerationMethods: ['generateContent'] }, { name: 'models/embedding', supportedGenerationMethods: ['embedContent'] }] };
+    } else if (endpoint === '/api/tags' && !req.headers.authorization) {
+      body = { models: [{ name: 'local:latest' }] };
+    }
+    res.writeHead(body ? 200 : 404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(body ?? {}));
+    return;
+  }
   let raw = ''; for await (const chunk of req) raw += chunk;
   const body = JSON.parse(raw); calls.push({ url: req.url, model: body.model });
   res.setHeader('Content-Type', 'application/json');
@@ -172,22 +193,59 @@ try {
       const capabilities = await page.evaluate(() => window.__UNDERSTAND_BOOK_LOCAL__);
       if (!options['legacy-debug']) assert.equal(capabilities?.noteDrafts, true, 'Native drafts must be declared by both local hosts');
       if (capabilities?.managedBuildEngine || options['legacy-debug']) {
+        if (!options['legacy-debug']) await page.getByRole('button', { name: '书库与工具', exact: true }).click();
         await expect(page.getByText('本地构建引擎', { exact: true })).toBeVisible();
         await expect(page.getByText('已就绪', { exact: true })).toBeVisible();
         await expect(page.getByRole('button', { name: '安装或重试', exact: true })).toHaveCount(0);
+        if (!options['legacy-debug']) await page.getByRole('button', { name: 'AI 模型', exact: true }).click();
       }
       await expect(page.getByText('尚未配置', { exact: true })).toBeVisible();
-      if (!options['legacy-debug']) await page.getByRole('button', { name: '添加模型服务', exact: true }).click();
+      if (!options['legacy-debug']) {
+        await page.getByTestId('new-provider-deepseek').waitFor();
+        await page.screenshot({ path: path.join(root, 'model-providers.png') });
+        await page.locator('.desktop-settings-dialog').screenshot({ path: path.join(root, 'model-provider-dialog.png') });
+        const fullSize = await page.evaluate(() => ({ width: innerWidth, height: innerHeight }));
+        await page.setViewportSize({ width: 390, height: 780 });
+        const bounds = await page.getByTestId('model-settings').evaluate(el => ({ width: el.clientWidth, content: el.scrollWidth }));
+        assert.ok(bounds.content <= bounds.width + 1, 'Provider choices must fit a narrow dialog');
+        await page.screenshot({ path: path.join(root, 'model-providers-narrow.png') });
+        await page.setViewportSize(fullSize);
+        await page.getByTestId('new-provider-deepseek').click();
+        await expect(page.getByLabel('服务地址', { exact: true })).toHaveValue('https://api.deepseek.com/v1');
+      }
       await page.getByLabel('服务地址', { exact: true }).fill(baseUrl);
       const modelIdLabel = options['legacy-debug'] ? '模型名称' : '模型 ID';
-      await page.getByLabel(modelIdLabel, { exact: true }).fill('local-smoke-model');
+      if (options['legacy-debug']) await page.getByLabel(modelIdLabel, { exact: true }).fill('local-smoke-model');
       if (!options['legacy-debug']) await page.getByTestId('model-native-tools').selectOption({ label: '支持' });
       await page.getByLabel('API Key', { exact: true }).fill('local-test-key');
+      if (!options['legacy-debug']) {
+        assert.equal(directoryCalls.length, 0);
+        await page.getByTestId('list-models').click();
+        await page.getByTestId('available-models').selectOption('local-smoke-model');
+        assert.deepEqual(directoryCalls, [{ authenticated: true }]);
+        await expect(page.getByLabel(modelIdLabel, { exact: true })).toHaveValue('local-smoke-model');
+        await page.screenshot({ path: path.join(root, 'model-selection.png') });
+      }
       await page.getByRole('button', { name: '保存并应用', exact: true }).click();
       await expect(page.getByText('已保存并应用', { exact: true })).toBeVisible();
       await expect(page.getByLabel('服务地址', { exact: true })).toHaveValue(baseUrl);
       await expect(page.getByLabel(modelIdLabel, { exact: true })).toHaveValue('local-smoke-model');
       if (!options['legacy-debug']) {
+        await page.getByTestId('list-models').click();
+        await expect.poll(() => directoryCalls.length).toBe(2);
+        assert.equal(directoryCalls[1].authenticated, true, 'A saved service can list models using its stored key');
+        for (const [protocol, auth, expected] of [
+          ['anthropic_messages', 'api_key', ['claude-fixture']],
+          ['gemini_generate_content', 'api_key', ['gemini-fixture']],
+          ['ollama_chat', 'none', ['local:latest']],
+        ]) {
+          const result = await api('/model-settings/catalog', { api_protocol: protocol, service: {
+            id: 'catalog-fixture', name: 'Fixture', base_url: new URL(baseUrl).origin, auth,
+            api_key: auth === 'none' ? '' : 'catalog-fixture', deployment: { kind: 'direct' },
+          } });
+          assert.deepEqual(result.models, expected);
+          assert.equal(result.has_more, protocol === 'anthropic_messages');
+        }
         await page.getByRole('button', { name: '添加模型', exact: true }).click();
         await page.getByLabel('模型 ID', { exact: true }).fill('local-feedback-model');
         await page.getByTestId('model-native-tools').selectOption({ label: '支持' });
@@ -241,10 +299,14 @@ try {
       await page.setViewportSize({ width: 960, height: 720 });
       await page.screenshot({ path: path.join(root, 'draft-narrow.png') });
       await page.goto(`${url}/?lang=en`);
+      const englishTour = page.getByRole('button', { name: 'Skip tour', exact: true });
       const backToReading = page.getByRole('button', { name: 'Back to reading', exact: true });
-      await expect.poll(async () => await backToReading.isVisible() || await page.locator('.reader-pane').isVisible()).toBe(true);
-      if (await backToReading.isVisible()) await backToReading.click();
-      await expect(page.locator('.reader-pane')).toBeVisible();
+      await expect(async () => {
+        if (await englishTour.isVisible()) await englishTour.click({ timeout: 1000 });
+        if (await backToReading.isVisible()) await backToReading.click({ timeout: 1000 });
+        await expect(page.locator('.reader-pane')).toBeVisible({ timeout: 1000 });
+      }).toPass({ timeout: 15000 });
+      await page.addLocatorHandler(englishTour, button => button.click());
       if (options.edition === 'local') {
         await expect(page.getByRole('button', { name: 'Make a note', exact: true })).toBeVisible();
       }
@@ -273,7 +335,7 @@ try {
   }
   assert.deepEqual(pageErrors, []);
   const tested = ['native reader', 'settings form', 'local model HTTP (controlled endpoint)', 'note persistence', 'unsaved native draft', 'restart', 'normal window close', 'service shutdown'];
-  if (options.edition === 'local') tested.push('library on launch and restart', 'material import dialog', 'book understanding map', 'saved board reopened from library');
+  if (options.edition === 'local') tested.push('library on launch and restart', 'material import dialog', 'book understanding map', 'saved board reopened from library', 'provider presets and narrow layout', 'catalog discovery with draft and saved key', 'Anthropic, Gemini and Ollama catalog formats');
   await writeFile(path.join(root, 'result.json'), JSON.stringify({ result: 'passed', edition: options.edition, executable, remoteRequests, pageErrors, modelCalls: calls, tested }, null, 2));
   console.log('PASS', root);
 } catch (error) {

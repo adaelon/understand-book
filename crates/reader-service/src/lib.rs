@@ -76,6 +76,7 @@ pub mod private_book_context;
 pub use private_book_context::PrivateBookContext;
 pub mod run_scope;
 pub mod model_settings;
+mod model_catalog;
 pub mod reader_workspace;
 pub mod service_state;
 pub mod user_runtime;

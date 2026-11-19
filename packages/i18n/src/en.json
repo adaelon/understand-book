@@ -4998,5 +4998,19 @@
   "选择一本书，查看自己的理解与进展。": "Choose a book to see your understanding and progress.",
   "打开已有资料": "Open prepared material",
   "打开工作台": "Open workbench",
-  "本材料暂时无法打开。": "This material could not be opened."
+  "本材料暂时无法打开。": "This material could not be opened.",
+  "选择服务商": "Choose a provider",
+  "填写自己的 API 地址": "Your own API address",
+  "本机运行": "Runs on this device",
+  "个模型": "models",
+  "取消添加": "Cancel new service",
+  "从服务获取型号": "Get models from service",
+  "可用型号": "Available models",
+  "选择服务返回的型号": "Select a model from the service",
+  "填写或选择模型 ID": "Enter or select a model ID",
+  "服务没有返回型号，可手动填写模型 ID。": "The service returned no models. You can enter a model ID manually.",
+  "已列出服务返回的第一页，其他型号可手动填写。": "Showing the first page from the service. You can enter another model ID manually.",
+  "未能读取型号，可手动填写模型 ID。": "Could not retrieve models. You can enter a model ID manually.",
+  "设置分类": "Settings categories",
+  "书库与工具": "Library and tools"
 }
