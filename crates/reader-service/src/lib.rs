@@ -2691,6 +2691,7 @@ struct BookLibraryEntry {
     book_id: String,
     dir: String,
     route: String,
+    has_course: bool,
     cover: Option<book_cover::CoverDescriptor>,
 }
 
@@ -2953,6 +2954,13 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
             "library_root": path_string(&state_library_root(state)),
             "library_root_available": state_library_root(state).is_dir(),
         }));
+    }
+    if path == "/book/library/boards" && state.workspace.publication.is_none() {
+        if req.method != "GET" { return method_not_allowed(); }
+        return match board_api::scoped_store(&state.user, None).and_then(|boards| boards.list()) {
+            Ok(items) => ok_json(&json!({ "items": items })),
+            Err(error) => err_reply(&error),
+        };
     }
     if path == "/book/library" {
         if req.method != "GET" {
@@ -3548,6 +3556,7 @@ fn book_library_entry(path: &Path) -> Option<BookLibraryEntry> {
         book_id,
         dir: path_string(path),
         cover: book_cover::local(path),
+        has_course: path.join("inquiry_course.json").is_file(),
         route: if base_path.is_file() {
             "reader".into()
         } else {

@@ -319,7 +319,7 @@ async fn local_import_data(app: tauri::AppHandle, source: PathBuf, destination_p
         let target = parent.join("imported-data");
         legacy_import::copy(&source, &target)?;
         *state.data_dir.lock().unwrap() = target.clone();
-        start_reader(&app, None, None)
+        start_reader(&app, None, None, false)
     }}).await.map_err(|e| e.to_string()).and_then(|r| r);
     state.starting.store(false, Ordering::Release);
     if let Err(error) = &result { state.log(error); }
@@ -330,7 +330,11 @@ async fn local_import_data(app: tauri::AppHandle, source: PathBuf, destination_p
 async fn local_start_reading(app: tauri::AppHandle, selected_library: Option<PathBuf>, selected_book: Option<PathBuf>) -> Result<String, String> {
     let state = app.state::<StartupState>();
     if state.starting.swap(true, Ordering::AcqRel) { return Err("本地资料正在打开，请稍候。".into()); }
-    let result = tauri::async_runtime::spawn_blocking({ let app = app.clone(); move || start_reader(&app, selected_library, selected_book) })
+    let result = tauri::async_runtime::spawn_blocking({ let app = app.clone(); move || {
+        let launch = app.state::<StartupState>();
+        let library_home = launch.edition == LocalEdition::Installed && selected_book.is_none() && launch.initial_book.is_none();
+        start_reader(&app, selected_library, selected_book, library_home)
+    } })
         .await.map_err(|e| e.to_string()).and_then(|r| r);
     state.starting.store(false, Ordering::Release);
     if let Err(error) = &result { state.log(error); }
@@ -353,10 +357,15 @@ fn capabilities(state: &StartupState) -> String {
     format!("window.__UNDERSTAND_BOOK_LOCAL__ = {{ noteDrafts: true, managedBuildEngine: {managed} }};")
 }
 
-fn start_reader(app: &tauri::AppHandle, selected_library: Option<PathBuf>, selected_book: Option<PathBuf>) -> Result<String, String> {
+fn navigate_to_reader(app: &tauri::AppHandle, mut url: tauri::Url, library_home: bool) -> Result<(), String> {
+    if library_home { url.query_pairs_mut().append_pair("view", "library"); }
+    app.get_webview_window("main").ok_or("阅读窗口已关闭")?.navigate(url).map_err(|e| e.to_string())
+}
+
+fn start_reader(app: &tauri::AppHandle, selected_library: Option<PathBuf>, selected_book: Option<PathBuf>, library_home: bool) -> Result<String, String> {
     if let Some(runtime) = app.try_state::<DesktopServer>() {
         let url = runtime.url.clone();
-        app.get_webview_window("main").ok_or("阅读窗口已关闭")?.navigate(url.parse::<tauri::Url>().map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+        navigate_to_reader(app, url.parse::<tauri::Url>().map_err(|e| e.to_string())?, library_home)?;
         return Ok(url);
     }
     let launch = app.state::<StartupState>();
@@ -378,7 +387,7 @@ fn start_reader(app: &tauri::AppHandle, selected_library: Option<PathBuf>, selec
             server: Mutex::new(None), url: url.clone(), settings: LibrarySettingsStore::new(data_dir.join("settings.json")),
             note_drafts: note_drafts::NoteDraftStore::new(data_dir.clone()), data_dir,
         });
-        app.get_webview_window("main").ok_or("阅读窗口已关闭")?.navigate(parsed).map_err(|e| e.to_string())?;
+        navigate_to_reader(app, parsed, library_home)?;
         return Ok(url);
     }
     std::fs::create_dir_all(&data_dir).map_err(|e| format!("无法建立本地数据目录：{e}"))?;
@@ -465,7 +474,7 @@ fn start_reader(app: &tauri::AppHandle, selected_library: Option<PathBuf>, selec
     }
     app.manage(DesktopServer { server: Mutex::new(Some(server)), url: url.clone(), settings, data_dir, note_drafts: drafts });
     launch.log("Local Reader started");
-    app.get_webview_window("main").ok_or("阅读窗口已关闭")?.navigate(parsed).map_err(|e| e.to_string())?;
+    navigate_to_reader(app, parsed, library_home)?;
     Ok(url)
 }
 
@@ -544,7 +553,7 @@ pub fn run(context: tauri::Context<tauri::Wry>, edition: LocalEdition) {
                     }
                 }).build()?;
             if edition == LocalEdition::Debug || personal_launch {
-                if let Err(error) = start_reader(app.handle(), None, None) { app.state::<StartupState>().log(&error); }
+                if let Err(error) = start_reader(app.handle(), None, None, false) { app.state::<StartupState>().log(&error); }
             }
             Ok(())
         }).build(context).expect("failed to create local Reader window");

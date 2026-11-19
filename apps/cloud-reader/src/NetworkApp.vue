@@ -5,7 +5,7 @@ import { useAccountPresence } from './account-presence';
 import LanguageSwitcher from '@understand-book/web/reader/components/LanguageSwitcher.vue';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import App from '@understand-book/web/reader/App.vue';
-import BoardLibrary from './components/BoardLibrary.vue';
+import BoardLibrary from '@understand-book/web/reader/components/BoardLibrary.vue';
 import WorkspaceDestinations from '@understand-book/web/reader/components/WorkspaceDestinations.vue';
 import LearningHomeTask from '@understand-book/web/reader/components/LearningHomeTask.vue';
 import { inquiryCourse } from '@understand-book/web/reader/inquiry-course';

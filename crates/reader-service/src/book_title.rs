@@ -35,14 +35,28 @@ pub fn read(directory: &Path, display_title: Option<&str>) -> Option<String> {
             let mut bytes = Vec::new();
             std::fs::File::open(directory.join("source.txt")).ok()?
                 .take(16 * 1024).read_to_end(&mut bytes).ok()?;
-            String::from_utf8_lossy(&bytes).lines()
+            let text = String::from_utf8_lossy(&bytes);
+            let heading = text.lines()
                 .find_map(|line| line.trim_start_matches('\u{feff}').strip_prefix("# ")
                     .map(|title| {
                         let title = title.trim();
                         let without_closing_hashes = title.trim_end_matches('#');
                         if without_closing_hashes.ends_with(' ') { without_closing_hashes.trim_end() } else { title }
                     })
-                    .filter(|title| !title.is_empty()).map(str::to_owned))
+                    .filter(|title| !title.is_empty()).map(str::to_owned));
+            heading.or_else(|| {
+                // EPUB title pages are plain text. Prefer the title line when the
+                // imported filename confirms it, e.g. "书名 (作者).epub".
+                let manifest: Value = serde_json::from_slice(&std::fs::read(directory.join("source_manifest.json")).ok()?).ok()?;
+                let source = &manifest["canonical_source"];
+                if source["kind"] != "epub" { return None; }
+                let file = source["path"].as_str()?.rsplit(['/', '\\']).next()?;
+                let stem = Path::new(file).file_stem()?.to_str()?.trim();
+                let opening = text.trim_start_matches('\u{feff}').lines().map(str::trim).find(|line| !line.is_empty());
+                let title = opening.filter(|line| stem.strip_prefix(*line)
+                    .is_some_and(|rest| rest.is_empty() || rest.starts_with([' ', '(', '（']))).unwrap_or(stem);
+                (!title.is_empty()).then(|| title.to_owned())
+            })
         })
 }
 
@@ -79,6 +93,19 @@ mod tests {
         assert_eq!(read(dir, Some(" ")).as_deref(), Some("让理解有出处"));
         std::fs::write(dir.join("source.txt"), "# C# ##\n正文").unwrap();
         assert_eq!(read(dir, None).as_deref(), Some("C#"));
+    }
+
+    #[test]
+    fn epub_catalog_title_uses_the_title_page_when_the_filename_confirms_it() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path();
+        std::fs::write(dir.join("source_manifest.json"), serde_json::json!({
+            "canonical_source": {"kind":"epub", "path":r"E:\Books\财富自由革命之路 (孙宇晨).epub"}
+        }).to_string()).unwrap();
+        std::fs::write(dir.join("source.txt"), "财富自由革命之路\n\n目录").unwrap();
+        assert_eq!(read(dir, None).as_deref(), Some("财富自由革命之路"));
+        std::fs::write(dir.join("source.txt"), "目录\n\n第一章").unwrap();
+        assert_eq!(read(dir, None).as_deref(), Some("财富自由革命之路 (孙宇晨)"));
     }
 
     #[test]

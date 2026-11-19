@@ -29,6 +29,8 @@ import { useReaderTypography } from './useReaderTypography';
 import ReaderTypographyPanel from './components/ReaderTypographyPanel.vue';
 import BookCover from './components/BookCover.vue';
 import { bookTitle } from './book-title';
+import LocalLibraryHome, { type LibraryPage, type LocalBookAction } from './components/LocalLibraryHome.vue';
+import WorkspaceDestinations from './components/WorkspaceDestinations.vue';
 import VideoReaderPane from './components/VideoReaderPane.vue';
 import MusicReaderPane from './components/MusicReaderPane.vue';
 import type { MusicContext, MusicQuestionContext } from './music-api';
@@ -531,6 +533,13 @@ let pendingPaperSelection: string | null | undefined;
 const gotoInput = ref("");
 const outlineSearch = ref("");
 const banner = ref<string>("");
+const entryView = new URLSearchParams(location.search).get('view');
+const initialShelf = entryView === 'library' ? 'courses' : entryView === 'materials' || entryView === 'boards' || entryView === 'understanding' ? entryView : null;
+const localPage = ref<LibraryPage | null>(network.value.enabled || readBoardRoute(location.search) ? null : initialShelf);
+let startOnShelf = !!localPage.value;
+const activeBookDir = ref<string | null>(null);
+const shelfBusy = ref(false);
+const readerVisible = computed(() => !localPage.value && recapProps.readerVisible);
 const bookPickerOpen = ref(false);
 const bookPickerLoading = ref(false);
 const bookPickerError = ref<string | null>(null);
@@ -1771,7 +1780,7 @@ async function resolveNoteTransition(action: 'save' | 'discard' | 'continue') {
   pending.resolve(action !== 'continue');
 }
 defineExpose({ openUnderstanding, closeUnderstanding, openCourse, openReading, resumeLearningTask, openTutorPanel, beforeNoteLeave, prepareExamQuestion, openWorkspaceNotes, openBoard, openBoardLocation, closeBoard, prepareWorkspaceNoteQuestion, openWorkspaceNoteSource, navigateWorkspaceNoteSource, workspaceNotesChanged, prepareProductTour,
-  productTourReady: computed(() => appSurface.value === 'reader' && recapProps.readerVisible !== false && !notesVisible.value && !sending.value && !agentHistoryLoading.value && !agentHistoryError.value && (!boardVisible.value || !!boardWorkspaceRef.value?.productTourReady)),
+  productTourReady: computed(() => appSurface.value === 'reader' && readerVisible.value && !notesVisible.value && !sending.value && !agentHistoryLoading.value && !agentHistoryError.value && (!boardVisible.value || !!boardWorkspaceRef.value?.productTourReady)),
   startExamPractice: (days: number) => startExamPractice(days) });
 function prepareExamQuestion(message: string) {
   askDraft.value = null;
@@ -2788,13 +2797,15 @@ async function init() {
     desktopLibraryRoot.value = desktop?.library_root ?? "";
     desktopLibraryAvailable.value = desktop?.library_root_available ?? true;
     desktopNeedsBook.value = Boolean(desktop && !desktop.active_book);
+    activeBookDir.value = desktop?.book_dir ?? null;
     if (desktopLibraryNeedsSelection(desktop)) {
       desktopSettingsOpen.value = true;
       bookPickerOpen.value = false;
       return;
     }
-    if (desktop && !desktop.active_book) {
-      bookPickerOpen.value = true;
+    if (startOnShelf || (desktop && !desktop.active_book)) {
+      startOnShelf = false;
+      setLocalPage(localPage.value ?? 'courses');
       await loadBookLibrary();
       return;
     }
@@ -3004,8 +3015,9 @@ async function chooseDesktopLibraryDirectory() {
     desktopLibraryAvailable.value = true;
     await loadBookLibrary();
     desktopSettingsOpen.value = false;
-    if (desktopNeedsBook.value) {
-      bookPickerOpen.value = true;
+    if (desktopNeedsBook.value || localPage.value) {
+      startOnShelf = false;
+      setLocalPage('materials');
     } else {
       await init();
     }
@@ -3045,7 +3057,7 @@ onMounted(() => {
   window.addEventListener("workspace-recovered", scheduleWorkspaceRecovery);
   window.addEventListener("linked-reader-changed", refreshLinkedReader);
   window.addEventListener("tutor-response", onTutorResponse);
-  void tutor.load();
+  if (!startOnShelf) void tutor.load();
   initialReaderLoad = init();
   videoAdoptionTimer = setTimeout(refreshVideoPublication, 3000);
   document.addEventListener("visibilitychange", scheduleWorkspaceRecovery);
@@ -3125,6 +3137,11 @@ watch([pendingNoteSource, appSurface, () => buildWorkbenchSnapshot.value?.book_i
   if (pendingNoteSource.value !== target || appSurface.value !== 'reader' || (!boardInOpenWorkspace && target.book_id !== buildWorkbenchSnapshot.value?.book_id)) return;
   if (network.value.enabled && !boardInOpenWorkspace && target.publication_id !== network.value.workspace?.published_book_ref.publication_id) return;
   if (network.value.enabled && target.workspace_id !== (network.value.workspace?.learning_workspace_id ?? null)) return;
+  if (localPage.value) {
+    setLocalPage(null);
+    closeUnderstanding();
+    if (!target.board_id) closeBoard();
+  }
   if (target.video_time_ms != null && !videoPane.value) return;
   noteSourceNavigating = true;
   try {
@@ -4577,7 +4594,7 @@ onBeforeUnmount(closeBoardSourcePreview);
 let unregisterThoughtContext: (() => void) | undefined;
 onMounted(() => {
   unregisterThoughtContext = registerThoughtContext(() => {
-    if (!recapProps.readerVisible || understandingOpen.value || appSurface.value !== 'reader' || !buildWorkbenchSnapshot.value?.book_id) return null;
+    if (!readerVisible.value || understandingOpen.value || appSurface.value !== 'reader' || !buildWorkbenchSnapshot.value?.book_id) return null;
     // Boards and presentations have explicit capture entries; never attach to a hidden reading page.
     if (boardVisible.value || boardSourcePreview.value || (presentationWorkspace.value && !presentationWorkspace.value.suspended) || agentFullscreen.value || !readerRegionVisible.value) return null;
     const context = {
@@ -6251,8 +6268,68 @@ async function loadBookLibrary() {
   }
 }
 
+function setLocalPage(page: LibraryPage | null) {
+  localPage.value = page;
+  const url = new URL(location.href);
+  if (page) url.searchParams.set('view', page === 'courses' ? 'library' : page);
+  else url.searchParams.delete('view');
+  history.replaceState(history.state, '', url);
+}
+
+async function showLocalPage(page: LibraryPage) {
+  if (shelfBusy.value || openingBook.value) return;
+  if (!localPage.value && !await beforeNoteLeave()) return;
+  bookPickerError.value = null;
+  mobileGlobalActionsOpen.value = false;
+  if (page === 'understanding' && appSurface.value === 'reader' && !workspaceInitializationFailed) {
+    setLocalPage(null);
+    openUnderstanding();
+    return;
+  }
+  const enteringLibrary = !localPage.value;
+  setLocalPage(page);
+  if (enteringLibrary) await loadBookLibrary();
+}
+
+function showLocalPicker(mode: 'open' | 'create') {
+  switchBookPickerMode(mode);
+  bookPickerOpen.value = true;
+}
+
+async function openShelfBook(book: BookLibraryEntry, action: LocalBookAction) {
+  if (shelfBusy.value || openingBook.value) return;
+  shelfBusy.value = true;
+  bookPickerError.value = null;
+  try {
+    await initialReaderLoad;
+    if (activeBookDir.value !== book.dir || !buildWorkbenchSnapshot.value || workspaceInitializationFailed) {
+      if (!await submitOpenBook(book.dir)) return;
+    }
+    if (appSurface.value === 'reader') {
+      await initialHistoryLoad;
+      if (!closedReady.value) await refreshClosedBook();
+      if (!closedCover.value) {
+        closeUnderstanding();
+        closeBoard();
+        if (action === 'course') await openCourse();
+        else if (action === 'understanding') openUnderstanding();
+        else if (typeof action === 'object') {
+          const id = 'boardId' in action ? action.boardId : (await api.boardCreate(action.boardTitle)).board_id;
+          await openBoardLocation({ board_id: id });
+        } else if (courseMode.value) await openReading();
+      }
+    }
+    setLocalPage(null);
+  } catch (error) {
+    bookPickerError.value = errorMessage(error);
+  } finally {
+    shelfBusy.value = false;
+  }
+}
+
 async function openBook() {
   if (network.value.enabled) { recapEmit('show-library'); return; }
+  if (desktopHost.value) { await showLocalPage('courses'); return; }
   bookPickerOpen.value = true;
   if (bookPickerBooks.value.length === 0) {
     await loadBookLibrary();
@@ -6310,6 +6387,7 @@ async function submitCreateBook() {
     bookPickerMode.value = "open";
     newBookTitle.value = "";
     newBookPdf.value = null;
+    if (localPage.value) setLocalPage(null);
   } catch (e) {
     bookPickerError.value = e instanceof Error ? e.message : String(e);
     fail(e);
@@ -6319,7 +6397,7 @@ async function submitCreateBook() {
 }
 
 function closeBookPicker() {
-  if (openingBook.value || desktopNeedsBook.value) return;
+  if (openingBook.value || (desktopNeedsBook.value && !localPage.value)) return;
   bookPickerOpen.value = false;
 }
 
@@ -6423,14 +6501,19 @@ async function submitOpenBook(dir = bookPickerDir.value) {
     openingBook.value = true;
     banner.value = "";
     bookPickerError.value = null;
-    await api.openBook(target);
+    if (activeBookDir.value !== target || !buildWorkbenchSnapshot.value) await api.openBook(target);
+    closeBoard();
+    closeUnderstanding();
     tutor.reset();
     tutorPanelOpen.value = false;
     desktopNeedsBook.value = false;
     resetBookSessionUi();
     await init();
     await tutor.load();
+    if (workspaceInitializationFailed) throw new Error(workspaceInitializationError ?? uiText('本材料暂时无法打开。'));
     bookPickerOpen.value = false;
+    if (localPage.value && !shelfBusy.value) setLocalPage(null);
+    return true;
   } catch (e) {
     bookPickerError.value = e instanceof Error ? e.message : String(e);
     fail(e);
@@ -6457,7 +6540,13 @@ watch(sending, (next,previous) => { if (previous && !next) {
 </script>
 
 <template>
-  <div class="app" :inert="closedCover || recapProps.hostOpening || undefined" :aria-busy="recapProps.hostOpening || undefined" :aria-hidden="closedCover || undefined" :style="[typography.style.value, closedCover ? { visibility: 'hidden' } : {}]">
+  <div class="app" :inert="(!localPage && closedCover) || recapProps.hostOpening || undefined" :aria-busy="recapProps.hostOpening || undefined" :aria-hidden="(!localPage && closedCover) || undefined" :style="[typography.style.value, !localPage && closedCover ? { visibility: 'hidden' } : {}]">
+    <LocalLibraryHome v-if="localPage" :page="localPage" :books="bookPickerBooks" :root="bookPickerRoot || desktopLibraryRoot"
+      :active-dir="activeBookDir" :busy="shelfBusy || openingBook" :loading="bookPickerLoading" :error="bookPickerError"
+      :native="nativeSettings" :can-create="desktopHost && !readerOnly" :resume-title="localLearningTask?.title"
+      @navigate="showLocalPage" @refresh="loadBookLibrary" @settings="openDesktopSettings" @picker="showLocalPicker" @open="openShelfBook" @resume-external="activeBookDir && submitOpenBook(activeBookDir)"
+      @resume="setLocalPage(null); resumeLocalLearningTask()" />
+    <div class="reader-surfaces" v-show="!localPage">
     <TopBar
       :notes-available="!!network.workspace?.learning_workspace_id && appSurface === 'reader'"
       @open-notes="openWorkspaceNotes()"
@@ -6493,11 +6582,15 @@ watch(sending, (next,previous) => { if (previous && !next) {
       @toggle-debug="debugOpen = !debugOpen"
       @close-mobile="mobileGlobalActionsOpen = false"
     >
-      <template #navigation><slot name="navigation"><button v-if="localLearningTask" class="understanding-nav-entry" :disabled="localLearningTaskBusy" :title="localLearningTask.question ?? localLearningTask.title" @click="resumeLocalLearningTask">{{ uiText('继续学习') }}</button><button class="understanding-nav-entry" :aria-current="understandingOpen?'page':undefined" @click="openUnderstanding">{{ uiText('我的理解') }}</button></slot></template>
+      <template #navigation><slot name="navigation">
+        <WorkspaceDestinations v-if="desktopHost && !network.enabled" :busy="shelfBusy || openingBook" :current="understandingOpen ? 'understanding' : undefined"
+          @courses="showLocalPage('courses')" @materials="showLocalPage('materials')" @boards="showLocalPage('boards')" @understanding="showLocalPage('understanding')" />
+        <template v-else><button v-if="localLearningTask" class="understanding-nav-entry" :disabled="localLearningTaskBusy" :title="localLearningTask.question ?? localLearningTask.title" @click="resumeLocalLearningTask">{{ uiText('继续学习') }}</button><button class="understanding-nav-entry" :aria-current="understandingOpen?'page':undefined" @click="openUnderstanding">{{ uiText('我的理解') }}</button></template>
+      </slot></template>
       <template #account><slot name="account" /></template>
       <template #help>
         <slot name="help" />
-        <ProductTour v-if="!network.enabled && !boardVisible" :context="appSurface === 'reader' && !sending && !agentHistoryLoading && !agentHistoryError ? 'reader' : null" owner="local" :prepare="prepareProductTour" />
+        <ProductTour v-if="!network.enabled && !boardVisible && !localPage" :context="appSurface === 'reader' && !sending && !agentHistoryLoading && !agentHistoryError ? 'reader' : null" owner="local" :prepare="prepareProductTour" />
       </template>
     </TopBar>
     <ReaderTypographyPanel v-if="typography.open.value" :preferences="typography.preferences.value" :save-error="typography.saveError.value" :pdf="activeReaderSurface === 'pdf'" @change="typography.update" @close="closeTypography" />
@@ -6530,8 +6623,9 @@ watch(sending, (next,previous) => { if (previous && !next) {
       <button @click="openBook">{{ uiText('打开其他书籍') }}</button>
     </section>
 
+    </div>
     <PersonalNavigation v-if="localAgentHost && personalAccess?.enabled && (personalAccess.navigate || personalAccess.write)"
-      :ready="appSurface === 'reader' && closedReady" :covered="closedCover" :navigate="openPersonalPassage" @changed="refreshExternalWrites" @error="banner = $event" />
+      :ready="!localPage && appSurface === 'reader' && closedReady" :covered="closedCover" :navigate="openPersonalPassage" @changed="refreshExternalWrites" @error="banner = $event" />
     <div v-if="desktopSettingsOpen" class="desktop-settings-modal" @click.self="closeDesktopSettings">
       <section class="desktop-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-settings-title">
         <header class="desktop-settings-head">
@@ -6736,6 +6830,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
       </section>
     </div>
 
+    <div class="reader-surfaces" v-show="!localPage">
     <BuildWorkbenchPane
       v-if="appSurface === 'workbench'"
       :snapshot="buildWorkbenchSnapshot"
@@ -6772,7 +6867,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
       :reader-label="courseMode ? uiText('学习') : undefined"
       v-else-if="appSurface === 'reader'"
       ref="workspaceRef"
-      :data-reader-visible="recapProps.readerVisible && !boardVisible && !notesVisible && !understandingOpen"
+      :data-reader-visible="readerVisible && !boardVisible && !notesVisible && !understandingOpen"
       :class="{ 'course-workspace': courseMode }"
       :video-mode="mediaMode"
       :music-mode="musicMode"
@@ -6866,7 +6961,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
         :pdf-url="api.pdfOriginalUrl()"
         :initial-reading-anchor="previousPdfAnchor"
         :focus-reading="focusReading"
-        :reader-active="recapProps.readerVisible && readerRegionVisible && !courseVisible && !understandingOpen"
+        :reader-active="readerVisible && readerRegionVisible && !courseVisible && !understandingOpen"
         :focus-return-label="returnToAnswerAvailable ? readingReturnLabel : undefined"
         :viewport-anchor-lid="pdfViewportAnchorLid"
         :active-lid="pdfActiveLid"
@@ -6898,7 +6993,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
         ref="readerPaneRef"
         :typography="typography.preferences.value"
         :focus-source="focusPaginationSource"
-        :reader-active="recapProps.readerVisible && readerRegionVisible && !courseVisible && !understandingOpen"
+        :reader-active="readerVisible && readerRegionVisible && !courseVisible && !understandingOpen"
         :context-key="workspaceContextKey"
         :segments="segments"
         :source-focus="sourceFocus" :annotation-revision="annotations"
@@ -6973,7 +7068,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
         @open-board-location="openBoardLocation"
         :music-mode="musicMode"
         :key="chatSceneKey"
-        :companion-visible="recapProps.readerVisible !== false && appSurface === 'reader' && !focusReading && assistantVisible && !understandingOpen"
+        :companion-visible="readerVisible && appSurface === 'reader' && !focusReading && assistantVisible && !understandingOpen"
         :waiting-turn-id="waitingTurnId"
         v-model:presentation-workspace="presentationWorkspace"
         v-model:presentation-requested="presentationRequested"
@@ -7347,10 +7442,12 @@ watch(sending, (next,previous) => { if (previous && !next) {
       <button :disabled="noteSaving" @click="resolveNoteTransition('discard')">{{ uiText('放弃并继续') }}</button>
       <button :disabled="noteSaving" @click="resolveNoteTransition('continue')">{{ uiText('继续编辑') }}</button>
     </div>
-    <ClosedBookPractice v-if="recapProps.readerVisible" :state="closedBook" :restoring="appSurface === 'reader' && !closedReady" :busy="sending || closedBusy" :error="closedError" :messages="closedMessages" :draft="closedDraft" @update:draft="changeClosedDraft" @send="sendClosedBook" @help="helpClosedBook" @leave="leaveClosedBook" @retry="retryClosedBook" @resume="startClosedBook" />
+    </div>
+    <ClosedBookPractice v-if="readerVisible" :state="closedBook" :restoring="appSurface === 'reader' && !closedReady" :busy="sending || closedBusy" :error="closedError" :messages="closedMessages" :draft="closedDraft" @update:draft="changeClosedDraft" @send="sendClosedBook" @help="helpClosedBook" @leave="leaveClosedBook" @retry="retryClosedBook" @resume="startClosedBook" />
   </div>
 </template>
 <style scoped>
+.reader-surfaces { display: contents; }
 .understanding-page{flex:1;min-height:0}.understanding-nav-entry{border:0;background:transparent;font:500 13px/1.5 var(--sans);color:var(--brand-accent);padding:8px 12px;cursor:pointer}
 .board-workspace-overlay {
   position: fixed;

@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import { ArrowRight, BookOpen, GitCompareArrows, LayoutDashboard, MessageSquareText, Plus, Search, Workflow } from '@lucide/vue';
-import { t as uiText } from '@understand-book/web/reader/i18n';
-import { networkFetch } from '../network-client';
-import { boardDate } from '@understand-book/web/reader/board-workspace';
-import { bookTitle } from '@understand-book/web/reader/book-title';
-import type { BoardSummary } from '@understand-book/web/reader/generated/BoardSummary';
-import type { LearningWorkspace, PublishedBookRef } from '@understand-book/web/reader/reader-context';
-import type { SharedBook } from '@understand-book/web/reader/shared-workspaces';
+import { t as uiText } from '../i18n';
+import { hostFetch } from '../reader-host';
+import { boardDate } from '../board-workspace';
+import { bookTitle } from '../book-title';
+import type { BoardSummary } from '../generated/BoardSummary';
+import type { LearningWorkspace, PublishedBookRef } from '../reader-context';
+import type { SharedBook } from '../shared-workspaces';
 
-const props = defineProps<{ materials: SharedBook[]; workspaces: LearningWorkspace[]; busy?: boolean }>();
+const props = defineProps<{ materials: SharedBook[]; workspaces: LearningWorkspace[]; local?: boolean; busy?: boolean }>();
 const emit = defineEmits<{
   (event: 'open', board: BoardSummary, publication: PublishedBookRef): void;
   (event: 'create', title: string, publication: PublishedBookRef): void;
@@ -26,7 +26,8 @@ function materialLabel(reference: PublishedBookRef) {
   return material ? bookTitle({ title: material.title, book_id: reference.book_id }) : uiText('原资料暂不可用');
 }
 const rows = computed(() => items.value.map(board => {
-  const original = board.publication_id ? { book_id: board.book_id, publication_id: board.publication_id } : null;
+  const publicationId = board.publication_id ?? (props.local ? 'local' : null);
+  const original = publicationId ? { book_id: board.book_id, publication_id: publicationId } : null;
   const workspace = props.workspaces.find(item => item.learning_workspace_id === board.learning_workspace_id);
   const readableMembers = workspace?.members.filter(item => item.readable && props.materials.some(material => matches(material.published_book_ref, item.published_book_ref))) ?? [];
   const publication = board.learning_workspace_id
@@ -45,7 +46,7 @@ const selectedMaterial = computed(() => props.materials.find(item => key(item.pu
 async function load() {
   request?.abort(); const current = new AbortController(); request = current;
   loading.value = true; error.value = '';
-  try { const result = await networkFetch<{ items: BoardSummary[] }>('GET', '/me/boards', undefined, current.signal); if (!current.signal.aborted) items.value = result.items; }
+  try { const result = await hostFetch<{ items: BoardSummary[] }>('GET', props.local ? '/book/library/boards' : '/me/boards', undefined, current.signal); if (!current.signal.aborted) items.value = result.items; }
   catch (failure) { if (!current.signal.aborted) error.value = failure instanceof Error ? failure.message : String(failure); }
   finally { if (!current.signal.aborted) loading.value = false; }
 }

@@ -297,6 +297,7 @@ export interface BookLibraryEntry {
   book_id: string;
   dir: string;
   route: "reader" | "workbench";
+  has_course?: boolean;
   cover?: BookCoverSource | null;
 }
 export interface BookLibraryResponse {

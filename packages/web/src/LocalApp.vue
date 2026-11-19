@@ -12,6 +12,7 @@ import { videoUrl, videoCatalog, type PreparingVideo } from './video-api';
 const videos = ref<PreparingVideo[]>([]), selected = ref<PreparingVideo | null>(null), loading = ref(true), error = ref('');
 const calibration = ref<MusicCalibrationContext | null>(null), calibrationOpen = ref(false), calibrationSaving = ref(false), calibrationError = ref('');
 const calibrationOpening = ref(false);
+const libraryEntry = ['library', 'materials', 'boards', 'understanding'].includes(new URLSearchParams(location.search).get('view') ?? '');
 let calibrationRequest = 0;
 async function refreshCalibration(open = false) {
   const request = ++calibrationRequest;
@@ -43,8 +44,8 @@ onMounted(async () => {
   window.addEventListener('local-workspace-opened', workspaceChanged);
   await Promise.allSettled([(async () => { try {
     const catalog = await videoCatalog(); videos.value = catalog.videos;
-    selected.value = videos.value.find(v => v.video.media_id === catalog.active?.media_id && v.video.media_revision === catalog.active?.media_revision) ?? null;
-  } catch (failure) { error.value = (failure as Error).message; } })(), refreshCalibration(true)]);
+    selected.value = libraryEntry ? null : videos.value.find(v => v.video.media_id === catalog.active?.media_id && v.video.media_revision === catalog.active?.media_revision) ?? null;
+  } catch (failure) { error.value = (failure as Error).message; } })(), refreshCalibration(!libraryEntry)]);
   loading.value = false;
 });
 onBeforeUnmount(() => { calibrationRequest++; window.removeEventListener('local-workspace-opened', workspaceChanged); });

@@ -35,7 +35,7 @@ async function remember(relative) {
   for (const entry of entries) await remember(path.join(relative, entry.name));
 }
 for (const entry of ['settings.json', '.env', 'memory', 'private', 'personal-note-drafts.json']) await remember(entry);
-const env = { ...process.env, UNDERSTAND_BOOK_LOCAL_DATA_DIR: data, UNDERSTAND_BOOK_DEBUG_DATA_DIR: source };
+const env = { ...process.env, UNDERSTAND_BOOK_LOCAL_DATA_DIR: data, UNDERSTAND_BOOK_DEBUG_DATA_DIR: source, WEBVIEW2_USER_DATA_FOLDER: path.join(root, 'webview') };
 for (const key of ['OPENCODE_API_KEY', 'OPENCODE_BASE_URL', 'FLUID_LLM_MODEL', 'UNDERSTAND_BOOK_PROVIDER', 'UNDERSTAND_BOOK_MODEL_SETTINGS', 'UNDERSTAND_BOOK_MODEL_CONFIG_ID', 'UNDERSTAND_BOOK_BUILD_SIDECAR', 'UNDERSTAND_BOOK_NODE', 'UNDERSTAND_BOOK_STAGE_RUNNER']) delete env[key];
 if (process.platform === 'win32') {
   for (const key of Object.keys(env)) if (key.toUpperCase() === 'PATH') delete env[key];
@@ -78,6 +78,19 @@ try {
       if (await page.locator('#startup-error').isVisible()) throw new Error(await page.locator('#startup-error').innerText());
       return page.url();
     }, { timeout: 45000 }).toMatch(/^http:\/\/127\.0\.0\.1:/);
+    if (new URL(page.url()).searchParams.get('view') === 'library') {
+      const origin = new URL(page.url()).origin;
+      const status = await (await fetch(origin + '/api/desktop/status')).json();
+      const library = await (await fetch(origin + '/api/book/library')).json();
+      const active = library.books.find(book => book.dir === status.book_dir);
+      await page.getByRole('navigation', { name: '主导航' }).getByRole('button', { name: '学习资料' }).click();
+      if (active) {
+        const shelf = page.locator('.collection-card').filter({ has: page.getByRole('heading', { name: active.title || active.name.replace(/[-_]+/g, ' '), exact: true }) });
+        await shelf.getByRole('button', { name: '开始阅读' }).click();
+      } else {
+        await page.getByRole('button', { name: '继续阅读', exact: true }).click();
+      }
+    }
     await expect(page.locator('.reader-pane')).toBeVisible();
     const origin = new URL(page.url()).origin;
     const response = await fetch(`${origin}/api/memory/recall`, {

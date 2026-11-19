@@ -5,7 +5,7 @@ import { chromium, expect } from '@playwright/test';
 import { spawn, execFile } from 'node:child_process';
 import { createServer } from 'node:http';
 import { connect } from 'node:net';
-import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
@@ -27,6 +27,7 @@ const root = options.out ? path.resolve(options.out) : await mkdtemp(path.join(r
 await mkdir(root, { recursive: true });
 const data = path.join(root, 'data');
 const book = path.join(root, 'book');
+let expectedBook = book;
 // A fresh directory is part of the first-use assertion. Keep earlier evidence intact.
 await mkdir(book);
 const source = '本地阅读验证\n资料保存在自己的电脑上，阅读记录可以在重新打开后继续使用。\n';
@@ -48,6 +49,7 @@ if (process.platform === 'win32' && options.edition === 'local') {
   for (const key of Object.keys(env)) if (key.toUpperCase() === 'PATH') delete env[key];
   env.PATH = `${process.env.SystemRoot}\\System32;${process.env.SystemRoot}`;
 }
+env.WEBVIEW2_USER_DATA_FOLDER = path.join(root, 'webview');
 const remoteRequests = [];
 const pageErrors = [];
 const draftText = '关闭应用后继续写的本地草稿。';
@@ -98,16 +100,56 @@ try {
       return route.continue();
     });
     if (options.edition === 'local' && run === 1) {
-      await page.getByRole('button', { name: '开始阅读', exact: true }).waitFor();
+      await page.getByRole('button', { name: '进入书库', exact: true }).waitFor();
       await page.screenshot({ path: path.join(root, 'first-run.png') });
-      await page.getByRole('button', { name: '开始阅读', exact: true }).click();
+      await page.getByRole('button', { name: '进入书库', exact: true }).click();
     }
     await expect.poll(async () => {
       const startupError = page.locator('#startup-error');
       if (await startupError.isVisible()) throw new Error(await startupError.innerText());
       return page.url();
     }, { timeout: 45000 }).toMatch(/^http:\/\/127\.0\.0\.1:/);
-    await page.reload();
+    if (options.edition === 'debug') await page.reload();
+    if (options.edition === 'local') {
+      await page.addLocatorHandler(page.getByRole('button', { name: '跳过引导', exact: true }), button => button.click());
+      const home = page.getByRole('navigation', { name: '主导航' });
+      const destination = name => home.getByRole('button', { name, exact: true });
+      await expect(page.getByRole('heading', { name: '读一本书，或走完一套课程' })).toBeVisible();
+      for (const name of ['学习', '我的理解', '学习资料', '学习画板']) await expect(destination(name)).toBeVisible();
+      const library = await (await fetch(new URL('/api/book/library', page.url()))).json();
+      expectedBook = path.join(library.root, '本地阅读验证');
+      if (run === 1) {
+        await cp(book, expectedBook, { recursive: true });
+        await page.getByRole('button', { name: '刷新目录' }).click();
+        await expect(page.getByRole('heading', { name: '本地阅读验证' })).toBeVisible();
+        await page.screenshot({ path: path.join(root, 'library.png') });
+        await destination('学习资料').click();
+        await expect(page.getByRole('heading', { name: '学习资料', exact: true })).toBeVisible();
+        await page.getByRole('button', { name: '新建论文书', exact: true }).click();
+        await expect(page.getByRole('tab', { name: '新建论文书' })).toHaveAttribute('aria-selected', 'true');
+        await page.getByRole('button', { name: '取消', exact: true }).click();
+        await destination('我的理解').click();
+        await page.locator('.collection-card').filter({ hasText: '本地阅读验证' }).getByRole('button').click();
+        await expect(page.locator('.understanding-map')).toBeVisible();
+        await page.getByRole('button', { name: '返回学习', exact: true }).click();
+        await destination('学习').click();
+        await page.locator('.collection-card').filter({ hasText: '本地阅读验证' }).getByRole('button', { name: '查看这本书' }).click();
+        await page.getByRole('button', { name: '阅读原文', exact: true }).click();
+        await expect(page.locator('.reader-pane')).toContainText('资料保存在自己的电脑上');
+      }
+      await destination('学习画板').click();
+      await expect(page.getByRole('heading', { name: '学习画板', exact: true })).toBeVisible();
+      if (run === 1) {
+        await page.getByRole('button', { name: '新建画板', exact: true }).click();
+        await page.getByLabel('想弄懂什么？').fill('本地书库的画板');
+        await page.getByLabel('从哪份资料开始？').selectOption({ label: '本地阅读验证' });
+        await page.getByRole('button', { name: '创建并打开画板' }).click();
+      } else {
+        await page.locator('.board-library-card').filter({ hasText: '本地书库的画板' }).getByRole('button', { name: '打开画板' }).click();
+      }
+      await expect(page.getByLabel('画板名称')).toHaveValue('本地书库的画板');
+      await page.getByRole('button', { name: '关闭画板，回到阅读' }).click();
+    }
     await expect(page.locator('.reader-pane')).toBeVisible({ timeout: 15000 });
     const url = new URL(page.url()).origin;
     async function api(endpoint, body) {
@@ -115,19 +157,13 @@ try {
       const result = await response.json();
       assert.equal(response.ok, true, JSON.stringify(result)); return result;
     }
-    if (options.edition === 'local' && run === 1) {
-      await api('/book/open', { dir: book });
-      await page.reload();
-      await expect(page.locator('.reader-pane')).toBeVisible({ timeout: 15000 });
-      await page.getByRole('button', { name: '跳过引导', exact: true }).click();
-    }
     const status = await api('/desktop/status');
     assert.equal(status.desktop_host, true); assert.equal(status.reader_only, false);
-    assert.equal(status.book_dir, book);
+    assert.equal(status.book_dir, expectedBook);
     assert.equal((await api('/book/manifest')).tree[0].lid, '1');
     // A new loopback origin can show the existing first-use tour again on restart.
     const skipTour = page.getByRole('button', { name: '跳过引导', exact: true });
-    if (await skipTour.isVisible()) await skipTour.click();
+    if (options.edition === 'debug' && await skipTour.isVisible()) await skipTour.click();
     if (run === 1) {
       const initial = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('desktop_provider_status'));
       assert.equal(initial.configured, false);
@@ -236,7 +272,9 @@ try {
     await writeFile(path.join(root, `application-${run}.log`), output);
   }
   assert.deepEqual(pageErrors, []);
-  await writeFile(path.join(root, 'result.json'), JSON.stringify({ result: 'passed', edition: options.edition, executable, remoteRequests, pageErrors, modelCalls: calls, tested: ['native reader', 'settings form', 'local model HTTP (controlled endpoint)', 'note persistence', 'unsaved native draft', 'restart', 'normal window close', 'service shutdown'] }, null, 2));
+  const tested = ['native reader', 'settings form', 'local model HTTP (controlled endpoint)', 'note persistence', 'unsaved native draft', 'restart', 'normal window close', 'service shutdown'];
+  if (options.edition === 'local') tested.push('library on launch and restart', 'material import dialog', 'book understanding map', 'saved board reopened from library');
+  await writeFile(path.join(root, 'result.json'), JSON.stringify({ result: 'passed', edition: options.edition, executable, remoteRequests, pageErrors, modelCalls: calls, tested }, null, 2));
   console.log('PASS', root);
 } catch (error) {
   if (activePage && !activePage.isClosed()) {
