@@ -266,12 +266,19 @@ it('does not invent time or progress for a single legacy record and retries a fa
 });
 
 it('opens the original conversation using its real session and turn without mutating understanding', async () => {
-  const record = evidence('linked', { occurred_at: '1792807200000', source_session_id: 'original-chat', source_turn_id: 'original-turn', source_session_title: '两段路程的追问' });
+  const record = evidence('linked', { occurred_at: '1792807200000', source_session_id: 'original-chat', source_turn_id: 'original-turn', source_session_title: '两段路程的追问',
+    nature: 'performance', activity_turn_request: '给我一道应用题', prompt: '本次练习应选哪段时间？', learner_quote: 'A',
+    choice_answer: { options: [{ id: 'A', text: '全部时间' }], reasoning: '连停车也算。' } });
   const handler = vi.fn(); window.addEventListener('understanding-open-chat', handler);
   const { w, fetch } = setup({ interpretations: [record], records: { linked: record } });
   try {
     await flushPromises(); await w.get('.concept').trigger('click'); await flushPromises();
     expect(w.get('.record-origin').text()).not.toContain('原话时间未保留');
+    expect(w.get('.record-origin').text()).toContain('关联对话');
+    expect(w.get('.context').text()).toContain('本轮请求给我一道应用题');
+    expect(w.get('.context').text()).toContain('本次练习应选哪段时间？');
+    expect(w.get('.quote').text()).toContain('全部时间');
+    expect(w.get('.quote').text()).toContain('连停车也算。');
     await button(w, '两段路程的追问').trigger('click');
     expect(handler).toHaveBeenCalledOnce();
     expect((handler.mock.calls[0][0] as CustomEvent).detail).toMatchObject({ session_id: 'original-chat', turn_id: 'original-turn', reader_key: expect.any(String) });

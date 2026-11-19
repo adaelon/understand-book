@@ -2436,7 +2436,7 @@ function taskDescriptor(
       const stage = readAutomaticBuildTaskStage(target, { stage: manifest.stage, work_unit_id: workUnitId,
         ...(task && task.parent_unit_lid !== "stitch" ? { parent_lid: task.parent_unit_lid } : {}) },
         manifest.policy_fingerprint.quality_profile,
-        courseTask ? { course_goal: courseTask.course_goal } : task && "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
+        courseTask ? { course_goal: courseTask.course_goal, course_route: courseTask.course_route } : task && "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
       descriptor = stage?.work_units?.find(candidate => candidate.work_unit_id === workUnitId);
       currentBinding = stage?.task_bindings?.[workUnitId];
       if (task && canonicalAutomaticBuildJson(task.descriptor) !== canonicalAutomaticBuildJson(descriptor)) {

@@ -65,14 +65,17 @@ pub(crate) fn capabilities_for_route(
     if exact_present {
         return capabilities_from_listing(listing, model);
     }
-    let official = url::Url::parse(base_url)
-        .ok()
-        .is_some_and(|url| url.origin().ascii_serialization() == "https://api.deepseek.com");
-    if official && matches!(model, "deepseek-v4-flash" | "deepseek-v4-flash-vision-exp") {
+    if official_flash_route(base_url, model) && model != "deepseek-flash" {
         capabilities_from_listing(listing, "deepseek-flash")
     } else {
         None
     }
+}
+
+pub(crate) fn official_flash_route(base_url: &str, model: &str) -> bool {
+    matches!(model, "deepseek-flash" | "deepseek-v4-flash" | "deepseek-v4-flash-vision-exp")
+        && url::Url::parse(base_url).ok().is_some_and(|url|
+            url.origin().ascii_serialization() == "https://api.deepseek.com")
 }
 
 /// Derive only paths on the configured origin; never redirect credentials to a

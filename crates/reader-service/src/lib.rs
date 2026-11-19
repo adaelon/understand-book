@@ -12264,6 +12264,9 @@ pub fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &re
     let board_context = board_follow_up.as_ref().map(|follow_up|
         board_api::freeze_follow_up(user, workspace, follow_up)).transpose().map_err(|e| err_reply(&e))?;
     runtime::response_language::ResponseLanguage::from_request(&v).map_err(|e| err_reply(&e))?;
+    // Replace the client locator once. Both action resolution and admission use this lesson.
+    let course_context = course_context::freeze_chat(user, workspace, &v["course_context"]).map_err(|e| err_reply(&e))?;
+    v["course_context"] = json!(course_context);
     let wants_presentation = presentation_requested(&v).map_err(|e| err_reply(&e))?;
     let Some(msg) = v.get("message").and_then(|x| x.as_str()) else {
         return Err(validation(
@@ -12480,9 +12483,6 @@ pub fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &re
     // A note revisit reads the exact saved idea like any explicitly brought-in note.
     if let Some(reference)=interaction.as_ref().and_then(|a|a.note_ref.as_ref()) {note_input["note_refs"]=json!([reference]);}
     let personal_notes=personal_note_context::freeze(user,&note_input,workspace.selected_chat.as_deref()).map_err(|e|err_reply(&e))?;
-    let course_context = course_context::freeze_chat(user, workspace, &v["course_context"]).map_err(|e| err_reply(&e))?;
-    // Replace the client locator with an authorized snapshot before admission freezes it.
-    v["course_context"] = json!(course_context);
     if v["socratic_dialogue"].is_object() && v["socratic_dialogue"]["course_run_id"].as_str()
         != v["course_context"]["lesson"]["progress"]["run_id"].as_str() {
         v["socratic_dialogue"] = Value::Null;
@@ -13564,6 +13564,7 @@ pub(crate) mod follow_up_input;
 pub mod cli;
 pub mod stage_processes;
 pub mod acp_evidence;
+mod acp_history;
 mod acp_teaching;
 pub mod learning_extensions;
 pub mod local_acp;

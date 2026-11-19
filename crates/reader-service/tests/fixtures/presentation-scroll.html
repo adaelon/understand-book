@@ -7,8 +7,17 @@ section{box-sizing:border-box;height:900px;display:flex;align-items:flex-start;j
 #change{position:fixed;left:8px;top:8px;width:100px;height:48px}
 input{width:120px;height:44px}
 </style></head><body>
-<button id="change" onclick="this.textContent=Number(this.textContent)+1">0</button>
+<button id="change">0</button>
 <section id="start"><h2>START</h2><input id="parameter" type="range" min="0" max="10" value="3"></section>
 <section id="middle"><h2>MIDDLE</h2></section>
 <section id="end"><h2>END</h2></section>
+<script>
+const counter = document.querySelector('#change');
+let clicks = window.presentation?.initialState?.clicks ?? 0;
+function render() { counter.textContent = String(clicks); }
+counter.addEventListener('click', () => { clicks++; render(); });
+window.presentation?.registerStateReader(() => ({values: {clicks}}));
+window.presentation?.registerStateRestorer(saved => { clicks = saved.values.page.clicks; render(); });
+render();
+</script>
 </body></html>

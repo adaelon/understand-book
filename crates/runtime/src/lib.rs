@@ -36,6 +36,7 @@ pub mod workspace_goal;
 pub mod workspace_records;
 pub mod workspace_notes;
 pub mod tutor;
+pub mod closed_book_review;
 mod socratic;
 pub use socratic::SocraticQuestionPurpose;
 pub mod practice;
@@ -316,6 +317,7 @@ impl ProviderConfig {
         )?;
         if let Some(effort) = get("UNDERSTAND_BOOK_AGENT_REASONING_EFFORT") {
             config.agent_reasoning_effort = AgentReasoningEffort::parse(&effort)?;
+            config.options.explicit_agent_reasoning_effort = true;
         }
         Ok(config)
     }
@@ -2965,6 +2967,18 @@ impl NativeAdapter {
         std::borrow::Cow::Owned(projected)
     }
 
+    fn chat_projection(&self, protocol: ApiProtocol, request: &AgentRequestPlan) -> (serde_json::Value, BTreeMap<String, String>) {
+        let official_flash_chat = protocol == ApiProtocol::OpenaiChatCompletions
+            && self.options.deployment == cloud_provider::Deployment::Direct
+            && deepseek_messages::official_flash_route(&self.base_url, &self.model);
+        let (mut body, names) = project_native_chat(&self.model, request, official_flash_chat);
+        if request.presentation_output_recovery && official_flash_chat && !self.options.explicit_agent_reasoning_effort
+            && self.agent_reasoning_effort == AgentReasoningEffort::default() {
+            body["thinking"] = serde_json::json!({"type":"disabled"});
+        }
+        (body, names)
+    }
+
     fn normalize_provider_body(&self, body: &mut serde_json::Value, protocol: ApiProtocol) -> Result<(), AdapterError> {
         let tools = body["tools"].as_array().is_some_and(|tools| !tools.is_empty());
         let stream = self.options.capabilities.streaming != Some(false)
@@ -3120,6 +3134,7 @@ impl NativeAdapter {
                                 continue;
                             }
                         }
+                        observer.observe(provider_stream::ModelDelta::OutputLimitReached { total_tokens: cumulative_usage.total_tokens });
                         return Err(output_length_error(&value));
                     }
                     if cumulative_usage.has_any_value() || output_retried || attempt > 1 {
@@ -3892,7 +3907,7 @@ impl ModelAdapter for NativeAdapter {
         let request = self.request_history(request, protocol);
         let body = match protocol {
             ApiProtocol::DeepseekMessages => deepseek_messages::context_projection(self.agent_reasoning_effort, &self.model, &request, self.bound_messages_capabilities()?).ok()?,
-            _ => project_protocol_request(protocol, native_chat_request_projection(&self.model, &request).0).ok()?,
+            _ => project_protocol_request(protocol, self.chat_projection(protocol, &request).0).ok()?,
         };
         // Context measurement must see an oversized wire request so it can
         // compact it. Send-time output validation would hide precisely that
@@ -3975,7 +3990,7 @@ impl ModelAdapter for NativeAdapter {
         let request = self.request_history(request, protocol);
         let (mut body, provider_to_internal) = match protocol {
             ApiProtocol::DeepseekMessages => deepseek_messages::request_projection(self.agent_reasoning_effort, &self.model, &request, self.bound_messages_capabilities().expect("resolved Messages capability"))?,
-            _ => native_chat_request_projection(&self.model, &request),
+            _ => self.chat_projection(protocol, &request),
         };
         if protocol != ApiProtocol::DeepseekMessages && self.options.capabilities.reasoning_effort == Some(true) {
             body["reasoning_effort"] = serde_json::json!(self.agent_reasoning_effort.as_str());
@@ -4093,6 +4108,14 @@ fn native_chat_request_projection(
     model: &str,
     request: &AgentRequestPlan,
 ) -> (serde_json::Value, BTreeMap<String, String>) {
+    project_native_chat(model, request, false)
+}
+
+fn project_native_chat(
+    model: &str,
+    request: &AgentRequestPlan,
+    preserve_empty_flash_reasoning: bool,
+) -> (serde_json::Value, BTreeMap<String, String>) {
     let mut used_tool_names = HashSet::new();
     let mut provider_to_internal = BTreeMap::new();
     // Resident discovery changes the visible schemas, not historical call names.
@@ -4134,7 +4157,11 @@ fn native_chat_request_projection(
             let mut value = native_message_to_json(m, &internal_to_provider);
             if m.role == Role::Assistant {
                 if let Some(state) = m.provider_continuation.as_ref().filter(|state| state.model == model) {
-                    if !state.reasoning_content.is_empty() { value["reasoning_content"] = serde_json::json!(state.reasoning_content); }
+                    // Chat returns a continuation only when the provider supplied the field, including
+                    // an empty string. Replay that empty value verbatim after a non-thinking tool step.
+                    if !state.reasoning_content.is_empty() || (preserve_empty_flash_reasoning && state.provider_identity.is_some() && state.protocol_state.is_none() && state.messages_content.is_empty()) {
+                        value["reasoning_content"] = serde_json::json!(state.reasoning_content);
+                    }
                     if let Some(private) = &state.protocol_state { value["protocol_state"] = private.clone(); }
                 }
             }
@@ -6013,6 +6040,76 @@ mod tests {
         assert_eq!(body["messages"][2]["reasoning_content"], "provider-private-state");
         let (other, _) = native_chat_request_projection("another-model", &plan);
         assert!(other["messages"][2].get("reasoning_content").is_none());
+    }
+
+    #[test]
+    fn page_output_limit_flash_wire_disables_thinking_only_for_default_official_recovery() {
+        for (route,model,protocol,explicit,expected) in [
+            ("https://api.deepseek.com","deepseek-flash",ApiProtocol::OpenaiChatCompletions,false,true),
+            ("https://api.deepseek.com/v1","deepseek-v4-flash",ApiProtocol::OpenaiChatCompletions,false,true),
+            ("https://api.deepseek.com/v1/","deepseek-v4-flash-vision-exp",ApiProtocol::OpenaiChatCompletions,false,true),
+            ("https://api.deepseek.com","deepseek-flash",ApiProtocol::OpenaiChatCompletions,true,false),
+            ("https://api.deepseek.com","deepseek-v4-pro",ApiProtocol::OpenaiChatCompletions,false,false),
+            ("https://other.example/v1","deepseek-flash",ApiProtocol::OpenaiChatCompletions,false,false),
+            ("https://api.deepseek.com","deepseek-flash",ApiProtocol::OpenaiResponses,false,false),
+        ] {
+            let config=ProviderConfig::from_values("native","test",route,model).unwrap();
+            let mut settings=model_settings::ModelSettings::from_legacy(&config);
+            let definition=&mut settings.models[0];
+            definition.api_protocol=protocol;
+            definition.capabilities.native_tools=Some(true);
+            definition.capabilities.reasoning_effort=Some(true);
+            definition.agent_reasoning_effort=explicit.then(|| "high".to_string());
+            let adapter=NativeAdapter::from_config_with_runtime_profile(settings.resolve_model("default-model").unwrap(),None);
+            let mut plan=AgentRequestPlan::for_agent_turn(adapter.model_runtime_profile(),&[Message::user("page")],&[]);
+            let mut normal=adapter.context_request_projection(&plan).unwrap();
+            assert!(normal.get("thinking").is_none());
+            plan.presentation_output_recovery=true;
+            if expected { normal["thinking"]=serde_json::json!({"type":"disabled"}); }
+            assert_eq!(adapter.context_request_projection(&plan).unwrap(),normal,"{route} {model} {protocol:?} explicit={explicit}");
+        }
+    }
+
+    #[test]
+    fn page_output_limit_flash_wire_returns_to_normal_with_tools_and_real_history() {
+        let mut config=ProviderConfig::from_values("native","test","https://api.deepseek.com/v1","deepseek-flash").unwrap();
+        config.options.api_protocol=ApiProtocol::OpenaiChatCompletions;
+        let adapter=NativeAdapter::from_config_with_runtime_profile(config,None);
+        let model="deepseek-flash";
+        let tools=[ToolSpec{name:"presentation.author".into(),description:"Author".into(),parameters:serde_json::json!({"type":"object"})}];
+        let continuation=|text:&str| ProviderContinuation{
+            provider_identity:Some(adapter.continuation_identity(ApiProtocol::OpenaiChatCompletions)),
+            protocol_state:None, model:model.into(), reasoning_content:text.into(),messages_content:vec![],
+        };
+        for reasoning in [Some("real trace"), Some(""), None] {
+            let mut history=vec![Message::user("page"),Message{role:Role::Assistant,content:None,tool_call_id:None,
+                tool_calls:vec![ToolCall{id:"prepared".into(),name:"presentation.author".into(),arguments:r#"{"operation":"prepare"}"#.into()}],
+                provider_continuation:Some(continuation("prior provider trace"))},
+                Message{role:Role::Tool,content:Some("confirmed-prepare".into()),tool_call_id:Some("prepared".into()),tool_calls:vec![],provider_continuation:None}];
+            let mut recovery=AgentRequestPlan::for_agent_turn(adapter.model_runtime_profile(),&history,&tools);
+            recovery.presentation_output_recovery=true;
+            let retry_wire=adapter.context_request_projection(&recovery).unwrap();
+            assert_eq!(retry_wire["thinking"]["type"],"disabled");
+            assert!(retry_wire["messages"].as_array().unwrap().iter().any(|m|m["reasoning_content"]=="prior provider trace"));
+            history.push(Message{role:Role::Assistant,content:None,tool_call_id:None,
+                tool_calls:vec![ToolCall{id:"accepted".into(),name:"presentation.author".into(),arguments:r#"{"operation":"write"}"#.into()}],
+                provider_continuation:reasoning.map(continuation),
+            });
+            history.push(Message{role:Role::Tool,content:Some("candidate-saved".into()),tool_call_id:Some("accepted".into()),tool_calls:vec![],provider_continuation:None});
+            let next=AgentRequestPlan::for_agent_turn(adapter.model_runtime_profile(),&history,&tools);
+            let wire=adapter.context_request_projection(&next).unwrap();
+            assert!(wire.get("thinking").is_none() && !wire["tools"].as_array().unwrap().is_empty());
+            let messages=wire["messages"].as_array().unwrap();
+            if let Some(actual)=reasoning {
+                let assistant=messages.iter().find(|m|m["role"]=="assistant" && m["tool_calls"][0]["id"]=="accepted").unwrap();
+                assert_eq!(assistant["reasoning_content"],actual);
+                assert_eq!(assistant["tool_calls"][0]["id"],"accepted");
+                assert!(messages.iter().any(|m|m["role"]=="tool" && m["tool_call_id"]=="accepted"));
+            } else {
+                assert!(messages.iter().all(|m|m.get("reasoning_content").is_none()));
+                assert!(messages.iter().any(|m|m["role"]=="user" && m["content"].as_str().is_some_and(|s|s.contains("Historical conversation record") && s.contains("candidate-saved"))));
+            }
+        }
     }
 
     #[test]

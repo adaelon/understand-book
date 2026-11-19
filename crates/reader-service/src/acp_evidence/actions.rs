@@ -20,11 +20,12 @@ const ACTIONS: [&str; 7] = [
 ];
 
 pub(super) fn is_action(name: &str) -> bool {
-    ACTIONS.contains(&name)
+    ACTIONS.contains(&name) || name == crate::acp_history::TOOL
 }
 
 pub(super) fn label(name: &str) -> &'static str {
     match name {
+        crate::acp_history::TOOL => "回读当前聊天",
         "reader_note" => "建议笔记",
         "reader_highlight" => "建议高亮",
         "reader_save_note" => "保存个人笔记",
@@ -36,7 +37,7 @@ pub(super) fn label(name: &str) -> &'static str {
 }
 
 pub(super) fn tools() -> Vec<Value> {
-    ACTIONS.iter().map(|&name| {
+    let mut tools: Vec<_> = ACTIONS.iter().map(|&name| {
         let (description, fields): (&str, &[&str]) = match name {
             "reader_note" => ("Propose an editable note at an observed passage. The reader can keep or undo this suggestion.", &["source_ref_id","text"]),
             "reader_highlight" => ("Propose highlighting the exact quote selected with source_present. The reader can keep or undo it.", &["source_ref_id"]),
@@ -53,7 +54,9 @@ pub(super) fn tools() -> Vec<Value> {
                 "idempotentHint":read_only || matches!(name, "reader_note" | "reader_save_note" | "reader_save_question")},
             "inputSchema":{"type":"object","required":fields,
             "properties":properties,"additionalProperties":false}})
-    }).collect()
+    }).collect();
+    tools.push(crate::acp_history::tool());
+    tools
 }
 
 impl ReaderActions {
@@ -84,6 +87,16 @@ impl ReaderActions {
                 "READER_ACTION_UNAVAILABLE",
                 "当前学习现场没有开放页面与批注操作",
             ));
+        }
+        if name == crate::acp_history::TOOL {
+            let chat = state.user.agent_history.sessions.iter()
+                .find(|s| s.id == self.scope.chat_session_id)
+                .ok_or_else(|| error("READER_HISTORY_UNAVAILABLE", "找不到这条聊天"))?;
+            let current = chat.turns.iter().find(|t| t.turn_id == self.scope.turn_id)
+                .ok_or_else(|| error("READER_HISTORY_UNAVAILABLE", "找不到当前回合"))?;
+            let page = crate::acp_history::page(chat, current.user_turn_ordinal, args)
+                .ok_or_else(|| error("READER_HISTORY_RANGE_INVALID", "请选择这条聊天的已有回合及有效字符位置"))?;
+            return Ok((page, None));
         }
         if name == "reader_navigation_result" {
             return Ok((

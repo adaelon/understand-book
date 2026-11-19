@@ -15,6 +15,7 @@ import { parseAutomaticBuildRecoveryEnvelope, type AutomaticBuildRecoveryPhase,
 import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
 import { configuredBuildRetrievalRuntime, buildRetrievalReview, configureBuildRetrieval, reviseBuildRetrieval, buildRetrievalScope } from "../../packages/core/src/build-retrieval-config";
 import { transitionBuildPlan } from "../../packages/core/src/build-intent";
+import { readAcceptedCourseRoute } from "../../packages/core/src/accepted-course-route";
 import type { BuildRetrievalRuntime } from "../../packages/core/src/automatic-build-retrieval";
 import { readDshExecutorObservation } from "../../packages/core/src/dsh-executor-observation";
 import { DSH_BUILD_CONTROL_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
@@ -998,7 +999,7 @@ function loadDriverState(
   if (invocationExecutionProfile(input).harness_kind === "deepseek_harness" && (plan.private_artifacts.length || plan.intent_id)) throw new Error("DSH private plans are unsupported");
   const routed = routeIncrementalAutomaticBuildSnapshot(target, {
     quality_profile: input.quality_profile, execution_profile: invocationExecutionProfile(input),
-    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, reuse: plan.reuse, retrieval: plan.retrieval?.selection,
+    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, course_route: plan.course_route, reuse: plan.reuse, retrieval: plan.retrieval?.selection,
   }, undefined, invocation.invocation_ref);
   const planResult = automaticBuildPlan(input.target_input, input.root_dir, {
     execution_profile: invocationExecutionProfile(input),
@@ -2504,7 +2505,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     if (preparation?.policy_set) {
       const preparationOptions = { quality_profile: invocation.input.quality_profile,
         execution_profile: invocationExecutionProfile(invocation.input),
-        public_stage_closure: current.plan.public_stage_closure, course_goal: current.plan.course_goal, reuse: current.plan.reuse,
+        public_stage_closure: current.plan.public_stage_closure, course_goal: current.plan.course_goal, course_route: current.plan.course_route, reuse: current.plan.reuse,
         retrieval: current.plan.retrieval?.selection };
       const prepared = preparation.policy_set.stage === "profile_sidecar"
         ? routeIncrementalAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparationOptions, "profile_sidecar", invocation.invocation_ref)
@@ -2893,8 +2894,12 @@ export async function claimNextAutomaticBuildWorkerAssignment(rootRef: string, c
 }
 
 function validateDshPreparation(value: Record<string, unknown>): { workers: number; pass2: "enabled" | "disabled"; target: string; root: string } {
-  exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor", "build_course", "course_goal"]);
+  exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor", "build_course", "course_goal", "course_route_path"]);
   if (value.course_goal !== undefined && (typeof value.course_goal !== "string" || !value.course_goal.trim() || value.build_course !== true)) throw new Error("course_goal requires course construction");
+  if (value.course_route_path !== undefined) {
+    boundedString(value.course_route_path, "course_route_path");
+    if (value.build_course !== true || value.course_goal !== undefined) throw new Error("course_route_path requires build_course and supplies the course goal");
+  }
   if (value.build_course !== undefined && typeof value.build_course !== "boolean") throw new Error("build_course must be boolean");
   if (value.build_tutor !== undefined && typeof value.build_tutor !== "boolean") throw new Error("build_tutor must be boolean");
   const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
@@ -2989,6 +2994,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     const { workers, pass2 } = validateDshPreparation(value);
     let prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
       boundedString(value.root_dir, "root_dir"), { pass2, build_tutor:value.build_tutor === true, build_course:value.build_course === true, course_goal:value.course_goal as string | undefined,
+        course_route: typeof value.course_route_path === "string" ? readAcceptedCourseRoute(value.course_route_path) : undefined,
         budget: value.budget as BuildPlanV1["budget"], execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1 });
     if (value.retrieval !== undefined) {
       if (!isRecord(value.retrieval)) throw new Error("invalid retrieval configuration");
@@ -3007,6 +3013,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     const stageLabel = (stage: string) => stageNames[stage.replace(/^public\./u, "")] ?? stage;
     const review = ["# 本次构建计划", `Pass2：${value.pass2 === "enabled" ? "启用" : "关闭"}`,
       `构建课程：${value.build_course === true ? '编排、逐课制作、独立解题与来源核验' : '不构建；阅读时仍可提问'}`,
+      ...(plan.course_route ? [`课程路线：${plan.course_route.question}；章节：${plan.course_route.unit_lids.join("、")}`] : []),
       ...(plan.course_goal ? [`课程目标与范围：${plan.course_goal}`] : []),
       `构建目标：${path.resolve(value.target_input as string)}`,
       `工作根目录：${path.resolve(value.root_dir as string)}`,

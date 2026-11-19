@@ -92,8 +92,8 @@ fn validate_progression(state: &PrivateBookContext<'_>, movement: &TeachingMove,
         return Err(invalid("上一道练习刚练过这个关系；请换一个关系（交错练习）"));
     }
     let same: Vec<&PracticeRecord> = records.iter().filter(|r| overlaps(r)).collect();
-    let concluded: Vec<&&PracticeRecord> = same.iter().filter(|r| r.outcome != PracticeOutcome::Open).collect();
-    if concluded.len() >= 2 && concluded[..2].iter().all(|r| r.outcome == PracticeOutcome::Missed) {
+    let concluded: Vec<&&PracticeRecord> = same.iter().filter(|r| r.outcome.scored()).collect();
+    if concluded.len() >= 2 && concluded[..2].iter().all(|r| matches!(r.outcome, PracticeOutcome::Missed | PracticeOutcome::Partial)) {
         return Err(invalid("这个关系连续两次未答对；先换一个关系，需要时转为讲解"));
     }
     if let (Some(previous), Some(distance)) = (concluded.first(), practice.distance) {
@@ -110,12 +110,31 @@ fn validate_progression(state: &PrivateBookContext<'_>, movement: &TeachingMove,
 
 fn normalized(text: &str) -> String { text.split_whitespace().collect::<Vec<_>>().join(" ") }
 
+/// An explicit application request promises a fresh case in the learner-visible question.
+pub(super) fn validate_application<'a>(context: &'a Value, movement: &TeachingMove, sources: impl Iterator<Item=&'a str>) -> Result<(), TeachingSelectionPreflightError> {
+    if context["application_requested"] != true { return Ok(()); }
+    let prompt = movement.prompt.trim();
+    let case = movement.practice.as_ref().and_then(|p| p.application_situation.as_deref())
+        .map(str::trim).filter(|text| !text.is_empty() && prompt.contains(*text) && prompt != *text)
+        .ok_or_else(|| invalid("应用题须在 move.prompt 中给出新情境，并就它提出问题。在 practice.application_situation 逐字引用情境条件，保留让读者决定的问题，再提交完整题目。"))?;
+    let original = &context["current_action"];
+    let case = normalized(case);
+    if sources.chain(original["source_excerpt"].as_str()).chain(original["answer_text"].as_str())
+        .chain(crate::course_context::application_material(&context["inquiry_course"]["lesson"]))
+        .any(|text| normalized(text).contains(&case)) {
+        return Err(invalid("应用题的情境与已读原文或先前讲解重复。请用新的具体条件，让学习者自己运用同一关系，再提交题目。"));
+    }
+    Ok(())
+}
+
 /// One delivered practice problem as later selection sees it.
 pub(super) struct PracticeRecord {
     pub delivery: TeachingEvent,
     pub target: Option<TeachingTarget>,
     pub level: Option<u8>,
     pub outcome: PracticeOutcome,
+    pub skipped: bool,
+    pub solution_seen: bool,
     pub hints_used: Vec<PracticeHintKind>,
     pub check: Option<String>,
 }
@@ -126,43 +145,53 @@ pub(super) fn history(state: &PrivateBookContext<'_>, source: &str, limit: u32) 
     let store = state.user.learning_store_for_workspace(state.learning_workspace_id)?;
     let mut records = Vec::new();
     for delivery in store.practice_deliveries(source, limit)? {
-        let (mut shown, mut revealed, mut correct, mut revealed_at_correct, mut ended) = (Vec::new(), false, None, false, false);
+        let (mut shown, mut revealed, mut skipped) = (Vec::new(), false, false);
+        let mut outcome = PracticeOutcome::Open;
+        let mut hints_at_success = None;
         for fact in store.teaching_activity_events(&delivery.event_id)? {
             match fact.kind {
                 TeachingFact::HelpDisplayed => match serde_json::from_value::<PracticeHintKind>(fact.payload["hint_kind"].clone()) {
                     Ok(kind) => shown.push(kind),
-                    Err(_) => revealed |= fact.payload["action"] == "reveal" && fact.payload["reason"] != "concluded",
+                    Err(_) => revealed |= fact.payload["action"] == "reveal",
                 },
-                TeachingFact::LearnerAction if correct.is_none() => match fact.payload["action"].as_str() {
-                    Some("submit" | "revise") => match store.assessment(&fact.event_id)? {
-                        Some(found) if found.status == AssessmentStatus::Correct => { correct = Some(shown.clone()); revealed_at_correct = revealed; }
-                        Some(_) => ended = true,
-                        None => {}
+                TeachingFact::LearnerAction => match fact.payload["action"].as_str() {
+                    Some("submit" | "revise") if hints_at_success.is_none() => match store.assessment(&fact.event_id)?.map(|assessment| assessment.status) {
+                        Some(AssessmentStatus::Correct) => {
+                            outcome = PracticeOutcome::correct(&shown, revealed);
+                            hints_at_success = Some(shown.clone());
+                        }
+                        Some(AssessmentStatus::Incorrect) => outcome = PracticeOutcome::Missed,
+                        Some(AssessmentStatus::Partial) => outcome = PracticeOutcome::Partial,
+                        _ => {}
                     },
-                    Some("skip") => ended = true,
+                    Some("skip") => skipped = true,
                     _ => {}
                 },
                 _ => {}
             }
         }
         let check = store.practice_check_verdict(&delivery.event_id)?;
-        let outcome = if check.as_deref() == Some("questionable") { PracticeOutcome::Open }
-            else { PracticeOutcome::from_facts(correct.as_deref(), revealed_at_correct, ended || revealed) };
+        if check.as_deref() == Some("questionable") { outcome = PracticeOutcome::Open; }
+        else if outcome == PracticeOutcome::Open {
+            if skipped { outcome = PracticeOutcome::Skipped; }
+            else if revealed { outcome = PracticeOutcome::Revealed; }
+        }
         let public = &delivery.payload["move"]["practice"];
         let level = serde_json::from_value(public["mode"].clone()).ok()
             .zip(serde_json::from_value(public["distance"].clone()).ok()).map(|(mode, distance)| level(mode, distance));
         let target = serde_json::from_value(delivery.payload["move"]["target"].clone()).unwrap_or(None);
-        records.push(PracticeRecord { hints_used: correct.unwrap_or(shown), delivery, target, level, outcome, check });
+        records.push(PracticeRecord { hints_used: hints_at_success.unwrap_or(shown), delivery, target, level, outcome, check, skipped, solution_seen: revealed });
     }
     Ok(records)
 }
 
 /// Bounded model view of recent practice on this material.
-pub(super) fn history_view(state: &PrivateBookContext<'_>) -> Result<Value, ToolError> {
+pub(super) fn history_view(state: &PrivateBookContext<'_>, chat: &str) -> Result<Value, ToolError> {
     Ok(json!(history(state, &state.book.base.book_id, 8)?.iter().map(|r| json!({
         "delivery_ref":r.delivery.event_id,"learning_focus":r.target.as_ref().map(|t| &t.learning_focus),
         "source_bindings":r.target.as_ref().map(|t| &t.source_bindings),"mode":r.delivery.payload["move"]["practice"]["mode"],
         "distance":r.delivery.payload["move"]["practice"]["distance"],"level":r.level,"outcome":r.outcome,
+        "skipped":r.skipped,"solution_seen":r.solution_seen,"same_chat":r.delivery.binding.chat_session_id == chat,
         "hints_used":r.hints_used,"check":r.check,"occurred_at":r.delivery.occurred_at,
         "prompt":preview(&r.delivery.payload["move"]["prompt"],300)})).collect::<Vec<_>>()))
 }

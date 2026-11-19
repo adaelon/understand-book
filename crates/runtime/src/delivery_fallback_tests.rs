@@ -1,6 +1,34 @@
 use super::*;
 
 #[test]
+fn closed_book_unaccepted_prose_stays_in_the_practice_retry_surface() {
+    let book = book();
+    let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("你的理解是对的，下面是答案。")], vec![]);
+    let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+    context.tutor = Some(serde_json::json!({"status":"practice","closed_book":{"status":"active"}}));
+    let failed = ToolError {error_code:"AGENT_NO_PROGRESS".into(), category:"loop".into(), message:"Multiple rejected questions".into()};
+    let outcome = delivery_fallback::deliver(&book, &adapter, &mut context, &ResidentTurnResources::default(),
+        &mut EphemeralCompactionCheckpointSink::default(), "风不来他就飞不了", &failed, None).unwrap_err();
+    assert!(outcome.message.contains("当前尝试已保留"));
+    assert!(adapter.seen_plans.borrow().is_empty());
+    assert!(context.teaching_delivery_draft.is_none() && !context.tutor_resolved);
+}
+
+#[test]
+fn application_fallback_never_delivers_an_ungraded_prose_question_or_answer_key() {
+    let b = book();
+    let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("参考答案 B。")],vec![]);
+    let mut context = RunContext::new(new_session(),OuterConfig::default(),adapter.model_runtime_profile());
+    context.tutor = Some(serde_json::json!({"status":"practice","application_requested":true}));
+    let stop = ToolError {error_code:"AGENT_NO_PROGRESS".into(),category:"loop".into(),message:"book.text repeated the same arguments without intervening progress".into()};
+    let result = delivery_fallback::deliver(&b,&adapter,&mut context,&ResidentTurnResources::default(),
+        &mut EphemeralCompactionCheckpointSink::default(),"根据这段回答给我一道应用题",&stop,None).unwrap_err();
+    assert_eq!(result.error_code,stop.error_code);
+    assert!(result.message.contains("重试"));
+    assert!(adapter.seen_plans.borrow().is_empty());
+}
+
+#[test]
 fn board_provider_failure_before_first_tool_keeps_current_work_without_another_model_call() {
     for regeneration in [false,true] {
         let b=book();
@@ -95,6 +123,8 @@ fn available_answer_uses_a_small_tools_disabled_request_after_empty_provider() {
     assert_eq!(plans[2].ordered_messages().len(), 2);
     let payload: serde_json::Value = serde_json::from_str(plans[2].ordered_messages()[1].content.as_deref().unwrap()).unwrap();
     assert!(!payload["read_evidence"].as_array().unwrap().is_empty());
+    assert!(payload.get("music_interactions").is_none());
+    assert!(!plans[2].ordered_messages()[0].content.as_deref().unwrap().contains("music"));
     assert!(result.delivery_diagnostics.unwrap().fallback.unwrap().issues.is_empty());
 }
 
@@ -266,6 +296,35 @@ fn available_answer_keeps_delivered_page_when_teaching_selection_was_rejected() 
 }
 
 #[test]
+fn available_answer_discards_an_empty_object_and_keeps_examples_in_prose() {
+    let book = book();
+    let saved = crate::presentation::PresentationRef { presentation_id: "saved-page".into(), revision: 1 };
+    let error = ToolError { error_code: "PROVIDER_ERROR".into(), category: "provider".into(), message: "upstream stopped".into() };
+    let prose = "空对象可以写作 `{}`。代码示例如下。\n\n```json\n{}\n```";
+    for response in ["{}", " \n{ \n} ", "```json\n{}\n```", prose] {
+        let adapter = RequestPlanRecordingAdapter::new(vec![turn_final(response)], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+        context.delivered_presentations.push(saved.clone());
+        let outcome = delivery_fallback::deliver(&book, &adapter, &mut context, &ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(), "解释这个示例并做一页讲义。", &error, None).unwrap();
+        assert!(outcome.incomplete);
+        assert_eq!(outcome.warning.as_deref(), Some("PROVIDER_ERROR"));
+        let answer = outcome.answer.as_deref().unwrap();
+        assert!(answer.contains("可直接打开"));
+        if response == prose {
+            assert!(answer.ends_with(prose));
+        } else {
+            assert!(answer.contains("模型服务本次未能完成回复"));
+            assert!(!answer.contains('{'));
+        }
+        let view = outcome.answer_view.unwrap();
+        assert!(view.parts.iter().any(|part| matches!(part, AgentAnswerPart::Presentation { presentation_id, revision: 1 } if presentation_id == &saved.presentation_id)));
+        assert_eq!(context.messages.last().unwrap().content, outcome.answer);
+        assert_eq!(adapter.seen_plans.borrow().len(), 1);
+    }
+}
+
+#[test]
 fn available_answer_replaces_html_fallback_with_sources_and_the_saved_page() {
     for bad_answer in [
         "I cannot run the demo here. Save this file yourself:\n```html\n<div>Replacement demo</div>\n```",
@@ -313,9 +372,69 @@ fn available_answer_does_not_promote_candidates_or_previous_turn_pages() {
     assert!(!answer.contains("已保存的演示") && !answer.contains("```"));
     assert!(!result.answer_view.unwrap().parts.iter().any(|part|matches!(part,AgentAnswerPart::Presentation {..})));
     assert!(result.incomplete && result.teaching_delivery_move_refs.is_empty());
-    let plans = adapter.seen_plans.borrow();
-    let payload: serde_json::Value = serde_json::from_str(plans[0].ordered_messages()[1].content.as_deref().unwrap()).unwrap();
-    assert!(payload["saved_presentations"].as_array().unwrap().is_empty());
+    assert!(answer.contains("页面草稿") && answer.contains("尚未交付"));
+    assert!(adapter.seen_plans.borrow().is_empty());
+}
+
+#[test]
+fn output_limit_keeps_prior_instructions_and_reports_only_confirmed_page_progress() {
+    let b = book();
+    let error = ToolError {
+        error_code: MODEL_OUTPUT_LIMIT.into(), category: "provider".into(),
+        message: "finish_reason=length, completion_tokens=8192".into(),
+    };
+    for prepared in [false, true] {
+        let mut history = new_session();
+        history.push(Message::user("讲义先给数值再写公式，学习率用 η。等我说保存再写笔记。"));
+        history.push(Message::user("把示例学习率改为 0.01。"));
+        history.push(Message::user("按之前的约定整理"));
+        let adapter = RequestPlanRecordingAdapter::new(vec![turn_final("请重贴约定；此前还有播放任务。")], vec![]);
+        let mut context = RunContext::new(history, OuterConfig::default(), adapter.model_runtime_profile());
+        if prepared {
+            context.presentation_authoring = Some(crate::presentation_author::PresentationAuthoringContext {
+                phase: crate::agent_prompt::PresentationPhase::Local,
+                framework: None, focus: None, needs: Vec::new(), teaching_binding: None,
+            });
+        }
+        let outcome = delivery_fallback::deliver(&b, &adapter, &mut context, &ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(), "按之前的约定整理", &error, None).unwrap();
+        assert!(outcome.incomplete);
+        assert_eq!(outcome.warning.as_deref(), Some(MODEL_OUTPUT_LIMIT));
+        assert_eq!(outcome.delivery_diagnostics.unwrap().initial.issues[0].trigger_value.as_deref(), Some(error.message.as_str()));
+        let answer = outcome.answer.as_deref().unwrap();
+        assert!(answer.contains("单次输出上限") && answer.contains("在当前对话中继续"));
+        assert_eq!(answer.contains("准备页面"), prepared);
+        assert_eq!(answer.contains("尚未交付可打开的页面"), prepared);
+        assert!(!answer.contains("重贴") && !answer.contains("音乐") && !answer.contains("播放") && !answer.contains("缺少"));
+        assert!(outcome.effects.is_empty() && outcome.teaching_delivery_move_refs.is_empty());
+        assert!(!outcome.answer_view.unwrap().parts.iter().any(|part| matches!(part, AgentAnswerPart::Presentation { .. })));
+        assert_eq!(context.messages.last().unwrap().content, outcome.answer);
+        assert!(context.messages.iter().any(|m| m.role == Role::User && m.content.as_deref() == Some("把示例学习率改为 0.01。")));
+        assert!(adapter.seen_plans.borrow().is_empty());
+    }
+}
+
+#[test]
+fn output_limit_keeps_saved_pages_and_confirms_only_executed_actions() {
+    let b = book();
+    let error = ToolError { error_code: MODEL_OUTPUT_LIMIT.into(), category: "provider".into(), message: "output exhausted".into() };
+    for receipt_status in ["observed", "failed", "applied"] {
+        let adapter = RequestPlanRecordingAdapter::new(vec![], vec![]);
+        let mut context = RunContext::new(new_session(), OuterConfig::default(), adapter.model_runtime_profile());
+        context.response_language = Some(crate::response_language::ResponseLanguage::English);
+        context.effects.push(AgentEffect::Note { mem_id: "confirmed-note".into(), lid: "1.1".into(), text: "annotation".into() });
+        context.delivered_presentations.push(crate::presentation::PresentationRef { presentation_id: "saved".into(), revision: 2 });
+        context.music_interactions.push(serde_json::json!({"result":{"receipt":{"status":receipt_status}}}));
+        let outcome = delivery_fallback::deliver(&b, &adapter, &mut context, &ResidentTurnResources::default(),
+            &mut EphemeralCompactionCheckpointSink::default(), "Finish the explanation", &error, None).unwrap();
+        let answer = outcome.answer.as_deref().unwrap();
+        assert!(answer.contains("output limit") && answer.contains("note from this turn was saved"));
+        assert_eq!(answer.contains("player confirmed"), receipt_status == "applied");
+        assert!(outcome.incomplete && outcome.effects.len() == 1);
+        assert!(outcome.answer_view.unwrap().parts.iter().any(|part| matches!(part,
+            AgentAnswerPart::Presentation {presentation_id, revision: 2} if presentation_id == "saved")));
+        assert!(adapter.seen_plans.borrow().is_empty());
+    }
 }
 
 #[test]

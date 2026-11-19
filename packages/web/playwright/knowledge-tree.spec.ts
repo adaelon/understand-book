@@ -16,7 +16,8 @@ for(const width of [1366,390])test(`knowledge branches, fruit and continuation r
   const seen:unknown[]=[];
   await page.route('**/api/knowledge/tree',route=>{
     const body=route.request().postDataJSON();seen.push(body);const selected=body.node_id==='time'?time:root;
-    return route.fulfill({json:{node:selected,children:selected.id==='root'?[time,node('distance','总路程包含去程与回程'),node('average','平均速度与分段速度的关系'),node('example','等距离行程为什么不能直接取两个速度的平均值')]:[],
+    const branches=[{...time,understanding:[fruit]},node('distance','总路程包含去程与回程')];
+    return route.fulfill({json:{node:selected,children:branches,map_groups:[{topic:root,nodes:branches}],
       breadcrumbs:[{id:'root',label:'认识运动'},...(selected.id==='root'?[]:[{id:'time',label:time.label}])],next:null,total:selected.child_count,fruits:[fruit],current_ids:['root'],modality:'text',evidence_watermark:1}});
   });
   await page.route('**/api/knowledge/resume',route=>route.fulfill({json:{context:{book_id:scenario.book_id,publication_id:null,workspace_id:null,session_id:'tc0-chat',turn_id:'tc0-answer',label:fruit.label},source_revision:'tc0-source',target:fruit.target,understanding_ref:{workspace_id:null,evidence_ref:'e-time'}}}));
@@ -24,24 +25,29 @@ for(const width of [1366,390])test(`knowledge branches, fruit and continuation r
   if(width<1024)await page.getByRole('navigation',{name:'阅读工作区'}).getByRole('button',{name:'问答',exact:true}).click();
   else await page.getByRole('button',{name:'学习设置',exact:true}).click();
   await page.getByRole('button',{name:'知识树',exact:true}).click();
-  const tree=page.getByRole('region',{name:'知识树',exact:true});
+  const tree=page.getByRole('main',{name:'我的理解',exact:true});
   await expect(tree.getByText('总时间包含途中停车',{exact:true})).toBeVisible();
-  await expect(tree.locator('.understanding-fruit')).toHaveCount(1);
   await page.screenshot({path:testInfo.outputPath(`knowledge-tree-${width}.png`)});
-  await tree.getByRole('button',{name:'总时间包含途中停车，1 颗理解果实',exact:true}).click();
-  await tree.getByRole('button',{name:'打开原文',exact:true}).click();
+  await tree.getByRole('button',{name:/总路程包含去程与回程/}).click();
+  await tree.getByRole('button',{name:'看看原文',exact:true}).click();
   const source = page.getByRole('dialog',{name:'引用来源',exact:true});
   await expect(source.locator('mark').first()).toBeInViewport();
   await source.getByRole('button',{name:'关闭来源预览',exact:true}).click();
+  await page.getByRole('banner').getByRole('button',{name:'我的理解',exact:true}).click();
   await expect(tree).toBeVisible();
+  await tree.getByRole('button',{name:/总时间包含途中停车/}).click();
+  await tree.getByText('查看理解依据',{exact:true}).click();
   await expect(tree.getByText(fruit.learner_quote,{exact:true})).toHaveCount(1);
-  await expect(tree.getByText('在已提供讲解下',{exact:false})).toBeVisible();
-  await tree.getByRole('button',{name:'继续推敲',exact:false}).scrollIntoViewIfNeeded();
+  await expect(tree.getByText('在已提供讲解下',{exact:true})).toBeVisible();
+  const discuss=tree.getByRole('button',{name:'接着这一点'});
+  await discuss.scrollIntoViewIfNeeded();
   await page.screenshot({path:testInfo.outputPath(`knowledge-fruit-${width}.png`)});
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);
-  await tree.getByRole('button',{name:'继续推敲',exact:false}).click();
+  await discuss.click();
+  expect(fixture.requests).toHaveLength(0);
+  await tree.getByRole('button',{name:'发送到原讨论'}).click();
   await expect.poll(()=>fixture.requests.length).toBe(1);
-  expect(fixture.requests[0]).toMatchObject({understanding_ref:{evidence_ref:'e-time'},entry_action:'clarify_answer'});
+  expect(fixture.requests[0]).toMatchObject({understanding_ref:{evidence_ref:'e-time'},entry_action:'continue_answer'});
   expect(fixture.requests[0].note_refs).toBeUndefined();expect(fixture.errors).toEqual([]);
   expect(seen.length).toBeGreaterThanOrEqual(2);
 });
@@ -54,14 +60,13 @@ test('starting from a knowledge branch retains the selected occurrence as well a
   const root={...leaf,id:'root',label:'运动',kind:'material',parent_id:null,child_count:1};
   await page.route('**/api/knowledge/tree',route=>{
     const selected=route.request().postDataJSON().node_id===leaf.id?leaf:root;
-    return route.fulfill({json:{node:selected,children:selected.id==='root'?[leaf]:[],breadcrumbs:[{id:'root',label:'运动'}],next:null,total:selected.child_count,fruits:[],current_ids:[],modality:'text',entry_point:selected.id==='root'?leaf:null}});
+    return route.fulfill({json:{node:selected,children:[leaf],map_groups:[{topic:root,nodes:[leaf]}],breadcrumbs:[{id:'root',label:'运动'}],next:null,total:selected.child_count,fruits:[],current_ids:[],modality:'text',entry_point:selected.id==='root'?leaf:null}});
   });
   await page.setViewportSize({width:1366,height:1000});await page.reload();
   await page.getByRole('button',{name:'学习设置',exact:true}).click();await page.getByRole('button',{name:'知识树',exact:true}).click();
-  const tree=page.getByRole('region',{name:'知识树',exact:true});await expect(tree.locator('.starting-point')).toContainText('总时间');
-  await tree.locator('.starting-point button').click();
-  await expect(tree.locator('.living-tree')).toHaveCount(0);
-  await tree.getByRole('button',{name:'从这里聊起',exact:false}).click();
+  const tree=page.getByRole('main',{name:'我的理解',exact:true});
+  await tree.getByRole('button',{name:/总时间/}).click();
+  await tree.getByRole('button',{name:'从这里探索',exact:true}).click();
   await expect.poll(()=>fixture.requests.length).toBe(1);
   expect(fixture.requests[0].knowledge_focus).toEqual({reference,node_id:leaf.id});expect(fixture.errors).toEqual([]);
 });

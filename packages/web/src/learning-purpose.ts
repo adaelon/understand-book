@@ -4,7 +4,7 @@ import type { ReaderManifest, OutlineItem } from './reader-outline';
 
 export type LearningScopeKind = 'selection' | 'chapter' | 'section' | 'media' | 'material';
 export interface LearningScopeOption { value: LearningScopeKind; label: string; lid?: string }
-export interface LearningPurposeStart { message?: string; display?: string }
+export interface LearningPurposeStart { message?: string; display?: string; entryAction?: 'apply_lesson' }
 
 /** A document-wide heading is the material, not a second chapter-sized scope. */
 export function currentLearningSection(manifest: ReaderManifest | null, outline: OutlineItem[], anchor: string | null): OutlineItem | null {

@@ -75,6 +75,10 @@ pub struct ClosedBookPractice {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub answer_origin: Option<ClosedBookAnswerOrigin>,
+    /// A changed premise from the delivered question for this attempt.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub transfer_condition: Option<String>,
     /// Set only when the completion reply has actually been delivered.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -217,7 +221,7 @@ mod tests {
         let practice = ClosedBookPractice {
             id: "practice".into(), owner_id: "stage".into(), course: false,
             chat_session_id: "chat".into(), source_id: "book".into(), source_revision: "v1".into(),
-            goal_revision: None, course_origin: None, answer_origin: None, result_ref: None,
+            goal_revision: None, course_origin: None, answer_origin: None, transfer_condition: None, result_ref: None,
             revision: 0, status: "active".into(), can_resume: true,
             target: "解释全程时间".into(), criteria: String::new(), attempt: 1,
             assisted: false, needs_retry: false, visible_turn_ids: vec![], draft: String::new(),
@@ -246,7 +250,7 @@ mod tests {
         let initial = ClosedBookPractice {
             id: "a".into(), owner_id: "lesson".into(), course: true,
             chat_session_id: "parent".into(), source_id: "algebra".into(), source_revision: "v1".into(),
-            goal_revision: None, course_origin: None, answer_origin: None, result_ref: None,
+            goal_revision: None, course_origin: None, answer_origin: None, transfer_condition: None, result_ref: None,
             revision: 0, status: "active".into(), can_resume: true, target: "compare".into(),
             criteria: String::new(), attempt: 1, assisted: false, needs_retry: false,
             visible_turn_ids: vec![], draft: String::new(), completion_reason: String::new(), learner_quote: String::new(),

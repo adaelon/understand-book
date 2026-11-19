@@ -7,6 +7,11 @@ import type { BoardDelivery } from './generated/BoardDelivery';
 import { boardDeliveryKey, mergeBoardDeliveries } from './board-workspace';
 export type { RunActivity };
 
+export function completedTeachingStep(previous: RunActivity[] | undefined, activities: RunActivity[]): boolean {
+  return activities.some(step => step.kind === 'tool' && step.name === 'tutor.step' && step.status === 'succeeded'
+    && !previous?.some(old => old.step_id === step.step_id && old.status === 'succeeded'));
+}
+
 export interface RunDescriptor { workspace_id?: string; workspace_generation?: number; published_book_ref?: { book_id: string; publication_id: string }; book_id: string; session_id: string; turn_id: string }
 export interface AnswerDraft { message_id: number; revision: number; operation: string; view: AgentAnswerView | null }
 export interface RunSnapshot {
@@ -127,6 +132,7 @@ export function runStatusText(snapshot: RunSnapshot, connection: string): string
 export function agentFailureMessage(error: AgentChatTurn['error'], summary?: AgentChatTurn['run_summary']): string | undefined {
   if (!error) return;
   if (error.error_code === 'AGENT_RUN_CANCELLED') return;
+  if (error.error_code === 'MODEL_OUTPUT_LIMIT') return uiText('本次生成达到单次输出上限。');
   if (error.error_code === 'LOCAL_AGENT_UNAVAILABLE') return uiText('本机 Agent 未能完成回答。请检查连接和终端登录状态，再重试原问题。');
   if (error.error_code === 'VIDEO_DRAFT_INVALID') return uiText('问题未提交：视频提问内容无效，请检查所选画面或附件后重新发送。');
   if (error.error_code === 'HTTP_413' || error.error_code === 'REQUEST_TOO_LARGE') return uiText('图片或附件过大，请缩小后重新发送。');

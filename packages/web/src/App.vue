@@ -48,7 +48,7 @@ import { FocusSource } from './reader-focus-source';
 import { recoverSubmissions, recoverWorkspaceBinding, requestWorkspaceRecovery, pendingSubmissions, retrySubmission } from './reader-host';
 import type { RecapTarget } from './session-recap';
 import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
-const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean; hostOpening?: boolean; materialTitle?: string; learningWorkspace?: LearningWorkspace | null }>(), { readerVisible: true });
+const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean; hostOpening?: boolean; materialTitle?: string; learningWorkspace?: LearningWorkspace | null; courseTrial?: { bookId: string; revision: string } | null }>(), { readerVisible: true });
 const recapEmit = defineEmits<{ (e: 'mcp-source-consumed'): void; (e: 'mcp-source-error', message: string): void; (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void; (e: 'board-visibility', visible: boolean): void; (e: 'understanding-visibility', visible: boolean): void; (e:'learning-collection', target:LearningCollectionTarget):void; (e:'course-launch', target:CourseLaunchTarget, learningWorkspaceId:string):void }>();
 import { runNotice as spendNotice, type RunNotice as SpendNotice } from './reader-host';
 import { localCapabilities } from './local-capabilities';
@@ -335,7 +335,7 @@ import {
 import type { ReaderSelectionSnapshot } from "./useReaderSelection";
 import { createReadingContinuity, type PdfReadingAnchor, type ReadingReturnPoint } from "./useReadingContinuity";
 import { effectId, dispositionLabel, type EffectDisposition } from "./effect-disposition";
-import { agentFailureMessage, runStatusText, type RunActivity, type RunSnapshot } from "./agent-run-state";
+import { agentFailureMessage, completedTeachingStep, runStatusText, type RunActivity, type RunSnapshot } from "./agent-run-state";
 import type { WorkspaceLogicalState, WorkspaceProjection } from "./workspace-layout";
 
 type NodeKind = import("./api").Manifest["tree"][number]["kind"];
@@ -621,7 +621,9 @@ const rightRailWidth = ref(384);
 const coursePlayer = ref<InstanceType<typeof InquiryCoursePlayer>>();
 const localCourseWorkspace = ref<LearningWorkspace | null>(null);
 const courseWorkspace = computed(() => recapProps.learningWorkspace ?? localCourseWorkspace.value);
-const coursePublication = computed(() => network.value.workspace?.published_book_ref ?? (localCourseWorkspace.value ? { book_id: localCourseWorkspace.value.learning_workspace_id.slice('local-course:'.length), publication_id: 'local' } : undefined));
+const activeTrial = computed(() => recapProps.courseTrial?.bookId === buildWorkbenchSnapshot.value?.book_id ? recapProps.courseTrial : null);
+const trialOpenError = ref('');
+const coursePublication = computed(() => network.value.workspace?.published_book_ref ?? (localCourseWorkspace.value && buildWorkbenchSnapshot.value ? { book_id: buildWorkbenchSnapshot.value.book_id, publication_id: 'local' } : undefined));
 const courseAvailable = ref(false), courseMode = ref(false);
 const courseBlocked = ref(false);
 const courseError = ref('');
@@ -700,13 +702,23 @@ watch(() => buildWorkbenchSnapshot.value?.book_id, async bookId => {
   localCourseWorkspace.value = null; courseAvailable.value = false;
   courseMode.value = false; courseLesson.value = null;
   if (!bookId) return;
-  const scope = `local-course:${bookId}`;
+  const trial = activeTrial.value;
+  const scope = trial ? `local-course-trial:${bookId}:${trial.revision}` : `local-course:${bookId}`;
+  trialOpenError.value = '';
   try {
     const catalog = await inquiryCourse.catalog(scope);
-    if (buildWorkbenchSnapshot.value?.book_id !== bookId || !catalog.course) return;
-    const goal = { text: '理解理论并独立解题', constraints: ['已学线性代数和微积分'], revision: 1, created_at: 0 };
+    if (buildWorkbenchSnapshot.value?.book_id !== bookId || disposed) return;
+    if (trial && catalog.course?.lessons.length !== 1) throw new Error(uiText('此试课版本需要包含一节代表课。'));
+    if (!catalog.course) return;
+    const sample = trial ? catalog.course.lessons[0] : null;
+    const goal = { text: sample?.objective ?? '理解理论并独立解题', constraints: sample ? [sample.prerequisites] : ['已学线性代数和微积分'], revision: 1, created_at: 0 };
     localCourseWorkspace.value = { learning_workspace_id: scope, goal, goal_history: [], members: [], archived: false, created_at: 0, updated_at: 0 };
-  } catch (e) { courseError.value = e instanceof Error ? e.message : uiText('本地课程暂时无法读取'); }
+    if (sample) await openCourse({ lessonId: sample.id, record: false });
+  } catch (e) {
+    if (buildWorkbenchSnapshot.value?.book_id !== bookId || disposed) return;
+    courseError.value = e instanceof Error ? e.message : uiText('本地课程暂时无法读取');
+    if (trial) trialOpenError.value = courseError.value;
+  }
 }, { immediate: true });
 let coursePreviousOutline = true;
 let courseSourceVisited: string | null = null;
@@ -785,14 +797,14 @@ async function ensureLearningChat() {
   if (!activeChatSessionId.value) throw new Error(uiText('学习对话尚未准备好，请重试。'));
 }
 async function recordLearningTask(selection: LearningTaskSelection) {
-  if (disposed) return;
+  if (disposed || activeTrial.value) return;
   await ensureLearningChat();
   await api.selectLearningTask({ chat_session_id: activeChatSessionId.value, ...selection });
   if (!network.value.enabled) await loadLocalLearningTasks();
 }
 const localLearningTasks = ref<LearningTaskView[]>([]);
 const localLearningTaskBusy = ref(false);
-const localLearningTask = computed(() => localLearningTasks.value.find(task => task.status !== 'unavailable'));
+const localLearningTask = computed(() => activeTrial.value ? undefined : localLearningTasks.value.find(task => task.status !== 'unavailable'));
 async function loadLocalLearningTasks() {
   if (network.value.enabled) return;
   const book = buildWorkbenchSnapshot.value?.book_id;
@@ -924,6 +936,14 @@ async function leaveCourse(signal?:AbortSignal) {
   courseMode.value = false; courseSurface.value = 'source'; leftRailOpen.value = coursePreviousOutline;
   workspaceRef.value?.showReader();
   return true;
+}
+async function exitCourse() {
+  if (await leaveCourse() && activeTrial.value) {
+    const url = new URL(location.href);
+    url.searchParams.delete('course_book');
+    url.searchParams.delete('trial');
+    location.assign(url.href);
+  }
 }
 async function openReading(signal?:AbortSignal):Promise<void> {
   readingRequested = true; pendingCourseLaunch.value = null;
@@ -2277,7 +2297,8 @@ async function loadChapter(anchorLid: string) {
   }
   try {
     const t = await api.text(top);
-    chapterTitle.value = t.text.split("\n")[0].slice(0, 40);
+    const fallback = kindOf(top) === 'image' && leafOrder.value[0] === top ? uiText('封面') : uiText('正文');
+    chapterTitle.value = outlineTitle(t.text, fallback).slice(0, 40);
   } catch {
     chapterTitle.value = top;
   }
@@ -4786,6 +4807,9 @@ watch([residentRun.snapshot, residentRun.connection], ([snapshot]) => {
   if (!snapshot || snapshot.descriptor.session_id !== activeChatSessionId.value) return;
   const turn = chat.value.find(t => t.turnId === snapshot.descriptor.turn_id);
   if (!turn) return;
+  if (turn.teachingRef?.startsWith('action:') && completedTeachingStep(turn.activities, snapshot.activities)) {
+    window.dispatchEvent(new CustomEvent('tutor-state-changed', { detail: { assessmentRef: turn.teachingRef } }));
+  }
   turn.activities = snapshot.activities;
   turn.liveEffects = snapshot.effects;
   turn.boardCommits = mergeBoardDeliveries(turn.boardCommits, snapshot.board_commits, snapshot.final_view?.board_commits);
@@ -5348,7 +5372,7 @@ async function startLearningPurpose(purpose: LearningPurpose, scopeKind?: Learni
     const message = details?.message?.trim() ?? '';
     const display = details?.display ?? `${learningPurposeLabel(purpose, musicMode.value, videoMode.value)} · ${scope.label}${message ? `\n\n${message}` : ''}`;
     const turn = await submitAgentMessage(message, display, request.quote, undefined, {
-      entry_action: 'learn_with_purpose', learning_purpose: purpose, chapter_lid: request.chapterLid,
+      entry_action: details?.entryAction ?? 'learn_with_purpose', learning_purpose: purpose, chapter_lid: request.chapterLid,
       source_id: request.sourceId, source_revision: request.sourceRevision, session_id: request.sessionId,
       client_request_id: crypto.randomUUID(), expected_chat_head: request.head,
     }, undefined, media);
@@ -5372,7 +5396,8 @@ async function startNoteRevisit(noteRef: import('./generated/NoteRef').NoteRef, 
       || request.sourceRevision !== noteSourceFingerprint.value) return;
     tutorPanelOpen.value = false;
     workspaceRef.value?.showAssistant('agent');
-    const turn=await submitAgentMessage('', uiText('用我这条想法练一练'), null, undefined, {
+    const label = understandingRef ? uiText('换个例子练习') : uiText('用我这条想法练一练');
+    const turn=await submitAgentMessage('', label, null, undefined, {
       entry_action: 'revisit_note', note_ref: noteRef,
       ...(understandingRef?{understanding_ref:understandingRef,note_refs:[noteRef]}:{}),
       source_id: request.sourceId, source_revision: request.sourceRevision, session_id: request.sessionId,
@@ -5395,8 +5420,11 @@ async function startUnderstandingAction(action:UnderstandingAction) {
   }
   workspaceRef.value?.showAssistant('agent');
   tutorPanelOpen.value=false;
-  const turn=await submitAgentMessage(action.mode==='practice'?'请围绕这条理解给我一个新的情境，让我试着运用。':'',action.mode==='practice'?'用这条理解练一练':uiText('继续推敲这处理解'),null,undefined,{
-    entry_action:'clarify_answer',answer_ref:{turn_id:action.context.turn_id!},session_id:activeChatSessionId.value,
+  const practice = action.mode === 'practice';
+  const label = practice ? uiText('换个例子练习') : uiText('接着这一点');
+  const turn=await submitAgentMessage(action.message ?? '',action.message ? `${label}\n${action.message}` : label,null,undefined,{
+    entry_action:'continue_answer',...(practice ? {learning_purpose:'practice'} : {}),
+    answer_ref:{turn_id:action.context.turn_id!},session_id:activeChatSessionId.value,
     source_id:action.context.book_id!,source_revision:action.source_revision,understanding_ref:action.understanding_ref,
     ...(action.note_ref?{note_refs:[action.note_ref]}:{}),client_request_id:crypto.randomUUID(),expected_chat_head:actionHead(),
   });
@@ -5571,7 +5599,7 @@ async function practiceAnswer(turnId: string) {
 }
 async function practiceCourse() {
   await startLearningPurpose('practice', 'material', {
-    message:uiText('围绕本课当前这一轮已经讲解的重点，给我一道应用题，等我回答后再反馈。'),
+    entryAction:'apply_lesson',
     display:uiText('给我一道应用题'),
   });
 }
@@ -5668,7 +5696,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
       ...goalMeta,
       client_request_id: turn.requestId,
       display_user: displayUser,
-      question_anchor_lid: goalMeta.entry_action === 'learn_with_purpose' && !draft ? undefined : questionAnchorLid,
+      question_anchor_lid: (goalMeta.entry_action === 'learn_with_purpose' || goalMeta.entry_action === 'apply_lesson') && !draft ? undefined : questionAnchorLid,
       question_quote: draft ? { ...draft } : null,
     });
     if ('turn_id' in result && submittedDraft && submissionIdentity?.user_id === network.value.identity?.user_id && submissionIdentity?.csrf_token === network.value.identity?.csrf_token) {
@@ -6594,7 +6622,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
       <template #account><slot name="account" /></template>
       <template #help>
         <slot name="help" />
-        <ProductTour v-if="!network.enabled && !boardVisible && !localPage" :context="appSurface === 'reader' && !sending && !agentHistoryLoading && !agentHistoryError ? 'reader' : null" owner="local" :prepare="prepareProductTour" />
+        <ProductTour v-if="!network.enabled && !boardVisible && !localPage && !activeTrial" :context="appSurface === 'reader' && !sending && !agentHistoryLoading && !agentHistoryError ? 'reader' : null" owner="local" :prepare="prepareProductTour" />
       </template>
     </TopBar>
     <ReaderTypographyPanel v-if="typography.open.value" :preferences="typography.preferences.value" :save-error="typography.saveError.value" :pdf="activeReaderSurface === 'pdf'" @change="typography.update" @close="closeTypography" />
@@ -6904,15 +6932,16 @@ watch(sending, (next,previous) => { if (previous && !next) {
       @reader-surface-request="selectReaderSurface"
     >
       <template #reader-navigation>
-        <nav v-if="(courseAvailable || courseMode || network.enabled && coursePublication) && !mediaMode" class="book-course-navigation" :aria-label="uiText('书内学习')">
+        <nav v-if="trialOpenError" class="book-course-navigation"><span role="alert">{{ trialOpenError }}</span><a href="?">{{ uiText('返回阅读器') }}</a></nav>
+        <nav v-else-if="(courseAvailable || courseMode || network.enabled && coursePublication) && !mediaMode" class="book-course-navigation" :aria-label="uiText('书内学习')">
           <template v-if="courseMode">
-            <div class="course-navigation-title"><small>{{ courseCollection.title }}<template v-if="courseUnitTitle"> · {{ courseUnitTitle }}</template></small><strong>{{ courseLesson?.summary.question ?? uiText('本书课程') }}</strong></div>
+            <div class="course-navigation-title"><small>{{ courseCollection.title }}<template v-if="activeTrial"> · {{ uiText('代表课试学') }}</template><template v-if="courseUnitTitle"> · {{ courseUnitTitle }}</template></small><strong>{{ courseLesson?.summary.question ?? uiText('本书课程') }}</strong></div>
             <div class="course-surface-tabs" role="group" :aria-label="uiText('学习内容')">
               <button :aria-pressed="courseSurface === 'course'" @click="returnToCourse">{{ uiText('课程') }}</button>
               <button :disabled="!courseLesson" :aria-pressed="courseSurface === 'source'" @click="readCourseOriginal()">{{ uiText('原文') }}</button>
               <button v-if="courseLesson?.experiment && (courseLesson.experiment.kind !== 'inquiry' || !courseLesson.experiment.visualization || ['experiment','explanation'].includes(courseLesson.progress.stage))" :aria-pressed="courseSurface === 'experiment'" @click="revisitCourseExperiment">{{ uiText('实验') }}</button>
             </div>
-            <button class="leave-course" :disabled="courseBlocked" @click="leaveCourse()">{{ uiText('继续自由阅读') }}</button>
+            <button class="leave-course" :disabled="courseBlocked" @click="exitCourse">{{ activeTrial ? uiText('退出试课') : uiText('继续自由阅读') }}</button>
             <button v-if="courseSurface === 'source' && network.enabled" class="open-book-course" :disabled="courseBlocked || courseCollectionLoading || !!courseCollectionError" @click="coursePlayer?.returnToCollection()">{{ uiText(courseCollection.kind === 'course' ? '返回整套课程总目录' : '返回书籍学习首页') }}</button>
             <template v-if="courseSurface === 'source' && courseCollectionError"><span role="alert">{{ courseCollectionError }}</span><button class="open-book-course" @click="loadCourseCollection">{{ uiText('重试读取课程归属') }}</button></template>
           </template>

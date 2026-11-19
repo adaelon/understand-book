@@ -311,6 +311,7 @@ export interface AutomaticBuildSnapshotOptions {
   /** The confirmed plan's stages; omitted for an unrestricted inspection. */
   public_stage_closure?: BuildPlanV1["public_stage_closure"];
   course_goal?: string;
+  course_route?: BuildPlanV1["course_route"];
   /** Accepted public dependencies selected by the plan, independent of producer upgrades. */
   reuse?: BuildPlanV1["reuse"];
   /** Observe one extraction stage from its public dependencies, without routing the whole build. */
@@ -3455,7 +3456,7 @@ function buildAutomaticBuildSnapshotInternal(
       return { lid, unit_lid: unit.unit_lid, kind: node.kind, text: loaded.source.slice(node.span.start, node.span.end) };
     })),
   }, units: unitSources, structure: readJson<BookStructureSidecar>(path.join(target.workspace_dir, "book_structure.json")) }));
-  if (options.public_stage_closure?.includes("course")) stages.push(routeCourseBuild(readTeachingBuildInput(target), options.course_goal));
+  if (options.public_stage_closure?.includes("course")) stages.push(routeCourseBuild(readTeachingBuildInput(target), options.course_goal, options.course_route));
   return { target, stages };
 }
 
@@ -3463,7 +3464,7 @@ function buildAutomaticBuildSnapshotInternal(
 export function readAutomaticBuildTaskStage(target: AutomaticBuildTarget,
   focus: { stage: SemanticBuildStage; work_unit_id: string; parent_lid?: string },
   quality_profile: ExtractionQualityProfile, options: AutomaticBuildSnapshotOptions = {}) {
-  if (focus.stage === "course") return routeCourseBuild(readTeachingBuildInput(target), options.course_goal);
+  if (focus.stage === "course") return routeCourseBuild(readTeachingBuildInput(target), options.course_goal, options.course_route);
   if (["formal_objects", "cognitive_materials", "teaching_publish"].includes(focus.stage)) {
     return routeTeachingBuildStages({ ...readTeachingBuildInput(target), retrieval: options.retrieval }).find(s => s.stage === focus.stage);
   }
@@ -3528,7 +3529,7 @@ export function prepareAutomaticBuildSnapshot(target: AutomaticBuildTarget, stag
 async function prepareAuthorizedSnapshot(target: AutomaticBuildTarget, stage: SemanticBuildStage,
   options: AutomaticBuildSnapshotOptions & { authorization: AutomaticBuildRetrievalAuthorization }): Promise<AutomaticBuildAsyncPreparationResult> {
   const { authorization, ...snapshotOptions } = options;
-  const routeOptions = { ...snapshotOptions, public_stage_closure: authorization.plan.public_stage_closure, course_goal: authorization.plan.course_goal,
+  const routeOptions = { ...snapshotOptions, public_stage_closure: authorization.plan.public_stage_closure, course_goal: authorization.plan.course_goal, course_route: authorization.plan.course_route,
     reuse: authorization.plan.reuse, retrieval: authorization.runtime.selection };
   let routed = routeAutomaticBuildSnapshot(target, routeOptions);
   if (routed.status === "blocked") return routed;

@@ -37,6 +37,33 @@ async function tool(page: Page, name: string) {
   await page.getByRole('navigation', { name: '专注阅读工具' }).getByRole('button', { name, exact: true }).click();
 }
 const longSources = Array.from({ length: 36 }, (_, i) => ({ lid: `1.${i + 1}`, kind: 'paragraph', text: `Paragraph ${i + 1}. ` + '原文范围必须准确，阅读位置始终保持。'.repeat(200) }));
+test('image cover has a readable title and focus annotations leave the first glyph accessible', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('understand-book.product-tour.v1.local.reader', 'done'));
+  const server = await backend(page, 'cover-with-note', undefined, [
+    { lid: '1', kind: 'image', text: '![](../images/00001.jpeg)' },
+    { lid: '2', kind: 'paragraph', text: '图书在版编目（CIP）数据' },
+  ]);
+  server.control.annotations.push({
+    mem_id: 'cover-test-note', type: 'note', layer: 'long_term', book_id: 'cover-with-note', anchor: { lid: '2' },
+    content: '段首批注', note_placement: { kind: 'lid_block', lid: '2', source_fingerprint: server.control.revision },
+  });
+  await page.goto(process.env.FOCUS_ENTRY_URL ?? '/playwright/fixtures/focus-turn.html', { waitUntil: 'domcontentloaded', timeout: 90000 });
+  await expect(page.locator('.reading-titles strong:visible')).toHaveText('封面', { timeout: 30000 });
+  await enter(page);
+  const marker = page.locator('.focus-screen:not([hidden]) .focus-annotation-marker');
+  await expect(marker).toBeVisible();
+  const bounds = await marker.evaluate(button => {
+    const screen = button.closest('.focus-screen')!;
+    const text = screen.querySelector('[data-lid="2"]')!;
+    const box = button.getBoundingClientRect();
+    return { left: box.left, screenLeft: screen.getBoundingClientRect().left, right: box.right, textLeft: text.getBoundingClientRect().left };
+  });
+  expect(bounds.left).toBeGreaterThanOrEqual(bounds.screenLeft);
+  expect(bounds.right).toBeLessThan(bounds.textLeft);
+  await expect(page.getByRole('button', { name: '退出专注', exact: true }).filter({ visible: true })).toHaveCount(1);
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.focus-reader-body:visible')).toHaveCount(0);
+});
 async function selectAcross(page: Page) {
   return page.evaluate(() => {
     const pages = document.querySelectorAll('.focus-screen:not([hidden]):not([inert]) .focus-page');

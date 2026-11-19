@@ -384,6 +384,13 @@ function activityGuidanceAvailable(turnId: string, available: boolean) {
 }
 function responseAvailable(turnId: string, available: boolean, host = 'plain') {
   const key = `${turnId}:${host}`;
+  if (available && host === 'plain' && !responseHosts.value.has(key) && props.fullscreen && followTranscript.value) {
+    void nextTick(() => {
+      if (latestAnswerTurn.value?.turnId === turnId && props.fullscreen && followTranscript.value) {
+        activityInstances.get(turnId)?.revealPractice();
+      }
+    });
+  }
   if (available) responseHosts.value.set(key, turnId); else responseHosts.value.delete(key);
 }
 const learningResponseLabel = computed(() => {
@@ -714,6 +721,7 @@ watch(() => [props.activeChatSessionId, openGoals.value.length] as const, ([sess
 function goalStopLabel(reason: string | null | undefined): string {
   if (!reason) return uiText('任务尚未完成');
   if (reason === "TURN_LIMIT_EXCEEDED") return uiText('本次达到运行上限');
+  if (reason === "MODEL_OUTPUT_LIMIT") return uiText('本次生成达到单次输出上限。');
   if (reason === "AGENT_RUN_CANCELLED") return uiText('本次生成已停止');
   if (reason === "AGENT_NO_PROGRESS") return uiText('本次未能继续推进');
   return uiText('本次运行未完成');
@@ -754,7 +762,11 @@ function practiceFromAnswer(kind: 'explain' | 'apply') {
   const turnId = guidanceTurn.value?.turnId;
   if (!showAnswerPractice.value || !turnId || learningActionBlocked.value || (kind === 'explain' && !props.closedBookReady)) return;
   if (kind === 'explain') emit('explain-answer', turnId);
-  else emit('practice-answer', turnId);
+  else {
+    followTranscript.value = true;
+    void scrollTranscriptToLatest();
+    emit('practice-answer', turnId);
+  }
 }
 const composerGuidancePurpose = computed(() => {
   if (props.askDraft) return props.askDraft.status !== 'partial' && props.askDraft.quote.trim() ? 'selection' as const : null;
@@ -942,6 +954,9 @@ function answerParts(outcome: OuterOutcome): AgentAnswerPart[] {
 function incompleteNotice(outcome: OuterOutcome): string | null {
   if (!outcome.incomplete || !outcome.warning) return null;
   switch (outcome.warning) {
+    case "MODEL_OUTPUT_LIMIT":
+      // The runtime supplies the stop reason and confirmed delivery state in the answer.
+      return outcome.answer?.trim() ? null : uiText('本次生成达到单次输出上限。');
     case "CONTEXT_BUDGET_EXCEEDED":
     case "ACTIVE_CONTEXT_EXHAUSTED":
       return uiText('这次内容较长，先提供当前可用的回答；其余部分可以继续补充。');
@@ -1502,12 +1517,6 @@ function canUndoMemoryUpdate(update: ProfileMemoryUpdate): boolean {
   return update.kind === "remembered" || update.kind === "corrected";
 }
 
-function hasProfileUsage(usage: ProfileUsageTrace): boolean {
-  return usage.injected_fact_ids.length > 0
-    || usage.claimed_used_fact_ids.length > 0
-    || usage.influences.length > 0;
-}
-
 function influenceLabel(influence: ProfileUsageTrace["influences"][number]): string {
   return {
     retrieval_plan: uiText('检索计划'),
@@ -1862,9 +1871,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               </div>
             </div>
 
-            <details v-if="hasProfileUsage(turn.outcome.profile_usage)" class="profile-usage">
-              <summary>{{ uiText('学习偏好与背景 ·') }} {{ turn.outcome.profile_usage.injected_fact_ids.length }} {{ uiText('条') }}</summary>
-              <p v-if="turn.outcome.profile_usage.influences.length">
+            <details v-if="turn.outcome.profile_usage.influences.length" class="profile-usage">
+              <summary>{{ uiText('学习背景对本次回答的影响') }}</summary>
+              <p>
                 {{ turn.outcome.profile_usage.influences.map(influenceLabel).join(" · ") }}
               </p>
             </details>

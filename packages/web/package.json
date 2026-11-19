@@ -6,7 +6,6 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc --noEmit -p tsconfig.local.json && vite build",
-    "build:multi": "pnpm --filter @understand-book/cloud-reader build --outDir ../../packages/web/dist-multi",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",

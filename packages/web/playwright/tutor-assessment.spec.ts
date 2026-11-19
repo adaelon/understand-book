@@ -1,4 +1,43 @@
 import { expect, test } from '@playwright/test';
+import { scenario, setup } from './fixtures/tutor-continuation';
+
+test('a restored open question refreshes its assessment before the answer turn ends', async ({ page }) => {
+  const fixture = await setup(page, 'markdown', true, true, true);
+  const action = 'action:grain-answer';
+  const turn = 'pending-assessment';
+  fixture.turns[0].domain = { teaching: ['question'] };
+  fixture.turns.push({ turn_id: turn, user: '因为路越远，途中需要的粮食越多。', user_turn_ordinal: 2,
+    status: 'pending_assistant', teaching_ref: action, effect_labels: [] });
+  let graded = false;
+  let releaseGrade!: () => void;
+  const grade = new Promise<void>(resolve => { releaseGrade = resolve; });
+  const step = { step_id: 1, kind: 'tool', name: 'tutor.step', label: '评定此次作答', status: 'succeeded' };
+  await page.route('**/api/tutor/activities', route => route.fulfill({ json: { activities:
+    route.request().postDataJSON().turn_id === 'tc0-answer' ? [{
+      delivery_ref: 'grain', attempted: true, status: 'active', help_seen: [],
+      move: { move_id: 'grain', prompt: '为什么长途需要提前备粮？', actions: ['revise'] },
+      assessment: { status: graded ? 'correct' : 'unassessed', action_ref: action, attempt: 1, assistance_count: 1 },
+    }] : [] } }));
+  await page.route('**/api/agent/runs/' + turn, route => route.fulfill({ json: {
+    descriptor: { book_id: scenario.book_id, session_id: 'tc0-chat', turn_id: turn },
+    execution_state: 'running', persistence_state: 'pending', last_seq: 0, activities: [],
+  } }));
+  await page.route('**/api/agent/runs/' + turn + '/events*', async route => {
+    await grade;
+    const event = { type: 'tool.finished', turn_id: turn, seq: 1, elapsed_ms: 100, payload: step };
+    await route.fulfill({ contentType: 'text/event-stream', body: 'event: tool.finished\ndata: ' + JSON.stringify(event) + '\n\n' });
+  });
+  try {
+    await page.reload();
+    const card = page.locator('[data-delivery-ref="grain"]').first();
+    await expect(card).toContainText('回答已记录，尚未评分。');
+    graded = true;
+    releaseGrade();
+    await expect(card).toContainText('本次回答符合标准');
+    await expect(card).toContainText('本次回答前已展示帮助。');
+    expect(fixture.turns[1].status).toBe('pending_assistant');
+  } finally { releaseGrade(); }
+});
 
 test('frozen grading, assistance and corrected understanding survive reopening', async ({ page }) => {
   let failCorrection = true;

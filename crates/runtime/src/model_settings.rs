@@ -103,6 +103,8 @@ pub struct ModelBinding {
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ProviderOptions {
+    /// Distinguishes an explicit high effort from the same value inherited by default.
+    pub explicit_agent_reasoning_effort: bool,
     pub api_protocol: ApiProtocol,
     pub auth: AuthMethod,
     pub headers: BTreeMap<String, String>,
@@ -262,7 +264,9 @@ impl ModelSettings {
                 api_protocol: ApiProtocol::LegacyAuto, mode: config.mode.as_str().into(),
                 context_window_tokens: None, output_token_limit: None,
                 capabilities: ModelCapabilities::default(),
-                agent_reasoning_effort: Some(config.agent_reasoning_effort.as_str().into()),
+                agent_reasoning_effort: (!crate::deepseek_messages::official_flash_route(&config.base_url, &config.model)
+                    || config.options.explicit_agent_reasoning_effort || config.agent_reasoning_effort != AgentReasoningEffort::default())
+                    .then(|| config.agent_reasoning_effort.as_str().into()),
                 generation: GenerationParameters::default(),
             }],
             bindings: PurposeBindings {
@@ -397,6 +401,7 @@ impl ModelSettings {
             base_url: service.base_url.clone(), model: model.model_id.clone(),
             agent_reasoning_effort: model.agent_reasoning_effort.as_deref().map(parse_effort).transpose()?.unwrap_or_default(),
             options: ProviderOptions {
+                explicit_agent_reasoning_effort: model.agent_reasoning_effort.is_some(),
                 api_protocol: model.api_protocol, auth: service.auth, headers: service.headers.clone(),
                 binding: Some(ModelBinding { service_id: service.id.clone(), model_config_id: model.id.clone(), revision: self.revision }),
                 runtime_profile: if overrides { Some(self.profile(model)?) } else { None },

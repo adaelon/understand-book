@@ -5,7 +5,8 @@ description: Operator maintenance tool to build or resume a local book workspace
 
 # $understand-book-build
 
-Choose the request's planning route, obtain an explicitly confirmed `BuildPlan`, and then let the
+Choose the request's planning route. An open-ended course commission starts with one playable trial.
+For automatic builds, obtain an explicitly confirmed `BuildPlan`, and then let the
 deterministic Build Engine drive execution until it returns `DONE` or a real user boundary. The
 root Codex owns semantic planning, user conversation, live agent-slot observation, and harness
 lifecycle only. It does not interpret the internal build state machine.
@@ -15,6 +16,8 @@ its own malformed control requests and continue the same invocation; do not turn
 caller error into a user decision or a separate maintenance task.
 
 ## Authority and privacy boundary
+
+The following ownership applies when running the deterministic Build Engine protocol.
 
 - Reader/Core owns the current source, content profile, Blueprint validation, plan identity, and
   reader-private store.
@@ -47,10 +50,15 @@ path, or request to “build this paper” is not by itself a natural-language r
 - **Explicit reading goal:** only when the user asks to plan the build around a stated reading goal,
   use **Natural-language reading goal** below. The goal route may call the Desktop controller and
   produce reader-private artifacts.
-- **Build a course:** use the standard route with `--course`; pass an explicitly requested course
-  topic or chapter scope with `--course-goal`. A course goal selects the shared course content and
-  does not select the reader-private intent route. An empty goal lets BookStructure organize the
-  source into lessons. Include the course stages and their budget in the exact plan projection.
+- **Open-ended course commission:** a title, a book, or a wish such as “make me a course” starts
+  with **Teach one trial lesson** below. The authoring Agent chooses a provisional question and
+  audience from the book. Invite any context the commissioner wants to offer. Use the trial to
+  discover a useful course direction; leave the wider route open until they choose it.
+- **Direct course build:** when the commissioner specifies the course to produce and asks to proceed,
+  use the standard route with `--course`; pass their explicit topic or chapter scope with
+  `--course-goal`. An explicitly requested whole-book course can follow BookStructure in order.
+  After a trial use `--course-route` with the accepted route file. Include the course stages and
+  their budget in the exact plan projection. The course brief governs shared learning content.
 
 Do this classification before either plan-authoring surface is called. Never reinterpret an
 ordinary prebuild request as a reading goal merely because the workspace contains a paper.
@@ -98,7 +106,7 @@ BookStructure from Pass1 and profile sidecars. Record `pass2=enabled|disabled` i
 For a new standard plan, call the installed code-owned surface directly:
 
 ```text
-<build-exe> legacy-plan <target> --root <root> [--pass2 <enabled|disabled>] [--course] [--course-goal <goal>] [budget flags]
+<build-exe> legacy-plan <target> --root <root> [--pass2 <enabled|disabled>] [--course] [--course-goal <goal> | --course-route <accepted-route.json>] [budget flags]
 ```
 
 Consume only `explicit_legacy_build_plan.v1`. Show its exact stage closure,
@@ -108,6 +116,45 @@ Never infer Pass2 enablement, budget approval, or plan confirmation from “full
 existing artifacts. Keep the returned path opaque and reuse it for interruption recovery; never
 create another standard plan merely to resume. If no unique confirmed plan path is available, stop as
 `needs_user(plan_confirmation_required)`.
+
+### Teach one trial lesson
+
+Use the operator-provisioned Build Engine's `course-trial` commands with the prepared book's
+workspace directory as BOOK. For a new source prepare its book structure through the ordinary
+prebuild first. Run `course-trial state BOOK` to pick up prior revisions and route decisions.
+This authoring workflow uses public source passages and the commissioner's own lesson drafts.
+
+1. Run `course-trial catalog BOOK` and `course-trial read BOOK UNIT_LID`. Select a question
+   representative of the book that a reader can investigate with a few original passages.
+   Explain why it is worth trying. Use `course-trial template BOOK UNIT_LID` for a single-lesson
+   artifact with its source identity. Fill the lesson, narrow the citation, and replace the example
+   fields with a prediction, evidence activity, explanation and an independent task in a new setting.
+2. Have an independent reviewer solve the student-facing questions using their prerequisites,
+   allowed material and cited passages. Then compare the author's solution, alternative answers,
+   conditions and scoring with the independent work. Repair concrete errors. Write a review JSON
+   with string fields `selection_reason`, `independent_solution` and `source_review`, recording the
+   actual reasoning. Keep the artifact and review inputs in the author's working area.
+   Run `course-trial install BOOK REV ARTIFACT_JSON REVIEW_JSON [PREVIOUS_REV]`. Each changed
+   lesson gets a new revision, for example `pilot-2`. Give the learner the returned `reader_path`
+   on their running local Reader and the question the lesson explores. Wait for their experience.
+3. Review the particular activity the commissioner wants to discuss. In their authorized local
+   Reader session, GET `/api/book/course/BOOK_ID?trial=REV` and select the corresponding
+   `progress[].run_id`. Add `&run_id=RUN_ID` to read the private view for that attempt. Use the
+   delivered question, response and support to ask a focused follow-up. If there is no attempt yet,
+   offer the trial link. When the commissioner shares their experience, record the course-design
+   finding via `course-trial feedback BOOK REV NOTE_ID NOTE_JSON`; fields are `activity`,
+   `observation` and `change`. Summarize the teaching issue and concrete change. Keep personal
+   responses and help history in the private attempt. For a local difficulty, focus the revised
+   trial on the affected activity, its necessary context and a fresh application. Install the
+   revision linked to this one so the learner can try the change and revisit either version.
+4. When there is enough experience to choose a direction, use `course-trial propose BOOK REV
+   PROPOSAL_ID ROUTE_JSON`. Its fields are `title`, `question`, `audience`, `final_task`,
+   ordered `unit_lids` from the catalog and one or two `example_lessons` (question strings). Show
+   what these choices would mean in the next lessons. For an adjustment, save a new proposal ID;
+   for “later”, run `course-trial pause BOOK REV PROPOSAL_ID`. When the commissioner selects the
+   specific route, run `course-trial accept BOOK REV PROPOSAL_ID` and pass its returned
+   `accepted_route_path` to the standard plan as `--course --course-route PATH`.
+   The existing plan review covers the budget and exact execution scope.
 
 ### Natural-language reading goal
 

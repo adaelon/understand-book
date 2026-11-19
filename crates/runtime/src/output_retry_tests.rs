@@ -217,6 +217,7 @@ fn output_retry_json_native_and_react_structured_and_chat_expand_once() {
             assert_eq!(requests[0]["messages"], requests[1]["messages"]);
             assert_two_attempts(&ledger, INITIAL_LIMIT, 5);
             assert_eq!(deltas.iter().filter(|delta| matches!(delta, ModelDelta::RetryReset)).count(), 1);
+            assert!(!deltas.iter().any(|delta| matches!(delta, ModelDelta::OutputLimitReached { .. })));
             let last_usage = deltas.iter().filter_map(|delta| match delta {
                 ModelDelta::Usage(usage) => Some(usage), _ => None,
             }).last().unwrap();
@@ -342,8 +343,10 @@ fn output_retry_respects_an_explicit_smaller_evaluation_budget() {
     let mut request = request();
     request.output_token_limit = Some(8_000);
     let mut resets = 0;
+    let mut limits = vec![];
     let error = adapter.complete_structured_observed(request, &mut |delta| {
         if matches!(delta, ModelDelta::RetryReset) { resets += 1; }
+        if let ModelDelta::OutputLimitReached { total_tokens } = delta { limits.push(total_tokens); }
     }).unwrap_err();
     assert!(error.message.contains("length"));
     let requests = worker.join().unwrap();
@@ -352,6 +355,7 @@ fn output_retry_respects_an_explicit_smaller_evaluation_budget() {
     assert_eq!(ledger.attempts.lock().unwrap().len(), 1);
     assert_eq!(ledger.finishes.lock().unwrap().len(), 1);
     assert_eq!(resets, 0);
+    assert_eq!(limits, [Some(8_010)]);
 }
 
 #[test]

@@ -73,6 +73,29 @@ it('accepts by touch and leaves the result editable without starting learning', 
   wrapper.unmount();
 });
 
+it('preserves a composed reading question through both adjacent start actions', async () => {
+  const wrapper = guided();
+  await wrapper.get('[data-purpose=understand]').trigger('click');
+  const input = wrapper.get('textarea');
+  await input.setValue('这里的海运');
+  await input.trigger('compositionstart');
+  input.element.value += '指什么';
+  await input.trigger('input');
+  expect(wrapper.get('.purpose-submit').attributes('disabled')).toBeDefined();
+  expect(wrapper.get('.purpose-fallback').attributes('disabled')).toBeDefined();
+  await wrapper.get('.purpose-submit').trigger('click');
+  await input.trigger('keydown', { key: 'Enter', ctrlKey: true });
+  expect(wrapper.emitted('choose')).toBeUndefined();
+  await input.trigger('compositionend');
+  await wrapper.get('.purpose-fallback').trigger('click');
+  expect(wrapper.emitted('choose')).toBeUndefined();
+  await wrapper.get('.purpose-submit').trigger('click');
+  expect(wrapper.emitted('choose')).toEqual([['understand', 'section', { message: '这里的海运指什么' }]]);
+  await input.setValue('');
+  expect(wrapper.get('.purpose-fallback').attributes('disabled')).toBeUndefined();
+  wrapper.unmount();
+});
+
 it('ignores a late result from a different purpose or after the reader has started typing', async () => {
   const pending: ((value: ReadingGuidance) => void)[] = [];
   const wrapper = guided(vi.fn(() => new Promise<ReadingGuidance>(resolve => pending.push(resolve))));

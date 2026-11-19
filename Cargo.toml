@@ -1,6 +1,20 @@
 [workspace]
 resolver = "2"
-members = ["crates/*", "apps/desktop/src-tauri", "apps/local-debug/src-tauri", "apps/local-desktop/src-tauri"]
+members = [
+  "apps/local-debug/src-tauri",
+  "apps/local-desktop/src-tauri",
+  "crates/artifact-tools",
+  "crates/base-schema",
+  "crates/book-tool-contracts",
+  "crates/desktop-support",
+  "crates/local-desktop-host",
+  "crates/maintenance-host",
+  "crates/memory",
+  "crates/read-tools",
+  "crates/reader-service",
+  "crates/reader",
+  "crates/runtime",
+]
 
 [workspace.package]
 edition = "2021"

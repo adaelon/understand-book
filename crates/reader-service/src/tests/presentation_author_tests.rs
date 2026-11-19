@@ -176,8 +176,17 @@ fn ex12_scroll_author_binds_images_reading_and_candidate_receipts() {
     let mut port = RuntimeStatePort { scope: &scope, port: &app, turn_ref: &turn,
         previewed: Default::default(), animations: Default::default(), plots: Default::default() };
     let cancellation = CancellationToken::default();
-    let html = include_str!("../../tests/fixtures/presentation-scroll.html");
-    let id = candidate(&mut port, html);
+    fn scroll_candidate(port: &mut impl ResidentStatePort) -> String {
+        let mut request = write(include_str!("../../tests/fixtures/presentation-scroll.html"));
+        if let AuthorRequest::Write { initial_state, state_contract, readable_content, .. } = &mut request {
+            *initial_state = json!({"clicks":0});
+            *state_contract = json!({"clicks":"Number of clicks on the fixed counter, integer >= 0"});
+            *readable_content = "START, MIDDLE, END. The fixed button counts clicks at any scroll position.".into();
+        }
+        let result = port.author_presentation(request, &[], &[], &CancellationToken::default()).unwrap();
+        result.body["candidate_id"].as_str().unwrap().to_owned()
+    }
+    let id = scroll_candidate(&mut port);
     for (name, viewport) in REQUIRED_PREVIEW_ENVIRONMENTS {
         let result = port.author_presentation(AuthorRequest::Preview {
             candidate_id: id.clone(), width: None, viewport: Some(viewport),
@@ -197,6 +206,9 @@ fn ex12_scroll_author_binds_images_reading_and_candidate_receipts() {
         }
         assert_eq!(result.body["reading"]["text"], "END");
         assert_eq!(last["dom"]["controls"][0]["text"], "1");
+        assert!(result.images[0].caption.contains("reader's original requirement"));
+        assert!(result.images[0].caption.contains("including the title and subtitle"));
+        assert!(result.images.iter().skip(1).all(|i| !i.caption.contains("reader's original requirement")));
         let image = &result.images[2];
         assert_eq!(image.candidate_id.as_deref(), Some(id.as_str()));
         assert_eq!(image.environment_name.as_deref(), Some(name));
@@ -204,7 +216,7 @@ fn ex12_scroll_author_binds_images_reading_and_candidate_receipts() {
         assert!(image.caption.contains("99999"));
         assert!(image.caption.contains(&format!("y={actual_y}")));
     }
-    let changed = candidate(&mut port, html);
+    let changed = scroll_candidate(&mut port);
     assert!(port.author_presentation(AuthorRequest::Deliver { candidate_id: changed }, &[], &[], &cancellation).is_err());
     assert!(port.author_presentation(AuthorRequest::Preview {
         candidate_id: id.clone(), width: None, viewport: None, read_selector: None,

@@ -248,6 +248,53 @@ pub fn speed_row(state: &mut AppState) -> Value {
 }
 
 #[test]
+fn practice_choice_understanding_reads_frozen_options_and_each_attempts_reasoning() {
+    let (_root, mut state) = fixture();
+    json_post(&mut state, "/agent/new", json!({}));
+    let introduction = super::prepare_agent_chat(&mut state, r#"{"message":"Walk me through the opening passage."}"#, "earlier")
+        .unwrap_or_else(|reply| panic!("{}", reply.body)).turn_ref;
+    finish(&mut state, &introduction, &outcome(None));
+    let turn = prepare_agent_chat(&mut state, r#"{"message":"Explain average speed"}"#, "now")
+        .unwrap_or_else(|reply| panic!("{}", reply.body)).turn_ref;
+    let mut task = practice_move("Which elapsed time represents the whole outing?", warmup(hints()));
+    task["move"]["answer_input"] = json!({"kind":"single_choice","options":[
+        {"id":"A","text":"60 minutes including the rest"}, {"id":"B","text":"10 minutes at rest"},
+        {"id":"C","text":"50 minutes in motion"}]});
+    task["move"]["assessment"]["rule"]["correct"] = json!(["A"]);
+    task["move"]["explanation"] = json!("The whole outing takes 60 minutes including the rest.");
+    select(&state, &turn, task).unwrap();
+    finish(&mut state, &turn, &outcome(None));
+    let session = state.user.agent_history.sessions.iter().find(|session| session.id == turn.session_id).unwrap();
+    let request = session.turns.iter().find(|entry| entry.turn_id == turn.turn_id).unwrap().user.clone();
+    assert_ne!(request, session.title);
+    let delivery = format!("delivery:{}:practice", turn.turn_id);
+    json_post(&mut state, "/tutor/display", json!({"delivery_ref":delivery}));
+    for (operation, action, choice, reason) in [
+        ("first", "submit", "C", None),
+        ("second", "revise", "C", Some("I counted only riding time.")),
+        ("third", "revise", "A", Some("The clock keeps running during the rest.")),
+    ] {
+        json_post(&mut state, "/tutor/action", json!({"delivery_ref":delivery,"operation_id":operation,
+            "action":action,"response":choice,"reasoning":reason}));
+        let view = json_post(&mut state, "/tutor/understanding", json!({}));
+        let item = &view["current_understanding"][0];
+        assert_eq!(item["learner_quote"], choice);
+        let displayed = if choice == "A" { "60 minutes including the rest" } else { "50 minutes in motion" };
+        assert_eq!(item["choice_answer"], json!({"options":[{"id":choice,"text":displayed}],"reasoning":reason}));
+        if action == "revise" {
+            assert_eq!(item["previous"]["learner_quote"], "C");
+            assert_eq!(item["previous"]["choice_answer"]["options"], json!([{"id":"C","text":"50 minutes in motion"}]));
+            let previous_reason = if operation == "third" { Some("I counted only riding time.") } else { None };
+            assert_eq!(item["previous"]["choice_answer"]["reasoning"], json!(previous_reason));
+        }
+        let detail = json_post(&mut state, "/tutor/evidence", json!({"evidence_ref":item["evidence_ref"]}));
+        assert_eq!(detail["choice_answer"], item["choice_answer"]);
+        assert_eq!(detail["learner_quote"], choice);
+        assert_eq!(detail["activity_turn_request"], request);
+    }
+}
+
+#[test]
 fn practice_solved_after_a_problem_pointer_counts_as_independent() {
     let (_root, mut state) = fixture();
     let id = delivered(&mut state, warmup(hints()));
@@ -262,14 +309,19 @@ fn practice_solved_after_a_problem_pointer_counts_as_independent() {
 fn an_answer_turn_keeps_the_practice_context_and_one_delivery_poses_one_problem() {
     let (_root, mut state) = fixture();
     let id = delivered(&mut state, warmup(hints()));
-    let answered = json_post(&mut state, "/tutor/action", json!({"operation_id":"a1","delivery_ref":id,"action":"submit","response":"A"}));
-    let next = prepare_agent_chat(&mut state, &json!({"message":"A","teaching_ref":answered["event_id"]}).to_string(), "later")
+    let reasoning = "Why does the denominator include the stop?";
+    let answered = json_post(&mut state, "/tutor/action", json!({"operation_id":"a1","delivery_ref":id,"action":"submit","response":"A","reasoning":reasoning}));
+    let next = prepare_agent_chat(&mut state, &json!({"message":reasoning,"teaching_ref":answered["event_id"]}).to_string(), "later")
         .unwrap_or_else(|r| panic!("{}", r.body));
     let context = next.tutor.unwrap();
     let practice = &context["learner_context"]["responding_to_practice"];
+    assert_eq!(practice["submitted_work"]["action_ref"], answered["event_id"]);
+    assert_eq!(practice["submitted_work"]["answer"], "A");
+    assert_eq!(practice["submitted_work"]["reasoning"], reasoning);
+    assert_eq!(practice["submitted_work"]["question"], PROMPT);
     assert_eq!((practice["delivery_ref"].as_str(), practice["practice"]["hint_count"].as_u64()), (Some(id.as_str()), Some(3)), "{context}");
     assert!(!context.to_string().contains("ten-minute rest"), "private hints stay out of the answer turn");
-    assert_eq!(context["learner_context"]["practice_history"][0]["outcome"], "missed", "a partial answer that was not corrected");
+    assert_eq!(context["learner_context"]["practice_history"][0]["outcome"], "partial", "a partial answer that was not corrected");
 }
 
 #[test]
@@ -418,6 +470,9 @@ fn a_questionable_check_flags_the_problem_and_removes_its_results_from_the_proje
     let id = delivered(&mut state, warmup(hints()));
     json_post(&mut state, "/tutor/action", json!({"operation_id":"a1","delivery_ref":id,"action":"submit","response":r#"["A","B"]"#}));
     assert_eq!(speed_row(&mut state)["independent_support"], 1);
+    let before = json_post(&mut state, "/tutor/understanding", json!({}));
+    let grade = before["interpretations"][0]["evidence_id"].clone();
+    assert_eq!(before["interpretations"][0]["status"], "correct");
 
     let pending = crate::practice_check::next(&state.user).unwrap().expect("delivered practice awaits its check");
     assert_eq!(pending.delivery.event_id, id);
@@ -432,12 +487,17 @@ fn a_questionable_check_flags_the_problem_and_removes_its_results_from_the_proje
 
     let view = json_post(&mut state, "/tutor/understanding", json!({}));
     assert!(view["rows"].as_array().unwrap().iter().all(|row| row["independent_support"] == 0), "{view}");
+    assert_eq!(view["current_understanding"],json!([]));
+    assert_eq!(view["interpretations"],json!([]));
+    assert_eq!(json_post(&mut state,"/tutor/evidence",json!({"evidence_ref":grade}))["status"],"correct");
     let binding = state.user.learning_store().unwrap().teaching_event(&id).unwrap().binding;
     let activities = json_post(&mut state, "/tutor/activities", json!({"session_id":binding.chat_session_id,"turn_id":binding.turn_id}));
     assert_eq!(activities["activities"][0]["practice_check"], "questionable");
     let next = prepare_agent_chat(&mut state, &json!({"message":"Was I right?","teaching_ref":"action:a1"}).to_string(), "later")
         .unwrap_or_else(|r| panic!("{}", r.body));
-    assert_eq!(next.tutor.unwrap()["learner_context"]["responding_to_practice"]["check"], "questionable");
+    let learner = &next.tutor.unwrap()["learner_context"];
+    assert_eq!(learner["responding_to_practice"]["check"], "questionable");
+    assert_eq!(learner["interpretations"],json!([]));
 }
 
 #[test]
@@ -497,6 +557,177 @@ pub fn pose_focus(state: &mut AppState, lid: &str, focus: &str, prompt: &str, mo
 
 pub fn answer(state: &mut AppState, id: &str, operation: &str, response: &str) -> Value {
     json_post(state, "/tutor/action", json!({"operation_id":operation,"delivery_ref":id,"action":"submit","response":response}))
+}
+
+#[test]
+fn skipping_after_two_correct_answers_keeps_their_grades() {
+    let (_root, mut state) = two_relationships();
+    let first = pose(&mut state,"1.1",PROMPT,"recall","adjacent").unwrap();
+    assert_eq!(answer(&mut state,&first,"first",r#"["A","B"]"#)["assessment"], "correct");
+    let second = pose(&mut state,"1.2","Which quantities determine pump output? A, B or C.","recall","adjacent").unwrap();
+    assert_eq!(answer(&mut state,&second,"second",r#"["A","B"]"#)["assessment"], "correct");
+    let third = pose(&mut state,"1.1","Which two readings should a warehouse robot combine? A, B or C.","recall","far").unwrap();
+    let skip = json_post(&mut state,"/tutor/action",json!({"operation_id":"third","delivery_ref":third,"action":"skip"}));
+    let run = prepare_agent_chat(&mut state,&json!({"message":"我跳过了这个活动，请调整接下来的讲法。","teaching_ref":skip["event_id"]}).to_string(),"after-skip")
+        .unwrap_or_else(|r|panic!("{}",r.body));
+    let tutor = run.tutor.as_ref().unwrap();
+    assert_eq!(tutor["learner_context"]["responding_to_practice"]["action"],"skip");
+    let history = tutor["learner_context"]["practice_history"].as_array().unwrap();
+    for (id, outcome) in [(&first,"clean"),(&second,"clean"),(&third,"skipped")] {
+        let fact = history.iter().find(|q| q["delivery_ref"] == id.as_str()).unwrap();
+        assert_eq!(fact["outcome"],outcome);
+        assert_eq!(fact["same_chat"],true);
+        assert_eq!(fact["skipped"],outcome == "skipped");
+    }
+}
+
+#[test]
+fn a_revealed_solution_without_an_answer_does_not_count_as_a_wrong_attempt() {
+    let (_root,mut state)=fixture();
+    let id=delivered(&mut state,warmup(hints()));
+    let help=json_post(&mut state,"/tutor/action",json!({"operation_id":"look","delivery_ref":id,"action":"reveal"}));
+    json_post(&mut state,"/tutor/help-displayed",json!({"help_ref":help["help"]["event_id"]}));
+    let run = prepare_agent_chat(&mut state,r#"{"message":"Another practice problem."}"#,"next").unwrap_or_else(|r|panic!("{}",r.body));
+    let fact=&run.tutor.as_ref().unwrap()["learner_context"]["practice_history"][0];
+    assert_eq!(fact["outcome"],"revealed"); assert_eq!(fact["solution_seen"],true);
+    assert_eq!(fact["skipped"],false);
+}
+
+#[test]
+fn course_application_uses_the_current_lesson_and_delivers_a_practice_card() {
+    let (_root,mut state) = fixture();
+    json_post(&mut state, "/agent/new", json!({}));
+    let mut course: memory::course::InquiryCourse = serde_json::from_str(include_str!(
+        "../../../../docs/examples/inquiry-course/ai-infra-resource-bounds.v1.course.json"
+    )).unwrap();
+    let lesson = &mut course.lessons[0];
+    let source = &mut lesson.summary.source;
+    source.publication.book_id = state.workspace.book.base.book_id.clone();
+    source.publication.publication_id = "local".into();
+    source.source_revision = state.workspace.book.source_fingerprint().into();
+    source.start_lid = "1.1".into();
+    source.end_lid = "1.1".into();
+    let mut store = state.user.learning_store().unwrap();
+    let goal = store.state().unwrap().workspace_goal_revision.unwrap_or(0);
+    let initial = store.mutate_course(&serde_json::from_value(json!({
+        "operation_id":"start","run_id":null,"expected_revision":0,"release_version":1,
+        "action":{"kind":"start","lesson_id":lesson.summary.id}
+    })).unwrap(), Some(("fixture",1,lesson)), goal, "now", None).unwrap();
+    let request = json!({
+        "message":"", "entry_action":"apply_lesson","learning_purpose":"practice","response_language":"en",
+        "course_context":{"run_id":initial.progress.run_id,"revision":initial.progress.revision,"surface":"course"},
+        "session_id":state.workspace.selected_chat,"expected_chat_head":null,"client_request_id":"course-application",
+        "source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint()
+    });
+    let run = prepare_agent_chat(&mut state,&request.to_string(),"practice").unwrap_or_else(|r|panic!("{}",r.body));
+    let tutor = run.tutor.as_ref().unwrap();
+    assert_eq!(tutor["status"],"practice");
+    assert_eq!(tutor["binding"]["tutor_session_id"],initial.progress.run_id);
+    assert_eq!(tutor["application_requested"],true);
+    assert_eq!(tutor["response_language"],"en");
+    assert_eq!(tutor["current_action"]["source_bindings"][0]["start_lid"],"1.1");
+    assert!(teaching::turn_active(&state.private_context(),&run.turn_ref.turn_id).unwrap());
+    let mut application = practice_move(PROMPT,warmup(hints()));
+    application["move"]["practice"]["application_situation"] = json!(PROMPT.split('.').next().unwrap());
+    select(&state,&run.turn_ref,application).unwrap();
+    finish(&mut state,&run.turn_ref,&outcome(None));
+    let activities = json_post(&mut state,"/tutor/activities",json!({"session_id":run.turn_ref.session_id,"turn_id":run.turn_ref.turn_id}));
+    assert_eq!(activities["activities"].as_array().unwrap().len(),1);
+    assert_eq!(store.course_view(&initial.progress.run_id).unwrap().progress.stage,initial.progress.stage);
+}
+
+#[test]
+fn application_practice_rejects_a_source_recall_and_accepts_a_new_case() {
+    let (_root,mut state)=fixture();
+    let first=prepare_agent_chat(&mut state,r#"{"message":"Explain average speed."}"#,"first").unwrap_or_else(|r|panic!("{}",r.body));
+    finish(&mut state,&first.turn_ref,&outcome(None));
+    let input=json!({"message":"","entry_action":"continue_answer","learning_purpose":"practice",
+        "answer_ref":{"turn_id":first.turn_ref.turn_id},"session_id":first.turn_ref.session_id,"client_request_id":"apply",
+        "expected_chat_head":first.turn_ref.turn_id,"source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint()});
+    let run=prepare_agent_chat(&mut state,&input.to_string(),"apply").unwrap_or_else(|r|panic!("{}",r.body));
+    assert_eq!(run.tutor.as_ref().unwrap()["application_requested"],true);
+    let source=state.workspace.book.text("1.1",Some("1.1")).unwrap();
+    let excerpt="total distance divided by total time";
+    assert!(source.contains(excerpt));
+    let mut reading=practice_move(&format!("{excerpt}. Which statement comes first in the source?"),warmup(hints()));
+    assert!(select(&state,&run.turn_ref,reading.clone()).unwrap_err().message.contains("application_situation"));
+    reading["move"]["practice"]["application_situation"]=json!(excerpt);
+    assert!(select(&state,&run.turn_ref,reading).unwrap_err().message.contains("重复"));
+    let mut application=practice_move(PROMPT,warmup(hints()));
+    application["move"]["practice"]["application_situation"]=json!(PROMPT.split('.').next().unwrap());
+    select(&state,&run.turn_ref,application).unwrap();
+    finish(&mut state,&run.turn_ref,&outcome(None));
+    let pending=crate::practice_check::next(&state.user).unwrap().unwrap();
+    assert!(pending.packet["application"]["new_case"].as_str().unwrap().starts_with("A cyclist"));
+    assert!(pending.packet["application"]["previous_answer"].as_str().unwrap().contains("total time"));
+}
+
+#[test]
+fn forwarded_practice_attempt_keeps_one_current_interpretation_and_its_correction() {
+    let (_root, mut state) = fixture();
+    let delivery = delivered(&mut state, warmup(hints()));
+    assert_eq!(hint(&mut state, &delivery, "given-condition")["hint_kind"], "in_problem");
+    let submission = answer(&mut state, &delivery, "first", "A");
+    let run = prepare_agent_chat(&mut state, &json!({"message":"A","teaching_ref":submission["event_id"]}).to_string(), "echo")
+        .unwrap_or_else(|reply| panic!("{}",reply.body));
+    let response_ref = format!("response:{}", run.turn_ref.turn_id);
+    let fact = state.user.learning_store().unwrap().teaching_event(&response_ref).unwrap();
+    assert_eq!(fact.payload["assistance_refs"], json!([]));
+    assert_eq!(fact.payload["attempt"], 1);
+    assert_eq!(fact.payload["submission_field"], "response");
+    let usage = state.user.learning_store().unwrap().teaching_recent(&fact.binding.tutor_session_id, 12).unwrap()
+        .into_iter().find(|f|f.kind==TeachingFact::UsageObserved && f.binding.turn_id==fact.binding.turn_id
+            && f.learner_expression()==Some("A")).unwrap();
+    assert_eq!(usage.payload["assistance_refs"],json!([]));
+    assert_eq!(usage.payload["support_delivery_refs"],json!([]));
+    let observe = |state:&AppState, turn:&AgentTurnRef, operation:&str| teaching::step(
+        &state.private_context(), turn, json!({"operation":"evidence","nature":"hypothesis","operation_id":operation,
+        "target":{"learning_focus":"choosing the distance","expected_performance":"identify the distance","capability":"explanation",
+        "source_bindings":[{"start_lid":"1.1","end_lid":"1.1"}]},"fact_refs":[format!("response:{}",turn.turn_id)],
+        "interpretation":"The learner identified distance.","teaching_implication":"Check their explanation of time."}), &[], &[range()]
+    ).unwrap();
+    let echo = observe(&state, &run.turn_ref, "echo");
+    let original = state.user.learning_store().unwrap().evidence(echo["evidence_ref"].as_str().unwrap()).unwrap();
+    assert!(original.assistance_refs.is_empty() && original.support_delivery_refs.is_empty());
+    let view = json_post(&mut state, "/tutor/understanding", json!({}));
+    assert_eq!(view["current_understanding"].as_array().unwrap().len(), 1);
+    assert_eq!(view["interpretations"].as_array().unwrap().len(), 1);
+    assert_eq!(view["interpretations"][0]["nature"], "performance");
+    let grade = view["interpretations"][0]["evidence_id"].clone();
+    // An older client can still open the retained conversational interpretation.
+    let correction = json_post(&mut state, "/tutor/correct", json!({
+        "operation_id":"clarify-guess","evidence_ref":echo["evidence_ref"],"text":"I guessed the option."
+    }));
+    let view = json_post(&mut state, "/tutor/understanding", json!({}));
+    assert_eq!(view["current_understanding"].as_array().unwrap().len(),1);
+    assert_eq!(view["current_understanding"][0]["evidence_ref"],correction["evidence_ref"]);
+    assert_eq!(view["interpretations"][0]["correction"],"I guessed the option.");
+    let row = view["rows"].as_array().unwrap().iter().find(|r|r["object_id"]=="speed").unwrap();
+    assert_eq!(row["partial"],0);
+    assert_eq!(row["uncertain"],1);
+    assert_eq!(row["evidence_refs"][0],correction["evidence_ref"]);
+    let history = json_post(&mut state,"/tutor/evidence",json!({"evidence_ref":grade}));
+    assert_eq!(history["superseded"],true);
+    assert_eq!(history["status"],"partial");
+    assert!(state.user.learning_store().unwrap().assessment(submission["event_id"].as_str().unwrap()).unwrap().is_some());
+    finish(&mut state, &run.turn_ref, &outcome(None));
+    let revised = json_post(&mut state,"/tutor/action",json!({"operation_id":"second","delivery_ref":delivery,"action":"revise","response":"A","reasoning":"Why include the rest?"}));
+    let question = prepare_agent_chat(&mut state, &json!({"message":"Why include the rest?","teaching_ref":revised["event_id"]}).to_string(), "question")
+        .unwrap_or_else(|reply| panic!("{}",reply.body));
+    let store = state.user.learning_store().unwrap();
+    let fact = store.teaching_event(&format!("response:{}",question.turn_ref.turn_id)).unwrap();
+    let action = store.teaching_event(revised["event_id"].as_str().unwrap()).unwrap();
+    assert_eq!(fact.payload["submission_field"], "reasoning");
+    assert_eq!(fact.payload["attempt"], 2);
+    assert_eq!(fact.payload["assistance_refs"], action.payload["assistance_refs"]);
+    let question_evidence = observe(&state, &question.turn_ref, "actual-question");
+    assert!(store.evidence(question_evidence["evidence_ref"].as_str().unwrap()).unwrap().support_delivery_refs.is_empty());
+    let view = json_post(&mut state, "/tutor/understanding", json!({}));
+    let current = view["interpretations"].as_array().unwrap();
+    assert_eq!(current.len(),3);
+    assert!(current.iter().any(|e| e["learner_quote"]=="Why include the rest?"));
+    assert!(current.iter().any(|e| e["nature"]=="performance" && e["attempt"]==2));
+    assert!(current.iter().any(|e| e["evidence_id"]==correction["evidence_ref"]));
 }
 
 #[test]
@@ -606,7 +837,22 @@ fn board_assembly_is_graded_by_the_exact_premise_set_and_hides_card_roles() {
     let public = json_post(&mut state, "/tutor/activities", json!({"session_id":turn.session_id,"turn_id":turn.turn_id}));
     assert_eq!(public["activities"][0]["move"]["practice"]["cards"][2]["text"], "The cyclist was moving for 50 minutes.");
     assert!(!public.to_string().contains("distractor") && !public.to_string().contains("\"role\""), "{public}");
-    assert_eq!(answer(&mut state, &id, "a1", r#"["B","A"]"#)["assessment"], "correct");
+    let note = "Why does the time card include the stop?";
+    let submission = json_post(&mut state, "/tutor/action", json!({"operation_id":"a1","delivery_ref":id,
+        "action":"submit","response":r#"["B","A"]"#,"reasoning":note}));
+    assert_eq!(submission["assessment"], "correct");
+    let view = json_post(&mut state, "/tutor/understanding", json!({}));
+    let summary = &view["current_understanding"][0];
+    assert_eq!(summary["learner_quote"], r#"["B","A"]"#);
+    assert_eq!(summary["choice_answer"]["options"], json!([
+        {"id":"B","text":"The outing took 60 minutes, rest included."},
+        {"id":"A","text":"The outing covered 20 km."}]));
+    let next = prepare_agent_chat(&mut state, &json!({"message":note,"teaching_ref":submission["event_id"]}).to_string(), "later")
+        .unwrap_or_else(|r| panic!("{}", r.body));
+    let context = next.tutor.unwrap();
+    let work = &context["learner_context"]["responding_to_practice"]["submitted_work"];
+    assert_eq!(work["options"], public["activities"][0]["move"]["practice"]["cards"]);
+    assert_eq!(work["reasoning"], note);
 }
 
 #[test]

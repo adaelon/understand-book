@@ -191,6 +191,11 @@ impl LearningStore {
         {
             return Ok(Vec::new());
         }
+        // Both the submitted answer and the accompanying reasoning were written
+        // before the card displayed feedback. A usage fact can repeat either.
+        if fact.payload["submission_field"].is_string() {
+            return Ok(Vec::new());
+        }
         let sequence = self.teaching_event_sequence(&fact.event_id)?;
         let mut query = self.connection.prepare("SELECT event FROM teaching_trace
             WHERE learning_workspace_id=?1 AND seq<?2
@@ -199,9 +204,12 @@ impl LearningStore {
             AND json_extract(event,'$.binding.source_revision')=?5
             AND (json_extract(event,'$.kind')='message_delivered'
                 OR json_extract(event,'$.kind')='usage_observed' AND json_extract(event,'$.payload.usage.kind')='assistant_delivery')
+            AND NOT EXISTS (SELECT 1 FROM teaching_trace r WHERE r.learning_workspace_id=?1
+                AND r.event_id='response:'||?6 AND json_extract(r.event,'$.payload.submission_field') IS NOT NULL
+                AND json_extract(r.event,'$.payload.response')=?7)
             ORDER BY seq DESC LIMIT 1").map_err(storage)?;
         let rows=query.query_map(params![self.workspace_scope,sequence,fact.binding.chat_session_id,
-            fact.binding.source_id,fact.binding.source_revision],|row|row.get::<_,String>(0)).map_err(storage)?;
+            fact.binding.source_id,fact.binding.source_revision,fact.binding.turn_id,fact.learner_expression()],|row|row.get::<_,String>(0)).map_err(storage)?;
         rows.map(|row|serde_json::from_str(&row.map_err(storage)?).map_err(storage)).collect()
     }
 

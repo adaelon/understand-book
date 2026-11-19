@@ -177,7 +177,7 @@ pub struct ResponseAssessment {
     pub items: Vec<ItemAssessment>,
 }
 
-fn normalize(value: &str) -> String {
+pub(crate) fn normalize(value: &str) -> String {
     value.trim().to_lowercase()
 }
 

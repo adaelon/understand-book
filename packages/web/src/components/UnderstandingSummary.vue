@@ -1,12 +1,32 @@
 <script setup lang="ts">
 import { ArrowUpRight, CircleHelp, Check, PencilLine } from '@lucide/vue';
-import { computed } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { thinkingTime, type UnderstandingSummary } from '../note-thinking';
 import { readerKey } from '../reader-context';
+import UnderstandingQuote from './UnderstandingQuote.vue';
+import { t as uiText } from '../i18n';
 const props = defineProps<{ item: UnderstandingSummary; compact?: boolean; busy?: boolean; noteId?: string; showQuote?: boolean }>();
 const summary = computed(() => props.item.correction ? null : props.item.learner_summary);
 function showOnTree(){const reference=props.item.knowledge_links?.[0]?.reference;if(reference)window.dispatchEvent(new CustomEvent('knowledge-show',{detail:{reference,reader_key:readerKey()}}));}
-defineEmits<{ evidence: []; correct: []; discuss: []; practice: []; note: [reference: import('../generated/NoteRef').NoteRef] }>();
+const emit = defineEmits<{ evidence: []; correct: []; discuss: [message: string]; practice: []; note: [reference: import('../generated/NoteRef').NoteRef] }>();
+const editing = ref(false), message = ref('');
+const editor = ref<HTMLTextAreaElement>(), discussButton = ref<HTMLButtonElement>();
+async function editDiscussion() {
+  editing.value = true;
+  await nextTick();
+  editor.value?.focus();
+}
+async function cancelDiscussion() {
+  editing.value = false;
+  message.value = '';
+  await nextTick();
+  discussButton.value?.focus();
+}
+function sendDiscussion() {
+  if (!editing.value || props.busy) return;
+  editing.value = false;
+  emit('discuss', message.value.trim());
+}
 const capability: Record<string, string> = { explanation: '解释', application: '应用', relation: '关系理解', transfer: '迁移', evaluation: '来源辨析', production: '构造', recall: '回忆', recognition: '识别', calculation: '计算' };
 </script>
 
@@ -22,19 +42,34 @@ const capability: Record<string, string> = { explanation: '解释', application:
     </div>
     <p v-if="compact && item.note_refs.some(r=>r.note_id===noteId)" class="summary-conditions">依据这条想法第 {{item.note_refs.filter(r=>r.note_id===noteId).map(r=>r.revision).join('、')}} 版的相关表达</p>
     <p v-if="compact" class="summary-conditions">{{item.assistance}}</p>
-    <p v-if="item.source_session_title" class="summary-conditions">原讨论 · {{item.source_session_title}}</p>
+    <p v-if="item.source_session_title" class="summary-conditions">{{ uiText('关联对话') }} · {{item.source_session_title}}</p>
     <template v-if="!compact">
       <p v-if="item.correction" class="summary-correction">你的补充：{{ item.correction }}</p>
       <p class="summary-conditions">{{ item.assistance }} · {{ thinkingTime(item.occurred_at) }}</p>
-      <details class="summary-basis" :open="showQuote"><summary>{{ item.previous ? '查看前后原话与依据' : '查看理解依据' }}</summary><div class="summary-comparison"><div v-if="item.previous"><span>之前的表达</span><blockquote>{{ item.previous.learner_quote }}</blockquote><small>{{ item.previous.assistance }}</small></div><div><span>{{ item.previous ? '这次的表达' : '你的原话' }}</span><blockquote>{{ item.learner_quote || '此记录未保留原话' }}</blockquote><small>{{ item.assistance }}</small></div></div><div v-if="item.unconfirmed.length" class="summary-unconfirmed"><strong>还没有观察到的表现</strong><p v-for="text in item.unconfirmed" :key="text">{{ text }}</p></div><button :disabled="busy" @click="$emit('evidence')">查看完整记录与帮助</button><button v-if="item.knowledge_links?.length" @click="showOnTree">在理解地图中查看</button><button v-if="item.target" :disabled="busy" @click="$emit('practice')">换个例子练习</button></details>
+      <details class="summary-basis" :open="showQuote">
+        <summary>{{ item.previous ? '查看前后原话与依据' : '查看理解依据' }}</summary>
+        <div class="summary-comparison">
+          <div v-if="item.previous"><span>之前的表达</span><UnderstandingQuote :quote="item.previous.learner_quote" :choice="item.previous.choice_answer" /><small>{{ item.previous.assistance }}</small></div>
+          <div><span>{{ item.previous ? '这次的表达' : '你的原话' }}</span><UnderstandingQuote :quote="item.learner_quote" :choice="item.choice_answer" /><small>{{ item.assistance }}</small></div>
+        </div>
+        <div v-if="item.unconfirmed.length" class="summary-unconfirmed"><strong>还没有观察到的表现</strong><p v-for="text in item.unconfirmed" :key="text">{{ text }}</p></div><button :disabled="busy" @click="$emit('evidence')">查看完整记录与帮助</button><button v-if="item.knowledge_links?.length" @click="showOnTree">在理解地图中查看</button><button v-if="item.target" :disabled="busy" @click="$emit('practice')">{{ uiText('换个例子练习') }}</button>
+      </details>
       <p v-if="item.next_step" class="summary-next">{{ item.later_evidence_ref ? '当时的建议：' : '接下来：' }}{{ item.next_step }}</p>
       <div v-if="item.note_refs.length" class="summary-notes"><span>关联想法</span><button v-for="(reference,index) in item.note_refs" :key="`${reference.note_id}:${reference.revision}`" @click="$emit('note',reference)">{{ reference.note_id === noteId ? '这条想法' : `想法 ${index+1}` }} · 第 {{ reference.revision }} 版</button></div>
     </template>
-    <footer><button v-if="item.target" class="summary-primary" :disabled="busy" @click="$emit('discuss')">接着这一点<ArrowUpRight :size="14" /></button><button v-if="compact" :disabled="busy" @click="$emit('evidence')">查看依据</button><button v-if="!compact" :disabled="busy" @click="$emit('correct')">我的意思不是这样</button></footer>
+    <form v-if="editing" class="discussion-draft" @submit.prevent="sendDiscussion">
+      <label>{{ uiText('从这条理解继续讨论') }}<textarea ref="editor" v-model="message" rows="2" :placeholder="uiText('可以补充想问的问题')" @keydown.esc.stop.prevent="cancelDiscussion" /></label>
+      <div><button type="submit" class="summary-primary" :disabled="busy">{{ uiText('发送到原讨论') }}</button><button type="button" :disabled="busy" @click="cancelDiscussion">{{ uiText('取消') }}</button></div>
+    </form>
+    <footer><button v-if="item.target && !editing" ref="discussButton" class="summary-primary" :disabled="busy" @click="editDiscussion">{{ uiText('接着这一点') }}<ArrowUpRight :size="14" /></button><button v-if="compact" :disabled="busy" @click="$emit('evidence')">查看依据</button><button v-if="!compact" :disabled="busy" @click="$emit('correct')">我的意思不是这样</button></footer>
   </article>
 </template>
 
 <style scoped>
+.discussion-draft { margin-top: 14px; }
+.discussion-draft label { display: grid; gap: 6px; font-weight: 600; }
+.discussion-draft textarea { box-sizing: border-box; width: 100%; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--canvas); color: inherit; font: inherit; resize: vertical; }
+.discussion-draft > div { display: flex; gap: 7px; margin-top: 8px; }
 .summary-explanation{font-size:15px;line-height:1.85;margin:0 0 14px}.summary-comparison{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:18px;margin:14px 0}.summary-comparison span,.summary-comparison small{font-size:12px;color:var(--muted,#79716a)}.summary-unconfirmed{margin:12px 0;padding-top:12px;border-top:1px solid var(--line,#e5dfd7);font-size:12px}.summary-unconfirmed p{margin:5px 0}
 .understanding-summary{border:1px solid var(--border,#e5dfd7);border-radius:14px;background:var(--surface,#fffdf9);padding:18px;color:var(--text,#302d29);font-size:13px;line-height:1.65;overflow-wrap:anywhere}
 header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}h3{font-size:15px;line-height:1.5;margin:5px 0 14px;font-weight:650}.summary-eyebrow,.summary-conditions,.summary-notes{font-size:11px;color:var(--steel,#79716a)}.summary-corrected{font-size:11px;white-space:nowrap;color:var(--accent,#a95028)}

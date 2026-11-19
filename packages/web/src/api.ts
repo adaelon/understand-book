@@ -1308,6 +1308,8 @@ export interface UnderstandingRow {
 }
 export interface UnderstandingView { rows: UnderstandingRow[]; current_understanding?: import('./note-thinking').UnderstandingSummary[]; interpretations?: LearningEvidenceView[]; imported_records?: import('./learning-records').ImportedLearningRecord[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
 export interface LearningEvidenceView {
+  activity_turn_request?: string | null;
+  choice_answer?: import('./note-thinking').UnderstandingChoiceAnswer | null;
   evidence_id: string; label: string; capability: string; prompt: string; learner_quote: string; interpretation: string;
   correction: string | null; status: string; assistance_count: number; attempt: number; feedback_hidden: boolean;
   assessment_ref?: string | null;

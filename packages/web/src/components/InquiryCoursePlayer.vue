@@ -132,8 +132,10 @@ const reflectionSaved = computed(() => lesson.value?.expressions.some(expression
 const resourceActivity = computed(() => !lesson.value?.inquiry_kind);
 const batchMode = computed(() => lesson.value?.experiment?.kind === 'resource_bounds' && lesson.value.experiment.batch_size !== undefined);
 const experimentReady = computed(() => !!lesson.value && (lesson.value.inquiry_kind ? !!lesson.value.activity_response && !inquiryDirty.value : lesson.value.observed.length >= 3 && (!lesson.value.lab || !!lesson.value.exploration)));
+const trialLesson = computed(() => lesson.value?.progress.release_id.startsWith('local-course-trial:') ?? false);
 const activityContinuation = computed(() => {
   const current=lesson.value;if(!current || !active.value)return undefined;
+  const waitingForFeedback = !trialLesson.value && !activityReview.value?.displayed;
   if(reviewingJob.value)return {label:uiText('回到当前活动 →'),detail:uiText('这一轮的讨论已保留，可以接着当前课程往下学。')};
   if(current.progress.stage==='experiment' && current.inquiry_kind)return {label:experimentReady.value?uiText('对照依据，继续解释 →'):uiText('回到探究活动 →'),detail:uiText('保存自己的取证或推理结果，再与讲解对照。')};
   if(current.progress.stage==='experiment')return experimentReady.value
@@ -142,12 +144,12 @@ const activityContinuation = computed(() => {
   if(current.progress.stage==='explanation')return {
     label:moreRounds.value ? uiText('继续下一轮探究 →') : uiText('进入综合应用 →'),
     detail:moreRounds.value ? uiText('下一轮：{0}',[current.round_titles[roundIndex.value+1]]) : uiText('接下来换一个情境，应用刚才建立的理解。'),
-    disabled:(multiRound.value && !reflectionSaved.value) || !activityReview.value?.displayed,
+    disabled:(multiRound.value && !reflectionSaved.value) || waitingForFeedback,
   };
   if(current.progress.stage==='feedback')return {
-    label:uiText('完成这一课 ✓'),
-    detail:uiText('回答和反馈已保留，接下来可以继续学习或暂停。'),
-    disabled:!activityReview.value?.displayed,
+    label:trialLesson.value ? uiText('完成试课') : uiText('完成这一课 ✓'),
+    detail:trialLesson.value ? uiText('回答已保存。可以结束试课，再和制课 Agent 讨论这一节。') : uiText('回答和反馈已保留，接下来可以继续学习或暂停。'),
+    disabled:waitingForFeedback,
   };
   return undefined;
 });
@@ -538,7 +540,7 @@ onBeforeUnmount(() => { disposed=true; generation++; clearTimeout(pollTimer); })
         <div v-if="lesson.progress.stage === 'introduction'" class="stage-content"><span class="eyebrow">{{ uiText('01 / 准备') }}</span><h4>{{ uiText('先认识这个问题') }}</h4><div class="course-prose" v-html="renderMarkdown(lesson.introduction ?? '')" /><CourseResourceObjects v-if="resourceActivity" :scene-key="lesson.progress.run_id + ':intro'" :presented="!sourceOpen" @question="question=>emit('discussion',question)" /><div v-if="lesson.concepts?.length" class="concepts"><article v-for="(concept,i) in lesson.concepts" :key="concept.title"><span class="concept-index">0{{ i + 1 }}</span><div><h5>{{ concept.title }}</h5><div class="course-prose" v-html="renderMarkdown(concept.explanation)" /><div class="relation course-prose" v-html="renderMarkdown(concept.relation)" /></div></article></div><div class="prerequisite"><strong>{{ uiText('开始前') }}</strong><p>{{ lesson.summary.prerequisites }}</p></div><button class="primary" :disabled="blocked || goalChanged" @click="act({ kind: 'advance' })">{{ uiText('做出我的预测 →') }}</button></div>
         <form v-else-if="lesson.progress.stage === 'prediction' || lesson.progress.stage === 'task'" class="stage-content" @submit.prevent="submitChoice">
           <span class="eyebrow">{{ lesson.progress.stage === 'prediction' ? uiText('先猜后验') : uiText('综合应用 / 换个情境') }}</span><h4>{{ lesson.progress.stage === 'prediction' ? uiText(prompt?.options.length ? '现在，你会怎么选？' : '现在，你会怎样判断？') : uiText('这次由你来判断') }}</h4>
-          <div class="course-prose question" v-html="renderMarkdown(prompt?.question ?? '')" /><fieldset :disabled="blocked || goalChanged"><legend class="sr-only">{{ uiText('选择一个回答') }}</legend><label v-for="option in prompt?.options" :key="option.id" class="option" :class="{ selected: choice === option.id }"><input v-model="choice" type="radio" name="course-answer" :value="option.id" required /><span>{{ option.text }}</span></label><label class="reason-label" for="course-reason">{{ lesson.progress.stage === 'prediction' ? uiText('为什么这样猜？') : uiText('写下你的计算或理由') }}<span>{{ uiText('（会收到针对这段思路的反馈）') }}</span></label><textarea id="course-reason" v-model="reason" :rows="lesson.progress.stage === 'task' ? 8 : 3" :placeholder="lesson.progress.stage === 'prediction' ? uiText('可以从直觉说起，不确定也没关系。') : uiText('用题目中的条件说明你的计算和判断。')" /></fieldset>
+          <div class="course-prose question" v-html="renderMarkdown(prompt?.question ?? '')" /><fieldset :disabled="blocked || goalChanged"><legend class="sr-only">{{ uiText('选择一个回答') }}</legend><label v-for="option in prompt?.options" :key="option.id" class="option" :class="{ selected: choice === option.id }"><input v-model="choice" type="radio" name="course-answer" :value="option.id" required /><span>{{ option.text }}</span></label><label class="reason-label" for="course-reason">{{ lesson.progress.stage === 'prediction' ? uiText('为什么这样猜？') : uiText(lesson.inquiry_kind === 'reading' ? '写下你的判断和依据' : '写下你的计算或理由') }}<span v-if="!trialLesson">{{ uiText('（会收到针对这段思路的反馈）') }}</span></label><textarea id="course-reason" v-model="reason" :rows="lesson.progress.stage === 'task' ? 8 : 3" :placeholder="lesson.progress.stage === 'prediction' ? uiText('可以从直觉说起，不确定也没关系。') : uiText(lesson.inquiry_kind === 'reading' ? '哪些条件支持你的判断？' : '用题目中的条件说明你的计算和判断。')" /></fieldset>
           <p v-if="lesson.progress.stage === 'prediction'" class="muted">{{ uiText('预测用来和观察对照，猜错也可以继续。') }}</p><p v-else class="muted">{{ prompt?.options.length ? uiText('选择只核对方案；你的文字会单独分析，并保存到“我的理解”。不写理由时不会据选择推断理解。') : uiText('请写出推理和依据。回应会保留到“我的理解”，提交本身不代表已通过判断。') }}</p>
           <div v-if="lesson.hint" class="hint-card"><strong>{{ uiText('提示') }}</strong><div class="course-prose" v-html="renderMarkdown(lesson.hint ?? '')" /><small>{{ uiText('这次作答会保留“看过提示”的记录。') }}</small></div>
           <div class="actions"><button class="primary" type="submit" :disabled="blocked || (prompt?.options.length ? !choice : !reason.trim()) || goalChanged">{{ lesson.progress.stage === 'prediction' ? uiText('保存初步判断，开始探究 →') : uiText('提交并查看反馈 →') }}</button><button v-if="lesson.progress.stage === 'task' && !lesson.hint" type="button" :disabled="blocked || goalChanged" @click="act({ kind: 'hint' })">{{ uiText('给我一点提示') }}</button></div>

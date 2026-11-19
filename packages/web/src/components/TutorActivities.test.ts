@@ -3,6 +3,27 @@ import { flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import TutorActivities from './TutorActivities.vue';
 
+it('refreshes only the matching submitted answer when assessment is saved before the reply finishes', async () => {
+  const activity = { delivery_ref: 'grain', status: 'active', attempted: true, help_seen: [],
+    move: { move_id: 'grain', prompt: '远行为什么需要多带粮食？', actions: ['revise'] },
+    assessment: { action_ref: 'action:grain', status: 'unassessed', assistance_count: 1, attempt: 1 } };
+  api.tutorActivities.mockResolvedValue({ activities: [activity] });
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'question', busy: true } });
+  try {
+    await flushPromises();
+    expect(wrapper.text()).toContain('回答已记录，尚未评分。');
+    const notify = (assessmentRef: string) => window.dispatchEvent(new CustomEvent('tutor-state-changed', { detail: { assessmentRef } }));
+    notify('action:other'); await flushPromises();
+    expect(api.tutorActivities).toHaveBeenCalledTimes(1);
+    api.tutorActivities.mockResolvedValue({ activities: [{ ...activity, assessment: { ...activity.assessment, status: 'correct' } }] });
+    notify('action:grain'); await flushPromises();
+    expect(wrapper.text()).toContain('本次回答符合标准');
+    expect(wrapper.text()).toContain('本次回答前已展示帮助。');
+    notify('action:grain'); await flushPromises();
+    expect(api.tutorActivities).toHaveBeenCalledTimes(2);
+  } finally { wrapper.unmount(); }
+});
+
 it('renders teaching Markdown, math and bound sources without exposing raw markers', async () => {
   api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref: 'lesson', status: 'active', attempted: false, help_seen: [],
     move: { move_id: 'explain', prompt: '## SmartNIC\n\n**卸载**\n\n> 原文\n\n$Q$ [[source:ref1]]\n\n[[source:missing]]', actions: [] } }] });
@@ -189,6 +210,34 @@ it('assembles an answer from card picks instead of free text', async () => {
     await wrapper.get('button.primary').trigger('click'); await flushPromises();
     expect(api.tutorAction.mock.calls.at(-1)?.[0]).toMatchObject({ action: 'submit', response: '["B","A"]' });
   } finally { wrapper.unmount(); }
+});
+
+it.each(['choice', 'cards'])('sends the thought from a %s exercise for feedback on the same submission', async variant => {
+  const note = '为什么平均速度的分母要包含休息时间？';
+  const option = { id: 'A', text: '总用时' };
+  const move = { move_id: 'time', prompt: '选出计算旅程所需的量。', actions: ['submit', 'revise'],
+    ...(variant === 'choice' ? { answer_input: { kind: 'single_choice', options: [option] } }
+      : { practice: { entry: 'board', mode: 'compose', hint_count: 1, cards: [option] } }) };
+  api.tutorActivities.mockResolvedValue({ activities: [{ delivery_ref: 'time', status: 'active', attempted: false, help_seen: [], move }] });
+  api.tutorAction.mockResolvedValueOnce({ event_id: 'time-submission', assessment: 'correct',
+    help: { event_id: 'solution', text: '总时间是完整行程的时间。', reason: 'concluded' } });
+  const wrapper = mount(TutorActivities, { props: { sessionId: 'chat', turnId: 'turn' } });
+  const replies = vi.fn();
+  wrapper.element.addEventListener('tutor-response', replies);
+  try {
+    await flushPromises();
+    if (variant === 'cards') await wrapper.get('.practice-card').trigger('click');
+    else await wrapper.get('input[type="radio"]').setValue(true);
+    await wrapper.get('.question-work textarea').setValue(note);
+    expect(replies).not.toHaveBeenCalled();
+    await wrapper.get('button.primary').trigger('click'); await flushPromises();
+    expect(api.tutorAction).toHaveBeenCalledWith(expect.objectContaining({ action: 'submit', delivery_ref: 'time',
+      response: variant === 'choice' ? 'A' : '["A"]', reasoning: note }));
+    expect(replies).toHaveBeenCalledTimes(1);
+    expect(replies.mock.calls[0][0].detail).toMatchObject({ eventId: 'time-submission', text: note, responseOrigin: { kind: 'user_text' } });
+    expect(wrapper.get('.help').text()).toContain('完整行程');
+    expect(api.tutorAskStep).not.toHaveBeenCalled();
+  } finally { wrapper.unmount(); localStorage.clear(); }
 });
 
 it('restores released practice help and concludes a newly assessed open answer once', async () => {

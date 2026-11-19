@@ -48,6 +48,25 @@ pub(super) fn active(
     }
 }
 
+fn practice_question(turn: &AgentChatTurn) -> &str {
+    let authored = turn.user_authored_text().trim();
+    if !authored.is_empty() {
+        return authored;
+    }
+    turn.domain.interaction.as_ref().map(|action| action.accepted_request.trim())
+        .filter(|request| !request.is_empty()).unwrap_or("当前学习重点")
+}
+
+fn neutral_followup(focus: &str, english: bool) -> Option<&'static str> {
+    match (focus, english) {
+        ("apply_case", false) => Some("只看这道题给出的新情境，你会作出什么判断？请用其中一个条件说明理由。"),
+        ("apply_case", true) => Some("What do you conclude in this new case? Use a detail from it to explain your judgment."),
+        ("explain_reason", false) => Some("你是怎样得出这个判断的？请把题目里的条件和你的结论连起来。"),
+        ("explain_reason", true) => Some("How did you reach that judgment? Connect a condition in the question to your conclusion."),
+        _ => None,
+    }
+}
+
 pub(super) fn route(
     state: &PrivateBookContext<'_>,
     input: &Value,
@@ -112,7 +131,7 @@ pub(super) fn route(
                     .filter_map(AgentAnswerPart::text).collect::<Vec<_>>().join("\n\n"))
                     .filter(|text| !text.trim().is_empty()).or_else(|| outcome.answer.clone())
                     .filter(|text| !text.trim().is_empty()).ok_or_else(|| invalid("这段回答没有可练习的讲解"))?;
-                Ok(ClosedBookAnswerOrigin { turn_id: id.into(), question: turn.user_authored_text().into(), answer })
+                Ok(ClosedBookAnswerOrigin { turn_id: id.into(), question: practice_question(turn).into(), answer })
             }).transpose()?
         } else { None };
         let (owner, target, course_origin) = if let Some(id) = course {
@@ -138,7 +157,7 @@ pub(super) fn route(
                     .iter()
                     .rev()
                     .find(|t| t.status == AgentAssistantStatus::Completed)
-                    .map(|t| t.user_authored_text().to_owned())
+                    .map(|t| practice_question(t).to_owned())
                     .unwrap_or_else(|| "当前学习重点".into())
             } else {
                 requested.into()
@@ -186,6 +205,7 @@ pub(super) fn route(
             goal_revision: store.state()?.workspace_goal_revision,
             course_origin,
             answer_origin,
+            transfer_condition: None,
             result_ref: None,
             revision,
             status: "active".into(),
@@ -235,6 +255,13 @@ pub(super) fn route(
     Ok(json!(store.save_closed_book(value, operation, now)?))
 }
 
+pub(crate) const CLOSED_BOOK_DECISION_INVALID: &str = "CLOSED_BOOK_DECISION_INVALID";
+
+// Only model-authored proposals rejected before persistence can be revised.
+pub(crate) fn invalid_decision(message: &str) -> ToolError {
+    crate::user_storage_paths::error(CLOSED_BOOK_DECISION_INVALID, "validation", message)
+}
+
 pub(super) fn propose(
     state: &PrivateBookContext<'_>,
     binding: &TeachingBinding,
@@ -246,7 +273,7 @@ pub(super) fn propose(
     let text = decision["text"]
         .as_str()
         .filter(|s| !s.trim().is_empty())
-        .ok_or_else(|| invalid("缺少交付给学习者的问题或反馈"))?;
+        .ok_or_else(|| invalid_decision("text 需要填写交付给学习者的问题或反馈"))?;
     let learner = state
         .user
         .agent_history
@@ -267,7 +294,7 @@ pub(super) fn propose(
             | "pause"
             | "exit"
     ) {
-        return Err(invalid("请选择追问、帮助、独立重试、完成或离开"));
+        return Err(invalid_decision("请选择追问、帮助、独立重试、完成或离开"));
     }
     let current = if kind == "start" {
         let quote = decision["learner_quote"].as_str().unwrap_or("").trim();
@@ -288,46 +315,82 @@ pub(super) fn propose(
     } else {
         active(state, &binding.chat_session_id)?.ok_or_else(|| invalid("闭卷练习已暂停"))?
     };
-    if kind != "start" {
+    let english = if kind != "start" {
         let frozen = bound(state, &binding.turn_id)?.ok_or_else(|| invalid("缺少当前教学现场"))?;
         if frozen.payload["closed_book"]["id"] != current.id
             || frozen.payload["closed_book"]["revision"] != current.revision
         {
             return Err(invalid("练习已切换或暂停，请按当前尝试继续"));
         }
-    }
+        frozen.payload["response_language"] == "en"
+    } else { false };
     let leaving = matches!(kind, "pause" | "exit");
     if kind == "clarify" && !current.criteria.is_empty() {
-        return Err(invalid("目标已确定，请沿当前目标追问，或结束后再改变目标"));
+        return Err(invalid_decision("目标已确定，请沿当前目标追问，或结束后再改变目标"));
     }
     if current.criteria.is_empty()
         && !leaving
         && !matches!(kind, "clarify" | "start")
-        && (decision["criteria"]
+        && ((current.answer_origin.is_none() && decision["criteria"]
             .as_str()
-            .is_none_or(|s| s.trim().is_empty())
+            .is_none_or(|s| s.trim().is_empty()))
             || !matches!(kind, "question" | "start"))
     {
-        return Err(invalid("首问需要确定具体目标和完成条件"));
+        return Err(invalid_decision("首问需要确定具体目标和完成条件"));
     }
     if !current.criteria.is_empty() && kind == "question" {
-        return Err(invalid("已有目标，请继续追问或使用 retry 开始同目标新尝试"));
+        return Err(invalid_decision("已有目标，请继续追问或使用 retry 开始同目标新尝试"));
     }
     if current.needs_retry && !matches!(kind, "retry" | "help" | "pause" | "exit") {
-        return Err(invalid("离开查阅后需要同目标新尝试"));
+        return Err(invalid_decision("离开查阅后需要同目标新尝试"));
     }
     if kind == "retry" && decision["provides_help"] == true {
-        return Err(invalid("独立重试只提供新题必需条件，不能同时给出解法"));
+        return Err(invalid_decision("独立重试只提供新题必需条件，不能同时给出解法"));
     }
-    if kind == "retry" && !current.assisted && !current.needs_retry {
+    let unverified_question = current.answer_origin.is_some() && current.transfer_condition.is_none()
+        && !current.visible_turn_ids.is_empty() && !current.criteria.is_empty();
+    if kind == "retry" && !current.assisted && !current.needs_retry && !unverified_question {
         let quote = decision["learner_quote"].as_str().unwrap_or("").trim();
         if quote.is_empty() || !learner.user_authored_text().contains(quote) {
-            return Err(invalid("本次尝试未受助。先前尝试的帮助不影响本次独立性；回答充分时应完成，有必要缺口则追问。只有本轮用户要求换题时才能 retry，并引用该请求原话。"));
+            return Err(invalid_decision("本次尝试未受助。先前尝试的帮助不影响本次独立性；回答充分时应完成，有必要缺口则追问。只有本轮用户要求换题时才能 retry，并引用该请求原话。"));
+        }
+    }
+    let mut accepted = decision.clone();
+    let mut transfer_condition = None;
+    let mut requires_new_attempt = false;
+    if let Some(origin) = &current.answer_origin {
+        if matches!(kind, "question" | "retry") {
+            let condition = decision["new_case"].as_str().unwrap_or("").trim();
+            let plain = condition.replace("**", "");
+            let premise = plain.trim_start_matches('>').trim();
+            if premise.is_empty() || premise == text.trim() || origin.question.contains(premise)
+                || origin.answer.contains(premise) || current.transfer_condition.as_deref() == Some(condition) {
+                return Err(invalid_decision("请在 new_case 单独给出需要重新判断的完整新情境，在 text 写要回答的问题。"));
+            }
+            // Both the learner and the assessor get the case as supplied in one place.
+            accepted["text"] = json!(runtime::closed_book_review::displayed_question(condition, text.trim()));
+            accepted["criteria"] = json!(text.trim());
+            transfer_condition = Some(condition.to_owned());
+        } else if kind == "followup" && decision["provides_help"] != true {
+            if let Some(prompt) = decision["followup_focus"].as_str().and_then(|focus| neutral_followup(focus, english)) {
+                accepted["text"] = json!(prompt);
+            } else {
+                // A bespoke correction can disclose a decisive connection, even with a false help flag.
+                accepted["provides_help"] = json!(true);
+            }
+        } else if kind == "complete" {
+            if current.transfer_condition.is_none() {
+                return Err(invalid_decision("这道题未记录新情境，先用 retry 出一道同目标变式，再判断独立完成。"));
+            }
+            let quote = decision["learner_quote"].as_str().unwrap_or("").trim();
+            if !current.assisted && (origin.answer.contains(quote) || origin.question.contains(quote)) {
+                return Err(invalid_decision("请对照本题的 transfer_condition，引用学习者运用新条件所得的判断。复述刚讲过的答案时应追问该条件如何改变结论。"));
+            }
         }
     }
     if kind == "complete" {
         let quote = decision["learner_quote"].as_str().unwrap_or("").trim();
-        if current.assisted
+        if (current.assisted && current.answer_origin.is_none())
             || current.visible_turn_ids.is_empty()
             || decision["provides_help"] == true
             || quote.is_empty()
@@ -336,9 +399,66 @@ pub(super) fn propose(
                 .as_str()
                 .is_none_or(|s| s.trim().is_empty())
         {
-            return Err(invalid(
+            return Err(invalid_decision(
                 "完成需要当前独立回答的确切原话与理由；受助尝试请先用 retry 换一个未被代答的问题",
             ));
+        }
+        if current.assisted {
+            // A valid learner quote can still repeat the correction just given.
+            accepted["action"] = json!("followup");
+            accepted["text"] = json!(if english {
+                "This answer is recorded with the help you received. You can try a new case independently when you are ready."
+            } else {
+                "这次作答已和刚才获得的帮助一起保留。准备好后，可以换一道新题独立试一次。"
+            });
+            accepted["provides_help"] = json!(true);
+        } else if let (Some(_), Some(case)) = (&current.answer_origin, &current.transfer_condition) {
+            let review = request.get("transfer_review").ok_or_else(|| crate::user_storage_paths::error(
+                runtime::closed_book_review::REQUIRED, "validation", "此作答需要对照刚讲过的答案与当前变式核实独立性。"))?;
+            let question = runtime::closed_book_review::displayed_question(case, &current.criteria);
+            let verdict = runtime::closed_book_review::verified(review, &question, learner.user_authored_text());
+            if verdict.is_ok() {
+                accepted["transfer_comparison"] = review["comparison"].clone();
+                if review["learner_quote"].is_string() { accepted["learner_quote"] = review["learner_quote"].clone(); }
+                accepted["reason"] = review["reason"].clone();
+            }
+            match verdict {
+                Ok("independent") => {}
+                Ok("repeated_task") => {
+                    accepted["action"] = json!("followup");
+                    accepted["provides_help"] = json!(true);
+                    accepted["text"] = json!(if english {
+                        "The previous explanation already gave the answer to this question. We can try a different case to see how you apply it independently."
+                    } else {
+                        "刚才的讲解已经给出了这道题的答案。这次按有讲解帮助记录。可以换一道需要重新判断的题，再独立试一次。"
+                    });
+                }
+                Ok("wrong_target") => {
+                    requires_new_attempt = true;
+                    accepted["action"] = json!("followup");
+                    accepted["provides_help"] = json!(false);
+                    accepted["text"] = json!(if english {
+                        "This question tested a different topic. Your response is saved. Start a new attempt to practice the point from the original explanation."
+                    } else {
+                        "这道题偏离了刚才讲解的重点。你的作答已保留，可以重新出题，练习原先选中的内容。"
+                    });
+                }
+                Ok(_) => {
+                    accepted["action"] = json!("followup");
+                    accepted["provides_help"] = json!(false);
+                    accepted["text"] = json!(neutral_followup("apply_case", english));
+                }
+                Err(_) => {
+                    accepted["action"] = json!("followup");
+                    accepted["provides_help"] = json!(false);
+                    accepted["reason"] = json!("Independent assessment remains unconfirmed.");
+                    accepted["text"] = json!(if english {
+                        "Your answer is saved. I couldn’t confirm independent completion this time. You can explain how the facts in this case support your answer, or ask for a new case."
+                    } else {
+                        "你的作答已保留。这次还没能确认独立完成。可以再说说本题中的条件怎样支持你的判断，也可以要求换一道题。"
+                    });
+                }
+            }
         }
     }
     let id = format!("closed-book-proposal:{}", binding.turn_id);
@@ -348,12 +468,12 @@ pub(super) fn propose(
         id.clone(),
         TeachingFact::ClosedBookProposed,
         vec![],
-        json!({"practice_id":current.id,
-        "revision":current.revision,"decision":decision,"response":learner.user_authored_text()}),
+        json!({"practice_id":current.id, "transfer_condition":transfer_condition, "requires_new_attempt":requires_new_attempt,
+        "revision":current.revision,"decision":accepted,"response":learner.user_authored_text()}),
         now,
     )?;
     Ok(
-        json!({"accepted":true,"delivery_draft":{"text":text,"moves":[{"kind":"explain","prompt":text,"actions":[]}],"delivery_move_refs":[]}}),
+        json!({"accepted":true,"delivery_draft":{"text":accepted["text"],"moves":[{"kind":"explain","prompt":accepted["text"],"actions":[]}],"delivery_move_refs":[]}}),
     )
 }
 
@@ -416,7 +536,12 @@ pub(super) fn delivered(
         value.assisted = false;
         value.needs_retry = false;
     }
+    if value.answer_origin.is_some() && matches!(kind, "question" | "retry") {
+        value.transfer_condition = proposal.payload["transfer_condition"].as_str().map(str::to_owned);
+        value.criteria = decision["criteria"].as_str().unwrap_or("").into();
+    }
     value.assisted |= kind == "help" || decision["provides_help"] == true;
+    if proposal.payload["requires_new_attempt"] == true { value.needs_retry = true; }
     value.visible_turn_ids.push(binding.turn_id.clone());
     if kind == "retry"
         || proposal.payload["response"]

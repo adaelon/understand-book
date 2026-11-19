@@ -7,6 +7,7 @@ import { FocusPageTurn } from '../reader-focus-turn';
 import type { FocusSource } from '../reader-focus-source';
 import type { SourceCursor, PaginationOptions } from '../reader-pagination';
 import { readReaderSelection } from '../useReaderSelection';
+import FocusReadingControls from './FocusReadingControls.vue';
 import { typographyFont, type ReaderTypographyPreferences } from '../reader-typography';
 import '../reader-pagination.css';
 
@@ -145,13 +146,12 @@ defineExpose({ move: (direction: number) => turn?.turn(direction), snapshot: () 
     <div ref="host" class="focus-reader-surface" @pointerdown="pointerDown" @click="click" @keydown="key"></div>
     <button class="focus-page-prev" :aria-label="uiText('上一屏')" :disabled="atStart" @click="turn?.turn(-1)">‹</button>
     <button class="focus-page-next" :aria-label="uiText('下一屏')" :disabled="atEnd" @click="turn?.turn(1)">›</button>
-    <button class="focus-tools-toggle" :aria-label="uiText('阅读工具')" :aria-expanded="toolsOpen" @click="toolsOpen = !toolsOpen">···</button>
     <button v-if="props.returnLabel" class="focus-reading-return" @click="tool('return')">{{ props.returnLabel }}</button>
-    <nav v-if="toolsOpen" class="focus-tools" :aria-label="uiText('专注阅读工具')">
+    <FocusReadingControls v-model:open="toolsOpen" :active="props.active" :placement-active="props.placementActive" @exit="tool('exit')">
       <button @click="tool('outline')">{{ uiText('目录') }}</button><button @click="tool('settings')">{{ uiText('阅读设置') }}</button>
       <button v-if="props.surfaceLabel" @click="tool('surface')">{{ props.surfaceLabel }}</button>
-      <button @click="tool('agent')">{{ uiText('问答') }}</button><button @click="tool('notes')">{{ uiText('笔记') }}</button><button @click="tool('exit')">{{ uiText('退出专注') }}</button>
-    </nav>
+      <button @click="tool('agent')">{{ uiText('问答') }}</button><button @click="tool('notes')">{{ uiText('笔记') }}</button>
+    </FocusReadingControls>
     <div v-if="state.phase === 'loading' || state.phase === 'waiting' || state.error" class="focus-ready-status" role="status">
       <template v-if="state.error">{{ uiText('书页暂未准备好。') }}<button @click="reader?.retry()">{{ uiText('重试') }}</button></template>
       <template v-else>{{ uiText('正在准备书页…') }}</template>

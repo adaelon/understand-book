@@ -149,8 +149,8 @@ afterEach(() => {
   window.history.replaceState({}, '', '/'); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
-async function start() {
-  wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+async function start(courseTrial?: { bookId: string; revision: string }) {
+  wrapper = mount(App, { props: { courseTrial }, shallow: true, global: { renderStubDefaultSlot: true, stubs: {
     InquiryCoursePlayer: coursePlayer,
     ReaderWorkspace: defineComponent({ name: 'ReaderWorkspace', template: '<div><slot /></div>',
       setup(_, { expose }) { expose({ showReader: mocks.showReader, showAssistant: mocks.showAssistant }); } }),
@@ -176,6 +176,17 @@ it('creates a private conversation for a first course before saving its continua
   expect(mocks.order.indexOf('create-chat')).toBeLessThan(mocks.order.findIndex(value=>value.startsWith('open-course:')));
   expect(mocks.api.selectLearningTask).toHaveBeenCalledWith({chat_session_id:'first-course-chat',course_run_id:'original-course-run'});
   expect(mocks.api.agentRunCreate).not.toHaveBeenCalled();
+});
+
+it('opens the requested sample lesson without selecting a formal learning task or changing its saved view', async () => {
+  const formalView = 'understand-book:learning:local:course-view:local-course:startup:local';
+  sessionStorage.setItem(formalView, 'reading');
+  await start({ bookId: 'startup', revision: 'pilot-2' });
+  expect(inquiryCourse.catalog).toHaveBeenCalledWith('local-course-trial:startup:pilot-2');
+  expect(mocks.order).toContain('open-course:original-lesson:undefined');
+  expect(sessionStorage.getItem('understand-book:learning:local:course-view:local-course-trial:startup:pilot-2:local')).toBe('course');
+  expect(sessionStorage.getItem(formalView)).toBe('reading');
+  expect(mocks.api.selectLearningTask).not.toHaveBeenCalled();
 });
 
 it('opens explicit reading outside a saved course view after preserving the course and closed-book draft',async()=>{
@@ -281,7 +292,8 @@ it('keeps course application practice in the ordinary learning flow', async () =
   await flushPromises();
 
   expect(mocks.api.agentRunCreate).toHaveBeenCalledTimes(1);
-  expect(mocks.api.agentRunCreate.mock.calls[0][1]).toMatchObject({ entry_action: 'learn_with_purpose', learning_purpose: 'practice',
+  expect(mocks.api.agentRunCreate.mock.calls[0][0]).toBe('');
+  expect(mocks.api.agentRunCreate.mock.calls[0][1]).toMatchObject({ question_anchor_lid: undefined, entry_action: 'apply_lesson', learning_purpose: 'practice',
     course_context: { run_id: 'original-course-run' } });
   expect(closedMutations()).toEqual([]);
 });

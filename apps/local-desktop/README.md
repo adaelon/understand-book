@@ -40,7 +40,7 @@ pnpm --filter @understand-book/local-desktop package:windows
 
 构建入口调用 `scripts/prepare-resources.mjs`，分别生成公共 Reader 前端、Quick Start 副本和平台原生格式工具，再由 Tauri 生成 currentUser NSIS 安装包。`scripts/assert-release-config.mjs --resources` 验证本地产品身份与运行资源闭包。
 
-macOS 在对应架构的 macOS 环境安装原生 Node 和依赖后执行 `pnpm --filter @understand-book/local-desktop package:macos`。arm64 和 x86_64 分别原生构建，不能把 Windows Node/Canvas 复制到 macOS 包。签名、公证和原生安装验收沿[双发行方案](../../docs/切片方案-开源本地应用与云端服务双发行.md)。
+macOS 在对应架构的 macOS 环境安装原生 Node 和依赖后执行 `pnpm --filter @understand-book/local-desktop package:macos`。arm64 和 x86_64 分别原生构建，不能把 Windows Node/Canvas 复制到 macOS 包。签名、公证和原生安装验收沿[源码版本与平台状态](../../EDITION.md)。
 
 ## 验证入口
 
@@ -54,7 +54,7 @@ python scripts/verify-personal-connection.py --cli apps/local-desktop/src-tauri/
 
 最后一条命令用原创演示书和独立临时配置，检查个人 CLI 与访客 MCP 的读写范围、宿主重启、来源位置和撤销凭证。先用 `pnpm demo:prepare` 生成演示书。macOS 指定包内的 `Contents/Resources/bin/understand-book`；加 `--pdf <本机论文路径>` 可从真实文件导入、查询新材料的元数据，并等待原文准备完成。
 
-`desktop-support` 覆盖设置、草稿、旧数据副本与恢复；`local-desktop-host` 覆盖原生公共合同。格式工具 smoke 将随包资源复制到含空格、无开发 PATH 的独立目录，实际完成文字 PDF 和扫描 PDF OCR。安装后的原生窗口、模型设置、草稿与笔记重启恢复沿 `apps/local-debug/smoke.mjs` 的参数化入口，实际证据和仍未验收的平台见双发行方案。
+`desktop-support` 覆盖设置、草稿、旧数据副本与恢复；`local-desktop-host` 覆盖原生公共合同。格式工具 smoke 将随包资源复制到含空格、无开发 PATH 的独立目录，实际完成文字 PDF 和扫描 PDF OCR。安装后的原生窗口、模型设置、草稿与笔记重启恢复沿 `apps/local-debug/smoke.mjs` 的参数化入口，本次快照的平台验证状态见 [EDITION.md](../../EDITION.md)。
 
 在 Windows 测试账号安装 Setup 后，可将已安装的程序和真实旧 Debug 样本传给以下入口。每次使用新的输出目录。模型请求由第一个脚本的本机受控端点响应。
 

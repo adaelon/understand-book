@@ -10,6 +10,7 @@ pub(crate) enum InteractionInput {
     Selection,
     GuideChapter { chapter_lid: String },
     LearnWithPurpose { purpose: LearningPurpose, chapter_lid: Option<String> },
+    ApplyLesson,
     Answer { action: EntryAction, reference: AnswerRef },
     Choice(TeachingChoice),
     /// Practice from one exact saved idea against the current material.
@@ -158,7 +159,7 @@ impl InteractionInput {
             learning_purpose: answer_practice.then_some(LearningPurpose::Practice),
             note_ref: None,
         };
-        if answer_practice || matches!(self, Self::LearnWithPurpose { purpose: LearningPurpose::Practice, .. } | Self::RevisitNote { .. }) {
+        if answer_practice || matches!(self, Self::LearnWithPurpose { purpose: LearningPurpose::Practice, .. } | Self::ApplyLesson | Self::RevisitNote { .. }) {
             if tutor_api::tutor_source_readiness(&workspace.book, &workspace.book_dir)["status"] != "ready" {
                 return Err(user_storage_paths::error("INTERACTION_UNAVAILABLE", "conflict", "请等待当前材料准备完成"));
             }
@@ -172,6 +173,21 @@ impl InteractionInput {
             }
         }
         match self {
+            Self::ApplyLesson => {
+                let source: memory::course::CourseSource = serde_json::from_value(
+                    input["course_context"]["lesson"]["summary"]["source"].clone()
+                ).map_err(|_| invalid("请打开当前课程后再出应用题"))?;
+                if input["source_id"] != source.publication.book_id || input["source_revision"] != source.source_revision {
+                    return Err(user_storage_paths::error("INTERACTION_STALE", "conflict", "本课来源已变化，请重新打开课程"));
+                }
+                resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::ApplyLesson };
+                resolved.learning_purpose = Some(LearningPurpose::Practice);
+                resolved.accepted_request = "围绕本课刚讲的关系，给我一道新情境应用题".into();
+                resolved.source_bindings = vec![TeachingSourceBinding {
+                    source_id: source.publication.book_id, source_revision: source.source_revision,
+                    start_lid: source.start_lid, end_lid: source.end_lid,
+                }];
+            },
             Self::Choice(choice) => {
                 let saved = user.learning_store_for_workspace(workspace.learning_workspace_id.as_deref())?.teaching_event(&choice.delivery_ref)?;
                 Self::Answer { action:EntryAction::ContinueAnswer, reference:AnswerRef { turn_id:saved.binding.turn_id.clone(), excerpt:None } }
@@ -342,7 +358,11 @@ impl InteractionInput {
                     .ok_or_else(||invalid("当前材料尚无可定位的正文"))?;
                 let last = workspace.book.base.lid_nodes.iter().max_by_key(|node|node.span.end).unwrap();
                 resolved.action = InteractionAction::UiEntry { entry_action: EntryAction::RevisitNote };
-                resolved.accepted_request = "用我这条想法练一练".into();
+                resolved.accepted_request = if input["understanding_ref"].is_null() {
+                    "用我这条想法练一练"
+                } else {
+                    "换个例子练习"
+                }.into();
                 resolved.note_ref = Some(note_ref.clone());
                 resolved.source_bindings = vec![TeachingSourceBinding { source_id:workspace.book.base.book_id.clone(),
                     source_revision:workspace.book.source_fingerprint().into(), start_lid:first.lid.clone(),end_lid:last.lid.clone() }];
@@ -355,7 +375,12 @@ impl InteractionInput {
                 || evidence["source_id"]!=workspace.book.base.book_id || evidence["source_revision"]!=workspace.book.source_fingerprint()
                 || evidence["superseded"]==true { return Err(invalid("理解依据或学习范围已变化，请刷新理解记录后继续")); }
             let target: memory::teaching::TeachingTarget=serde_json::from_value(evidence["target"].clone()).map_err(|_|invalid("这条历史记录尚无可接续的知识关系"))?;
-            resolved.source_bindings=target.source_bindings.clone();
+            if !target.source_bindings.is_empty() {
+                resolved.source_bindings=target.source_bindings.clone();
+            }
+            if matches!(self, Self::Answer { action:EntryAction::ContinueAnswer, .. }) {
+                resolved.accepted_request=if answer_practice {"换个例子练习"} else {"接着这一点"}.into();
+            }
             resolved.target=Some(target);
         }
         if resolved.source_bindings.iter().any(|s| s.source_id != workspace.book.base.book_id
@@ -368,7 +393,7 @@ impl InteractionInput {
         // A chapter is a navigation scope, not a claim that the user selected
         // every pending activity inside it for more help.
         // Explicit answer practice requests a new problem on the original scope.
-        let helps = if answer_practice || matches!(self, Self::GuideChapter { .. } | Self::LearnWithPurpose { .. } | Self::RevisitNote { .. }) { vec![] }
+        let helps = if resolved.requests_practice() || matches!(self, Self::GuideChapter { .. } | Self::LearnWithPurpose { .. }) { vec![] }
             else { teaching::pending_activity_help(&private, &resolved)? };
         if !helps.is_empty() && resolved.user_supplement.trim().is_empty() {
             return Ok(Some(InteractionResolution::ActivityHelp { delivery_refs: helps }));
@@ -391,7 +416,7 @@ impl InteractionInput {
         let purpose: Option<LearningPurpose> = serde_json::from_value(parse("learning_purpose"))
             .map_err(|_| invalid("未知学习目的"))?;
         if purpose.is_some() && action != Some(EntryAction::LearnWithPurpose)
-            && !(action == Some(EntryAction::ContinueAnswer) && purpose == Some(LearningPurpose::Practice)) {
+            && !(matches!(action, Some(EntryAction::ContinueAnswer | EntryAction::ApplyLesson)) && purpose == Some(LearningPurpose::Practice)) {
             return Err(invalid("学习目的只用于目的选择，或围绕原回答进行应用练习"));
         }
         if present("resolved_interaction") || present("current_action") || present("guide_chapter_lid") {
@@ -412,6 +437,10 @@ impl InteractionInput {
             return Err(invalid("想法回访需要且只接受一个确切笔记版本"));
         }
         let result = match (action, answer, choice) {
+            (Some(EntryAction::ApplyLesson), None, None)
+                if purpose == Some(LearningPurpose::Practice) && input["course_context"].is_object()
+                    && !present("question_quote") && !present("question_anchor_lid") =>
+                Self::ApplyLesson,
             (Some(EntryAction::LearnWithPurpose), None, None) => {
                 let purpose = purpose.ok_or_else(||invalid("请选择本次学习目的"))?;
                 let chapter_lid = input["chapter_lid"].as_str().map(str::to_owned);

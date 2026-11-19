@@ -70,7 +70,7 @@ impl TeachingContinuation {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(rename_all = "snake_case")]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
-pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer, GuideChapter, LearnWithPurpose, RevisitNote }
+pub enum EntryAction { ExplainSelection, ClarifyAnswer, ContinueAnswer, GuideChapter, LearnWithPurpose, ApplyLesson, RevisitNote }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, TS)]
 #[serde(deny_unknown_fields)]
@@ -125,6 +125,11 @@ pub struct ResolvedInteraction {
 }
 
 impl ResolvedInteraction {
+    pub fn requests_application(&self) -> bool {
+        self.learning_purpose == Some(memory::learning::LearningPurpose::Practice)
+            && matches!(self.action, InteractionAction::UiEntry { entry_action: EntryAction::ContinueAnswer | EntryAction::ApplyLesson })
+    }
+
     /// Practice entries ask for a problem, never a lecture or a fixed-mode explanation.
     pub fn requests_practice(&self) -> bool {
         matches!(self.action, InteractionAction::UiEntry { entry_action: EntryAction::RevisitNote })
@@ -152,7 +157,7 @@ impl ResolvedInteraction {
                     matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral")
                 },
             InteractionAction::UiChoice { .. } => matches!(intent, "direct_explanation" | "guided_inquiry" | "neutral"),
-            InteractionAction::UiEntry { entry_action: EntryAction::RevisitNote } => false,
+            InteractionAction::UiEntry { entry_action: EntryAction::ApplyLesson | EntryAction::RevisitNote } => false,
         }
     }
 }

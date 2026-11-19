@@ -497,7 +497,7 @@ function isEditableTarget(target: EventTarget | null): boolean {
 function onKeydown(event: KeyboardEvent) {
   const el = pane.value;
   if (!el || isEditableTarget(event.target)) return;
-  if (event.key === 'Escape') { closeAnnotation(true); return; }
+  if (event.key === 'Escape' && activeAnnotation.value) { event.preventDefault(); closeAnnotation(true); return; }
   if (paginated.value) return;
   if ((event.target as Element)?.closest('button, [role="dialog"]')) return;
   const line = 72;

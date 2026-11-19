@@ -34,7 +34,7 @@ cargo run -p reader-service --bin reader -- --reader-only downloads/optimization
 
 ## 材料来源
 
-- **最优化讲义**：项目内整理的复习材料。可编辑章节、题目来源和制作说明见[讲义目录](../examples/optimization-practice/course-book/README.md)。参考解答为项目整理的推导，非官方评分答案。
+- **最优化讲义**：项目内整理的复习材料。题目来源和制作说明随[已发布资料包](#下载)提供。参考解答为项目整理的推导，非官方评分答案。
 - **AI Infra**：李博杰的 [ai-infra-book](https://github.com/bojieli/ai-infra-book/tree/115c8638d54bdc2e1afa00f44d438e5fdb04826e)，离线合并版保持原书内容与插图，原许可证随包提供。
 - **贝多芬第九交响曲**：用户提供的 Tennstedt 版本音轨与既有谱面归档。乐谱源为 OpenScore CC0 版本，修订归档及生成谱面的第三方说明随包保留；录音权利独立于乐谱及仓库代码许可证。
 - **Agent Memory 论文**：论文 PDF、作者信息、正文来源及元数据随包保留，原文中的引用继续有效。项目的代码许可证不替代原论文的权利声明。

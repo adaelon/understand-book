@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { setLocale } from './i18n';
-import { agentFailureMessage, initialRun, interruptRun, reduceRun, runStatusText, type RunActivity, type RunEvent } from "./agent-run-state";
+import { agentFailureMessage, completedTeachingStep, initialRun, interruptRun, reduceRun, runStatusText, type RunActivity, type RunEvent } from "./agent-run-state";
 const descriptor = { book_id: "book", session_id: "session", turn_id: "turn" };
 
 it.each(['HTTP_413', 'REQUEST_TOO_LARGE'])('explains an oversized question without hiding the recovery action (%s)', error_code => {
@@ -34,6 +34,15 @@ it('localizes the public failure without translating or exposing its diagnostic'
 const activity: RunActivity = { step_id: 1, parent_step_id: null, kind: "tool", name: "book.text", label: "读取原文", status: "running", started_ms: 5, duration_ms: null, error_code: null, result_count: null, usage_total_tokens: null, usage: null, model_first_text_ms: null, model_name: null, model_name_source: null, accepted_evidence_count: null, evidence_refs: [] };
 const event = (seq: number, type: string, payload: unknown): RunEvent => ({ turn_id: "turn", seq, type, payload, elapsed_ms: seq });
 
+it('invalidates a submitted answer on a new successful tutor step while the run is still active', () => {
+  const assessing = { ...activity, name: 'tutor.step' };
+  const saved = { ...assessing, status: 'succeeded' as const };
+  expect(completedTeachingStep([], [assessing])).toBe(false);
+  expect(completedTeachingStep([assessing], [saved])).toBe(true);
+  expect(completedTeachingStep(undefined, [saved])).toBe(true);
+  expect(completedTeachingStep([saved], [saved, { ...activity, step_id: 2 }])).toBe(false);
+});
+
 it('shows the current work phase while preserving connection and terminal status', () => {
   const state = { ...initialRun(descriptor), execution_state: 'running' as const, activities: [activity] };
   expect(runStatusText(state, 'connected')).toBe('读取原文');
@@ -53,6 +62,7 @@ it('explains the two recorded Embedding failures without rewriting their diagnos
   expect(agentFailureMessage(failure, reviewed)).toBe(agentFailureMessage(legacy, reviewed));
   expect(failure.message).toBe('PROVIDER_ERROR: finish_reason=length');
   expect(agentFailureMessage({ error_code: 'UNAVAILABLE', category: 'provider', message: '连接暂时不可用' })).toBe('服务暂时不可用，请稍后重试。');
+  expect(agentFailureMessage({ error_code: 'MODEL_OUTPUT_LIMIT', category: 'provider', message: 'finish_reason=length' })).toBe('本次生成达到单次输出上限。');
 });
 describe("Resident run reducer", () => {
   it("keeps commentary between tool steps through replay, cancellation and snapshot recovery", () => {

@@ -8,6 +8,10 @@ export type ClosedBookPractice = { id: string, owner_id: string, course: boolean
  */
 answer_origin?: ClosedBookAnswerOrigin, 
 /**
+ * A changed premise from the delivered question for this attempt.
+ */
+transfer_condition?: string, 
+/**
  * Set only when the completion reply has actually been delivered.
  */
 result_ref?: string, revision: number, status: string, 

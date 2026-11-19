@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import UnderstandingQuote from './UnderstandingQuote.vue';
 import { t as uiText, formatLocale } from '../i18n';
 
 import { computed, onMounted, onBeforeUnmount, nextTick, ref, watch } from 'vue';
@@ -52,7 +53,7 @@ let refreshPending = false;
 let notifyingChange = false;
 const capability: Record<string, string> = { recognition:uiText('识别'), recall:uiText('回忆'), explanation:uiText('解释'), relation:uiText('关系理解'), application:uiText('应用'), evaluation:uiText('来源辨析'), production:uiText('构造'), transfer:uiText('迁移') };
 const status: Record<string, string> = { correct:uiText('符合当时标准'), partial:uiText('部分符合当时标准'), incorrect:uiText('尚未符合当时标准'), uncertain:uiText('尚不能形成能力判断'), unassessed:uiText('尚未判定') };
-async function resumeUnderstanding(item:UnderstandingSummary,mode:'discuss'|'practice'){try{await continueUnderstanding(item,undefined,mode);}catch(failure){error.value=(failure as Error).message;}}
+async function resumeUnderstanding(item:UnderstandingSummary,mode:'discuss'|'practice',message?:string){try{await continueUnderstanding(item,undefined,mode,message);}catch(failure){error.value=(failure as Error).message;}}
 const row = computed(() => active.value?.kind === 'object' ? active.value.row : null);
 const locked = computed(() => busy.value || !!pending.value);
 const explanationTitle = computed(() => historicalEvidence.value || row.value?.historical ? uiText('历史解释') : row.value ? uiText('最近解释') : uiText('当前解释'));
@@ -179,7 +180,7 @@ async function refreshInBackground() {
   } catch {
     if (current()) refreshNotice.value = uiText('最新理解暂未更新，已显示的记录仍可阅读。');
   } finally {
-    if (refreshController === controller) { refreshController = null; scheduleRefresh(); }
+    if (refreshController === controller) { refreshController = null; scheduleRefresh(refreshPending ? 0 : 10_000); }
   }
 }
 function refreshWhenVisible() {
@@ -295,7 +296,7 @@ onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); 
     <p v-if="busy" role="status">{{ uiText('正在读取或保存…') }}</p>
     <p v-if="view?.stale" role="status">{{ uiText('有新的依据尚未合入此视图。') }}<button :disabled="locked" @click="load(true)">{{ uiText('更新理解视图') }}</button></p>
     <div v-show="!active" ref="listing" tabindex="-1" class="listing">
-      <section v-if="view?.current_understanding?.length" class="current-understanding" aria-label="当前理解与卡点"><h4>当前理解与卡点</h4><UnderstandingSummaryCard v-for="item in view.current_understanding" :key="`${item.evidence_ref}`" :item="item" :busy="locked"  @evidence="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @correct="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @note="openPersonalNotes" @discuss="resumeUnderstanding(item,'discuss')" @practice="resumeUnderstanding(item,'practice')" /></section>
+      <section v-if="view?.current_understanding?.length" class="current-understanding" aria-label="当前理解与卡点"><h4>当前理解与卡点</h4><UnderstandingSummaryCard v-for="item in view.current_understanding" :key="`${item.evidence_ref}`" :item="item" :busy="locked"  @evidence="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @correct="openItem({kind:'interpretation',id:item.evidence_ref},$event)" @note="openPersonalNotes" @discuss="resumeUnderstanding(item,'discuss',$event)" @practice="resumeUnderstanding(item,'practice')" /></section>
       <p v-if="view && !view.rows.length && !view.interpretations?.length && !view.current_understanding?.length" class="empty">{{ view.imported_records?.length ? uiText('当前工作区尚无新的理解记录') : uiText('尚无理解记录') }}{{ uiText('；相关提问、回应和活动表现会成为后续讲解的依据。') }}</p>
       <section v-if="view?.imported_records?.length" :aria-label="uiText('带入的原记录')" class="imported-records">
         <h4>{{ uiText('带入的原记录') }}</h4><p>{{ uiText('保留原聊天、解释与来源，作为这个目标的历史参考。新的理解会从当前工作区的交流中形成。') }}</p>
@@ -310,7 +311,7 @@ onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); 
           <span class="concept-icon"><Lightbulb aria-hidden="true" /></span><span class="concept-copy">
           <span class="concept-heading"><strong>{{ item.label }}</strong><span class="nature">{{ item.nature === 'hypothesis' ? uiText('暂定理解') : uiText('活动表现') }}</span></span>
           <span class="preview">{{ item.interpretation }}</span>
-          <span class="record-meta"><span>{{ occurrence(item.occurred_at) }}</span><span v-if="item.source_session_title">{{ item.source_session_title }}</span></span>
+          <span class="record-meta"><span>{{ occurrence(item.occurred_at) }}</span><span v-if="item.source_session_title">{{ uiText('关联对话') }} · {{ item.source_session_title }}</span></span>
           <span v-if="item.correction" class="revision-label">{{ uiText('有你的纠正') }}</span>
           </span><ChevronRight class="concept-chevron" aria-hidden="true" />
         </button>
@@ -340,7 +341,7 @@ onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); 
       </section>
       <article v-if="selected" :aria-label="uiText('表现依据')" class="evidence">
         <button type="button" :disabled="locked" @click="addToBoard">{{ uiText('加入画板') }}</button>
-        <div class="record-origin"><span>{{ occurrence(selected.occurred_at) }}</span><button v-if="selected.source_session_id && selected.source_turn_id" class="conversation-link" :disabled="locked" @click="openConversation(selected)"><MessageSquareText aria-hidden="true" />{{ selected.source_session_title || uiText('查看对应对话') }}</button><span v-else-if="selected.source_session_title">{{ selected.source_session_title }}</span></div>
+        <div class="record-origin"><span>{{ occurrence(selected.occurred_at) }}</span><span v-if="selected.source_session_title">{{ uiText('关联对话') }}</span><button v-if="selected.source_session_id && selected.source_turn_id" class="conversation-link" :disabled="locked" @click="openConversation(selected)"><MessageSquareText aria-hidden="true" />{{ selected.source_session_title || uiText('查看对应对话') }}</button><span v-else-if="selected.source_session_title">{{ selected.source_session_title }}</span></div>
         <section class="related-boards" :aria-label="uiText('相关画板')" :aria-busy="relatedBoardsLoading">
           <h5><LayoutDashboard :size="14" aria-hidden="true" />{{ uiText('相关画板') }}</h5>
           <p v-if="relatedBoardsLoading" role="status">{{ uiText('正在查找相关画板…') }}</p>
@@ -358,7 +359,11 @@ onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); 
           <h5>{{ uiText('适用目标与帮助条件') }}</h5><p>{{ selected.prompt || uiText('此条记录未保留适用目标。') }}</p>
           <p v-if="selected.assistance_count" class="conditions">{{ uiText('这次交流前已展示') }} {{ selected.assistance_count }} {{ uiText('条讲解或帮助，理解需结合当时的帮助来看。') }}</p>
         </section>
-        <section class="quote"><h5>{{ uiText('你的原话') }}</h5><blockquote>{{ selected.learner_quote || uiText('此条记录未保留原话。') }}</blockquote></section>
+        <section v-if="selected.nature !== 'hypothesis'" class="context">
+          <template v-if="selected.activity_turn_request"><h5>{{ uiText('本轮请求') }}</h5><p>{{ selected.activity_turn_request }}</p></template>
+          <h5>{{ uiText('当时的活动') }}</h5><p>{{ selected.prompt || uiText('此条记录未保留活动说明。') }}</p>
+        </section>
+        <section class="quote"><h5>{{ uiText('你的原话') }}</h5><UnderstandingQuote :quote="selected.learner_quote" :choice="selected.choice_answer" /></section>
         <p v-if="selected.nature === 'hypothesis'" class="conditions">{{ uiText('这是普通交流中的暂定理解，未评分，可随你的纠正和新表现修订。') }}</p>
         <template v-else>
           <p class="conditions">{{ uiText('第') }} {{ selected.attempt }} {{ uiText('次作答；') }}{{ selected.assistance_count ? uiText('帮助后作答，回答前已展示帮助') : uiText('未记录到事先展示的帮助') }}<span v-if="selected.attempt > 1">{{ uiText('；改答后记录') }}</span>。</p>
@@ -369,7 +374,6 @@ onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); 
         <details :key="selected.evidence_id" :open="detailsOpen" class="facts" @toggle="detailsOpen = ($event.target as HTMLDetailsElement).open">
           <summary>{{ uiText('查看详细依据') }}</summary>
           <div v-if="detailsOpen">
-            <template v-if="selected.nature !== 'hypothesis'"><h5>{{ uiText('当时的活动') }}</h5><p>{{ selected.prompt || uiText('此条记录未保留活动说明。') }}</p></template>
             <p v-if="selected.feedback_hidden">{{ uiText('详细判定依据会在本活动请求直接讲解后揭示。') }}</p>
             <ul v-else-if="selected.source_quotes?.length" ref="feedback" :data-feedback-ref="selected.assessment_ref ?? undefined">
               <li v-for="(item, index) in selected.source_quotes" :key="index"><p v-if="item.reason">{{ item.reason }}</p><blockquote v-if="item.response_quote">{{ uiText('作答片段：') }}{{ item.response_quote }}</blockquote><blockquote v-if="item.quote">{{ item.quote }}</blockquote><blockquote v-for="(source, i) in item.sources" :key="i">{{ source.quote ?? source.observation }}</blockquote></li>
@@ -393,10 +397,11 @@ onBeforeUnmount(() => { disposed = true; stopRefresh(); observer?.disconnect(); 
           <ol v-if="timeline.entries.length" class="timeline-list">
             <li v-for="entry in timeline.entries" :key="entry.evidence_id" :class="{ 'is-corrected': entry.superseded }">
               <div class="timeline-date"><span>{{ occurrence(entry.occurred_at) }}</span><span v-if="entry.superseded" class="revision-label">{{ uiText('解释已被更正') }}</span><span v-else-if="entry.supersedes" class="revision-label">{{ uiText('对原解释的更正') }}</span></div>
-              <p v-if="entry.source_session_title" class="timeline-conversation">{{ entry.source_session_title }}</p>
+              <p v-if="entry.source_session_title" class="timeline-conversation">{{ uiText('关联对话') }} · {{ entry.source_session_title }}</p>
               <div class="timeline-content">
                 <h5>{{ uiText('你的原话') }}</h5>
-                <template v-if="entry.expressions?.length"><blockquote v-for="expression in entry.expressions" :key="expression.fact_ref">{{ expression.text }}</blockquote></template>
+                <UnderstandingQuote v-if="entry.choice_answer" :quote="entry.learner_quote" :choice="entry.choice_answer" />
+                <template v-else-if="entry.expressions?.length"><blockquote v-for="expression in entry.expressions" :key="expression.fact_ref">{{ expression.text }}</blockquote></template>
                 <blockquote v-else>{{ entry.learner_quote || uiText('此条记录未保留原话。') }}</blockquote>
                 <div v-if="entry.assistance?.length" class="timeline-assistance"><h5>{{ uiText('当时得到的帮助') }}</h5><p v-for="help in entry.assistance" :key="help.fact_ref">{{ help.text }}</p></div>
                 <p v-else class="conditions">{{ entry.assistance_count ? uiText('当时已展示 {0} 条讲解或帮助，未保留帮助正文。', [entry.assistance_count]) : uiText('此条记录未关联具体帮助；不能据此判定为独立完成。') }}</p>

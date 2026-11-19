@@ -1,8 +1,0 @@
-[Unit]
-Description=Understand Book external availability and backup monitor
-After=network-online.target
-[Service]
-Type=oneshot
-EnvironmentFile=/opt/understand-book/operations-external/mail.env
-ExecStart=/usr/bin/python3.12 /opt/understand-book/operations-external/external-watchdog.py
-TimeoutStartSec=60

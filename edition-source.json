@@ -1,0 +1,30 @@
+{
+  "edition": "public",
+  "source": {
+    "base_commit": "bd0d5057b2358a299e6c0159c4e3eb3dc0edc6d8",
+    "state": "working-tree",
+    "exported_at": "2026-11-19T16:16:02.976Z"
+  },
+  "public_dependency": null,
+  "source_files": 3037,
+  "assembly_validation": "cargo_metadata_offline_locked",
+  "assembly_platform": "x86_64-pc-windows-msvc",
+  "derived_files": [
+    "Cargo.toml",
+    "Cargo.lock",
+    "pnpm-workspace.yaml",
+    "pnpm-lock.yaml",
+    "package.json",
+    "packages/web/package.json",
+    "README.md",
+    "CONTEXT.md",
+    "CONTRIBUTING.md",
+    "docs/工具契约参考.md",
+    "docs/tool-contracts.json",
+    "docs/模型配置使用说明.md",
+    "materials/README.md",
+    "apps/local-desktop/README.md",
+    "EDITION.md"
+  ],
+  "validation": "not_run"
+}

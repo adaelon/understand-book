@@ -60,6 +60,28 @@ pub(crate) struct PresentationStore {
     limits: Option<(u64, usize)>,
 }
 
+#[cfg(all(test, windows))]
+#[test]
+fn long_windows_presentation_paths_preserve_immutable_and_replace_writes() {
+    use std::os::windows::ffi::OsStrExt;
+
+    let root = tempfile::tempdir().unwrap();
+    let store = PresentationStore {
+        root: root.path().join("long-reader-profile-".repeat(6))
+            .join("evaluation-workspace-".repeat(6))
+            .join("agent-history.presentations"),
+        limits: None,
+    };
+    let path = store.method_observation_dir("chat_server-start_0", "turn_f581daae9701cba6")
+        .join("input-1795097372178900000-0.json");
+    assert!(path.as_os_str().encode_wide().count() >= 260);
+    store.write_private(&path, &"first observation").unwrap();
+    assert!(store.write_private(&path, &"duplicate").is_err());
+    assert_eq!(PresentationStore::read::<String>(&path).unwrap(), "first observation");
+    store.replace_private(&path, &"updated observation").unwrap();
+    assert_eq!(PresentationStore::read::<String>(&path).unwrap(), "updated observation");
+}
+
 #[cfg(test)]
 mod mu2_tests {
     use super::*;
@@ -190,6 +212,14 @@ impl PresentationStore {
     fn write_file<T: Serialize>(path: &Path, value: &T, replace: bool) -> Result<(), ToolError> {
         let parent = path.parent().expect("presentation path has parent");
         memory::ReaderPrivateStorageGate::create_dir_all(parent).map_err(storage)?;
+        // tempfile passes these paths directly to MoveFileExW. Keep both ends
+        // in extended-length form, including first writes to a new target.
+        #[cfg(windows)]
+        let parent = parent.canonicalize().map_err(storage)?;
+        #[cfg(windows)]
+        let target = parent.join(path.file_name().expect("presentation path has a filename"));
+        #[cfg(windows)]
+        let path = target.as_path();
         let mut temporary = tempfile::NamedTempFile::new_in(parent).map_err(storage)?;
         serde_json::to_writer(&mut temporary, value).map_err(storage)?;
         temporary.flush().map_err(storage)?;

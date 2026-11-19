@@ -55,12 +55,12 @@ async function loadProgress(){
   catch(e){if(!disposed&&!(e instanceof ApiError&&e.status===404))courseError.value='课程进度暂时无法读取';}
 }
 async function choose(node:KnowledgeNodeView){selected.value=node;await nextTick();detail.value?.scrollIntoView({block:'nearest',behavior:'instant'});}
-async function resume(item:UnderstandingSummary,mode:'discuss'|'practice'){try{await continueUnderstanding(item,undefined,mode);emit('close');}catch(e){error.value=(e as Error).message;}}
+async function resume(item:UnderstandingSummary,mode:'discuss'|'practice',message?:string){try{await continueUnderstanding(item,undefined,mode,message);emit('close');}catch(e){error.value=(e as Error).message;}}
 function explore(node:KnowledgeNodeView){discussKnowledge(node,readerKey());emit('close');}
 function source(node:KnowledgeNodeView){if(node.sources[0]){openKnowledgeSource(node.sources[0],readerKey());emit('close');}}
 function search(){selected.value=undefined;void load({node_id:'root',query:query.value.trim()});}
 function locate(){selected.value=undefined;query.value='';void load({});}
-function refresh(){if(!controller)void load(request,true);}
+function refresh(){void load(request,true);}
 watch(pendingKnowledgeReference,reference=>{if(reference){pendingKnowledgeReference.value=null;selected.value=undefined;evidence.value=undefined;records.value=false;void load({reference});}});
 onMounted(()=>{media.addEventListener('change',resize);const reference=pendingKnowledgeReference.value;pendingKnowledgeReference.value=null;void load(reference?{reference}:{node_id:'root'});void loadProgress();window.addEventListener('tutor-state-changed',refresh);});
 onBeforeUnmount(()=>{media.removeEventListener('change',resize);disposed=true;controller?.abort();clearTimeout(timer);window.removeEventListener('tutor-state-changed',refresh);});
@@ -95,7 +95,7 @@ onBeforeUnmount(()=>{media.removeEventListener('change',resize);disposed=true;co
         <div class="map-legend"><span><CircleCheck :size="13"/>自己用过</span><span><Check :size="13"/>已有表达</span><span><GitBranch :size="13"/>待澄清</span><span><Circle :size="13"/>还待探索</span></div>
         <section v-if="selected" ref="detail" class="selected-understanding" :aria-label="`${selected.label}的理解`">
           <header><span class="map-eyebrow">{{selected.label}}</span><button class="text-action" @click="selected=undefined">收起</button></header>
-          <template v-if="selected.understanding?.length"><UnderstandingSummaryCard v-for="item in selected.understanding" :key="item.evidence_ref" :item="item" @evidence="evidence=item.evidence_ref" @correct="evidence=item.evidence_ref" @discuss="resume(item,'discuss')" @practice="resume(item,'practice')" @note="openPersonalNotes"/></template>
+          <template v-if="selected.understanding?.length"><UnderstandingSummaryCard v-for="item in selected.understanding" :key="item.evidence_ref" :item="item" @evidence="evidence=item.evidence_ref" @correct="evidence=item.evidence_ref" @discuss="resume(item,'discuss',$event)" @practice="resume(item,'practice')" @note="openPersonalNotes"/></template>
           <div v-else class="unexplored"><h3>从这里开始弄清一个问题。</h3><p>{{selected.summary || '可以说说你对这一点的猜想，也可以先让学习助手解释。'}}</p><div><button class="primary-action" @click="explore(selected)">从这里探索<ArrowRight :size="15"/></button><button v-if="selected.sources.length" class="text-action" @click="source(selected)">看看原文</button></div></div>
           <div v-if="selected.relations.length" class="related-understanding"><span>与这一点有关</span><button v-for="relation in selected.relations" :key="`${relation.kind}:${relation.target_id}`" :disabled="!relation.available" @click="selected=undefined;load({node_id:relation.target_id})"><small>{{knowledgeRelations[relation.kind]||relation.kind}}</small>{{relation.label}}<ArrowUpRight :size="12"/></button></div>
           <button v-if="selected.child_count" class="text-action" @click="load({node_id:selected!.id});selected=undefined">展开这部分内容<ArrowRight :size="15"/></button>

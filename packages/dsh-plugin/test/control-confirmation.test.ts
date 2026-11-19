@@ -6,10 +6,49 @@ import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { createBuildControl } from "../src/build-control.ts";
 import { harness, ScriptedModel, textResponse } from "./harness.ts";
+import { buildSourceManifest } from "../../core/src/source-manifest.ts";
+import { readTeachingBuildInput, resolveAutomaticBuildTarget } from "../../core/src/build-orchestrator.ts";
 
 class MetadataModel extends ScriptedModel {
   async resolveModel(provider: string, model: string) { return { provider, id: model, name: model, context: { contextWindow: 131072 } }; }
 }
+
+test("installed DSH displays and freezes the accepted local course route", { timeout: 60000 }, async () => {
+  const root = mkdtempSync(path.join(tmpdir(), "ub-dsh-course-route-"));
+  const book = path.join(root, ".understand-book", "book");
+  const source = path.join(root, "book.md");
+  const text = "# First\n\nA definition.\n\n# Second\n\nAn application.\n";
+  mkdirSync(book, {recursive:true});
+  writeFileSync(source,text);
+  writeFileSync(path.join(book,"source.txt"),text);
+  const json = (name:string, value:unknown) => writeFileSync(path.join(book,name),JSON.stringify(value));
+  json("source_manifest.json",buildSourceManifest({book_id:"book",source_path:source}));
+  json("profile_metadata.json",{header:{book_id:"book",profile_id:"technical_learning"}});
+  json("base.json",{book_id:"book",lid_nodes:[],graph_nodes:[],graph_edges:[]});
+  json("discourse_index.json",{items:[]});
+  json("formula_semantics.json",[]);
+  json("book_structure.json",{spine:["1","2"].map(lid=>({lid,summary:{text:"Definitions",evidence_lids:[]},key_stop_ids:[],depends_on:[]})),throughlines:[],key_stops:[]});
+  const target=resolveAutomaticBuildTarget(book,root);
+  const route={status:"accepted",source_id:"book",source_revision:readTeachingBuildInput(target).source.source_revision,
+    title:"应用定义",question:"怎样核对一个判断的成立条件？",audience:"初学者",final_task:"判断新例并说明依据",example_lessons:["需要哪些前提？"],unit_lids:["2"]};
+  json("accepted-route.json",route);
+  const h=await harness(new MetadataModel(async function*(){yield* textResponse("must not run");}));
+  const registry=path.join(root,"registry");
+  const control=createBuildControl(h.ctx,{executable:process.env.UNDERSTAND_BOOK_TEST_NODE!,prefixArgs:["--import","tsx",fileURLToPath(new URL("engine-source-cli.ts",import.meta.url))],
+    driverRoot:registry,maxOutputTokens:4096,safetyMarginTokens:4096,handoffsPerCall:1},"understand-book-executor");
+  const remove=h.ctx.on("user-questions/request",async request=>{
+    assert.ok(request.questions[0].detail!.includes(`课程路线：${route.question}；章节：2`));
+    return {answers:[{id:request.questions[0].id,selected:["批准"]}]};
+  });
+  try {
+    const invocation=await control.prepareAndConfirm(h.parent,new AbortController().signal,{target_input:book,root_dir:root,build_course:true,course_route_path:path.join(book,"accepted-route.json")}) as any;
+    assert.match(invocation.invocation_ref,/^abinv1_/u);
+    const dir=path.join(registry,"invocations");
+    const saved=JSON.parse(readFileSync(path.join(dir,readdirSync(dir)[0]),"utf8"));
+    assert.deepEqual(JSON.parse(readFileSync(saved.input.build_plan_path,"utf8")).course_route,route);
+    assert.equal(h.model.requests.length,0);
+  } finally { remove(); await control.dispose(); await h.dispose(); }
+});
 
 for (const approve of [false, true]) test(`SR5 shows local retrieval identity and quota before confirmation (approve=${approve})`, { timeout: 30000 }, async () => {
   const root = mkdtempSync(path.join(tmpdir(), "ub-dsh-sr5-confirm-")), source = path.join(root, "book.md");

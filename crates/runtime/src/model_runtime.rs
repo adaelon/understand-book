@@ -343,6 +343,8 @@ pub struct ActiveContextStatus {
 
 #[derive(Debug, Clone)]
 pub struct AgentRequestPlan {
+    /// True only on the one resident sampling immediately after a prepared page was truncated.
+    pub(crate) presentation_output_recovery: bool,
     /// Ephemeral browser observations; never persisted into conversation history.
     pub preview_images: Vec<crate::presentation_author::PreviewImage>,
     pub video_images: Vec<crate::video::ModelVideoImage>,
@@ -458,6 +460,7 @@ impl AgentRequestPlan {
             - i64::from(runtime_profile.safety_margin_tokens);
 
         Self {
+            presentation_output_recovery: false,
             preview_images: Vec::new(),
             video_images: Vec::new(),
             question_image: None,

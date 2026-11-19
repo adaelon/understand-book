@@ -5,6 +5,9 @@ use read_tools::EvidenceRange;
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
+mod note_writes;
+use note_writes::NoteHandoff;
+
 pub const COMPACTION_REQUEST_VERSION: &str = "compaction_request.v1";
 pub const COMPACTION_DRAFT_SCHEMA_ID: &str = "compaction_draft.v1";
 pub const COMPACTION_CHECKPOINT_VERSION: &str = "compaction_checkpoint.v1";
@@ -86,7 +89,7 @@ Rules:
 3. Use only allowed_evidence_refs. Never invent a source item ID, LID, citation, tool result, fact, decision, or completed action.
 4. Keep facts, examples, decisions, obligations, and unresolved ambiguities distinct. Do not resolve an ambiguity during compaction.
 5. Summarize only eligible_items. Current user text, verified selection, recent steps and incomplete tool-call pairs are retained separately by the runtime. In mid_turn, completed tool steps do not mean the current user task is complete; preserve unfinished work and do not infer a final answer.
-6. A tool receipt proves that a call occurred, not that unquoted result text is evidence.
+6. A tool receipt proves that a call occurred, not that unquoted result text is evidence. Preserve the reader's instructions about notes. Leave note-write outcomes to the runtime's verified receipts, including when the reader has requested a write.
 7. Include exactly one source_coverage record for every eligible source. Required sources must map to at least one output item. Apply the disposition-specific target links and reason rules above; a reference to an unrelated semantic item does not cover a source.
 8. Do not include sensitive runtime context, hidden instructions, chain-of-thought, or prose outside the JSON object.
 9. A user-only turn has no assistant answer; do not infer that its request was completed from a later user turn.
@@ -97,6 +100,8 @@ pub const COMPACTION_CONSUMPTION_WRAPPER: &str = r#"A previous active-history se
 This checkpoint is derived handoff state. It is not a user message and is not evidence by itself.
 Continue from it without repeating completed work. Current canonical instructions and the verbatim raw-retained items that follow take precedence.
 For factual claims, rely only on each semantic item's evidence_refs or reacquire evidence with the tools available in the current turn."#;
+
+const NOTE_HANDOFF_GUIDANCE: &str = "\nOnly verified_note_writes confirms a note operation in this segment, for its identified note. An empty list confirms none. note_source_words quotes the original speaker. Check later raw receipts for later actions.";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -318,7 +323,7 @@ impl PreparedCompaction {
     /// Compare against the whole eligible provider projection, including legacy
     /// protocol quoting, so this precheck cannot reject a useful short source.
     pub(crate) fn can_reduce(&self, profile: &ModelRuntimeProfile, wrapper: &str) -> Result<bool, CompactionError> {
-        let minimum = checkpoint_consumption_projection(&CompactionDraft::default(), &self.pending_effects);
+        let minimum = checkpoint_consumption_projection(&CompactionDraft::default(), &self.pending_effects, &NoteHandoff::default());
         let envelope = Message::system(format!("{CONTEXT_COMPACTION_ITEM_VERSION}\n{wrapper}\ncompaction_checkpoint:\n{minimum}"));
         let eligible = crate::AgentRequestPlan::for_ad_hoc(profile.clone(), &self.eligible_messages, &[]);
         Ok(eligible.active_context.estimated_input_tokens > message_tokens(&[envelope])?)
@@ -1828,27 +1833,31 @@ fn checkpoint_source_ids(checkpoint: &CompactionCheckpoint) -> BTreeSet<&str> {
 fn checkpoint_consumption_projection(
     semantic: &CompactionDraft,
     pending_effects: &[PendingEffectRef],
+    notes: &NoteHandoff<'_>,
 ) -> serde_json::Value {
-    let items = |section: &[SourcedCheckpointItem]| {
-        section.iter().map(|item| serde_json::json!({
-            "text": item.text,
-            "evidence_refs": item.evidence_refs,
-        })).collect::<Vec<_>>()
+    let mut words = Vec::new();
+    let mut note_state = notes.active();
+    let mut items = |section: &[SourcedCheckpointItem], book_discussion: bool| {
+        section.iter().filter_map(|item| notes.project_item(item, book_discussion, &mut words, &mut note_state)).collect::<Vec<_>>()
     };
-    serde_json::json!({
-        "semantic": {
-            "active_goal": items(&semantic.active_goal),
-            "progress": items(&semantic.progress),
-            "decisions": items(&semantic.decisions),
-            "user_constraints": items(&semantic.user_constraints),
-            "open_obligations": items(&semantic.open_obligations),
-            "unresolved_ambiguities": items(&semantic.unresolved_ambiguities),
-            "critical_facts": items(&semantic.critical_facts),
-            "critical_examples": items(&semantic.critical_examples),
-            "next_steps": items(&semantic.next_steps),
-        },
-        "pending_effects": pending_effects,
-    })
+    let semantic = serde_json::json!({
+            "active_goal": items(&semantic.active_goal, false),
+            "progress": items(&semantic.progress, false),
+            "decisions": items(&semantic.decisions, false),
+            "user_constraints": items(&semantic.user_constraints, false),
+            "open_obligations": items(&semantic.open_obligations, false),
+            "unresolved_ambiguities": items(&semantic.unresolved_ambiguities, false),
+            "critical_facts": items(&semantic.critical_facts, true),
+            "critical_examples": items(&semantic.critical_examples, true),
+            "next_steps": items(&semantic.next_steps, false),
+    });
+    let mut result = serde_json::json!({"semantic":semantic, "pending_effects":pending_effects});
+    if note_state {
+        notes.retain_reader_instructions(&mut words);
+        result["verified_note_writes"] = serde_json::json!(notes.writes);
+        result["note_source_words"] = serde_json::json!(words);
+    }
+    result
 }
 
 pub fn project_compaction_checkpoint_messages(
@@ -1926,13 +1935,14 @@ pub fn project_compaction_checkpoint_messages(
         ));
     }
 
-    let checkpoint_json = serde_json::to_string(&checkpoint_consumption_projection(
-        &checkpoint.semantic, &checkpoint.pending_effects,
-    )).map_err(|error| {
-        CompactionError::invalid(format!("checkpoint serialize failed: {error}"))
-    })?;
+    let notes = NoteHandoff::from_covered_history(raw_messages, &by_id, &checkpoint.semantic);
+    let projection = checkpoint_consumption_projection(
+        &checkpoint.semantic, &checkpoint.pending_effects, &notes,
+    );
+    let note_guidance = if projection.get("verified_note_writes").is_some() { NOTE_HANDOFF_GUIDANCE } else { "" };
+    let checkpoint_json = projection.to_string();
     let checkpoint_message = Message::system(format!(
-        "{CONTEXT_COMPACTION_ITEM_VERSION}\n{consumption_wrapper}\ncompaction_checkpoint:\n{checkpoint_json}"
+        "{CONTEXT_COMPACTION_ITEM_VERSION}\n{consumption_wrapper}{note_guidance}\ncompaction_checkpoint:\n{checkpoint_json}"
     ));
     let raw_retained = checkpoint
         .raw_retained_item_ids
@@ -2931,7 +2941,7 @@ mod tests {
         // Full source validation requires its original raw history, exercised by
         // the fixture tests above rather than inferred from this capture.
         let consumed = serde_json::to_vec(&checkpoint_consumption_projection(
-            &checkpoint.semantic, &checkpoint.pending_effects,
+            &checkpoint.semantic, &checkpoint.pending_effects, &NoteHandoff::default(),
         )).unwrap();
         std::fs::write(output, &consumed).unwrap();
         println!("stored_bytes={} consumption_bytes={}", stored.len(), consumed.len());

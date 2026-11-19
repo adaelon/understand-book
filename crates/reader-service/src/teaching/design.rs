@@ -386,9 +386,21 @@ pub(super) fn freeze_input_support(state: &PrivateBookContext<'_>, binding: &Tea
         if !support.contains(&fact.event_id) { support.push(fact.event_id); }
     }
     if support.is_empty() { return Ok(()); }
+    // A practice card can forward its submitted answer or reasoning after the
+    // solution has appeared. Both receipts for that text belong to the earlier
+    // submission, even though the chat has acquired more help by this point.
+    let submission = facts.iter().find(|fact| fact.binding.turn_id == binding.turn_id
+        && fact.kind == TeachingFact::LearnerAction && fact.payload["submission_field"].is_string()).cloned();
     for fact in facts.iter_mut().filter(|fact|fact.binding.turn_id==binding.turn_id && (fact.kind==TeachingFact::LearnerAction
         || fact.kind==TeachingFact::UsageObserved && matches!(fact.payload["usage"]["kind"].as_str(),Some("user_message"|"reading_action")))) {
         if let Some(invitation)=&invitation { fact.payload["invitation_context_ref"]=json!(invitation.event_id); }
+        if let Some(original) = submission.as_ref().filter(|original| fact.event_id == original.event_id
+            || fact.learner_expression().is_some_and(|text| Some(text) == original.payload["response"].as_str())) {
+            fact.payload["assistance_refs"] = original.payload["assistance_refs"].clone();
+            fact.payload["support_delivery_refs"] = original.payload["support_delivery_refs"].clone();
+            fact.payload["attempt"] = original.payload["attempt"].clone();
+            continue;
+        }
         fact.payload["assistance_refs"]=json!(help);
         fact.payload["support_delivery_refs"]=json!(support);
     }
