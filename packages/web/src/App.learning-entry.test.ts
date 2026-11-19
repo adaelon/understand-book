@@ -7,7 +7,7 @@ import type { CourseAction } from './generated/CourseAction';
 import type { CourseLessonView } from './generated/CourseLessonView';
 import type { ClosedBookPractice } from './generated/ClosedBookPractice';
 import type { LearningTaskView } from './learning-tasks';
-import { network, submittedRunDrafts } from './network-context';
+import { network, submittedRunDrafts } from './reader-context';
 import { notesPanel, pendingNoteSource } from './personal-notes';
 import { inquiryCourse } from './inquiry-course';
 

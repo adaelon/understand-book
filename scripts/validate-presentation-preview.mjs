@@ -6,11 +6,11 @@ import path from 'node:path';
 import assert from 'node:assert/strict';
 
 const [executable, evidence] = process.argv.slice(2);
-if (!executable || !evidence) throw new Error('Pass the built Server or installed UnderstandBook executable and evidence directory');
+if (!executable || !evidence) throw new Error('Pass the built maintenance host or Reader executable and evidence directory');
 mkdirSync(evidence, { recursive: true });
 const profiles = () => readdirSync(tmpdir()).filter(name => name.startsWith('understand-book-preview-'));
 const before = new Set(profiles());
-const html = readFileSync(new URL('../crates/server/tests/fixtures/presentation-recall.html', import.meta.url), 'utf8');
+const html = readFileSync(new URL('../crates/reader-service/tests/fixtures/presentation-recall.html', import.meta.url), 'utf8');
 const request = { candidate_id: 'rp1-recall-probe', html, actions: [
   { kind: 'click', selector: '#irrelevant' }, { kind: 'click', selector: '#complete' },
   { kind: 'click', selector: '#count' }, { kind: 'key', key: 'End' }, { kind: 'key', key: 'ArrowLeft' },

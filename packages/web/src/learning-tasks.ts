@@ -1,4 +1,4 @@
-import type { PublishedBookRef } from './network-context';
+import type { PublishedBookRef } from './reader-context';
 import { t } from './i18n';
 import type { LearningCollectionTarget } from './learning-collections';
 
@@ -24,7 +24,10 @@ export interface LearningTaskView {
   course_run_id: string | null;
   chat_session_id: string | null;
   selected_at: number;
-  kind: 'course' | 'closed_book' | 'conversation';
+  kind: 'course' | 'closed_book' | 'conversation' | 'external_question';
+  source_lid?: string | null;
+  source_ref?: { book_id: string; source_revision: string; lid: string; range?: {start: number; end: number} } | null;
+  note_ref?: import('./generated/NoteRef').NoteRef | null;
   title: string;
   status: 'active' | 'paused' | 'unavailable';
   lesson_id: string | null;
@@ -43,6 +46,7 @@ export interface CourseLaunchTarget {
 }
 
 export function learningTaskKey(task: LearningTaskView): string {
+  if (task.kind === 'external_question') return JSON.stringify([task.kind, task.published_book_ref, task.note_ref, task.selected_at]);
   return JSON.stringify([task.learning_workspace_id, task.published_book_ref, task.course_run_id, task.chat_session_id]);
 }
 
@@ -56,13 +60,14 @@ export function learningTaskCollection(task: LearningTaskView): LearningCollecti
 
 export function learningTaskAction(task: LearningTaskView): string {
   if (task.kind === 'closed_book') return t(task.status === 'paused' ? '继续练习' : '继续回答');
-  if (task.kind === 'conversation') return t('继续讨论');
+  if (task.kind === 'conversation' || task.kind === 'external_question') return t('继续讨论');
   return t(['prediction', 'explanation', 'task', 'feedback'].includes(task.stage ?? '') ? '继续回答' : '继续本课');
 }
 
 export function learningTaskStage(task: LearningTaskView): string {
   if (task.kind === 'closed_book') return t('闭卷练习 · 当前问题与草稿已保留');
   if (task.kind === 'conversation') return t('回到原来的问题和对话');
+  if (task.kind === 'external_question') return t('接着外部 Agent 保存的问题讨论');
   const labels: Record<string, string> = {
     introduction: '先认识问题和必要概念', prediction: '留下你的判断和理由',
     experiment: '继续观察、取证或实验', explanation: '把依据组织成自己的解释',

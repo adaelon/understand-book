@@ -10,7 +10,7 @@
 
 ```powershell
 pnpm install
-cargo build -p server --bin server
+cargo build -p reader-service --bin reader
 pnpm eval:semantic:test
 node evals/semantic/run.mjs --validate --book ".understand-book/quantification-essence"
 
@@ -21,7 +21,7 @@ node evals/semantic/report.mjs evals/semantic/results/my-run
 
 输出目录已有 `run.json` 时拒绝覆盖。默认每题每系统运行一次，56 次请求，不自动重试或剔除失败。可用 `--only exact-01` 做单题接入预检；预检不能替代全量结果。`--integration-only` 只检查真实 Reader 重启，无模型调用。
 
-环境变量：`OPENCODE_API_KEY`、`OPENCODE_BASE_URL`、`FLUID_LLM_MODEL`，沿用项目现有命名；使用兼容 Chat Completions 和 JSON object 输出的服务。程序只记录模型名与服务 origin，不保存密钥。`SEMANTIC_EVAL_SERVER` 可指定已编译的 server 可执行文件。
+环境变量：`OPENCODE_API_KEY`、`OPENCODE_BASE_URL`、`FLUID_LLM_MODEL`，沿用项目现有命名；使用兼容 Chat Completions 和 JSON object 输出的服务。程序只记录模型名与服务 origin，不保存密钥。`SEMANTIC_EVAL_SERVER` 可指定已编译、支持 `--reader-only` 的 Reader 可执行文件；默认使用公共 `reader-service` 的 `reader`。
 
 ## 冻结任务
 
@@ -78,6 +78,6 @@ node evals/semantic/report.mjs evals/semantic/results/my-run
 
 `run.json` 保存实际输入片段、返回引文、Provider usage、图谱工具轨迹、逐题判分及重启观察，仅保留本地并被 Git 忽略。`report.mjs` 输出可公开的 `summary.json` 和 `report.md`，保留事实值、证据坐标、用量、耗时、失败和判分细目，不分发原书全文或机器私有路径。
 
-README 截图可在 `pnpm demo:prepare`、`pnpm build`、`cargo build -p server --bin server` 后用 `node evals/semantic/capture.mjs` 重新生成；需要已安装 Playwright Chromium。脚本用独立临时记忆创建演示笔记与高亮，再截取真实前端，不伪造模型回答。
+README 截图可在 `pnpm demo:prepare`、`pnpm build`、`cargo build -p reader-service --bin reader` 后用 `node evals/semantic/capture.mjs` 重新生成；需要已安装 Playwright Chromium。脚本用独立临时记忆创建演示笔记与高亮，再截取真实前端，不伪造模型回答。
 
 原书标题为《你认为量化的本质是什么？》。测试描述该书的观点，不验证其金融论断。原书中重复数字、公式排版等输入噪声保留不变。单书 32 题属于开发集，没有独立盲测、重复采样或线上 SLA 保证；准备简历时应一并说明样本数和对照范围。

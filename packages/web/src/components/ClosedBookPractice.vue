@@ -4,6 +4,7 @@ import { ArrowUp, BookOpen, CircleHelp, Pause, RotateCcw } from '@lucide/vue';
 import { renderMarkdown } from '../md';
 import { t } from '../i18n';
 import type { ClosedBookPractice } from '../generated/ClosedBookPractice';
+import LoadingAnimation from './LoadingAnimation.vue';
 
 const props = defineProps<{ state: ClosedBookPractice | null; restoring: boolean; busy: boolean; error: string;
   messages: { id: string; user: string; answer: string }[]; draft: string }>();
@@ -14,7 +15,8 @@ const input = ref<HTMLTextAreaElement>();
 const transcript = ref<HTMLElement>();
 const complete = computed(() => props.state?.status === 'complete');
 const paused = computed(() => props.state?.status === 'paused');
-const shown = computed(() => props.restoring || props.state?.status === 'active' || paused.value || complete.value);
+const practiceVisible = computed(() => props.state?.status === 'active' || paused.value || complete.value);
+const shown = computed(() => props.restoring || practiceVisible.value);
 // A closed-book answer can name a source, but cannot open links or embed an old page.
 function markdown(text: string) {
   const html = document.createElement('div'); html.innerHTML = renderMarkdown(text);
@@ -38,8 +40,12 @@ function submit() { if (!props.busy && props.draft.trim()) emit('send', props.dr
 
 <template>
   <Teleport to="body">
-    <dialog ref="dialog" class="closed-book-dialog" aria-labelledby="closed-book-title" @cancel.prevent="emit('leave', 'pause')">
-      <div class="closed-book-shell">
+    <dialog ref="dialog" class="closed-book-dialog" :aria-labelledby="practiceVisible ? 'closed-book-title' : undefined" :aria-label="practiceVisible ? undefined : t('正在加载')" @cancel.prevent="practiceVisible && !restoring && emit('leave', 'pause')">
+      <div v-if="restoring && !practiceVisible" class="closed-book-loading">
+        <LoadingAnimation v-if="!error" />
+        <div v-else class="closed-book-error" role="alert"><p>{{ t('暂时无法恢复学习，请重试。') }}</p><p>{{ error }}</p><button :disabled="busy" @click="emit('retry')"><RotateCcw :size="14" />{{ t('重试') }}</button></div>
+      </div>
+      <div v-else-if="practiceVisible" class="closed-book-shell">
         <header class="closed-book-header">
           <div><p class="closed-book-eyebrow">{{ t('闭卷对话') }}</p><h1 id="closed-book-title">{{ t('练到会') }}</h1></div>
           <button v-if="!paused && !complete" class="closed-book-leave" :disabled="restoring" @click="emit('leave', 'pause')"><Pause :size="15" />{{ t('暂停') }}</button>
@@ -73,8 +79,9 @@ function submit() { if (!props.busy && props.draft.trim()) emit('send', props.dr
 </template>
 
 <style scoped>
-.closed-book-dialog{position:fixed;inset:0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;padding:0;background:var(--canvas,#faf9f6);color:var(--ink,#292622);font-family:var(--sans,system-ui);overflow:hidden}
+.closed-book-dialog{position:fixed;inset:0;margin:0;width:100vw;height:100dvh;max-width:none;max-height:none;border:0;outline:none;padding:0;background:var(--canvas,#faf9f6);color:var(--ink,#292622);font-family:var(--sans,system-ui);overflow:hidden}
 .closed-book-dialog::backdrop{background:var(--canvas,#faf9f6)}
+.closed-book-loading{height:100%;display:grid;place-items:center;padding:24px;box-sizing:border-box}.closed-book-loading>.closed-book-error{max-width:480px;overflow-wrap:anywhere}
 .closed-book-shell{height:100%;max-width:820px;margin:auto;display:flex;flex-direction:column;padding:0 32px;box-sizing:border-box}
 .closed-book-header{display:flex;align-items:center;justify-content:space-between;padding:24px 0 18px;border-bottom:1px solid var(--hairline,#e5e2da)}
 .closed-book-eyebrow{font-size:11px;letter-spacing:.12em;color:var(--steel,#77736b);margin:0 0 5px}.closed-book-header h1{font-size:20px;margin:0;font-weight:600}

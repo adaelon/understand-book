@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const respond = vi.hoisted(() => vi.fn());
 vi.mock('./api', () => ({ api: { musicRespond: respond } }));
-vi.mock('./network-context', () => ({ sceneKey: () => 'scene' }));
+vi.mock('./reader-context', () => ({ sceneKey: () => 'scene' }));
 import { musicDispatcher, registerMusicPlayer } from './music-interaction';
 import { initialRun } from './agent-run-state';
 import type { MusicCommand, MusicPlaybackReceipt } from './music-api';

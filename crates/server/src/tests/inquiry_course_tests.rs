@@ -35,7 +35,7 @@ fn inquiry_course_chat_freezes_visible_work_and_preserves_course_help() {
     let run=start["progress"]["run_id"].as_str().unwrap();
     let current=f.ok(&f.a,"POST",&path,json!({"operation_id":"source-chat","run_id":run,"expected_revision":start["progress"]["revision"],"release_version":1,"action":{"kind":"source"}}));
     let publication=f.access.library.lock().unwrap().load("A",&f.x).unwrap();
-    let mut scene=crate::reader_workspace::ReaderWorkspace::local(publication.directory().to_path_buf(),publication.book.clone(),reader::Reader::new(&publication.book,crate::DEFAULT_RADIUS),vec![],None);
+    let mut scene=crate::reader_workspace::ReaderWorkspace::local(publication.directory().to_path_buf(),publication.book.clone(),reader::Reader::new(&publication.book,reader::DEFAULT_RADIUS),vec![],None);
     scene.publication=Some(publication.clone());
     scene.learning_workspace_id=Some(scope.into());
     let handle=f.access.users.lock().unwrap().get("A","now").unwrap();

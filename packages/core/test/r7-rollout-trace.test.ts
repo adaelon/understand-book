@@ -12,7 +12,7 @@ import {
   ROOT_EXECUTOR_BOUNDARY_UNVERIFIABLE,
   summarizeThreeSlotFirstTerminalScheduling,
   type ExecutorTraceOperation,
-} from "../../../apps/desktop/scripts/r7-rollout-trace";
+} from "../../../scripts/plugin/r7-rollout-trace";
 import { observeExecutorSlotInterval } from "../src/automatic-build-observation";
 
 const executorServer = "understand_book_build_executor";

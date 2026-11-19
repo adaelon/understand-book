@@ -1,6 +1,7 @@
 //! Capability-gated DeepSeek Messages requests. Execution permissions remain in
 //! the current request's tools; retained declarations only preserve context.
 use crate::{AdapterError, AgentReasoningEffort, AgentRequestPlan, Message, Role, ToolSpec};
+use crate::tool_history::{ToolDeclaration, ToolHistoryProjection, ToolUpdate};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, HashSet};
@@ -12,26 +13,6 @@ pub const TOOL_CHANGES_BETA: &str = "mid-conversation-tool-changes-2026-07-01";
 pub enum ToolUpdateMode {
     AdditionOnly,
     InHistory,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ToolDeclaration {
-    pub spec: ToolSpec,
-    pub defer_loading: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ToolUpdate {
-    /// Before request.input[index]; input.len() means after its last message.
-    pub message_index: usize,
-    pub added: Vec<String>,
-    pub removed: Vec<String>,
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
-pub struct ToolHistoryProjection {
-    pub declarations: Vec<ToolDeclaration>,
-    pub updates: Vec<ToolUpdate>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -103,14 +84,21 @@ pub(crate) fn endpoint_urls(base_url: &str) -> (String, String) {
         .as_ref()
         .is_some_and(|url| url.host_str() == Some("api.deepseek.com"))
     {
-        let url = parsed.unwrap();
-        let origin = url.origin().ascii_serialization();
-        return (
-            format!("{origin}/models"),
-            format!("{origin}/anthropic/v1/messages"),
-        );
+        let mut url = parsed.unwrap();
+        url.set_path("/models");
+        let models = url.to_string();
+        url.set_path("/anthropic/v1/messages");
+        return (models, url.into());
     }
-    (format!("{base}/models"), format!("{base}/messages"))
+    if let Some(mut url) = parsed {
+        let path = url.path().trim_end_matches('/').to_owned();
+        url.set_path(&format!("{path}/models"));
+        let models = url.to_string();
+        url.set_path(&format!("{path}/messages"));
+        (models, url.into())
+    } else {
+        (format!("{base}/models"), format!("{base}/messages"))
+    }
 }
 
 fn error(message: impl Into<String>) -> AdapterError {
@@ -774,6 +762,7 @@ mod tests {
     fn messages_replay_preserves_block_order_and_signatures_without_resurrecting_pruned_args() {
         let mut assistant = Message {
             provider_continuation: Some(ProviderContinuation {
+                provider_identity: None, protocol_state: None,
                 model: "fixture".into(),
                 reasoning_content: "private".into(),
                 messages_content: vec![
@@ -887,7 +876,8 @@ mod tests {
                     }],
                     tool_call_id: None,
                     provider_continuation: Some(ProviderContinuation {
-                        model: "fixture".into(),
+                        provider_identity: None, protocol_state: None,
+                model: "fixture".into(),
                         reasoning_content: "reasoning kept verbatim".into(),
                         messages_content: continuation_blocks(&native),
                     }),
@@ -1283,6 +1273,7 @@ mod tests {
             );
         });
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "fixture-key".into(),
@@ -1419,6 +1410,7 @@ mod tests {
             );
         });
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "fixture-key".into(),
@@ -1461,12 +1453,12 @@ mod tests {
             body.as_object_mut().unwrap().remove("output_config");
             body["max_tokens"] = json!(256);
             adapter
-                .normalize_provider_body(&mut body, true)
+                .normalize_provider_body(&mut body, crate::model_settings::ApiProtocol::DeepseekMessages)
                 .map_err(|e| e.message)?;
             attempts += 1;
             let url = endpoint_urls(&adapter.base_url).1;
             let mut deltas = Vec::new();
-            let result = match adapter.send_provider_request_once(&url, &body, true, adapter.request_timeouts.request) {
+            let result = match adapter.send_provider_request_once(&url, &body, crate::model_settings::ApiProtocol::DeepseekMessages, adapter.request_timeouts.request, &BTreeMap::new()) {
                 Ok(response) => crate::deepseek_messages_stream::read_response(
                     response,
                     &Default::default(),
@@ -1529,7 +1521,8 @@ mod tests {
                     arguments: calls[0]["function"]["arguments"].as_str().unwrap().into(),
                 }],
                 provider_continuation: Some(ProviderContinuation {
-                    model: model.into(),
+                    provider_identity: None, protocol_state: None,
+                model: model.into(),
                     reasoning_content: message["reasoning_content"].as_str().unwrap_or("").into(),
                     messages_content: message["messages_content"].as_array().unwrap().clone(),
                 }),

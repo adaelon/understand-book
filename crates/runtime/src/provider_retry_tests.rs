@@ -129,7 +129,7 @@ fn success(messages: bool) -> String {
 }
 fn adapter(fixture: &Fixture, ledger: Arc<Ledger>, timeout: Duration) -> NativeAdapter {
     let adapter = NativeAdapter::from_config_with_timeout(
-        ProviderConfig {
+        ProviderConfig { options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "fixture-key".into(),
@@ -148,7 +148,7 @@ fn adapter(fixture: &Fixture, ledger: Arc<Ledger>, timeout: Duration) -> NativeA
     adapter
 }
 fn send(adapter: &NativeAdapter, messages: bool) -> Result<Value, AdapterError> {
-    adapter.post_provider_request(json!({"model":"fixture-model","messages":[{"role":"user","content":"fixture"}],"max_tokens":100}), &mut provider_stream::ignore, "structured", messages)
+    adapter.post_provider_request(json!({"model":"fixture-model","messages":[{"role":"user","content":"fixture"}],"max_tokens":100}), &mut provider_stream::ignore, "structured", if messages { crate::model_settings::ApiProtocol::DeepseekMessages } else { crate::model_settings::ApiProtocol::OpenaiChatCompletions })
 }
 
 #[test]
@@ -351,7 +351,7 @@ fn provider_retry_react_uses_the_same_recovery_path() {
         success(false),
     ]);
     let adapter = ProviderRegistry::adapter_from_config_with_timeout(
-        ProviderConfig {
+        ProviderConfig { options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::ReAct,
             api_key: "fixture-key".into(),

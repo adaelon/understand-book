@@ -31,12 +31,14 @@ import {
   structureOutlineChapterBook, structureOutlineThemePageInput, applyStructureOutlineThemePageAction,
   type StructureOutlineThemePageContext, type StructureOutlineThemePageWork,
 } from "./book-structure-outline-pages";
+import { structureThemePlanPageInput, applyStructureThemePlanPageAction, finishStructureThemePlanPages,
+  type StructureThemePlanPageContext, type StructureThemePlanPageWork } from "./book-structure-theme-plan-pages";
 
 const STRUCTURE_ORGANIZATION_BODY_LIMIT_TOKENS = 20000;
 const STRUCTURE_OUTLINE_CHAPTER_BATCH_SIZE = 4;
 
-export type StructureOrganizationKind = "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_outline_theme_page" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme" | "structure_theme_reconcile";
-export type StructureOrganizationState = StructureOutline | StructureOutlineThemeWork | StructureOutlineThemePageWork | StructureChapterWork | StructureThemeDirectory;
+export type StructureOrganizationKind = "structure_outline" | "structure_outline_chapters" | "structure_outline_themes" | "structure_outline_theme_page" | "structure_chapter" | "structure_chapter_selection" | "structure_theme_plan" | "structure_theme_plan_page" | "structure_theme" | "structure_theme_reconcile";
+export type StructureOrganizationState = StructureOutline | StructureOutlineThemeWork | StructureOutlineThemePageWork | StructureChapterWork | StructureThemeDirectory | StructureThemePlanPageWork;
 /** Only body is delivered. context/work are the current Core ledger, never a model-authored snapshot. */
 export type StructureOrganizationInput = {
   version: "book_structure_organization_input.v1";
@@ -50,12 +52,13 @@ export type StructureOrganizationInput = {
   | { phase: "outline_theme_page"; context: StructureOutlineThemePageContext; work: StructureOutlineThemePageWork }
   | { phase: "chapter"; context: StructureChapterContext; work: StructureChapterWork }
   | { phase: "plan"; context: StructureThemeContext }
+  | { phase: "plan_page"; context: StructureThemePlanPageContext; work: StructureThemePlanPageWork }
   | { phase: "theme"; context: StructureThemeContext; directory: StructureThemeDirectory; ref: string; revision_request?: StructureThemeRevisionRequest }
   | { phase: "reconcile"; context: StructureThemeContext; directory: StructureThemeDirectory }
 );
 export interface StructureOrganizationAcceptance { version: "book_structure_action.v1"; accepted_action: unknown }
 export function renderStructureOrganizationInput(input: StructureOrganizationInput): string {
-  const compact = input.phase === "outline_theme_page" || (input.phase === "plan" && input.context.planning_candidate_refs);
+  const compact = input.phase === "outline_theme_page" || input.phase === "plan_page" || (input.phase === "plan" && input.context.planning_candidate_refs);
   const indent = compact ? undefined : 2;
   const delivery = { phase: input.phase, input: input.body, reference_scope: input.reference_scope };
   const rendered = JSON.stringify(delivery, null, indent) + "\n";
@@ -111,6 +114,20 @@ export function fitStructureOrganizationExecution(input: Omit<Parameters<typeof 
     rendered = renderStructureOrganizationInput(packet);
     evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
   }
+  while (evaluation.status !== "within_limit" && packet.phase === "plan_page") {
+    const body = packet.body as ReturnType<typeof structureThemePlanPageInput>;
+    const chapterTokens = estimateTokens(JSON.stringify(body.chapters.items));
+    const seedTokens = estimateTokens(JSON.stringify(body.seeds.items));
+    const context: StructureThemePlanPageContext = { ...packet.context };
+    if (body.chapters.items.length > 1 && (body.seeds.items.length <= 1 || chapterTokens >= seedTokens)) {
+      context.chapter_page_size = Math.max(1, Math.floor(body.chapters.items.length / 2));
+    } else if (body.seeds.items.length > 1) {
+      context.seed_page_size = Math.max(1, Math.floor(body.seeds.items.length / 2));
+    } else break;
+    packet = { ...packet, context, body: structureThemePlanPageInput(packet.work, context) };
+    rendered = renderStructureOrganizationInput(packet);
+    evaluation = evaluateBookStructureExecution({ ...input, rendered_input: rendered });
+  }
   return { packet, rendered, evaluation };
 }
 export function applyStructureOrganizationAction(input: StructureOrganizationInput, action: unknown): StructureOrganizationState {
@@ -121,6 +138,7 @@ export function applyStructureOrganizationAction(input: StructureOrganizationInp
     case "outline_theme_page": return applyStructureOutlineThemePageAction(input.work, action, input.context);
     case "chapter": return applyStructureChapterAction(input.work, action, input.context);
     case "plan": return planStructureThemes(action, input.context);
+    case "plan_page": return applyStructureThemePlanPageAction(input.work, action, input.context);
     case "theme": return applyStructureThemeAction(input.directory, input.ref, action, input.context);
     case "reconcile": return reconcileStructureThemes(input.directory, action, input.context);
   }
@@ -365,8 +383,23 @@ export function routeStructureOrganization(input: {
         overview: selected.find(s => s.selection.unit_lid === c.unit_lid)?.selection.summary ?? c.overview,
         question: outline.chapters.find(o => o.unit_lid === c.unit_lid)!.question.text })),
       mode: selection && retrievalScopeIncludes(selection.data_scope, "book_structure") ? selection.retrieval_mode : "lexical_only" };
-    let directory = step("structure_theme_plan", "structure:themes:plan", { ...packet, phase: "plan", context: themeContext,
-      body: structureThemePlanningInput(themeContext) }) as StructureThemeDirectory | undefined;
+    const wholePlan: StructureOrganizationInput = { ...packet, phase: "plan", context: themeContext,
+      body: structureThemePlanningInput(themeContext) };
+    let directory: StructureThemeDirectory | undefined;
+    if (fit("structure_theme_plan", wholePlan).evaluation.status === "within_limit") {
+      directory = step("structure_theme_plan", "structure:themes:plan", wholePlan) as StructureThemeDirectory | undefined;
+    } else {
+      const context = { theme: themeContext, chapter_page_size: 24, seed_page_size: 96 };
+      let work: StructureThemePlanPageWork = { chapter_offset: 0, seed_offset: 0, themes: [], complete: false };
+      while (!work.complete) {
+        const id = `structure:themes:plan-page:${work.chapter_offset}:${work.seed_offset}`;
+        const next = step("structure_theme_plan_page", id, { ...packet, phase: "plan_page", context, work,
+          body: structureThemePlanPageInput(work, context) }) as StructureThemePlanPageWork | undefined;
+        if (!next) return { tasks, pending, progress };
+        work = next;
+      }
+      directory = finishStructureThemePlanPages(work, themeContext);
+    }
     if (!directory) return { tasks, pending, progress };
     progress.themes.planned = true; progress.themes.total = directory.works.length;
     // Replay the accepted legacy prefix without allocating another action-sized dispatch.

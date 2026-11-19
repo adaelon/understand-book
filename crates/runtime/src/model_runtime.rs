@@ -356,7 +356,7 @@ pub struct AgentRequestPlan {
     pub instruction_assets: Vec<InstructionAssetRef>,
     pub input: Vec<Message>,
     pub tools: Vec<ToolSpec>,
-    pub tool_history: Option<crate::deepseek_messages::ToolHistoryProjection>,
+    pub tool_history: Option<crate::tool_history::ToolHistoryProjection>,
     pub tool_choice: ToolChoice,
     pub parallel_tool_calls: bool,
     pub active_context: ActiveContextStatus,
@@ -565,30 +565,44 @@ fn estimate_request_tokens(messages: &[Message], tools: &[ToolSpec]) -> u32 {
 /// as the runtime's visual input planning, rather than counting base64 characters.
 pub(crate) fn estimate_provider_request_input_tokens(request: &serde_json::Value) -> u32 {
     let mut messages = request["messages"].clone();
-    let image_tokens = replace_image_data_for_estimate(&mut messages);
-    let text = serde_json::json!({
+    let mut image_tokens = replace_image_data_for_estimate(&mut messages);
+    let mut text = serde_json::json!({
         "system": request.get("system"),
         "messages": messages,
         "tools": request.get("tools"),
         "response_format": request.get("response_format"),
     });
+    for key in ["input", "contents", "system_instruction", "systemInstruction", "instructions", "tool_config", "toolConfig", "generationConfig", "generation_config", "text"] {
+        if let Some(value) = request.get(key) {
+            let mut value = value.clone();
+            image_tokens = image_tokens.saturating_add(replace_image_data_for_estimate(&mut value));
+            text[key] = value;
+        }
+    }
     estimate_text_tokens(&text.to_string()).saturating_add(image_tokens)
 }
 
 fn replace_image_data_for_estimate(value: &mut serde_json::Value) -> u32 {
     if value.get("type").and_then(serde_json::Value::as_str)
-        .is_some_and(|kind| matches!(kind, "image_url" | "image"))
+        .is_some_and(|kind| matches!(kind, "image_url" | "image" | "input_image"))
     {
         let kind = value["type"].clone();
         *value = serde_json::json!({"type":kind});
         return 4096;
     }
+    if value.get("inlineData").is_some() || value.get("inline_data").is_some() || value.get("image").is_some() {
+        *value = serde_json::json!({"type":"image"});
+        return 4096;
+    }
+    let image_tokens = value.get("images").and_then(serde_json::Value::as_array)
+        .map(|images| (images.len() as u32).saturating_mul(4096)).unwrap_or(0);
+    if image_tokens > 0 { value["images"] = serde_json::json!([]); }
     match value {
         serde_json::Value::Array(values) => values.iter_mut()
-            .fold(0u32, |sum, value| sum.saturating_add(replace_image_data_for_estimate(value))),
+            .fold(image_tokens, |sum, value| sum.saturating_add(replace_image_data_for_estimate(value))),
         serde_json::Value::Object(values) => values.values_mut()
-            .fold(0u32, |sum, value| sum.saturating_add(replace_image_data_for_estimate(value))),
-        _ => 0,
+            .fold(image_tokens, |sum, value| sum.saturating_add(replace_image_data_for_estimate(value))),
+        _ => image_tokens,
     }
 }
 
@@ -607,6 +621,18 @@ pub(crate) fn estimate_text_tokens(text: &str) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn provider_wire_estimates_include_new_protocol_history_without_counting_image_bytes() {
+        for field in ["input", "contents"] {
+            let short = serde_json::json!({(field):[{"text":"visible source"}, {"inlineData":{"mimeType":"image/png","data":"AA=="}}]});
+            let long = serde_json::json!({(field):[{"text":"visible source"}, {"inlineData":{"mimeType":"image/png","data":"A".repeat(100_000)}}]});
+            assert_eq!(estimate_provider_request_input_tokens(&short), estimate_provider_request_input_tokens(&long));
+            assert!(estimate_provider_request_input_tokens(&short) >= 4096);
+            let text = serde_json::json!({(field):[{"text":"source ".repeat(1000)}]});
+            assert!(estimate_provider_request_input_tokens(&text) > estimate_provider_request_input_tokens(&serde_json::json!({})));
+        }
+    }
 
     #[test]
     fn shared_output_allowance_reserves_the_same_space_for_every_call() {

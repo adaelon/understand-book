@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-local-pick-directory"
+description = "Enables the local_pick_directory command without any pre-configured scope."
+commands.allow = ["local_pick_directory"]
+
+[[permission]]
+identifier = "deny-local-pick-directory"
+description = "Denies the local_pick_directory command without any pre-configured scope."
+commands.deny = ["local_pick_directory"]

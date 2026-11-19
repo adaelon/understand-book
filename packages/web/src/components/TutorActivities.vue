@@ -8,7 +8,7 @@ import { api as sharedApi, ApiError, type TutorActivity, type TutorHelp, type Te
 import { openPersonalNotes } from '../personal-notes';
 import { answerDisplayParts, sourceMarkedParts } from '../answer-markdown';
 import type { AgentAnswerSource } from '../generated/AgentAnswerSource';
-import { bindSceneApi } from '../network-context';
+import { bindSceneApi } from '../reader-context';
 const api = bindSceneApi(sharedApi);
 import type { PresentationRef } from '../generated/PresentationRef';
 import type { PresentationFollowUp } from '../generated/PresentationFollowUp';

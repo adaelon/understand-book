@@ -77,6 +77,9 @@ fn closed_book_reflection_rejection_can_continue_until_original_task_is_accepted
     v=act(&mut store,&v,"explain",CourseAction::Advance);
     let result=closed_book_result(&mut store,&v,"reflection-attempt","总时间不能小于任一必要时间。");
     v=act(&mut store,&v,"reuse",CourseAction::UseClosedBook{result_ref:result.clone()});
+    let imported=store.teaching_event(&v.expressions.last().unwrap().fact_ref).unwrap();
+    assert!(store.prior_chat_help_for_expression(&imported).unwrap().is_empty(),
+        "the old course explanation is not help during the imported independent attempt");
     let first=v.expressions.last().unwrap().job_ref.clone();
     let finish=|store:&mut LearningStore,id:&str,accepted:bool| {
         let job=store.claim_coach_job(id,"now").unwrap().unwrap();
@@ -98,6 +101,9 @@ fn closed_book_reflection_rejection_can_continue_until_original_task_is_accepted
     let job=store.coach_job(&last).unwrap().unwrap();
     assert!(job.input.context["course_response"]["closed_book_result"].is_object());
     assert!(!job.input.context["observation_facts"][0]["prior_help"].as_array().unwrap().is_empty());
+    let reply=store.teaching_event(&v.expressions.last().unwrap().fact_ref).unwrap();
+    assert!(!store.prior_chat_help_for_expression(&reply).unwrap().is_empty(),
+        "a later reply with the same result reference still retains newly received course help");
     finish(&mut store,&last,true);cannot_advance(&mut store,&v);
     drop(store);let mut store=LearningStore::open(&file,false).unwrap();
     v=act(&mut store,&v,"read-accepted",CourseAction::ReadFeedback{job_ref:last});

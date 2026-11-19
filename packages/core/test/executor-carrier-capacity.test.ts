@@ -9,8 +9,8 @@ import {
   EXECUTOR_CARRIER_TIERS,
   parseCarrierPayloadText,
   type ExecutorCarrierCaseResultV1,
-} from "../../../apps/desktop/scripts/executor-carrier-capacity";
-import { analyzeScenarioRoot } from "../../../apps/desktop/scripts/smoke-executor-carrier-capacity";
+} from "../../../scripts/plugin/executor-carrier-capacity";
+import { analyzeScenarioRoot } from "../../../scripts/plugin/smoke-executor-carrier-capacity";
 
 describe("Executor carrier capacity probe", () => {
   it("builds exact 8/16/32/64 KiB ASCII and CJK JSON-RPC result lines", () => {

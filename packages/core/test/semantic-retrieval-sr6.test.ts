@@ -6,8 +6,23 @@ import { describe, expect, it } from "vitest";
 import { fixture, cases } from "../testdata/semantic-retrieval/gold";
 import { alignmentFocus } from "../src/teaching-object-alignment";
 import { prepareSemanticRetrieval } from "../src/semantic-retrieval-preparation";
+import { projectRetrievalCatalog, retrievalCatalog } from "../src/semantic-retrieval";
 import { GROUPS, acceptGoldAction, goldDependencies, preparedGoldPage, goldInput, goldSummary, identityQuality, legacySequence, readRanking, rankingReport, releaseDecision,
   type GoldRun } from "../../../evals/semantic-retrieval/sr6";
+
+function syntheticRankingInput(): Parameters<typeof rankingReport>[0] {
+  const { work, previous } = fixture();
+  // Authored vectors exercise ranking/reporting only, not a provider's semantic quality.
+  return {
+    identity: { provider_id: "public-test", model_id: "authored-vectors", model_revision: "1", embedding_config: {}, dimensions: cases.length + 1 },
+    documents: projectRetrievalCatalog(retrievalCatalog(work.proposal, previous)).map(record => ({
+      key: record.key, content_digest: record.content_digest, embedding_text: record.embedding_text,
+      vector: [...cases.map(c => c.compare.includes(record.key) ? 1 : 0), 1],
+    })),
+    query_vectors: cases.map((c, index) => ({ id: c.id, query: c.query,
+      vector: [...cases.map((_, dimension) => dimension === index ? 1 : 0), 0] })),
+  };
+}
 
 function complete(group: GoldRun["group"], mergeSynonyms = true, wrongMerge = false): GoldRun {
   const f = fixture(), run: GoldRun = { group, work: f.work, calls: [] };
@@ -42,13 +57,15 @@ describe("SR6 controlled identity evaluation", () => {
     const root = mkdtempSync(path.join(tmpdir(), "sr6-plan-"));
     const json = (file: string, data: unknown) => { mkdirSync(path.dirname(file), { recursive: true }); writeFileSync(file, JSON.stringify(data)); };
     const config = path.join(root, "embedding.json");
+    const rankingInput = path.join(root, "vectors.json");
+    json(rankingInput, syntheticRankingInput());
     json(config, { version: "local_embedding_config.v1", runtime_dir: "runtime", model_dir: "model" });
     json(path.join(root, "model/model-metadata.json"), { model: "Xenova/paraphrase-multilingual-MiniLM-L12-v2", revision: "test" });
     for (const name of ["@huggingface/transformers", "onnxruntime-node"]) json(path.join(root, "runtime/node_modules", name, "package.json"), { version: "test" });
     const script = path.resolve(import.meta.dirname, "../../../evals/semantic-retrieval/sr6-run.ts");
     const invoke = (...args: string[]) => execFileSync(process.execPath, ["--import", "tsx", script, ...args], {
       cwd: path.resolve(import.meta.dirname, "../../.."), encoding: "utf8", windowsHide: true,
-      env: { ...process.env, FLUID_LLM_MODEL: "test", OPENCODE_BASE_URL: "http://127.0.0.1:1", OPENCODE_API_KEY: "test" }, stdio: "pipe" });
+      env: { ...process.env, FLUID_LLM_MODEL: "test", OPENCODE_BASE_URL: "http://127.0.0.1:1", OPENCODE_API_KEY: "test", SR6_RANKING_INPUT: rankingInput }, stdio: "pipe" });
     const prior = path.join(root, "prior"), next = path.join(root, "next");
     invoke("prepare", prior, config);
     expect(() => invoke("run", prior, config)).toThrow("Approve the displayed SR6 plan");
@@ -102,9 +119,9 @@ describe("SR6 controlled identity evaluation", () => {
       expect(result.search!.keys).toEqual(legacySequence(run.work, f.previous, c.query).hits.slice(0, 6).map(h => h.key));
     }
   });
-  it("reports fixed-query real-vector A/B/C metrics and refuses publication without complete Agent and long-source evidence", () => {
-    const file = path.resolve(import.meta.dirname, "../../../docs/performance/semantic-retrieval-sr1-vectors-20261001.json");
-    const ranking = readRanking(file);
+  it("reports authored-vector A/B/C metrics and refuses publication without complete Agent and long-source evidence", () => {
+    const saved = syntheticRankingInput();
+    const ranking = rankingReport(saved);
     expect(ranking.aggregate.B[6].recall).toBe(0.125); expect(ranking.aggregate.C[6].recall).toBe(1);
     expect(ranking.rows.every(r => r.exact_retained)).toBe(true);
     expect(releaseDecision(ranking, []).reasons).toContain("three_complete_agent_runs_required");
@@ -112,8 +129,14 @@ describe("SR6 controlled identity evaluation", () => {
     expect(releaseDecision(ranking, runs)).toMatchObject({ eligible: false, default_mode: "lexical_only", reasons: ["long_material_acceptance_incomplete"] });
     runs[2] = complete("C", false);
     expect(releaseDecision(ranking, runs).reasons).toContain("identity_reuse_regression");
-    const saved = JSON.parse(readFileSync(file, "utf8")); saved.documents[0].embedding_text += " changed";
+    saved.documents[0].embedding_text += " changed";
     // The CLI loader uses this same validator; changed projections cannot reuse stale evidence.
     expect(() => rankingReport(saved)).toThrow("saved projection changed");
+  });
+  it.skipIf(!process.env.SR6_RANKING_INPUT)("replays the selected real-vector retrieval evidence", () => {
+    const ranking = readRanking(process.env.SR6_RANKING_INPUT!);
+    expect(ranking.aggregate.B[6].recall).toBe(0.125);
+    expect(ranking.aggregate.C[6].recall).toBe(1);
+    expect(ranking.rows.every(row => row.exact_retained)).toBe(true);
   });
 });

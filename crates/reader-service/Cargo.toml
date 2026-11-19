@@ -1,0 +1,44 @@
+[package]
+name = "reader-service"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[dependencies]
+desktop-support = { path = "../desktop-support" }
+dotenvy = "0.15"
+schemars = "0.8"
+sha2 = "0.10"
+artifact-tools = { path = "../artifact-tools" }
+base-schema = { path = "../base-schema" }
+book-tool-contracts = { path = "../book-tool-contracts" }
+read-tools = { path = "../read-tools" }
+reader = { path = "../reader" }
+memory = { path = "../memory" }
+rusqlite = { version = "0.40.2", features = ["bundled", "backup"] }
+runtime = { path = "../runtime" }
+base64 = "0.22"
+png = "0.17.16"
+httpdate = "1.0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["arbitrary_precision"] }
+tiny_http = "0.12"
+ts-rs = "10"
+tungstenite = "0.28"
+tempfile = "3"
+serde_yaml_ng = "0.10"
+time = { version = "0.3.53", features = ["formatting", "parsing"] }
+ureq = { version = "2.12.1", features = ["json"] }
+url = "2.5.7"
+uuid = { version = "1.23.4", features = ["v7"] }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+
+[[bin]]
+name = "reader"
+path = "src/main.rs"
+
+[features]
+test-support = []

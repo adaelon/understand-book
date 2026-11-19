@@ -94,7 +94,7 @@ pub(super) fn prepare_video(
         .reference;
     // The documented original fixture is silent; it must still be playable.
     let playback = crate::video_playback::cache_directory(f.root.path(), &video.book_id).unwrap();
-    assert!(crate::video_playback::ready(&playback).is_some());
+    assert!(reader_service::tests::host_calls::video_playback::ready(&playback).is_some());
     (dir, video, request)
 }
 

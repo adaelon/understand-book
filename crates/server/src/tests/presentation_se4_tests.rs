@@ -42,7 +42,7 @@ fn se4_feedback_lifecycle_retries_and_reopen_preserve_one_current_choice() {
     assert_eq!(first["feedback_revision"], 1);
     assert_eq!(first["selection"], json!({"choice":"like","reasons":[],"comment":""}));
     assert!(first["saved_state"].is_null());
-    let path = state.user.presentation_root().unwrap().join("feedback").join(&reference.presentation_id).join("1.json");
+    let path = state.user.test_presentation_root().unwrap().join("feedback").join(&reference.presentation_id).join("1.json");
     let bytes = std::fs::read(&path).unwrap();
     assert_eq!(feedback(&mut state, "set", &set), first);
     assert_eq!(std::fs::read(&path).unwrap(), bytes);
@@ -168,7 +168,7 @@ fn se4_feedback_storage_failure_and_replacement_quota_keep_committed_choice() {
     let (_root, mut state, turn, reference) = delivered_fixture();
     let request = target(&turn, &reference);
     let mut set = request.clone(); set["selection"] = json!({"choice":"like"});
-    let root = state.user.presentation_root().unwrap();
+    let root = state.user.test_presentation_root().unwrap();
     std::fs::write(root.join("feedback"), "blocked directory").unwrap();
     assert_eq!(rejected(&mut state, "set", &set)["error_code"], "PRESENTATION_STORAGE_FAILED");
     std::fs::remove_file(root.join("feedback")).unwrap();
@@ -235,10 +235,10 @@ fn se4_feedback_network_users_workspaces_linked_views_and_publication_access() {
                 state_contract:json!({}),initial_state:json!({}),
             },
         };
-        let path = user.presentation_root().unwrap().join("versions/se4-shared-id/1.json");
+        let path = user.test_presentation_root().unwrap().join("versions/se4-shared-id/1.json");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, serde_json::to_vec(&version).unwrap()).unwrap();
-        crate::session_runtime::finish(&mut user, &turn, &completed, "finished").unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user, &turn, &completed, "finished").unwrap();
     }
     drop(port);
     let request = target(&turn, &reference);

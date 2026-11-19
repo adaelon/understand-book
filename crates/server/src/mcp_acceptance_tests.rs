@@ -1,5 +1,6 @@
 //! MCP9: real HTTP, SQLite, published sources and an opt-in external client fixture.
 use super::*;
+use reader_service::service_error;
 use std::{path::Path, time::Instant};
 
 fn publish(f: &Fixture, user: &str, id: &str, text: &str) -> PublishedBookRef {
@@ -48,7 +49,7 @@ fn mcp9_two_accounts_purchase_recovery_and_source_evidence() {
     let cookie = f
         .access
         .auth
-        .login("alice", "fixture-password", None, multi_user_host::now())
+        .login("alice", "fixture-password", None, service_error::now())
         .unwrap();
     let bob = publish(
         &f,
@@ -90,7 +91,7 @@ fn mcp9_two_accounts_purchase_recovery_and_source_evidence() {
         f.tool(0, "book_text", args.clone())["structuredContent"]["error_code"],
         "quota_exhausted"
     );
-    let purchase = json!({"operation_id":"mcp9-purchase","pack_count":1,"paid_at":multi_user_host::now(),"channel":"test","note":"isolated fixture; no real payment"});
+    let purchase = json!({"operation_id":"mcp9-purchase","pack_count":1,"paid_at":service_error::now(),"channel":"test","note":"isolated fixture; no real payment"});
     let receipt = admin(
         &f,
         &cookie,
@@ -245,7 +246,7 @@ fn mcp9_external_agent_fixture() {
     let cookie = f
         .access
         .auth
-        .login("alice", "fixture-password", None, multi_user_host::now())
+        .login("alice", "fixture-password", None, service_error::now())
         .unwrap();
     f.access
         .library

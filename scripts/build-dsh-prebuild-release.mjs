@@ -2,8 +2,10 @@ import { spawnSync } from 'node:child_process';
 import { copyFileSync, mkdirSync, readFileSync, renameSync, writeFileSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { desktopTarget } from './desktop/platform.mjs';
 
 const repo = fileURLToPath(new URL('../', import.meta.url));
+const target = desktopTarget();
 const output = path.resolve(process.argv[2] ?? path.join(repo, 'dist/dsh-release'));
 const pkg = path.join(repo, 'packages/dsh-plugin');
 const manifest = JSON.parse(readFileSync(path.join(pkg, 'package.json'), 'utf8'));
@@ -19,13 +21,14 @@ const npm = process.env.NPM_CLI_JS ?? path.join(path.dirname(process.execPath), 
 if (!existsSync(npm)) throw new Error('Set NPM_CLI_JS to npm-cli.js (build-time only)');
 run(process.execPath, [npm, 'pack', '--ignore-scripts', '--pack-destination', output], { cwd: pkg });
 const engineDir = path.join(output, 'engine');
-run(process.execPath, [path.join(repo, 'apps/desktop/scripts/build-sidecar.mjs')],
+run(process.execPath, [path.join(repo, 'scripts/desktop/build-sidecar.mjs')],
   { env: { ...process.env, UNDERSTAND_BOOK_SIDECAR_OUTPUT_DIR: engineDir } });
-renameSync(path.join(engineDir, 'understand-book-build-x86_64-pc-windows-msvc.exe'), path.join(engineDir, 'understand-book-build.exe'));
+const executable = `understand-book-build${target.suffix}`;
+renameSync(path.join(engineDir, `understand-book-build-${target.triple}${target.suffix}`), path.join(engineDir, executable));
 copyFileSync(path.join(pkg, 'README.md'), path.join(output, 'INSTALL.md'));
 writeFileSync(path.join(output, 'release.json'), JSON.stringify({
   version: manifest.version, plugin: `understand-book-dsh-plugin-${manifest.version}.tgz`,
-  engine: 'engine/understand-book-build.exe', platform: 'win32', arch: 'x64',
+  engine: `engine/${executable}`, platform: target.platform, arch: target.arch,
   dsh: '0.1.7-rc.2', status: 'prerelease',
 }, null, 2) + '\n');
 console.log(`Release: ${output}`);

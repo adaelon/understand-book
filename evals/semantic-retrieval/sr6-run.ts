@@ -38,6 +38,7 @@ interface Plan {
 if (command === "prepare" || command === "prepare-revision") {
   if (existsSync(file("plan.json"))) throw new Error("Plan already exists; resume this experiment instead of resetting its budget");
   if (!configFile) throw new Error("Local embedding config required for preview");
+  if (command === "prepare" && !process.env.SR6_RANKING_INPUT) throw new Error("Set SR6_RANKING_INPUT to the saved vector input for this experiment");
   const retrieval = configureBuildRetrieval("semantic_required", { max_documents: 1024, max_queries: 256, max_calls: 512 }, path.resolve(configFile));
   const embedding_plan = compileBuildMode({ mode: "standard_deep", book_id: "sr6-gold", source_fingerprint: "rates-source-v1",
     content_profile: { id: "technical_learning", version: "technical_learning_v0" }, plan_id: "sr6-gold-local", revision: 1,
@@ -59,7 +60,9 @@ if (command === "prepare" || command === "prepare-revision") {
     plan.max_calls = prior.max_calls; plan.max_wall_minutes = prior.max_wall_minutes;
   }
   save("plan.json", plan);
-  save("ranking.json", readRanking(path.join(root, "docs/performance/semantic-retrieval-sr1-vectors-20261001.json")));
+  save("ranking.json", command === "prepare-revision"
+    ? JSON.parse(readFileSync(path.join(plan.prior_directory!, "ranking.json"), "utf8"))
+    : readRanking(path.resolve(process.env.SR6_RANKING_INPUT!)));
   console.log(JSON.stringify({ status: plan.status, model: plan.generation.model, origin: plan.generation.origin,
     groups: GROUPS, per_group_max_steps: contract.decision_budget.max_steps, max_calls_including_prior: plan.max_calls,
     thinking: contract.thinking ?? "provider default", prior_directory: plan.prior_directory,

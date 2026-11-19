@@ -1,4 +1,4 @@
-import type { PublishedBookRef } from './network-context';
+import type { PublishedBookRef } from './reader-context';
 import type { SharedBook, SharedRelease } from './shared-workspaces';
 
 export type LearningCollectionTarget =

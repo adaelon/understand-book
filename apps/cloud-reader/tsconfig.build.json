@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["src/network-main.ts", "src/home.ts", "src/desktop-main.ts", "../../packages/web/src/env.d.ts"]
+}

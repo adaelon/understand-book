@@ -464,7 +464,7 @@ fn mu5_learning_goals_share_revisions_and_reject_the_removed_switch() {
     assert_eq!(f.call(&f.a,"POST","/api/tutor/mutate",json!({"operation_id":"stale","expected_revision":0,"action":{"kind":"pause","session_id":id}})).0,409);
     let mut port=f.run(&w,"one");
     { let handle=f.access.users.lock().unwrap().get("A","now").unwrap();let user=handle.lock().unwrap();
-      teaching::prepare(&port.scope.private_user(&user),&AgentTurnRef {session_id:port.scope.chat_session_id.clone(),turn_id:port.scope.turn_id.clone(),user_turn_ordinal:1},&json!({"message":"Explain this source"}),"now").unwrap(); }
+      reader_service::tests::host_calls::teaching::prepare(&port.scope.private_user(&user),&AgentTurnRef {session_id:port.scope.chat_session_id.clone(),turn_id:port.scope.turn_id.clone(),user_turn_ordinal:1},&json!({"message":"Explain this source"}),"now").unwrap(); }
     assert!(!port.tutor_active().unwrap(),"a saved goal does not activate a separate teaching flow");
     let paused=f.ok(&f.a,"POST","/api/tutor/mutate",json!({"operation_id":"pause","expected_revision":1,"action":{"kind":"pause","session_id":id}}));
     assert_eq!(paused["sessions"][id.as_str().unwrap()]["status"],"paused");
@@ -687,7 +687,7 @@ fn rs5_resumption_without_questions_and_after_chat_deletion_keeps_position() {
         session.turns[0].status = AgentAssistantStatus::Cancelled;
         session.turns[0].error = Some(AgentTurnError { error_code: "CANCELLED".into(), category: "cancelled".into(), message: "Stopped by reader".into() });
         let turn = AgentTurnRef { session_id: session.id.clone(), turn_id: session.turns[0].turn_id.clone(), user_turn_ordinal: 1 };
-        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
     }
     drop(port);
     f.ok(&f.a, "POST", "/api/agent/history/delete", json!({"session_id":w["selected_chat"]}));
@@ -813,13 +813,13 @@ fn mu5_presentation_linked_view_keeps_chat_and_late_restore_cannot_replace_user_
             },
         };
         let path = user
-            .presentation_root()
+            .test_presentation_root()
             .unwrap()
             .join("versions/mu5-presentation/1.json");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, serde_json::to_vec(&version).unwrap()).unwrap();
         let turn = AgentTurnRef { session_id: session.id.clone(), turn_id: session.turns[0].turn_id.clone(), user_turn_ordinal: 1 };
-        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
     }
     let request = json!({"session_id":port.scope.chat_session_id,"turn_id":port.scope.turn_id,"reference":reference});
     let linked = f.action(&f.a, &w, "parent", "linked/attach", request.clone());
@@ -1151,13 +1151,13 @@ fn rn2_network_notes_keep_private_access_after_chat_deletion_and_restart() {
             },
         };
         let path = user
-            .presentation_root()
+            .test_presentation_root()
             .unwrap()
             .join("versions/mu5-presentation/1.json");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, serde_json::to_vec(&version).unwrap()).unwrap();
         let turn = AgentTurnRef { session_id: session.id.clone(), turn_id: session.turns[0].turn_id.clone(), user_turn_ordinal: 1 };
-        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
     }
     let request = json!({"session_id":port.scope.chat_session_id,"turn_id":port.scope.turn_id,"reference":reference});
 

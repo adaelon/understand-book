@@ -78,7 +78,7 @@ fn workspace_record_search_finds_native_sessions_across_members_and_older_turns(
     assert_eq!(found["current_mastery"],false);
     let exact = read(old["read_request"].clone());
     assert_eq!(exact["records"],json!([old]));
-    let retained = crate::workspace_record_context::permitted_turn(&user,Some(scope),&f.x.book_id,
+    let retained = reader_service::tests::host_calls::workspace_record_context::permitted_turn(&user,Some(scope),&f.x.book_id,
         first["selected_chat"].as_str().unwrap(),older["turn_id"].as_str().unwrap()).unwrap();
     assert_eq!(retained.user_authored_text(),"我原先把状态等同于上下文");
     let one = read(json!({"operation":"search","query":"状态","limit":1}));
@@ -137,7 +137,7 @@ fn workspace_record_search_keeps_linked_prefix_and_original_interpretation_chain
     assert!(read(json!({"operation":"read","chat_session_id":unlinked["selected_chat"]})).is_err());
     assert!(read(json!({"operation":"read","chat_session_id":other["selected_chat"]})).is_err());
     assert!(read(json!({"operation":"read","chat_session_id":chat,"through_seq":999999})).is_err());
-    assert!(crate::workspace_record_context::permitted_turn(&user,Some(scope),&f.x.book_id,
+    assert!(reader_service::tests::host_calls::workspace_record_context::permitted_turn(&user,Some(scope),&f.x.book_id,
         chat,later["turn_id"].as_str().unwrap()).is_err());
     let exact = read(turn["read_request"].clone()).unwrap();
     assert_eq!(exact["records"],json!([turn]));

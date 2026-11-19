@@ -9,7 +9,7 @@ import type { BoardItem } from './generated/BoardItem';
 
 const mocks = vi.hoisted(() => ({ api: { boardConversation: vi.fn(), boardRead: vi.fn(), boardUpdate: vi.fn(), boardImport: vi.fn(), boardCatalog: vi.fn(), boardViewSave: vi.fn(), workspaceNoteCreate: vi.fn() } }));
 vi.mock('./api', () => ({ api: mocks.api }));
-vi.mock('./network-context', async importOriginal => ({ ...await importOriginal<typeof import('./network-context')>(), bindSceneApi: (api: unknown) => api, readerKey: () => 'notes-fixture' }));
+vi.mock('./reader-context', async importOriginal => ({ ...await importOriginal<typeof import('./reader-context')>(), bindSceneApi: (api: unknown) => api, readerKey: () => 'notes-fixture' }));
 vi.mock('./components/AgentPresentation.vue', () => ({ default: { template: '<div />' } }));
 const note = (id: string, title = '观察与反馈', missing = false): BoardItem => ({
   item_id: `item-${id}`, title, readable_content: '练习后的具体反馈帮助确定下一次尝试。',

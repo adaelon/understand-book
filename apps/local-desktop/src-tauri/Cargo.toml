@@ -1,0 +1,18 @@
+[package]
+name = "understand-book-local-desktop"
+version = "0.3.11"
+edition = "2021"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+local-desktop-host = { path = "../../../crates/local-desktop-host" }
+tauri = { version = "2", features = [] }
+# Tauri's app build collects plugin permission manifests from direct dependencies.
+tauri-plugin-dialog = "2"
+
+[[bin]]
+name = "UnderstandBookLocal"
+path = "src/main.rs"

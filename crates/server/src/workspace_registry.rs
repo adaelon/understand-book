@@ -302,7 +302,7 @@ impl WorkspaceRegistry {
             record.checkpoint.presentation = None;
         }
         let mut workspace = ReaderWorkspace::local(
-            publication.directory.clone(),
+            publication.directory().to_path_buf(),
             publication.book.clone(),
             reader::Reader::from_checkpoint(&publication.book, &record.checkpoint.reader),
             vec![],
@@ -474,7 +474,7 @@ impl WorkspaceRegistry {
             .map(|c| reader::Reader::from_checkpoint(&publication.book, &c.reader))
             .unwrap_or_else(|| reader::Reader::new(&publication.book, reader::DEFAULT_RADIUS));
         let mut workspace = ReaderWorkspace::local(
-            publication.directory.clone(),
+            publication.directory().to_path_buf(),
             publication.book.clone(),
             reader,
             messages(user, chat.as_deref()),
@@ -711,7 +711,7 @@ impl WorkspaceRegistry {
         }
         let stamp: WorkspaceStamp = serde_json::from_value(input.clone()).map_err(|_| invalid())?;
         if matches!(action, "reader/state" | "profile/manifest" | "profile/memory" | "memory/recall" | "memory/prepare_note"
-            | "chat/history" | "knowledge/tree" | "knowledge/resume" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
+            | "chat/history" | "chat/follow-ups" | "knowledge/tree" | "knowledge/resume" | "reader/paper_minimap.state" | "reader/pdf_selection.resolve"
             | "reader/pdf_ranges.project" | "agent/source.resolve" | "agent/source.read" | "memory/presentation.read" | "memory/presentation.observe"
             | "boards/list" | "boards/read" | "boards/conversation" | "boards/catalog" | "boards/search" | "boards/related" | "boards/source.resolve" | "boards/source.read" | "boards/presentation.read" | "boards/presentation.observe"
             | "notes/list" | "notes/read" | "notes/source.resolve" | "notes/source.read"
@@ -896,7 +896,7 @@ impl WorkspaceRegistry {
                 .map(|p| reader::Reader::from_checkpoint(&publication.book, &p.reader))
                 .unwrap_or_else(|| reader::Reader::new(&publication.book, reader::DEFAULT_RADIUS));
             let mut workspace = ReaderWorkspace::local(
-                publication.directory.clone(),
+                publication.directory().to_path_buf(),
                 publication.book.clone(),
                 reader,
                 vec![],
@@ -1107,6 +1107,29 @@ impl WorkspaceRegistry {
                 value["result"] = crate::cross_book::source_view(library, owner, &binding, action.ends_with(".open"))?;
                 return Ok(value);
             }
+        }
+        if matches!(action, "chat/follow-ups" | "chat/follow-ups/create") {
+            let workspace = &scene.workspace;
+            let scope = workspace.learning_workspace_id.as_deref();
+            let book = &workspace.book.base.book_id;
+            let active = workspace.selected_chat.as_deref().ok_or_else(missing)?;
+            let result = if action == "chat/follow-ups" {
+                if input["session_id"].as_str() != Some(active) { return Err(stale()); }
+                reader_service::follow_ups::path(user, scope, book, active)?
+            } else {
+                let request: reader_service::follow_ups::CreateFollowUp =
+                    serde_json::from_value(input.clone()).map_err(|_| invalid())?;
+                if request.parent_session_id != active {
+                    let retry = user.agent_history.sessions.iter().find(|s| s.id == active)
+                        .and_then(|s| s.follow_up_origin.as_ref())
+                        .is_some_and(|o| o.client_request_id == request.client_request_id && o.parent_session_id == request.parent_session_id);
+                    if !retry { return Err(stale()); }
+                }
+                reader_service::follow_ups::create(user, scope, &workspace.book, &request, now)?
+            };
+            let mut value = view(&scene);
+            value["result"] = result;
+            return Ok(value);
         }
         if action == "chat/history" {
             let mut value = view(&scene);
@@ -1822,7 +1845,7 @@ impl runtime::run_context::ResidentStatePort for NetworkRunPort {
         self.scope.check_user(&self.user.lock().unwrap())?;
         let result = if let Some(reference) = reference {
             let publication = self.media_publication(reference)?;
-            let cache = publication.localization_cache.parent().unwrap().join("video-frames");
+            let cache = publication.localization_cache().parent().unwrap().join("video-frames");
             let result = crate::video_frames::read_frames(&publication.book, publication.directory(), reference, &self.scope.turn_id, &cache, request, cancellation)?;
             self.media_publication(reference)?;
             result

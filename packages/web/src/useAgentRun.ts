@@ -1,4 +1,4 @@
-import { network, sceneKey } from './network-context';
+import { network, sceneKey } from './reader-context';
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from "vue";
 import { api, agentRunEventsUrl, ApiError } from "./api";
 import { initialRun, interruptRun, reduceRun, type RunDescriptor, type RunEvent, type RunSnapshot } from "./agent-run-state";

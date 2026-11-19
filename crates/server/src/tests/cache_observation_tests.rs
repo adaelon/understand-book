@@ -1,8 +1,7 @@
 use super::*;
 use crate::observability::{
     config::ObservabilityConfig,
-    langsmith::{LangSmithTransport, TransportResult},
-    queue::{ExportItem, ExportOperation},
+    tests::{LangSmithTransport, TransportResult, ExportItem, ExportOperation},
     ObservabilityRuntime,
 };
 
@@ -22,18 +21,18 @@ fn formal_admission_exports_usage_diagnostics_and_terminal_states() {
         ("full","none"),("full","provider"),("full","save")] {
         let mut f = Fixture::new();
         let sent = Arc::new(Mutex::new(Vec::new()));
-        let config = ObservabilityConfig::from_getter(|key| match key {
+        let config = observability_config(|key| match key {
             "UB_OBSERVABILITY_MODE" => Some(mode.into()),
             "LANGSMITH_API_KEY" => Some("fixture-key".into()),
             "LANGSMITH_PROJECT" => Some("formal-admission-fixture".into()),
             _ => None,
         }, false).unwrap().unwrap();
-        let observation = ObservabilityRuntime::with_transport(config, Box::new(Capture(sent.clone())));
+        let observation = observability_with_transport(config, Box::new(Capture(sent.clone())));
         Arc::get_mut(&mut f.access).unwrap().runs.observability = observation.clone();
 
         let provider = tiny_http::Server::http("127.0.0.1:0").unwrap();
         crate::tests::adm5_tests::seed_model(&mut f, &format!("http://{}", provider.server_addr()), "formal-admission-fixture", 1_000_000);
-        f.access.runs.configure(ProviderConfig {
+        f.access.runs.configure(ProviderConfig { options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: runtime::ProviderMode::Native,
             api_key: "PRIVATE_MODEL_KEY".into(),

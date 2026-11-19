@@ -9,7 +9,7 @@ import { resolveAutomaticBuildTarget } from "../../../packages/core/src/build-or
 import { readAutomaticBuildAttemptSnapshot } from "../../../packages/core/src/automatic-build-task-store";
 import type { AutomaticBuildStepResponseV1 } from "../../../skills/build/automatic-build-driver";
 import type { AutomaticBuildExecutorSessionResponseV3 } from "../../../packages/core/src/automatic-build-executor-session";
-import { executorMcpInvocation, JsonLineMcpClient } from "./smoke-t7-executor-release";
+import { executorMcpInvocation, JsonLineMcpClient } from "../../../scripts/plugin/smoke-t7-executor-release";
 
 // A bounded compiled-process recovery canary. The model/host lifecycle is a separate release gate.
 const repoRoot = fileURLToPath(new URL("../../../", import.meta.url));

@@ -2,12 +2,13 @@ import { expect, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 // The server and browser consume the same small material and excerpts.
-const root = new URL('../../../../crates/server/src/tests/fixtures/tutor-continuation/', import.meta.url);
+const root = new URL('../../../../crates/reader-service/src/tests/fixtures/tutor-continuation/', import.meta.url);
 export const scenario = JSON.parse(readFileSync(new URL('scenario.json', root), 'utf8')) as {
   book_id: string; title: string; quote: string; answer: string; answer_excerpt: string; draft: string;
 };
 export const source = readFileSync(new URL('source.md', root), 'utf8').replace(/\r\n/g, '\n');
 const paragraphs = source.trim().split('\n\n');
+const bootstrapStyles = readFileSync(new URL('../../index.html', import.meta.url), 'utf8').match(/<style>([\s\S]*?)<\/style>/)![1];
 
 // Same minimal PDF construction as pdf-selection-actions.spec.ts; every paragraph
 // is drawn as text so the real PDF.js text layer, selection and resolver run.
@@ -85,6 +86,10 @@ export async function setup(page: Page, surface: 'markdown' | 'pdf', ready: bool
     else if (path === '/api/build_intent/artifacts') result = {overlay:null};
     else if (path === '/api/build_intent/usage.event' || path === '/api/reader/viewport') result = {};
     else if (path === '/api/agent/history') result = {active_session_id:'tc0-chat',sessions:[],current:{id:'tc0-chat',book_id:scenario.book_id,turns,goals:[]}};
+    else if (path === '/api/agent/follow-ups' && route.request().method() === 'GET') result = {nodes:[{
+      session_id:'tc0-chat',title:scenario.title,question:delivered ? String(turns[0]?.user ?? '') : '',
+      answer:delivered ? scenario.answer : null,status:'ready',
+    }]};
     else if (path === '/api/tutor/state') result = tutorState;
     else if (path === '/api/tutor/closed-book') result = null;
     else if (path === '/api/tutor/mutate') { mutations.push(body); tutorState.control.enabled = body.action.enabled; tutorState.control.revision++; result = tutorState; }
@@ -116,8 +121,8 @@ export async function setup(page: Page, surface: 'markdown' | 'pdf', ready: bool
     else return route.fulfill({status:404,json:{message:`Unused TC0 fixture route: ${path}`}});
     await route.fulfill({json:result});
   });
-  await page.route('**/tc0-fixture', route => route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"></head><body><div id="app"></div><script type="module">
-    import {createApp} from '/node_modules/.vite/deps/vue.js';import App from '/src/App.vue';import '/src/style.css';createApp(App).mount('#app');
+  await page.route('**/tc0-fixture', route => route.fulfill({contentType:'text/html',body:`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><style>${bootstrapStyles}</style></head><body><div id="app"></div><script type="module">
+    import {createApp} from '/node_modules/.vite/deps/vue.js';import App from '/reader-src/App.vue';import '/reader-src/style.css';createApp(App).mount('#app');
   </script></body></html>`}));
   await page.setViewportSize({width:1440,height:960});
   await page.addInitScript(() => localStorage.setItem('understand-book.product-tour.v1.local.reader', 'done'));

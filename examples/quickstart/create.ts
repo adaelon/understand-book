@@ -5,7 +5,9 @@ import { markdownToBlocks } from '../../packages/core/src/md-adapter.ts';
 import { segment } from '../../packages/core/src/segment.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
-const destination = path.resolve(root, '.understand-book/quickstart-demo');
+const destination = process.argv[2]
+  ? path.resolve(process.argv[2])
+  : path.resolve(root, '.understand-book/quickstart-demo');
 const source = fs.readFileSync(path.join(root, 'examples/quickstart/book.md'), 'utf8');
 const lidNodes = segment(markdownToBlocks(source));
 const concepts = ['原文', 'LID', '知识图谱', '构建时', '阅读时', '笔记'];

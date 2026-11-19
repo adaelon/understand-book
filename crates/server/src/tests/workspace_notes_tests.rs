@@ -338,7 +338,7 @@ fn workspace_notes_imports_restore_original_publication_for_implicit_sources() {
         let turn = AgentTurnRef {
             session_id: session.id.clone(), turn_id: current.turn_id.clone(), user_turn_ordinal: current.user_turn_ordinal,
         };
-        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
         turn
     };
     drop(port);
@@ -376,7 +376,7 @@ fn workspace_notes_imports_restore_original_publication_for_implicit_sources() {
     // Existing notebook files retain the original publication in origin already.
     let retained = {
         let user = handle.lock().unwrap();
-        let store = crate::workspace_notes_api::scoped_store(&user, Some(&scope)).unwrap();
+        let store = reader_service::tests::host_calls::workspace_notes_api::scoped_store(&user, Some(&scope)).unwrap();
         let mut note: memory::workspace_notes::WorkspaceNote = serde_json::from_value(imported.clone()).unwrap();
         note.note_id = "note-before-publication-fix".into();
         note.source_bindings[0].publication_id = None;
@@ -396,6 +396,6 @@ fn workspace_notes_imports_restore_original_publication_for_implicit_sources() {
         assert_eq!(f.get(&f.a, &other)["published_book_ref"], json!(f.y));
     }
     let user = handle.lock().unwrap();
-    let store = crate::workspace_notes_api::scoped_store(&user, Some(&scope)).unwrap();
+    let store = reader_service::tests::host_calls::workspace_notes_api::scoped_store(&user, Some(&scope)).unwrap();
     assert_eq!(store.read(&retained.note_id).unwrap(), retained, "source reads must not rewrite saved revisions");
 }

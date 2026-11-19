@@ -3,7 +3,7 @@ import { t as uiText } from '../i18n';
 
 import { inject, ref, watch } from 'vue';
 import { api as sharedApi } from '../api';
-import { bindSceneApi } from '../network-context';
+import { bindSceneApi } from '../reader-context';
 const api = bindSceneApi(sharedApi);
 import { sharePresentationKey } from '../reading-share';
 import { captureRetainedPresentation, presentationShareSource } from '../presentation-share';

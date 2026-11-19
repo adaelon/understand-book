@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ArrowLeft, ArrowRight, ArrowUpRight, Check, Circle, CircleCheck, GitBranch, LocateFixed, Search, Sparkles } from '@lucide/vue';
 import { api as sharedApi, ApiError } from '../api';
-import { bindSceneApi, readerKey } from '../network-context';
+import { bindSceneApi, readerKey } from '../reader-context';
 import { inquiryCourse, type CourseCatalog } from '../inquiry-course';
 import { discussKnowledge, knowledgeRelations, openKnowledgeSource, pendingKnowledgeReference, type KnowledgeNodeView, type KnowledgeTreeRequest, type KnowledgeTreeView } from '../knowledge-tree';
 import { continueUnderstanding, type UnderstandingSummary } from '../note-thinking';

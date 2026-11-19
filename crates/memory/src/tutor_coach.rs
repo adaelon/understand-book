@@ -181,6 +181,16 @@ impl LearningStore {
     /// Actual help already delivered before this expression. The event sequence
     /// is the boundary, so later answers cannot become prior learner assistance.
     pub fn prior_chat_help_for_expression(&self, fact: &TeachingEvent) -> Result<Vec<TeachingEvent>, ToolError> {
+        // Course imports already verify the exact independent attempt and retain
+        // its original expression refs. The destination course's earlier lesson
+        // is history, not help supplied during that attempt. Later course replies
+        // do not carry these source refs and still collect their actual help.
+        if fact.kind == crate::teaching::TeachingFact::LearnerAction
+            && fact.payload["closed_book_result_ref"].is_string()
+            && fact.payload["source_expression_refs"].is_array()
+        {
+            return Ok(Vec::new());
+        }
         let sequence = self.teaching_event_sequence(&fact.event_id)?;
         let mut query = self.connection.prepare("SELECT event FROM teaching_trace
             WHERE learning_workspace_id=?1 AND seq<?2

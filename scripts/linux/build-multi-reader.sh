@@ -14,7 +14,9 @@ mkdir -p packages/web/dist-multi/admin
 cp -a apps/admin/dist/. packages/web/dist-multi/admin/
 python3 scripts/linux/verify-web-release.py packages/web/dist-multi
 cargo build --locked --release -p server --bin server --bin manage_reader \
-  --bin publish_book --bin reader_maintenance --bin presentation_worker --bin video_audio_review -j 1
+  --bin publish_book --bin reader_maintenance -j 1
+cargo build --locked --release -p reader-service --bin reader \
+  --bin presentation_worker --bin video_audio_review -j 1
 # Keep the build receipt beside the binaries and Web files it describes.
 # A working-tree build is labelled explicitly; HEAD alone is not its identity.
 {

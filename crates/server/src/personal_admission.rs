@@ -72,6 +72,7 @@ impl RunAdmissions {
             music_question: None,
             confirmation: None,
             provider: provider.binding,
+                teaching_provider: Some(provider.teaching_binding),
             message: message.clone(),
             agent_message: message,
             messages: session.messages.clone(),

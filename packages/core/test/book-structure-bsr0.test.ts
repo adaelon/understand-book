@@ -8,7 +8,6 @@ import type { BookStructureCandidate, BookStructureUnitCard } from "../src/book-
 import { collectStructureCandidates, acceptStructureChapterSelection } from "../src/book-structure-candidates";
 import { materializeStructureChapterSelections } from "../src/book-structure-materialization";
 import { compareThemeExperiments } from "../../../evals/book-structure/compare-themes";
-import { fileURLToPath } from "node:url";
 
 const read = (name: string) => JSON.parse(readFileSync(new URL(`../testdata/book-structure/${name}`, import.meta.url), "utf8"));
 const baseline = read("baseline.json");
@@ -121,8 +120,9 @@ describe("BSR0 minimal counterexamples resolved by their named slices", () => {
     expect(stopContent(separate)).toEqual(stopContent([joined]));
   });
 
-  it("BSR4: real B/C resolver outputs preserve six source groups without the unsupported training-to-Agent prerequisite", () => {
-    const result = compareThemeExperiments(fileURLToPath(new URL("../../../docs/performance/book-structure-bsr4-20261001/", import.meta.url)));
+  // Historical model-run replay is separate from the self-contained source fixtures above.
+  it.skipIf(!process.env.BSR4_EVIDENCE_DIR)("BSR4: real B/C resolver outputs preserve six source groups without the unsupported training-to-Agent prerequisite", () => {
+    const result = compareThemeExperiments(process.env.BSR4_EVIDENCE_DIR!);
     for (const group of result.groups) {
       expect(group.verification).toMatchObject({ delivery_equal: true, state_equal: true, materialization_equal: true });
       expect(group.report.complete).toBe(true);

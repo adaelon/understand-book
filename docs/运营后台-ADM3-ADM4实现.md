@@ -59,11 +59,13 @@ Native 和 ReAct 的三种模型入口最终进入 `NativeAdapter::post_chat_com
 
 `server::model_rates::ModelRates::load/select` 从指定 JSON 路径读取 `{rates:[ModelRateSnapshot...]}`，校验版本、必要出处和区间。按 Provider、模型和服务器 UTC 时间精确选择 `[starts_at,expires_at)`；重叠/重复版本、缺失或区间外返回 `RateUnavailable`。每个高峰、低谷或节假日适用时段在配置中展开为绝对区间；返回值为独立快照，后续配置变化不修改历史。
 
-快照字段：`version, provider, model, starts_at, expires_at`；`input_micro_cny_per_million, cached_input_micro_cny_per_million, output_micro_cny_per_million`；`usage_contract: deep_seek`、`image_meter: unsupported | deep_seek1024`；`source` 包含 `currency, original_prices, cny_conversion, checked_on, official_url`。单价为运营者按记录的换算依据配置的整数 micro_cny/百万 Token，源报价和换算依据原样保留。
+快照字段：`version, provider, model, starts_at, expires_at`；`input_micro_cny_per_million, cached_input_micro_cny_per_million, output_micro_cny_per_million`，以及可选 `cache_creation_input_micro_cny_per_million`；`usage_contract: deep_seek | input_output | cached_input_output | cohere_billed_units`、`image_meter: unsupported | deep_seek1024`；`source` 包含 `currency, original_prices, cny_conversion, checked_on, official_url`。单价为运营者按记录的换算依据配置的整数 micro_cny/百万对应计量单位，源报价和换算依据原样保留。
 
 首个已实现用量合同为 DeepSeek：输入总数减缓存命中得到未命中输入；输出已经包含推理子项。缺输入/输出/缓存细分、缓存创建费用、矛盾细分或成本溢出返回明确未知原因。计价以 u128 累加各项的 Token×费率分子，最后一次向上取整到 micro_cny；不逐项取整，不将推理再次相加。
 
-`ModelRateSnapshot::estimate` 使用最终 messages、工具描述和结构化输出约束的字符估计；缓存按全未命中预留，输出使用最终请求的实际上限。DeepSeek 图片按每张 1024 Token 的公开上限预留，移除图片 URL/base64 后单独计量；不支持的媒体类型或缺输出上限返回配置原因。结果保存文字估量、图片量、输出上限、规则及预估成本，供 ADM5 同费率快照持久化并与真实用量比较。
+多协议接入增加三个显式合同：`input_output` 用于缓存与普通输入同价的费率，要求两者价格相同；`cached_input_output` 分开计算普通输入、缓存读取和已配置价格的缓存写入；`cohere_billed_units` 仅使用独立的 billed input/output 单位结算，不以实际上下文 Token 代替。缺少合同要求的计量仍保留待核算，未知费用不填零。
+
+`ModelRateSnapshot::estimate_for_model` 使用冻结发送身份及最终 wire 请求的输入、工具描述、结构化约束和私有历史进行字符估计，识别各协议实际输出上限。无 body model 的 Gemini、Vertex 和 Bedrock 请求使用冻结身份；body 存在 model 时必须一致。缓存按已配置的最贵输入桶预留。DeepSeek 图片沿原每张 1024 Token 上限预留；其他协议或新用量合同缺少明确图像计价时在发送前返回费率不可用，不把 base64 当作普通文本。结果保存文字估量、图片量、输出上限、规则及预估成本，供 ADM5 同费率快照持久化并与真实用量比较。
 
 官方依据（2026-10-08 核对）：[模型与价格](https://api-docs.deepseek.com/quick_start/pricing/)规定适用时段影响价格；[Vision Token Usage](https://api-docs.deepseek.com/guides/vision/#token-usage)说明图片逐张计量及每张 1024 Token 上限。具体销售价格、首批额度和投产费率配置归 ADM10。
 

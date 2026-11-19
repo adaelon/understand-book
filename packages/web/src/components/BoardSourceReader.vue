@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { ArrowDown, ArrowUp, List, LocateFixed, LoaderCircle, X } from '@lucide/vue';
 import { api as sharedApi, type AssetManifest, type BoardSourceReadResponse, type SourcePopupView, type SourceWindowLoader, type SourceWindowRequest } from '../api';
-import { bindSceneApi } from '../network-context';
+import { bindSceneApi } from '../reader-context';
 import { t as uiText } from '../i18n';
 import { renderSourceMarkdown } from '../md';
 import { isReaderFlowSegment, shouldJoinReaderFlow } from '../reader-flow';

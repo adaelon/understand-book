@@ -4,7 +4,7 @@ import { t as uiText } from '../i18n';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ArrowRight } from '@lucide/vue';
 import { api as sharedApi } from '../api';
-import { bindSceneApi } from '../network-context';
+import { bindSceneApi } from '../reader-context';
 import type { TutorContinuationView } from '../generated/TutorContinuationView';
 import type { ContinuationDisplayed } from '../generated/ContinuationDisplayed';
 import type { PresentationRef } from '../generated/PresentationRef';

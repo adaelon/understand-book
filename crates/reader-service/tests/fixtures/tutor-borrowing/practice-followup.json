@@ -1,0 +1,38 @@
+{
+  "evidence": {
+    "operation": "evidence",
+    "nature": "hypothesis",
+    "operation_id": "tb3-independent-copy-condition",
+    "target": {
+      "learning_focus": "共享引用权限与 Copy 条件",
+      "expected_performance": "在已获完整讲解的条件下区分值复制与共享访问，独立应用仍待观察。",
+      "capability": "explanation",
+      "source_bindings": [{ "start_lid": "1.1", "end_lid": "1.1" }],
+      "object_refs": []
+    },
+    "fact_refs": ["$LEARNER_FACT"],
+    "interpretation": "用户在完整讲解后表达了所有权、共享访问和 Copy 的区别；这属于受助表达，尚未独立判断新情境。",
+    "teaching_implication": "保留已有解释作为支持，留下一个改变 Copy 条件但尚未作答的判断。"
+  },
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "copy-condition-practice",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "question",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "intent_quote": "请给我一个改变 Copy 条件的练习，先不要给答案。",
+      "interpretation_refs": ["interpretation:tb3-independent-copy-condition"],
+      "target": {
+        "learning_focus": "共享引用权限与 Copy 条件",
+        "expected_performance": "在 Foo 实现 Copy 时判断通过 &Foo 修改字段是否允许，并区分值复制与访问权限。",
+        "capability": "explanation",
+        "source_bindings": [{ "start_lid": "1.1", "end_lid": "1.1" }],
+        "object_refs": []
+      }
+    }
+  },
+  "answer": "沿用一份值和访问入口的区分。[[source:source_ref_fixture_shared_access]] 这次假设 Foo 已实现 Copy：let a = Foo(7); let b = &a;。请判断 b.0 = 8 能否编译，并说明你检查的是值的复制条件还是引用权限。[[source:source_ref_fixture_copy_access]]"
+}

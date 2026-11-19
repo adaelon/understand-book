@@ -6,7 +6,7 @@ import { provideReadingGuidance, useReadingGuidance, type GuidanceContext } from
 
 const api = vi.hoisted(() => ({ readingGuidance: vi.fn() }));
 vi.mock('./api', () => ({ api }));
-vi.mock('./network-context', () => ({ bindSceneApi: (value: unknown) => value, readerKey: () => 'reader' }));
+vi.mock('./reader-context', () => ({ bindSceneApi: (value: unknown) => value, readerKey: () => 'reader' }));
 
 it.each([null, { question: '你想补充哪一点？', draft: '我想补充的是……' }])('reuses a generated or quiet decision without calls for typing and reopening: %j', async result => {
   api.readingGuidance.mockReset().mockResolvedValue(result);

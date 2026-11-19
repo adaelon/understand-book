@@ -1,6 +1,6 @@
 import { computed, inject, onBeforeUnmount, provide, shallowRef, watch, type InjectionKey, type Ref } from 'vue';
 import { api } from './api';
-import { bindSceneApi, readerKey } from './network-context';
+import { bindSceneApi, readerKey } from './reader-context';
 import { getLocale } from './i18n';
 import type { LearningScopeKind, LearningScopeOption } from './learning-purpose';
 

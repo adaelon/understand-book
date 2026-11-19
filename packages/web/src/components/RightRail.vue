@@ -12,15 +12,19 @@ const shareHighlight = inject(shareHighlightKey, null);
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, type ComputedRef } from "vue";
 const thoughtCaptureError=ref('');
 async function rememberUserThought(turnId:string) {try {thoughtCaptureError.value='';await captureUserThought(props.activeChatSessionId,turnId);} catch(error) {thoughtCaptureError.value=(error as Error).message;}}
-import { ArrowRight, ArrowUp, ChevronDown, ChevronLeft, CircleHelp, ExternalLink, Link2, Link2Off, Maximize2, Minimize2, Plus, Presentation, SlidersHorizontal, Square, Undo2, X } from "@lucide/vue";
+import { ArrowRight, ArrowUp, ChevronDown, ChevronLeft, ChevronUp, CircleHelp, ExternalLink, GitFork, Link2, Link2Off, Maximize2, Minimize2, Plus, Presentation, SlidersHorizontal, Square, Undo2, X } from "@lucide/vue";
 import MobileLearningSheet from './MobileLearningSheet.vue';
+import FollowUpPathPanel from './FollowUpPathPanel.vue';
+import type { FollowUpAnchor, FollowUpNode, FollowUpOrigin, FollowUpStart } from '../follow-up-conversations';
+import { answerFollowUpAnchor, answerFollowUpRange, markAnswerFollowUps, type AnswerFollowUpMark } from '../answer-follow-up-anchor';
 import QuestionImageInput from './QuestionImageInput.vue';
+import AgentPermission from './AgentPermission.vue';
 import VoiceInput from './VoiceInput.vue';
 import { questionImageUrl } from '../question-image';
 import type { VideoQuestionImage } from '../../../core/src/generated/VideoQuestionImage';
 import YeyeMascot from './YeyeMascot.vue';
 import { api as sharedApi } from "../api";
-import { bindSceneApi, network, readerKey } from '../network-context';
+import { bindSceneApi, network, readerKey } from '../reader-context';
 const api = bindSceneApi(sharedApi, readerKey);
 import { findNotes, noteKindLabel, notePreview, noteTimeLabel, type NoteFilter } from '../reading-notes';
 import type {
@@ -78,12 +82,15 @@ type ContextTab = "agent" | "artifacts" | "profile" | "formula" | "notes";
 type AskDraft = AskQuote;
 type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
 interface ChatTurn {
+  localAgentName?: string;
+  localAgentId?: string;
+  localAgentUnavailable?: boolean;
   noteReferences?: import("../generated/NoteRef").NoteRef[];
   musicQuestion?: import('../music-api').MusicQuestionContext | null;
   videoQuestion?: import("../../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   hasTeaching?: boolean;
   interaction?: import("../generated/ResolvedInteraction").ResolvedInteraction | null;
-  spendStop?: import('../account-allowance').SpendNotice;
+  spendStop?: import('../reader-host').RunNotice;
   teachingRef?: string | null;
   presentationFollowUp?: PresentationFollowUp | null;
   boardFollowUp?: BoardFollowUp | null;
@@ -122,6 +129,10 @@ interface ChatSessionTurnSummary {
 }
 
 const props = withDefaults(defineProps<{
+  followUpNodes?: FollowUpNode[];
+  followUpBusy?: boolean;
+  followUpError?: string;
+  followUpAllowed?: boolean;
   videoImagesEnabled?: boolean;
   musicMode?: boolean;
   musicQuestion?: import('../music-api').MusicQuestionContext | null;
@@ -201,6 +212,9 @@ const props = withDefaults(defineProps<{
   workspaceNoteImporting?: boolean;
 }>(), { companionVisible: true });
 const emit = defineEmits<{
+  (e: 'follow-up-start', start: FollowUpStart): void;
+  (e: 'follow-up-enter', id: string): void;
+  (e: 'follow-up-parent' | 'follow-up-load'): void;
   (e: 'save-workspace-note', source: import('../api').WorkspaceNoteImportSource): void;
   (e: 'open-workspace-notes'): void;
   (e: 'question-image', image: VideoQuestionImage | null): void;
@@ -259,7 +273,9 @@ const emit = defineEmits<{
   (e: "mutate-profile-backfill", action: "cancel" | "retry" | "clear", request: HistoricalBackfillJobRequest): void;
   (e: "undo-profile-update", turnIndex: number, updateIndex: number, update: ProfileMemoryUpdate): void;
   (e: "agent-source-will-open", source: { turnId: string; sourceRefId: string }): void;
-  (e: "agent-source-opened"): void;
+  (e: "agent-source-opened", evidence?: import('../api').SourceOpenView['evidence_range']): void;
+  (e: "original-selection", ranges: import('../api').EvidenceRange[]): void;
+  (e: "failed-agent-settings", id?: string): void;
   (e: "refresh-artifacts"): void;
   (e: "open-artifacts"): void;
   (e: "artifact-cited", artifactId: string): void;
@@ -298,6 +314,57 @@ const goalToolsTarget = computed(() => useLearningSheet.value ? mobileGoalHost.v
 const teachingToolsTarget = computed(() => useLearningSheet.value ? mobileTeachingHost.value : wideConversation.value ? teachingSidebarHost.value : null);
 const sessionToolsTarget = computed(() => mobileConversation.value ? mobileSessionHost.value : wideConversation.value ? sessionSidebarHost.value : null);
 const recordsToolsTarget = computed(() => mobileConversation.value ? mobileRecordsHost.value : wideConversation.value ? recordsSidebarHost.value : recordsSheetHost.value);
+const followUpSide = ref<HTMLElement>();
+const followUpSheet = ref<HTMLElement>();
+const followUpToggle = ref<HTMLButtonElement>();
+const followUpPanel = ref<InstanceType<typeof FollowUpPathPanel>>();
+const followUpTarget = computed(() => wideConversation.value ? followUpSide.value : mobileViewport.value ? followUpSheet.value : undefined);
+const followUpLayout = computed(() => wideConversation.value ? 'side' : mobileViewport.value ? 'sheet' : 'tray');
+const followUpOpen = ref(false);
+const previewId = ref('');
+const followUpDrafts = defineModel<FollowUpStart[]>('followUpDrafts',{ default:() => [] });
+const pathNodes = computed(() => props.followUpNodes || []);
+const visibleDrafts = computed(() => {
+  const family = new Set(pathNodes.value.map(node => node.session_id));
+  family.add(props.activeChatSessionId);
+  return followUpDrafts.value.filter(draft => family.has(draft.parent_session_id));
+});
+const activeBranch = computed(() => pathNodes.value.find(node => node.session_id === props.activeChatSessionId));
+const canReturnToParent = computed(() => pathNodes.value.some(node => node.session_id === activeBranch.value?.origin?.parent_session_id));
+const hasPaths = computed(() => props.followUpAllowed && !!props.activeChatSessionId &&
+  (!!activeBranch.value?.origin || pathNodes.value.length > 1 || visibleDrafts.value.length > 0 || !!props.followUpError));
+const previewingTray = computed(() => hasPaths.value && followUpOpen.value && followUpLayout.value === 'tray');
+const previewDraft = computed(() => visibleDrafts.value.find(draft => 'draft:' + draft.client_request_id === previewId.value));
+const selectedPath = computed(() => previewDraft.value || pathNodes.value.some(node => node.session_id === previewId.value)
+  ? previewId.value : props.activeChatSessionId);
+let pathTrigger: HTMLElement | null = null;
+let prePreviewTop: number | null = null;
+watch(() => props.activeChatSessionId, () => {
+  followUpOpen.value = false; previewId.value = ''; pathTrigger = null; prePreviewTop = null;
+});
+watch(pathNodes, nodes => {
+  const opened = new Set(nodes.map(node => node.origin?.client_request_id));
+  if (followUpDrafts.value.some(draft => opened.has(draft.client_request_id)))
+    followUpDrafts.value = followUpDrafts.value.filter(draft => !opened.has(draft.client_request_id));
+});
+watch(() => props.followUpAllowed, allowed => {
+  if (!allowed) { followUpOpen.value = false; previewId.value = ''; }
+});
+watch(activeTab, tab => { if (tab !== 'agent') followUpOpen.value = false; });
+const followUpMarks = computed(() => {
+  const byTurn = new Map<string, AnswerFollowUpMark[]>();
+  function add(id:string, source:FollowUpStart) {
+    if (source.parent_session_id !== props.activeChatSessionId) return;
+    const mark = { session_id:id, anchor:source.anchor };
+    const entries = byTurn.get(source.parent_turn_id);
+    if (entries) entries.push(mark); else byTurn.set(source.parent_turn_id,[mark]);
+  }
+  if (props.followUpAllowed) {
+    for (const node of pathNodes.value) if (node.origin) add(node.session_id,node.origin);
+    for (const draft of visibleDrafts.value) add('draft:' + draft.client_request_id,draft);
+  }
+  return byTurn;
+});
 watch([mobileConversation, workspaceVisible], () => { mobileToolsOpen.value = false; });
 const workspaceKey = computed(() => workspace.value ? presentationKey(workspace.value.turnId, workspace.value.reference) : '');
 const chatHead = computed(() => props.chat.filter(t => t.turnId).at(-1)?.turnId ?? null);
@@ -790,12 +857,12 @@ const profileAttentionCount = computed(() => (
   (props.profileMemory?.pending_candidates.length ?? 0)
   + (props.profileMemory?.status.pending_sensitive_confirmation ? 1 : 0)
 ));
-watch(() => props.askDraft, async (draft) => {
-  if (!draft) return;
+watch(() => [props.askDraft, props.activeChatSessionId] as const, async ([draft,session],[oldDraft,oldSession]) => {
+  if (!draft || draft === oldDraft) return;
   activeTab.value = "agent";
   closeResponseEditor();
   await nextTick();
-  agentInputRef.value?.focus();
+  if (!mobileViewport.value || session === oldSession) agentInputRef.value?.focus();
 });
 
 async function scrollTranscriptToLatest() {
@@ -826,7 +893,7 @@ watch(
   { flush: "post" },
 );
 
-const answerSelection = ref<{ x: number; y: number; text: string | null; turn: ChatTurn } | null>(null);
+const answerSelection = ref<{ x: number; y: number; text: string | null; turn: ChatTurn; anchor: FollowUpAnchor | null } | null>(null);
 const answerSelectionError = ref('');
 const answerPopover = ref<HTMLElement | null>(null);
 const answerSelectionPositioned = ref(false);
@@ -896,9 +963,15 @@ const answerDisplayCache = new WeakMap<ChatTurn, { answer: ComputedRef<AnswerDis
 function turnDisplayParts(turn: ChatTurn, draft = false): AnswerDisplayPart[] {
   let cached = answerDisplayCache.get(turn);
   if (!cached) {
+    const rendered = computed(() => turn.outcome
+      ? answerDisplayParts(answerParts(turn.outcome), turn.outcome.answer_view?.sources ?? [], false, !!turn.turnId, props.renderMarkdown) : []);
     cached = {
-      answer: computed(() => turn.outcome
-        ? answerDisplayParts(answerParts(turn.outcome), turn.outcome.answer_view?.sources ?? [], false, !!turn.turnId, props.renderMarkdown) : []),
+      answer: computed(() => {
+        const parts = rendered.value;
+        const marks = turn.turnId ? followUpMarks.value.get(turn.turnId) : undefined;
+        if (!marks?.length) return parts;
+        return parts.map(part => part.kind === 'html' ? {...part, html:markAnswerFollowUps(part,marks)} : part);
+      }),
       draft: computed(() => turn.draft?.view
         ? answerDisplayParts(turn.draft.view.parts, turn.draft.view.sources, true, true, props.renderMarkdown) : []),
     };
@@ -918,6 +991,10 @@ function pianoSource(id: string) {
 function onAnswerSourceClick(turn: ChatTurn, parts: AgentAnswerPart[], event: MouseEvent) {
   const target = event.target;
   if (!(target instanceof Element)) return;
+  const mark = target.closest<HTMLElement>('mark[data-follow-up-id][role="button"]');
+  if (mark && props.followUpAllowed && (window.getSelection()?.isCollapsed ?? true)) {
+    openFollowUpPath(mark.dataset.followUpId!,mark); return;
+  }
   const listen = target.closest<HTMLButtonElement>('button[data-music-example-index]');
   if (listen && (event.currentTarget as Element).contains(listen)) {
     const part = parts[Number(listen.dataset.musicExampleIndex)];
@@ -942,6 +1019,9 @@ function closeAgentSourcePopup() {
 
 function onFullscreenKeydown(event: KeyboardEvent) {
   if (event.defaultPrevented) return;
+  if (event.key === 'Escape' && followUpOpen.value && !wideConversation.value) {
+    event.preventDefault(); closeFollowUpPath(); return;
+  }
   if (event.key === 'Escape' && mobileToolsOpen.value) { event.preventDefault(); mobileToolsOpen.value = false; return; }
   if (event.key === 'Escape' && mobileConversation.value && mobileResponseTurn.value) { event.preventDefault(); closeResponseEditor(); return; }
   // The native share dialog owns Escape, including after a browser download moves focus.
@@ -1041,7 +1121,7 @@ async function openActiveAgentSourceInReader() {
       return;
     }
     closeAgentSourcePopup();
-    emit("agent-source-opened");
+    emit("agent-source-opened", opened.evidence_range);
   } catch (error) {
     if (requestSequence !== sourceRequestSequence || !agentSourcePopup.value) return;
     agentSourcePopup.value.opening = false;
@@ -1091,7 +1171,7 @@ function prepareProductTour() {
   return true;
 }
 function showCourseFeedback() { if (transcriptRef.value) transcriptRef.value.scrollTop = 0; }
-defineExpose({ showCourseFeedback, focusActivityHelp, scrollToTurn, showMemory, replaceMemory, openRecapTarget, openNotePresentation, locateScene, prepareCompletionFeedback, prepareProductTour });
+defineExpose({ showCourseFeedback, focusActivityHelp, scrollToTurn, scrollToFollowUpOrigin, showMemory, replaceMemory, openRecapTarget, openNotePresentation, locateScene, prepareCompletionFeedback, prepareProductTour });
 
 watch(() => props.activeChatSessionId, () => { closeAgentSourcePopup(); clearAnswerSelection(); });
 watch(activeTab, clearAnswerSelection);
@@ -1161,7 +1241,9 @@ function onAnswerSelectionChange() {
   }
   answerSelectionRange = range.cloneRange();
   answerSelectionPositioned.value = false;
-  answerSelection.value = { x: 0, y: 0, text, turn };
+  const anchor = props.followUpAllowed && !turn.outcome.incomplete && root && part?.kind === 'html'
+    ? answerFollowUpAnchor(range,part,root) : null;
+  answerSelection.value = { x: 0, y: 0, text, turn, anchor };
   void nextTick(positionAnswerSelection);
 }
 function positionAnswerSelection() {
@@ -1209,6 +1291,98 @@ function clarifySelection() {
   emit('clarify-answer', selected.turn.turnId, selected.text);
   dismissAnswerSelection();
 }
+function branchFromSelection() {
+  const selection = answerSelection.value;
+  if (!props.followUpAllowed || !selection?.anchor || !selection.turn.turnId) return;
+  const excerpt = selection.anchor.excerpt;
+  const prior = visibleDrafts.value.find(draft => draft.parent_session_id === props.activeChatSessionId &&
+    draft.parent_turn_id === selection.turn.turnId && draft.anchor.start_part === selection.anchor!.start_part &&
+    draft.anchor.start_offset === selection.anchor!.start_offset && draft.anchor.end_part === selection.anchor!.end_part &&
+    draft.anchor.end_offset === selection.anchor!.end_offset && draft.anchor.excerpt === excerpt);
+  const draft = prior ?? { parent_session_id:props.activeChatSessionId, parent_turn_id:selection.turn.turnId,
+    anchor:selection.anchor, client_request_id:crypto.randomUUID(), question:uiText('这里说的「{0}」是什么意思？',[compactText(excerpt,80)]) };
+  if (!prior) followUpDrafts.value = [...followUpDrafts.value,draft];
+  dismissAnswerSelection();
+  openFollowUpPath('draft:' + draft.client_request_id,null);
+}
+function openFollowUpPath(id: string, trigger: HTMLElement | null) {
+  if (!props.followUpAllowed) return;
+  if (!followUpOpen.value && !wideConversation.value) {
+    prePreviewTop = transcriptRef.value?.scrollTop ?? null;
+    pathTrigger = trigger;
+  }
+  followUpOpen.value = true;
+  emit('follow-up-load');
+  previewFollowUp(id);
+  if (followUpLayout.value !== 'sheet') void nextTick(() => followUpPanel.value?.focusNode(id));
+}
+function previewFollowUp(id: string) {
+  previewId.value = id;
+  const origin = previewDraft.value ?? pathNodes.value.find(n => n.session_id === id)?.origin;
+  if (origin?.parent_session_id === props.activeChatSessionId && followUpLayout.value !== 'sheet')
+    void revealFollowUpQuote(origin);
+}
+function closeFollowUpPath() {
+  followUpOpen.value = false;
+  const top = prePreviewTop, trigger = pathTrigger, current = props.activeChatSessionId;
+  prePreviewTop = null; pathTrigger = null;
+  void nextTick(() => {
+    if (current !== props.activeChatSessionId) return;
+    if (top !== null && transcriptRef.value) transcriptRef.value.scrollTop = top;
+    const target = trigger?.isConnected && trigger.getClientRects().length ? trigger : followUpToggle.value;
+    target?.focus({preventScroll:true});
+  });
+}
+function discardFollowUp() {
+  followUpDrafts.value = followUpDrafts.value.filter(draft => draft !== previewDraft.value);
+  previewId.value = props.activeChatSessionId;
+  if (!wideConversation.value) closeFollowUpPath();
+}
+function editFollowUpQuestion(text: string) {
+  if (previewDraft.value) followUpDrafts.value = followUpDrafts.value.map(draft =>
+    draft === previewDraft.value ? {...draft,question:text} : draft);
+}
+function activateFollowUpMark(event:KeyboardEvent) {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const mark = (event.target as HTMLElement).closest<HTMLElement>('mark[data-follow-up-id][role="button"]');
+  if (!mark || !props.followUpAllowed) return;
+  event.preventDefault(); openFollowUpPath(mark.dataset.followUpId!,mark);
+}
+function alignTranscript(rect:DOMRect) {
+  const transcript = transcriptRef.value;
+  if (!transcript) return;
+  const box = transcript.getBoundingClientRect();
+  if (rect.top < box.top + 8 || rect.bottom > box.bottom - 12) {
+    transcript.scrollTop += rect.top - box.top - Math.min(40, box.height / 4);
+  }
+}
+async function revealFollowUpQuote(origin:Pick<FollowUpOrigin,'parent_session_id'|'parent_turn_id'|'anchor'>):Promise<boolean> {
+  await nextTick();
+  if (props.activeChatSessionId !== origin.parent_session_id) return false;
+  const turn = props.chat.find(t => t.turnId === origin.parent_turn_id);
+  const root = answerRoots.get(origin.parent_turn_id);
+  if (!root || !turn) return false;
+  const parts = turnDisplayParts(turn);
+  for (const element of root.querySelectorAll<HTMLElement>('[data-answer-part]')) {
+    const part = parts[Number(element.dataset.answerPart)];
+    if (part?.kind !== 'html') continue;
+    const range = answerFollowUpRange(part,element,origin.anchor);
+    if (!range) continue;
+    followTranscript.value = false;
+    if (typeof range.getBoundingClientRect === 'function') alignTranscript(range.getBoundingClientRect());
+    for (const mark of element.querySelectorAll<HTMLElement>('mark[data-follow-up-id]')) {
+      if (range.intersectsNode(mark)) mark.animate?.([{backgroundColor:'var(--brand-accent-soft)'},{backgroundColor:'transparent'}],
+        {duration:window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 1500});
+    }
+    return true;
+  }
+  return false;
+}
+async function scrollToFollowUpOrigin(origin:FollowUpOrigin):Promise<boolean> {
+  if (await revealFollowUpQuote(origin)) return true;
+  if (props.activeChatSessionId === origin.parent_session_id) await scrollToTurn(origin.parent_turn_id);
+  return false;
+}
 function compactText(value: string, max = 96): string {
   const text = value.replace(/\s+/g, " ").trim();
   return text.length > max ? `${text.slice(0, max)}...` : text;
@@ -1223,6 +1397,14 @@ function leadingQuote(content: string): string | null {
   }
   const quote = quoteLines.join(" ").replace(/\s+/g, " ").trim();
   return quote || null;
+}
+function selectionEvidence(turn: ChatTurn): import('../api').EvidenceRange[] {
+  const stored = turn.questionQuote?.evidence_ranges;
+  if (stored?.length) return stored;
+  const ranges = turn.questionSelection?.ranges;
+  return turn.questionSelection?.status === 'resolved' && ranges?.length
+    ? [{start_lid:ranges[0].lid,end_lid:ranges[ranges.length-1].lid,ranges}]
+    : [];
 }
 function askQuoteLabel(quote: DisplayQuestionQuote): string {
   if ("label" in quote) return quote.label;
@@ -1418,10 +1600,13 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </nav>
     </MobileLearningSheet>
 
+    <MobileLearningSheet v-if="followUpAllowed && mobileViewport" :open="hasPaths && followUpOpen && activeTab === 'agent'" :title="uiText('追问路径')" @close="closeFollowUpPath">
+      <div ref="followUpSheet" data-follow-up-host="sheet" />
+    </MobileLearningSheet>
     <section id="reader-panel-agent" v-show="activeTab === 'agent'" class="tab-panel agent-panel" role="tabpanel" :aria-labelledby="props.fullscreen ? undefined : 'reader-tab-agent'" :aria-label="props.fullscreen ? uiText('问这本书') : undefined">
       <aside v-show="wideConversation" class="conversation-sidebar conversation-context" :aria-label="uiText('学习与会话')">
         <div ref="goalSidebarHost" class="sidebar-goal" />
-        <nav class="sidebar-section" :aria-label="uiText('本书会话')"><p class="sidebar-label">{{ uiText('会话') }}</p><div ref="sessionSidebarHost" /></nav>
+        <section class="sidebar-section"><p class="sidebar-label">{{ uiText('会话') }}</p><div ref="followUpSide" data-follow-up-host="side" /><nav ref="sessionSidebarHost" :aria-label="uiText('本书会话')" /></section>
         <div class="sidebar-section sidebar-teaching"><p class="sidebar-label">{{ uiText('学习方式') }}</p><div ref="teachingSidebarHost" /></div>
       </aside>
       <div class="conversation-main">
@@ -1474,7 +1659,12 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         @add-to-board="receipt => emit('add-to-board', { kind: 'presentation', session_id: receipt.session_id, turn_id: receipt.turn_id, reference: receipt.reference, receipt })"
         @source="(id, anchor) => openAgentSources({ turnId: recapPresentation!.turnId }, [id], { currentTarget: anchor }, true)"
         @expand="selectPresentation(recapPresentation.turnId, recapPresentation.reference, $event)" />
-      <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll">
+      <div v-if="followUpAllowed && activeBranch?.origin" class="follow-up-origin">
+        <button v-if="canReturnToParent" type="button" :disabled="followUpBusy" @click="emit('follow-up-parent')"><ChevronLeft :size="15" aria-hidden="true" />{{ uiText('回到原回答') }}</button>
+        <small v-else>{{ uiText('原回答已不可用') }}</small>
+        <span :title="activeBranch.origin.anchor.excerpt">{{ uiText('来自「{0}」',[activeBranch.origin.anchor.excerpt]) }}</span>
+      </div>
+      <div ref="transcriptRef" class="transcript" @scroll="trackTranscriptScroll" @keydown="activateFollowUpMark">
       <slot name="course-feedback" />
         <p v-if="props.historyLoading" role="status">{{ musicMode ? uiText('正在恢复对话，可以先听音乐或查看乐谱。') : uiText('正在恢复对话，可以先阅读正文。') }}</p>
         <div v-else-if="props.historyError" role="alert">
@@ -1490,6 +1680,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <div v-if="turn.questionQuote" class="turn-quote">
             <div class="turn-quote-head">
               <span>{{ askQuoteLabel(turn.questionQuote) }}</span>
+              <button v-if="selectionEvidence(turn).length" type="button" @click="emit('original-selection', selectionEvidence(turn))">{{ uiText('回到原选区') }}</button>
             </div>
             <blockquote>{{ turn.questionQuote.quote }}</blockquote>
           </div>
@@ -1505,7 +1696,12 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <span>{{ uiText('回到画板提问对象') }}</span><ArrowRight :size="14" aria-hidden="true" />
           </button>
           <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" :mem-id="props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === turn.presentationFollowUp?.saved_state_ref)?.mem_id" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
+          <p v-if="turn.localAgentName" class="turn-agent-name">{{ uiText('本轮 Agent') }} · {{ turn.localAgentName }}</p>
           <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" :active="turn.pending" />
+          <template v-if="!network.enabled && turn.pending && turn.turnId">
+            <AgentPermission v-for="step in turn.activities?.filter(activity => activity.name === 'acp.permission' && activity.status === 'running')"
+              :key="step.step_id" :turn-id="turn.turnId" />
+          </template>
           <div v-if="turn.runStatus || (turn.pending && stopAvailable)" class="run-progress-footer">
             <p v-if="turn.runStatus && (turn.runStatus !== uiText('正在运行') || !turn.activities?.length)" class="run-status" role="status">{{ turn.runStatus }}</p>
             <button v-if="turn.pending && stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? uiText('正在停止') : uiText('停止') }}</button>
@@ -1529,6 +1725,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </div>
           <div v-else-if="!turn.pending && turn.error" class="failed-question" role="status">
             <p class="incomplete">{{ turn.error }}</p>
+            <button v-if="turn.localAgentUnavailable && $slots['agent-picker']" type="button" class="retry-question"
+              :disabled="runActive" @click="emit('failed-agent-settings', turn.localAgentId)">{{ turn.localAgentId ? uiText('检查本轮 Agent 连接') : uiText('管理我的 Agent…') }}</button>
             <button v-if="!turn.submissionUnknown && !turn.boardFollowUp && !turn.presentationFollowUp && turn.user.trim()" type="button" class="retry-question"
               :disabled="sending || historyLoading || !!historyError || questionInputBlocked" @click="emit('edit-failed-question', turn)">{{ uiText('编辑后重试') }}</button>
           </div>
@@ -1690,7 +1888,20 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       </div>
 
       <MusicExamplePiano v-if="musicMode" @source="pianoSource" />
-      <div class="agent-input" data-tour="reader-input" :class="{ composing: composeExpanded, 'mobile-composing': mobileConversation && mobileComposerVisible, 'mobile-answering': mobileConversation && !!mobileResponseTurn }">
+      <div v-show="previewingTray" class="follow-up-tray" data-follow-up-host="tray">
+        <Teleport :to="followUpTarget || 'body'" :disabled="!followUpTarget">
+          <FollowUpPathPanel v-if="hasPaths && (wideConversation || followUpOpen)" ref="followUpPanel" :layout="followUpLayout" :nodes="pathNodes"
+            :selected="selectedPath" :current="activeChatSessionId" :drafts="visibleDrafts" :busy="followUpBusy || historyLoading"
+            :error="followUpError" @close="closeFollowUpPath" @cancel="discardFollowUp" @select="previewFollowUp"
+            @enter="emit('follow-up-enter',$event)" @start="emit('follow-up-start',$event)"
+            @update-question="editFollowUpQuestion" @retry="emit('follow-up-load')" />
+        </Teleport>
+      </div>
+      <div v-show="!previewingTray" class="agent-input" data-tour="reader-input" :class="{ composing: composeExpanded, 'mobile-composing': mobileConversation && mobileComposerVisible, 'mobile-answering': mobileConversation && !!mobileResponseTurn }">
+        <button v-if="hasPaths && !wideConversation && !mobileResponseTurn" ref="followUpToggle" type="button" class="follow-up-toggle"
+          :aria-label="uiText('追问路径')" :aria-expanded="followUpOpen" @click="openFollowUpPath(selectedPath,followUpToggle ?? null)">
+          <GitFork :size="14" aria-hidden="true" />{{ uiText('追问路径') }}<small>{{ activeBranch?.origin?.anchor.excerpt || uiText('原问题') }}</small><ChevronUp :size="14" aria-hidden="true" />
+        </button>
         <p v-if="props.videoError" role="alert">{{ props.videoError }}</p>
         <p v-if="props.questionSendBlocked" role="status">{{ props.questionSendBlocked }}</p>
         <slot v-if="useLearningSheet" name="practice-offer" />
@@ -1726,7 +1937,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <blockquote>{{ props.askDraft.quote }}</blockquote>
         </div>
         </div>
-        <div v-if="composeTall && (!mobileConversation || mobileComposerVisible)" class="compose-caption"><span>{{ uiText('草稿会保留') }}</span><button type="button" :aria-label="uiText('收起输入')" @click="collapseAgentInput">{{ uiText('收起') }}</button></div>
+        <div v-if="(composeTall || (runActive && $slots['agent-picker'])) && (!mobileConversation || mobileComposerVisible)" class="compose-caption">
+          <span>{{ runActive && $slots['agent-picker'] ? uiText('可以先写补充，本轮结束后发送。') : uiText('草稿会保留') }}</span>
+          <button v-if="composeTall" type="button" :aria-label="uiText('收起输入')" @click="collapseAgentInput">{{ uiText('收起') }}</button>
+        </div>
         <div v-show="!mobileConversation || mobileComposerVisible" class="agent-compose-row" :class="{ 'video-compose': imagesEnabled }">
         <p v-if="composerSuggestionVisible && composerGuidancePurpose !== 'welcome'" id="reading-input-invitation" class="reading-input-invitation">{{ composerGuidance!.question }}</p>
         <QuestionImageInput v-if="imagesEnabled" ref="imageInput" :image="questionImage" :disabled="sending || questionInputBlocked" @change="emit('question-image', $event)" @loading="questionImageLoading" />
@@ -1747,6 +1961,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         />
         <InputSuggestionHint v-if="composerSuggestionVisible" id="reading-input-suggestion" class="reading-input-suggestion" @accept="acceptComposerSuggestion" />
         <div class="composer-controls">
+        <slot name="agent-picker" />
         <VoiceInput class="composer-voice" :scope="props.activeChatSessionId ?? ''" :disabled="activeTab !== 'agent' || props.companionVisible === false || (mobileConversation && !mobileComposerVisible) || props.questionInputBlocked || sending || canStop || stopping || historyLoading || !!historyError" @insert="insertVoice" @active="voiceActive = $event" />
         <div v-if="useLearningSheet && workspaceVisible" class="workspace-compose-actions">
           <button v-if="workspaceVisible" type="button" class="workspace-binding" :aria-pressed="sceneBound" :aria-label="noteFollowUp ? uiText('附上记录时的演示状态') : uiText('附上当前演示状态')" :title="sceneBound ? uiText('不附演示状态') : uiText('附上当前演示')" @click="sceneBound = !sceneBound">
@@ -1904,6 +2119,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
       >
         <p v-if="answerSelectionError" class="answer-selection-error" role="status">{{ answerSelectionError }}</p>
         <template v-else>
+          <button v-if="followUpAllowed && answerSelection.anchor" type="button" :disabled="followUpBusy || historyLoading" @click="branchFromSelection">{{ uiText('另开追问') }}</button>
           <button type="button" @click="saveAnswerSelection(answerSelection.turn)">{{ uiText('记笔记') }}</button>
           <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" :disabled="sending" @click="clarifySelection">{{ uiText('这一步没跟上') }}</button>
           <button v-if="deliveredAnswerText(answerSelection.turn)" type="button" @click="shareAnswerSelection">{{ uiText('生成理解卡') }}</button>
@@ -2495,6 +2711,10 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
   font-family: var(--mono);
   text-transform: none;
 }
+.turn-quote-head button {
+  margin-left:auto; border:0; padding:0; background:transparent; color:var(--steel); font:inherit;
+  text-decoration:underline; text-underline-offset:2px; cursor:pointer;
+}
 .turn-quote blockquote {
   margin: 0;
   color: var(--slate);
@@ -2522,6 +2742,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .a-msg :deep(.md p) { margin: .8em 0; }
 .a-msg :deep(.md blockquote) { margin: 1em 0; padding: .5em 1em; border-left: 2px solid color-mix(in srgb, var(--brand-green) 65%, var(--line)); border-radius: 0 8px 8px 0; background: var(--surface-soft); color: var(--steel); font-size: .94em; }
 .a-msg :deep(.md blockquote p) { margin: .25em 0; }
+.turn-agent-name { margin:10px 0 4px; color:var(--steel); font-size:.78rem; font-weight:600; overflow-wrap:anywhere; }
 .answer-markdown {
   display: contents;
 }
@@ -3160,4 +3381,27 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .learning-dock .answer-practice-actions button:hover:not(:disabled) { filter: brightness(.97); }
 .learning-practice-note { grid-column: 1 / -1; margin: 0; color: var(--steel); font-size: .72rem; line-height: 1.65; overflow-wrap: anywhere; }
 .conversation-response .answer-practice-actions { grid-template-columns: minmax(0, 1fr); }
+.follow-up-tray {
+  flex:0 1 auto; min-height:0; max-height:68%; overflow:auto; overscroll-behavior:contain;
+  border-top:1px solid var(--line); border-radius:12px 12px 0 0; padding:8px 16px 14px; background:var(--canvas);
+  box-shadow:0 -3px 14px color-mix(in srgb,var(--ink) 5%,transparent);
+}
+[data-follow-up-host="side"]:not(:empty) { margin-bottom:14px; }
+.follow-up-origin { flex:none; display:flex; align-items:center; gap:10px; padding:3px 14px; min-width:0; border-bottom:1px solid var(--hairline-soft); color:var(--steel); font-size:.78rem; }
+.follow-up-origin button,.follow-up-toggle { display:flex; align-items:center; gap:4px; border:0; background:transparent; font:inherit; color:var(--brand-accent-deep); cursor:pointer; }
+.follow-up-origin button { flex:none; min-height:32px; padding:0; }
+.follow-up-origin span,.follow-up-toggle small { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.follow-up-toggle { width:100%; min-width:0; min-height:30px; gap:6px; padding:2px; font-size:.78rem; }
+.follow-up-toggle small { margin-left:auto; font-size:inherit; color:var(--steel); }
+.follow-up-toggle svg { flex:none; }
+.follow-up-origin button:focus-visible,.follow-up-toggle:focus-visible { outline:2px solid var(--brand-accent); outline-offset:2px; }
+.ans-text :deep(mark[data-follow-up-id]) {
+  background:transparent; color:var(--brand-accent-deep); border-radius:2px; cursor:pointer;
+  text-decoration:underline dotted; text-decoration-thickness:1px; text-underline-offset:.21em;
+}
+.ans-text :deep(mark[data-follow-up-id]:is(:hover,:focus-visible)) { background:var(--brand-accent-soft); }
+.answer-popover { flex-wrap:wrap; }
+@media(max-width:1023px) {
+  .follow-up-toggle,.follow-up-origin button { min-height:44px; }
+}
 </style>

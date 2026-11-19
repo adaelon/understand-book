@@ -25,7 +25,7 @@ function run(program, args, cwd = root) {
   if (result.status !== 0) process.exit(result.status ?? 1);
 }
 
-run(process.execPath, [require.resolve('vue-tsc/bin/vue-tsc.js'), '--noEmit'], path.join(root, 'packages/web'));
+run(process.execPath, [require.resolve('vue-tsc/bin/vue-tsc.js'), '--noEmit', '-p', 'tsconfig.local.json'], path.join(root, 'packages/web'));
 run(process.execPath, [path.join(path.dirname(require.resolve('vite/package.json')), 'bin/vite.js'), 'build', '--outDir', 'dist-local-debug', '--sourcemap'], path.join(root, 'packages/web'));
 run('cargo', ['build', '-p', 'understand-book-local-debug', '--bin', 'UnderstandBookLocalDebug']);
 cpSync(path.join(root, 'target/debug/UnderstandBookLocalDebug.exe'), path.join(output, 'UnderstandBookLocalDebug.exe'));
@@ -35,7 +35,7 @@ cpSync(path.join(root, 'packages/web/dist-local-debug'), path.join(output, 'reso
 
 // Reuse the production build engine packager; never ship the obsolete cached engine.
 env.UNDERSTAND_BOOK_SIDECAR_OUTPUT_DIR = path.join(temp, 'engine');
-run(process.execPath, ['apps/desktop/scripts/build-sidecar.mjs']);
+run(process.execPath, ['scripts/desktop/build-sidecar.mjs']);
 cpSync(path.join(temp, 'engine/understand-book-build-x86_64-pc-windows-msvc.exe'), path.join(output, 'understand-book-build.exe'));
 cpSync(path.join(temp, 'engine/resources'), path.join(output, 'resources'), { recursive: true });
 cpSync(path.join(temp, 'engine/node_modules'), path.join(output, 'node_modules'), { recursive: true });

@@ -1,5 +1,5 @@
 import type { AgentChatTurn, SourcePopupView } from './api';
-import type { PublishedBookRef, WorkspaceGoal } from './network-context';
+import type { PublishedBookRef, WorkspaceGoal } from './reader-context';
 import type { SessionRecap } from './session-recap';
 
 export interface LearningRecordSelection {

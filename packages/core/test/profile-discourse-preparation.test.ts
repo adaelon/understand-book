@@ -18,7 +18,7 @@ import { writePass1ProductionTaskArtifact } from "./helpers/model-input-routabil
 import { confirmedStandardBuildPlan } from "./helpers/confirmed-build-plan";
 import type { AutomaticBuildExecutorSessionResponseV3 } from "../src/automatic-build-executor-session";
 import type { AutomaticBuildRefillResponseV1 } from "../../../skills/build/automatic-build-refill";
-import { executorMcpInvocation, JsonLineMcpClient } from "../../../apps/desktop/scripts/smoke-t7-executor-release";
+import { executorMcpInvocation, JsonLineMcpClient } from "../../../scripts/plugin/smoke-t7-executor-release";
 
 const repo = path.resolve(import.meta.dirname, "../../..");
 const evidenceRoot = path.join(repo, "tmp/profile-discourse-preparation-20261020");

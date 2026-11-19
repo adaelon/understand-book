@@ -1,4 +1,4 @@
-import { networkFetch } from './network-client';
+import { hostFetch as networkFetch } from './reader-host';
 import type { CourseOverview } from './generated/CourseOverview';
 import type { CourseProgress } from './generated/CourseProgress';
 import type { CourseLessonView } from './generated/CourseLessonView';

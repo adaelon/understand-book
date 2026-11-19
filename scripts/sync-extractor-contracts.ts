@@ -75,7 +75,11 @@ export function syncExtractorContracts(
     .filter((projection) => projection.current !== projection.projected)
     .map((projection) => projection.relative_path);
   if (mode === "check" && changed.length) {
-    throw new Error(`extractor contract blocks are stale: ${changed.join(", ")}`);
+    throw new Error(
+      `extractor contract blocks are stale: ${changed.join(", ")}\n`
+      + "Edit packages/core/src/extractor-contract.ts, then run from the repository root: "
+      + "node --import tsx scripts/sync-extractor-contracts.ts --write",
+    );
   }
   if (mode === "write") {
     for (const projection of projections) {

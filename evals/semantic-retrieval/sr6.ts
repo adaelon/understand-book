@@ -58,7 +58,7 @@ export function rankingReport(saved: { identity: EmbeddingProviderIdentity; docu
     recall: rows.reduce((n, r) => n + r.metrics[group][k].recall, 0) / rows.length,
     precision_at_k: rows.reduce((n, r) => n + r.metrics[group][k].precision_at_k, 0) / rows.length,
   }]))]));
-  return { provenance: "SR1 saved real MiniLM vectors; zero new inference", identity: saved.identity, rows, aggregate };
+  return { provenance: "Saved vectors; zero new inference", identity: saved.identity, rows, aggregate };
 }
 
 const canonical = (work: ObjectAlignmentWork, key: string) => work.redirects[key] ?? key;

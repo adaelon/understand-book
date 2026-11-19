@@ -3,7 +3,7 @@ import { t as uiText } from '../i18n';
 
 import { computed, ref, watch } from 'vue';
 import { api as sharedApi, type AssetManifest, type SourcePopupView } from '../api';
-import { bindSceneApi } from '../network-context';
+import { bindSceneApi } from '../reader-context';
 import { renderSourceMarkdown } from '../md';
 import MediaSourcePreview from './MediaSourcePreview.vue';
 import MusicSourcePreview from './MusicSourcePreview.vue';

@@ -1,6 +1,6 @@
 use super::*;
 use base_schema::PublishedBookRef;
-use crate::agent_run::{AppStatePort, RuntimeStatePort};
+use crate::agent_run::AppStatePort;
 use crate::agent_stream::{RunDescriptor, RunStream};
 use runtime::{music::*, run_context::{CancellationToken, ResidentStatePort}};
 
@@ -36,7 +36,7 @@ fn start(state: &mut AppState, turn: &AgentTurnRef) -> Arc<RunStream> {
 fn run(state: Arc<Mutex<AppState>>, turn: AgentTurnRef, request: MusicInteractRequest, token: CancellationToken) -> std::thread::JoinHandle<Result<MusicPlaybackReceipt,ToolError>> {
     std::thread::spawn(move || {
         let scope=state.with_app(|s|crate::run_scope::RunScope::capture(s,&turn,"Listen",None,None));
-        let mut port=RuntimeStatePort {port:&state,turn_ref:&turn,scope:&scope,previewed:Default::default(),animations:Default::default(),plots:Default::default()};
+        let mut port=reader_service::tests::host_calls::runtime_state_port(&state,&turn,&scope);
         port.interact_music(request,&token)
     })
 }
@@ -151,10 +151,10 @@ fn music_question_freezes_repeat_and_original_time_in_run_and_history() {
     assert_eq!(json!(turn.music_question),context);
     assert_eq!(crate::authorization::turn_json(turn)["music_question"],context);
     let mut moved=input.clone();moved["music_question"]["audio"]["start_ms"]=json!(1300);
-    assert_ne!(crate::run_admission::normalize("workspace",&input).unwrap(),crate::run_admission::normalize("workspace",&moved).unwrap(),"a retry key cannot silently change its music question");
+    assert_ne!(crate::run_input::normalize("workspace",&input).unwrap(),crate::run_input::normalize("workspace",&moved).unwrap(),"a retry key cannot silently change its music question");
     assert_eq!(crate::music_interact::source_context(&prepared.scope).unwrap().unwrap()["question_context"]["audio"]["start_ms"].as_f64(),Some(1200.0));
     let mut wrong=input;wrong["music_question"]["publication"]["publication_id"]=json!("newer");
-    assert!(crate::music_interact::question(&state.workspace,&wrong).is_err());
+    assert!(reader_service::tests::host_calls::music_interact::question(&state.workspace,&wrong).is_err());
 }
 
 #[test]
@@ -177,10 +177,10 @@ fn music_question_pixels_survive_admission_and_history_without_an_indexed_score_
     let turn = state.user.agent_history.sessions.iter().flat_map(|s| &s.turns).find(|t| t.turn_id == prepared.turn_ref.turn_id).unwrap();
     assert_eq!(crate::authorization::turn_json(turn)["music_question"]["image"], image);
     let mut invalid = input.clone(); invalid["music_question"]["image"]["width"] = json!(3);
-    assert_eq!(crate::music_interact::question(&state.workspace, &invalid).unwrap_err().error_code, "MUSIC_QUESTION_INVALID");
+    assert_eq!(reader_service::tests::host_calls::music_interact::question(&state.workspace, &invalid).unwrap_err().error_code, "MUSIC_QUESTION_INVALID");
     invalid["music_question"]["image"]["width"] = json!(2);
     invalid["music_question"]["image"]["png_base64"] = json!("broken");
-    assert!(crate::music_interact::question(&state.workspace, &invalid).is_err());
+    assert!(reader_service::tests::host_calls::music_interact::question(&state.workspace, &invalid).is_err());
 }
 
 #[test]

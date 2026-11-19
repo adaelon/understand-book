@@ -2,7 +2,7 @@
 import { t as uiText } from '../i18n';
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { inquiryCourse, type CourseCatalog } from '../inquiry-course';
-import { network, type LearningWorkspace, type PublishedBookRef } from '../network-context';
+import { network, type LearningWorkspace, type PublishedBookRef } from '../reader-context';
 import { ApiError } from '../api';
 import { renderMarkdown } from '../md';
 import type { CourseResourceState } from '../generated/CourseResourceState';

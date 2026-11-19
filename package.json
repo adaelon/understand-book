@@ -5,6 +5,10 @@
   "type": "module",
   "description": "Local Claude Code plugin: turn a book into a read-only knowledge-graph base + read-time book agent.",
   "scripts": {
+    "build:book-mcp": "node scripts/plugin/build-book-mcp.mjs",
+    "test:t7-executor-release": "node --import tsx scripts/plugin/smoke-t7-executor-release.ts",
+    "test:t7-codex-cli-release": "node --import tsx scripts/plugin/smoke-t7-codex-cli-release.ts",
+    "test:maintenance-plugin": "node scripts/plugin/assert-maintenance-plugin-release.mjs --source-contract-only",
     "docs:tools": "node --import tsx scripts/generate-tool-reference.mjs",
     "docs:tools:check": "node --import tsx scripts/generate-tool-reference.mjs --check",
     "docs:tools:test": "node --import tsx --test scripts/generate-tool-reference.test.mjs",
@@ -21,6 +25,9 @@
     "eval:tools:report": "node evals/tool-usability/report.mjs",
     "eval:quality": "node evals/semantic/quality-run.mjs",
     "eval:quality:test": "node --test evals/semantic/quality.test.mjs evals/semantic/task-quality.test.mjs evals/semantic/task-quality-basis.test.mjs",
+    "verify:extractor": "node --import tsx scripts/sync-extractor-contracts.ts --check && pnpm --filter @understand-book/core exec vitest run test/extractor-contract.test.ts",
+    "verify:course:local": "cargo test -p reader-service --lib closed_book -- --test-threads=1 && cargo test -p server --lib closed_book -- --test-threads=1 && cargo test -p memory --lib closed_book -- --test-threads=1 && cargo test -p reader-service --lib inquiry_course_expression -- --test-threads=1",
+    "verify:course:model": "node scripts/verify-course-reuse.mjs",
     "verify:observability-release": "node scripts/verify-observability-release.mjs"
   },
   "devDependencies": {

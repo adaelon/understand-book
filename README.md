@@ -51,7 +51,7 @@ Agent 让我们可以尝试为一个具体的理解困难，制作一件专门�
 
 ## Quick Start
 
-Windows 本地完整运行时 debug 包见[本地 Debug 使用与构建说明](apps/local-debug/README.md)：本机运行 Reader 和 AI 引擎，在设置中配置自己的模型接口，无需连接线上业务服务器。
+Windows 正式本地版的安装、设置与旧数据接续见[本地版使用说明](apps/local-desktop/README.md)。安装后从应用图标进入，使用自己的资料和模型配置；本地版与现有云服务客户端分别安装。当前平台验证状态见[双发行方案](docs/切片方案-开源本地应用与云端服务双发行.md#9-当前状态与已知限制)。开发调试继续使用[本地 Debug](apps/local-debug/README.md)。 模型服务、协议、用途与云部署的设置方法见[模型配置使用说明](docs/模型配置使用说明.md)。
 
 源码启动需要 **Node.js 22+、pnpm、Rust 工具链**。从仓库根目录执行：
 
@@ -59,7 +59,7 @@ Windows 本地完整运行时 debug 包见[本地 Debug 使用与构建说明](a
 pnpm install
 pnpm demo:prepare
 pnpm build
-cargo run -p server --bin server -- .understand-book/quickstart-demo
+cargo run -p reader-service --bin reader -- .understand-book/quickstart-demo
 ```
 
 打开终端给出的本地地址，默认 [localhost:8787](http://127.0.0.1:8787)。这条路径不调用模型，可以直接阅读、添加笔记与高亮；首次 Rust 编译需要时间。若端口被占用，先设置 `$env:UNDERSTAND_BOOK_ADDR = "127.0.0.1:8788"`。
@@ -68,7 +68,7 @@ cargo run -p server --bin server -- .understand-book/quickstart-demo
 
 已有预构建书库可将启动命令末尾的路径替换为实际书库目录。
 
-现成原书与预构建可从上方资料包下载。准备自己的资料与 Windows 打包见[预构建说明](docs/预购建流程.md)和[桌面发行说明](apps/desktop/README.md)。生成原创演示使用真实分段器，但不调用模型，不代替正式预构建。
+现成原书与预构建可从上方资料包下载。准备自己的资料见[预构建说明](docs/预购建流程.md)；桌面打包分别见[本地应用](apps/local-desktop/README.md)和[云服务客户端](apps/desktop/README.md)。公共与云端源码可通过[独立导出入口](docs/双发行源码导出.md)生成。原创演示使用真实分段器，但不调用模型，不代替正式预构建。
 
 网站、云端与本地阅读器、桌面本机书库支持中文和 English，可在页面的语言菜单切换；管理后台保持中文。默认中文，选择保存在当前浏览器，分享链接也可使用 `?lang=en` 或 `?lang=zh-CN`。切换会重新载入当前页面。
 
@@ -81,7 +81,11 @@ cargo run -p server --bin server -- .understand-book/quickstart-demo
 - **制作交互工具。** 让学习者可以改变条件、观察结果、验证预测。可以从现有齿轮示例出发，也可以带来自己领域的新实验。
 - **改进反馈与学习体验。** 分享实际试学中的发现，改进练习、复盘、文档、翻译、界面或代码。
 
+想把自己的作品、项目或教材做成一门课，可以把[课程制作流程与交付标准](skills/build/course-methods/authoring-standard.md)交给自己的 Agent。里面说明怎样约定学成目标、设计先猜后验的活动，以及一门课达到什么条件可以交付试学和发布。
+
 可以先在 [Issues](https://github.com/adaelon/understand-book/issues) 描述问题或教学想法；已有内容和实现可以通过 [Pull Request](https://github.com/adaelon/understand-book/pulls) 提交。教学内容请注明来源与使用许可，并写清运行或使用方法。学习者的困惑、一个有效的例子、一处讲解修正，都可以帮助后来的人更容易迈出下一步。
+
+实现与修复采用[功能交付流程](CONTRIBUTING.md)：从受影响的用户路径选择验证入口，完成必要的程序检查与实际使用验证，并在原实施记录中保留结果和剩余问题。
 
 ## 30 秒技术摘要
 
@@ -119,7 +123,7 @@ flowchart LR
   Base --> Text
 ```
 
-构建是有成本的离线准备；阅读不把整本书塞进每一轮上下文。源码入口：[构建编排](packages/core/src/build-orchestrator.ts)、[读时工具](crates/read-tools/src/lib.rs)、[Agent 运行时](crates/runtime/src/orchestrator.rs)、[Reader 服务](crates/server/src/lib.rs)、[前端](packages/web/src/App.vue)。
+构建是有成本的离线准备；阅读不把整本书塞进每一轮上下文。源码入口：[构建编排](packages/core/src/build-orchestrator.ts)、[读时工具](crates/read-tools/src/lib.rs)、[Agent 运行时](crates/runtime/src/orchestrator.rs)、[公共 Reader 服务](crates/reader-service/src/lib.rs)、[前端](packages/web/src/App.vue)。
 
 ## 当前限制
 
@@ -143,6 +147,8 @@ flowchart LR
 
 ## 深入项目
 
+- 本地版可在「我的 Agent」连接 OpenCode、Codex 或自定义 ACP 命令，划词查证并保存学习记录。外部客户端可通过读者授权的个人连接接续任务。[个人学习 CLI 与 MCP](docs/个人学习CLI与MCP.md) · [实现与验收记录](docs/切片方案-本机Agent接入与跨入口学习.md) · [ADR-0189](docs/adr/0189-local-agent-learning-with-acp-and-mcp.md)
+- [从回答原句另开追问对话](docs/adr/0188-follow-up-conversations-and-path-preview.md) · [阅读页设计、实际界面与验证入口](docs/切片方案-追问对话与路径预览.md)
 - [书籍与成套课程的学习层级](docs/adr/0185-book-and-course-collection-learning-hierarchy.md) · [实施记录](docs/实施记录-书籍与成套课程入口.md)（以书籍／整套课程组织入口、单元目录与原任务归属）
 - [学习主线与课程入口 ADR](docs/adr/0184-task-led-learning-entry-and-continuity.md) · [切片方案](docs/切片方案-学习主线与课程入口.md) · [实施与验收记录](docs/实施记录-学习主线与课程入口.md)（入口、任务、反馈回课与验收状态）
 - [云端学习与考试冲刺产品方案](docs/产品方案-云端学习与考试冲刺.md) · [实施计划](docs/实施计划-云端学习与考试冲刺.md) · [运行说明](docs/运行说明-云端学习与考试冲刺.md)（云端账号、套餐、空间与课程实施及验收状态）

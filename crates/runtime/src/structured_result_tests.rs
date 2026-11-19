@@ -57,7 +57,7 @@ fn project(tool: &str, input: Value, raw: &Value, limit: usize) -> ToolResultDra
 #[test]
 fn to11_discovery_keeps_complete_purpose_and_capability_recovery() {
     let sample: Value = serde_json::from_str(include_str!(
-        "../../../docs/performance/tool-usability/to7/budget-observation.json"
+        "../fixtures/tool-discovery-budget.json"
     ))
     .unwrap();
     let raw = &sample["raw"];

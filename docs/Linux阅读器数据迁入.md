@@ -40,7 +40,7 @@ node scripts/linux/relocate-reader-paths.mjs \
 ```bash
 pnpm install --frozen-lockfile
 pnpm -C packages/web build
-cargo build --locked --release -p server --bin server
+cargo build --locked --release -p reader-service --bin reader
 ```
 
 以 [reader.env.example](../scripts/linux/reader.env.example) 为模板保存 `/opt/understand-book/reader.env`；将 `UNDERSTAND_BOOK_NODE` 改为实机 Node 绝对路径，LX1 为 `/opt/understand-book/tools/node-v24.20.0-linux-x64/bin/node`。填入模型配置，文件供 systemd 读取。目录变量由启动环境提供，不能依赖 Provider 延迟读取 `.env`。

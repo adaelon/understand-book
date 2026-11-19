@@ -14,6 +14,7 @@ import bookStructureOutlinePrompt from "../../agents/book-structure-outline.md";
 import bookStructureOutlineChaptersPrompt from "../../agents/book-structure-outline-chapters.md";
 import bookStructureOutlineThemesPrompt from "../../agents/book-structure-outline-themes.md";
 import bookStructureOutlineThemePagePrompt from "../../agents/book-structure-outline-theme-page.md";
+import bookStructureThemePlanPagePrompt from "../../agents/book-structure-theme-plan-page.md";
 import bookStructureChapterPrompt from "../../agents/book-structure-chapter.md";
 import bookStructureChapterSelectionPrompt from "../../agents/book-structure-chapter-selection.md";
 import bookStructureThemesPrompt from "../../agents/book-structure-themes.md";
@@ -66,6 +67,7 @@ const PROMPTS: Record<string, string> = {
   "book-structure-outline-chapters.md": bookStructureOutlineChaptersPrompt,
   "book-structure-outline-themes.md": bookStructureOutlineThemesPrompt,
   "book-structure-outline-theme-page.md": bookStructureOutlineThemePagePrompt,
+  "book-structure-theme-plan-page.md": bookStructureThemePlanPagePrompt,
   "book-structure-chapter.md": bookStructureChapterPrompt,
   "book-structure-chapter-selection.md": bookStructureChapterSelectionPrompt,
   "book-structure-themes.md": bookStructureThemesPrompt,
@@ -120,7 +122,7 @@ async function runPackagedWorkbenchStage(args: string[]): Promise<void> {
   const { spawnSync } = await import('node:child_process');
   const { dirname, join } = await import('node:path');
   const stageDir = join(dirname(process.execPath), 'resources/build');
-  const result = spawnSync(join(stageDir, 'node.exe'), [join(stageDir, 'workbench-stage.mjs'), ...args], {
+  const result = spawnSync(join(stageDir, process.platform === 'win32' ? 'node.exe' : 'node'), [join(stageDir, 'workbench-stage.mjs'), ...args], {
     env: { ...process.env, UNDERSTAND_BOOK_SIDECAR_SELF: process.execPath }, stdio: 'inherit', windowsHide: true,
   });
   if (result.error) throw result.error;

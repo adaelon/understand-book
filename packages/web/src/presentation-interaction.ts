@@ -3,7 +3,7 @@ import type { PresentationCommand } from './generated/PresentationCommand';
 import type { PresentationFollowUp } from './generated/PresentationFollowUp';
 import type { RunSnapshot } from './agent-run-state';
 import { api } from './api';
-import { sceneKey } from './network-context';
+import { sceneKey } from './reader-context';
 
 export interface PageOperationResult {
   status: 'observed' | 'applied' | 'conflict' | 'failed' | 'cancelled';

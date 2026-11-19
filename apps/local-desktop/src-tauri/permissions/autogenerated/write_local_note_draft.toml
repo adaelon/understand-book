@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-write-local-note-draft"
+description = "Enables the write_local_note_draft command without any pre-configured scope."
+commands.allow = ["write_local_note_draft"]
+
+[[permission]]
+identifier = "deny-write-local-note-draft"
+description = "Denies the write_local_note_draft command without any pre-configured scope."
+commands.deny = ["write_local_note_draft"]

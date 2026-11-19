@@ -5,7 +5,7 @@ import { api } from '../api';
 import SessionRecap from './SessionRecap.vue';
 import ShareImagePanel from './ShareImagePanel.vue';
 import { renderShare, saveShare } from '../reading-share';
-import { network } from '../network-context';
+import { network } from '../reader-context';
 vi.mock('../reading-share', async original => ({ ...await original<typeof import('../reading-share')>(), renderShare: vi.fn(), saveShare: vi.fn() }));
 import type { SessionRecap as Recap } from '../session-recap';
 

@@ -1,5 +1,6 @@
 //! Public discovery and result contracts, exercised through the real HTTP fixture.
 use super::*;
+use reader_service::service_error;
 use std::collections::{BTreeMap, BTreeSet};
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 
@@ -579,12 +580,12 @@ fn mcp_contract_paid_expiry_and_exhausted_discovery_are_stable() {
             "alice",
             Command::Mcp(Mutation::Purchase(Purchase {
                 pack_count: 1,
-                paid_at: multi_user_host::now(),
+                paid_at: service_error::now(),
                 channel: "fixture".into(),
                 external_ref: None,
                 note: "contract fixture".into(),
             })),
-            multi_user_host::now(),
+            service_error::now(),
         )
         .unwrap()
         .0;

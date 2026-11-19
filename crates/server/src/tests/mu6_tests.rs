@@ -139,6 +139,159 @@ fn setup() -> (Fixture, Value, Value, Probe) {
 }
 
 #[test]
+fn follow_up_workspace_preview_and_retry_preserve_parent_and_frozen_first_question() {
+    let (f, workspace, mut input, probe) = setup();
+    let parent = workspace["selected_chat"].as_str().unwrap();
+    input["message"] = json!("Parent question about a greeting");
+    let (status, original) = admit(&f, &workspace, &input);
+    assert_eq!(status, 202);
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    let w = f.get(&f.a, &workspace);
+    let question = "Why that greeting?";
+    let create = json!({
+        "parent_session_id":parent, "parent_turn_id":original["turn_id"],
+        "anchor":{"start_part":0,"start_offset":1,"end_part":0,"end_offset":2,"excerpt":"好"},
+        "question":question, "client_request_id":"follow-start"
+    });
+    let started = f.action(&f.a, &w, "page", "chat/follow-ups/create", create.clone());
+    assert_eq!(started["selected_chat"], parent);
+    let child = started["result"]["session_id"].as_str().unwrap().to_owned();
+    let path = f.action(&f.a, &w, "page", "chat/follow-ups", json!({"session_id":parent}));
+    assert_eq!(path["revision"], w["revision"]);
+    let nodes = path["result"]["nodes"].as_array().unwrap();
+    assert_eq!(nodes.len(), 2);
+    assert_eq!(nodes[1]["origin"]["parent_explanation"], "你好！");
+    assert_eq!(nodes[1]["question"], question);
+    assert_eq!(nodes[1]["status"], "unsent");
+    assert_eq!(probe.calls.load(Ordering::SeqCst), 1);
+
+    let session = f.action(&f.a, &w, "page", "chat/select", json!({"session_id":child}));
+    assert_eq!(f.action(&f.a, &session, "page", "chat/follow-ups/create", create)["result"]["session_id"], child);
+    let mut first = Fixture::stamp(&session, "page");
+    first["session_id"] = json!(child);
+    first["message"] = json!(question);
+    first["expected_chat_head"] = Value::Null;
+    first["client_request_id"] = json!("wrong-key");
+    assert_eq!(admit(&f, &session, &first).1["error_code"], "FOLLOW_UP_FIRST_QUESTION_CHANGED");
+    first["client_request_id"] = json!("follow-start");
+    *f.access.runs.fail_after.lock().unwrap() = Some("preparing");
+    assert_eq!(admit(&f, &session, &first).0, 503);
+    let interrupted = row(&f, "follow-start")["turn"].clone();
+    let f = reopen(f, &probe);
+    assert_eq!(row(&f, "follow-start")["closed"], true);
+    let session = f.action(&f.a, &f.get(&f.a, &session), "page", "attach", json!({}));
+    let stamp = Fixture::stamp(&session, "page");
+    first["generation"] = stamp["generation"].clone();
+    first["expected_revision"] = stamp["expected_revision"].clone();
+    let (status, accepted) = admit(&f, &session, &first);
+    assert_eq!(status, 202, "{accepted}");
+    assert_eq!(accepted["turn_id"], interrupted);
+    let f = reopen(f, &probe);
+    assert_eq!(admit(&f, &session, &first).1["turn_id"], accepted["turn_id"]);
+    let resumed = f.action(&f.a, &f.get(&f.a, &session), "page", "attach", json!({}));
+    let w = f.action(&f.a, &resumed, "page", "chat/select", json!({"session_id":parent}));
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    assert_eq!(f.get(&f.a, &w)["selected_chat"], parent);
+    assert_eq!(probe.calls.load(Ordering::SeqCst), 2);
+    let requests = probe.messages.lock().unwrap();
+    let prompt = requests.last().unwrap().iter().filter_map(|m|m.content.as_deref())
+        .find(|text|text.contains("previous_assistant_explanation")).unwrap();
+    for expected in [question,"Parent question about a greeting","你好！",r#""selected_excerpt":"好""#] {
+        assert!(prompt.contains(expected), "missing {expected}");
+    }
+    drop(requests);
+    let done = f.action(&f.a, &w, "page", "chat/follow-ups", json!({"session_id":parent}));
+    assert_eq!(done["result"]["nodes"][1]["status"], "ready");
+    let mut peek = Fixture::stamp(&w, "page"); peek["session_id"] = json!(parent);
+    let url = format!("/api/workspaces/{}/chat/follow-ups", w["workspace_id"].as_str().unwrap());
+    assert_eq!(f.call(&f.b, "POST", &url, peek).0, 404);
+}
+
+#[test]
+fn follow_up_on_another_book_uses_parent_publication_and_current_readable_sources() {
+    let f = Fixture::new();
+    let goal = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({
+        "goal":{"text":"比较两份材料"},"members":[f.x,f.y]
+    }));
+    let scope = goal["learning_workspace_id"].as_str().unwrap();
+    let w = f.ok(&f.a, "POST", "/api/workspaces", json!({
+        "published_book_ref":f.y,"attachment_id":"page","learning_workspace_id":scope
+    }));
+    let w = f.action(&f.a, &w, "page", "chat/new", json!({}));
+    let parent = w["selected_chat"].clone();
+    let quote = f.access.library.lock().unwrap().load("A", &f.y).unwrap().book.text("1.1",None).unwrap();
+    configure(&f, &Probe { primary_quote:Some(quote), ..Default::default() });
+    let mut input = Fixture::stamp(&w, "page");
+    input["client_request_id"] = json!("source-parent");
+    input["session_id"] = parent.clone();
+    input["message"] = json!("帮我找出原书中的依据");
+    let (status, accepted) = admit(&f, &w, &input);
+    assert_eq!(status, 202, "{accepted}");
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    let mut w = f.action(&f.a, &f.get(&f.a,&w), "page", "book/open", json!({"published_book_ref":f.x}));
+    let probe = Probe::default();
+    configure(&f, &probe);
+    let mut children = Vec::new();
+    for (key, readable) in [("with-source", true), ("removed-source", false)] {
+        if !readable {
+            f.ok(&f.a, "DELETE", &format!("/api/learning-workspaces/{scope}/members"), json!({"published_book_ref":f.y}));
+        }
+        let child = f.action(&f.a, &w, "page", "chat/follow-ups/create", json!({
+            "parent_session_id":parent,"parent_turn_id":accepted["turn_id"],"client_request_id":key,
+            "anchor":{"start_part":0,"start_offset":0,"end_part":0,"end_offset":3,"excerpt":"这本书"},
+            "question":"这里指哪本书？"
+        }))["result"]["session_id"].clone();
+        children.push(child.clone());
+        w = f.action(&f.a, &w, "page", "chat/select", json!({"session_id":child}));
+        let mut input = Fixture::stamp(&w, "page");
+        input["client_request_id"] = json!(key);
+        input["session_id"] = child;
+        input["expected_chat_head"] = Value::Null;
+        input["message"] = json!("这里指哪本书？");
+        let (status, accepted) = admit(&f, &w, &input);
+        assert_eq!(status, 202, "{accepted}");
+        assert!(f.access.runs.run_one(&f.access).unwrap());
+        let messages = probe.messages.lock().unwrap();
+        let prompt = messages.last().unwrap().iter().filter_map(|m| m.content.as_deref())
+            .find(|m| m.contains("previous_assistant_explanation")).unwrap();
+        let payload:Value = serde_json::from_str(prompt.lines().find(|line| line.contains("previous_assistant_explanation")).unwrap()).unwrap();
+        assert_eq!(payload["original_publication"], json!(f.y));
+        assert!(payload["original_source_revision"].is_string());
+        let locators = payload["source_locators"].as_array().unwrap();
+        if readable {
+            assert_eq!(locators[0]["publication_id"], f.y.publication_id);
+            assert_eq!(locators[0]["range"]["start_lid"], "1.1");
+        } else {
+            assert!(locators.is_empty());
+        }
+        drop(messages);
+        w = f.action(&f.a, &f.get(&f.a,&w), "page", "chat/select", json!({"session_id":parent}));
+    }
+    let other = f.ok(&f.a, "POST", "/api/learning-workspaces", json!({
+        "goal":{"text":"另一项学习任务"},"members":[f.x,f.y]
+    }));
+    let other_workspace = f.ok(&f.a, "POST", "/api/workspaces", json!({
+        "published_book_ref":f.y,"attachment_id":"page","learning_workspace_id":other["learning_workspace_id"]
+    }));
+    for isolated in [f.create(&f.a, &f.y, "page"), other_workspace] {
+        let isolated = f.action(&f.a, &isolated, "page", "chat/new", json!({}));
+        let path = f.action(&f.a, &isolated, "page", "chat/follow-ups", json!({"session_id":isolated["selected_chat"]}));
+        let nodes = path["result"]["nodes"].as_array().unwrap();
+        assert_eq!(nodes.len(), 1);
+        assert_eq!(nodes[0]["session_id"], isolated["selected_chat"]);
+        let mut select = Fixture::stamp(&isolated, "page");
+        select["session_id"] = children[0].clone();
+        let url = format!("/api/workspaces/{}/chat/select",isolated["workspace_id"].as_str().unwrap());
+        assert_ne!(f.call(&f.a, "POST", &url, select).0, 200);
+    }
+    f.ok(&f.a, "POST", "/api/agent/history/delete", json!({"session_id":children[0]}));
+    let path = f.action(&f.a, &f.get(&f.a,&w), "page", "chat/follow-ups", json!({"session_id":parent}));
+    let nodes = path["result"]["nodes"].as_array().unwrap();
+    assert_eq!(nodes.len(), 2);
+    assert_eq!(nodes[1]["session_id"], children[1]);
+}
+
+#[test]
 fn w2_workspace_chat_crosses_books_and_reopens_with_original_turn_scope() {
     let f = Fixture::new();
     let probe = Probe::default();
@@ -447,7 +600,7 @@ fn jl4_kill_child() {
         let profile = runtime::ModelRuntimeProfile::fallback("fixture", runtime::ProviderToolProtocol::Native);
         let checkpoint = runtime::compact_with_adapter(&generator,&profile,&prepared,
             runtime::CompactionLimits { generation_input_limit_tokens:100_000,target_active_tokens:20_000 }).unwrap();
-        crate::session_runtime::checkpoint(&mut user,&reference,&checkpoint,&messages).unwrap();
+        reader_service::tests::host_calls::session_runtime::checkpoint(&mut user,&reference,&checkpoint,&messages).unwrap();
     } else {
         f.access.runs.run_one(&f.access).unwrap();
     }
@@ -1192,7 +1345,7 @@ fn teaching_partial_receipt(jsonl: bool) {
             messages: &[],
             selected_chat: w["selected_chat"].as_str(),
         };
-        teaching::start_request(&private, "original").unwrap();
+        reader_service::tests::host_calls::teaching::start_request(&private, "original").unwrap();
         let learning = user.learning_store().unwrap();
         let state = learning.state().unwrap();
         let session = state
@@ -1314,7 +1467,7 @@ fn mu6a_confirmation_dependency_is_not_persisted_and_restart_requires_reconfirma
         user.agent_history
             .pending_governance_mutations
             .insert(chat.into(), pending);
-        user.agent_history.arm_confirmation(chat);
+        user.agent_history.test_arm_confirmation(chat);
     }
     input["message"] = json!("确认保存");
     assert_eq!(admit(&f, &w, &input).0, 202);
@@ -1997,7 +2150,7 @@ fn mu6d_queue_observation_tracks_execution_and_restart_discards_old_cursor() {
     let (events, terminal) = stream.read_after(None, Duration::ZERO);
     assert!(!terminal);
     assert_eq!(events[0].payload["execution_state"], "queued");
-    let frame = stream.event_frame(&events[0]);
+    let frame = stream.test_event_frame(&events[0]);
     let cursor = frame
         .lines()
         .next()
@@ -2341,7 +2494,7 @@ fn jl7_backup_restores_new_chats_checkpoint_and_original_domain_objects() {
     let mut state = state_named(&format!("jl7-domain-{}", uuid::Uuid::now_v7()));
     let publication = f.access.library.lock().unwrap().load("A", &f.x).unwrap();
     state.workspace.book = publication.book.clone();
-    state.workspace.book_dir = publication.directory.clone();
+    state.workspace.book_dir = publication.directory().to_path_buf();
     state.workspace.reader = Reader::new(&state.workspace.book, DEFAULT_RADIUS);
     state.workspace.publication = Some(publication);
     state.workspace.selected_chat = w["selected_chat"].as_str().map(str::to_owned);
@@ -2350,7 +2503,7 @@ fn jl7_backup_restores_new_chats_checkpoint_and_original_domain_objects() {
     // Borrow the real service user's stores for the existing local command core.
     std::mem::swap(&mut state.user, &mut *handle.lock().unwrap());
     state.workspace.messages = state.user.agent_history.sessions[0].messages.clone();
-    teaching::start_request(&state.private_context(), "now").unwrap();
+    reader_service::tests::host_calls::teaching::start_request(&state.private_context(), "now").unwrap();
     let prepared = tutor::prepare_practice_chat(&mut state, r#"{"message":"Practice speed"}"#, "now")
         .unwrap_or_else(|r| panic!("{}", r.body));
     let turn = prepared.turn_ref;
@@ -2369,7 +2522,7 @@ fn jl7_backup_restores_new_chats_checkpoint_and_original_domain_objects() {
     outcome.source_bindings = candidate.content.source_bindings.clone();
     tutor::finish(&mut state, &turn, &outcome);
     crate::session_runtime::link_teaching(&mut state.user, &turn, "linked").unwrap();
-    let receipt = crate::effect_disposition::route(&mut state,
+    let receipt = reader_service::tests::host_calls::effect_disposition::route(&mut state,
         &json!({"session_id":turn.session_id,"turn_id":turn.turn_id,"effect_id":runtime::orchestrator::effect_id(&effect),"action":"keep"}), "kept").unwrap();
     assert!(receipt.receipt.as_ref().unwrap().error.is_none());
     let next = precommit_agent_turn(&mut state, &f.x.book_id, "Failed follow-up".into(), None, None, None, "later").unwrap();

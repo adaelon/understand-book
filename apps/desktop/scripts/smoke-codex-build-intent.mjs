@@ -12,7 +12,7 @@ const repoRoot = path.resolve(desktopRoot, "..", "..");
 const sidecar = process.env.UNDERSTAND_BOOK_BUILD_EXE
   ?? path.join(desktopRoot, "src-tauri", "binaries", "understand-book-build-x86_64-pc-windows-msvc.exe");
 const desktop = process.env.UNDERSTAND_BOOK_DESKTOP_EXE
-  ?? path.join(desktopRoot, "maintenance-host", "target", "debug", "understand-book-maintenance.exe");
+  ?? path.join(process.env.CARGO_TARGET_DIR ? path.resolve(repoRoot, process.env.CARGO_TARGET_DIR) : path.join(repoRoot, "target"), "debug", "understand-book-maintenance.exe");
 const fixture = JSON.parse(readFileSync(
   path.join(repoRoot, "packages", "core", "test", "fixtures", "build-intent.v1.golden.json"),
   "utf8",
@@ -177,7 +177,7 @@ assert.deepEqual(controller.inspection.intents, []);
 assert.deepEqual(controller.inspection.plans, []);
 
 const v2ContextRequest = JSON.stringify({
-  version: "codex_build_intent_command.v2",
+  version: "codex_build_intent_command.v3",
   operation: "planning.context",
   target: { workspace_dir: workspaceDir },
   input: {},
@@ -198,7 +198,7 @@ assert.equal(v2ContextRun.stdout.trim().split(/\r?\n/u).length, 1);
 const v2Context = JSON.parse(v2ContextRun.stdout);
 assert.equal(v2Context.version, "codex_build_intent_result.v2");
 assert.equal(v2Context.status, "ok");
-assert.equal(v2Context.response.version, "build_planning_context.v1");
+assert.equal(v2Context.response.version, "build_planning_context.v2");
 assert(v2Context.response.scope_catalog.available_lids.length <= 128);
 
 const powershellContext = runObserved(
@@ -215,12 +215,13 @@ const invalidCandidate = runObserved(
   desktop,
   ["--codex-build-intent"],
   JSON.stringify({
-    version: "codex_build_intent_command.v2",
+    version: "codex_build_intent_command.v3",
     operation: "draft.candidate",
     target: { workspace_dir: workspaceDir },
     input: {
       user_goal: privateGoal,
-      planning_context_digest: v2Context.response.context_digest,
+      context_id: v2Context.response.context_id,
+      context_revision: v2Context.response.context_revision,
       candidate: { version: "invalid-candidate", secret: "CB4_CANDIDATE_SENTINEL" },
     },
   }),
@@ -260,12 +261,13 @@ const validCandidateRun = runObserved(
   desktop,
   ["--codex-build-intent"],
   JSON.stringify({
-    version: "codex_build_intent_command.v2",
+    version: "codex_build_intent_command.v3",
     operation: "draft.candidate",
     target: { workspace_dir: workspaceDir },
     input: {
       user_goal: sixArtifactGoal,
-      planning_context_digest: v2Context.response.context_digest,
+      context_id: v2Context.response.context_id,
+      context_revision: v2Context.response.context_revision,
       candidate: {
         version: "build_intent_planner_candidate.v2",
         goal_kind: "learn",
@@ -291,7 +293,7 @@ const validCandidateResult = JSON.parse(validCandidateRun.stdout);
 assert.equal(validCandidateResult.version, "codex_build_intent_result.v2");
 assert.equal(validCandidateResult.status, "ok");
 assert.equal(validCandidateResult.response.version, "codex_build_intent_response.v1");
-assert.equal(validCandidateResult.response.projection.version, "codex_build_intent_plan.v2");
+assert.equal(validCandidateResult.response.projection.version, "codex_build_intent_plan.v3");
 assert.equal(validCandidateResult.response.projection.plan.private_artifacts.length, 0);
 assert.deepEqual(
   validCandidateResult.response.projection.plan.artifact_summaries.map((artifact) => artifact.blueprint_id),
@@ -328,4 +330,4 @@ assert.equal(forcedAbort.exit_code, null);
 assert.equal(forcedAbort.termination, "timed_out");
 assert(forcedAbort.signal || forcedAbort.error_code === "ETIMEDOUT");
 
-console.log("Codex build-intent v1/v2 result, six-artifact unconfirmed plan, PowerShell, sidecar failure, and termination smoke passed");
+console.log("Codex build-intent v1/v3 result, six-artifact unconfirmed plan, PowerShell, sidecar failure, and termination smoke passed");

@@ -1,7 +1,7 @@
 import type { MusicCommand, MusicPlaybackReceipt } from './music-api';
 import type { RunSnapshot } from './agent-run-state';
 import { api } from './api';
-import { sceneKey } from './network-context';
+import { sceneKey } from './reader-context';
 interface MusicPlayer { id: string; execute(command: MusicCommand): Promise<MusicPlaybackReceipt>; accepted?(receipt: MusicPlaybackReceipt): void }
 const players = new Set<MusicPlayer>();
 export function registerMusicPlayer(player: MusicPlayer) { players.add(player); return () => { players.delete(player); }; }

@@ -15,16 +15,29 @@ class LauncherTest(unittest.TestCase):
         script = self.root / "scripts/linux/start-reader.sh"
         script.parent.mkdir(parents=True)
         shutil.copyfile(Path(__file__).with_name("start-reader.sh"), script)
+        for name in ("start-local-reader.sh", "check-board-preview.sh"):
+            shutil.copyfile(Path(__file__).with_name(name), script.with_name(name))
         server = self.root / "target/release/server"
         server.parent.mkdir(parents=True)
         server.write_text('#!/usr/bin/env bash\nprintf "%s" "${UNDERSTAND_BOOK_WEB_DIST:-}" > web-dist.txt\nprintf "%s" "${UNDERSTAND_BOOK_EMBEDDING_CONFIG:-}" > embedding.txt\nprintf "%s\\0" "$@"\n', encoding="utf-8")
         server.chmod(0o755)
+        reader = server.with_name("reader")
+        shutil.copyfile(server, reader)
+        reader.chmod(0o755)
         self.env = {k: v for k, v in os.environ.items() if not k.startswith("UNDERSTAND_BOOK_")}
         self.env["MSYS_NO_PATHCONV"] = "1"
         config = self.root / "models/local-embedding.json"
         config.parent.mkdir()
         config.write_text('{}')
         self.env["UNDERSTAND_BOOK_EMBEDDING_CONFIG"] = config.as_posix()
+        browser = self.root / "preview-browser"
+        browser.write_text('#!/usr/bin/env bash\nexit 0\n', encoding="utf-8")
+        browser.chmod(0o755)
+        self.env["UNDERSTAND_BOOK_PREVIEW_BROWSER"] = browser.as_posix()
+        preview = self.root / "packages/web/dist-multi/board-preview"
+        preview.mkdir(parents=True)
+        for name in ("renderer.js", "renderer.css"):
+            (preview / name).write_text("fixture")
         self.bash = os.environ.get("MU11_BASH", "bash")
 
     def run_launcher(self, **env):
@@ -54,12 +67,17 @@ class LauncherTest(unittest.TestCase):
         self.assertIn("Semantic retrieval is not installed", result.stderr.decode())
 
     def test_explicit_preview_bundle_is_preserved(self):
+        web_dist = self.root / "reader resources"
+        preview = web_dist / "board-preview"
+        preview.mkdir(parents=True)
+        for name in ("renderer.js", "renderer.css"):
+            (preview / name).write_text("fixture")
         result = self.run_launcher(UNDERSTAND_BOOK_MODE="multi-user",
                                    UNDERSTAND_BOOK_SERVICE_ROOT="/srv/readers",
                                    UNDERSTAND_BOOK_ORIGIN="https://reader.example",
-                                   UNDERSTAND_BOOK_WEB_DIST="/srv/reader resources")
+                                   UNDERSTAND_BOOK_WEB_DIST=web_dist.as_posix())
         self.args(result)
-        self.assertEqual((self.root / "web-dist.txt").read_text(), "/srv/reader resources")
+        self.assertEqual((self.root / "web-dist.txt").read_text(), web_dist.as_posix())
 
     def test_configured_backend_and_legacy_environment_do_not_change_mode(self):
         result = self.run_launcher(UNDERSTAND_BOOK_MODE="multi-user", UNDERSTAND_BOOK_DIR="/old/book",
@@ -86,6 +104,8 @@ class LauncherTest(unittest.TestCase):
         self.assertEqual(result.stdout, b"")
 
     def test_original_environment_keeps_single_reader_arguments(self):
+        # The public local launcher must work without the cloud executable.
+        (self.root / "target/release/server").unlink()
         result = self.run_launcher(UNDERSTAND_BOOK_DIR="/books/my book", UNDERSTAND_BOOK_LIBRARY_ROOT="/books",
                                    UNDERSTAND_BOOK_MEMORY_DIR="/memory", UNDERSTAND_BOOK_PRIVATE_DIR="/private",
                                    UNDERSTAND_BOOK_NODE="/tools/node")

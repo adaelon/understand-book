@@ -268,14 +268,14 @@ fn seed_presentation_in(f: &Fixture, w: Value) -> Value {
             },
         };
         let path = user
-            .presentation_root()
+            .test_presentation_root()
             .unwrap()
             .join("versions/mu5-presentation/1.json");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
         std::fs::write(path, serde_json::to_vec(&version).unwrap()).unwrap();
         let turn = AgentTurnRef { session_id: session.id.clone(), turn_id: session.turns[0].turn_id.clone(), user_turn_ordinal: 1 };
         crate::session_runtime::append(&mut user, &turn, "title", crate::session_event::EventBody::SessionUpdated { title: session.title.clone() }).unwrap();
-        crate::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user, &turn, &session, "finished").unwrap();
     }
     drop(port);
     w

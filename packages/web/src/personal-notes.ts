@@ -1,6 +1,8 @@
 import { reactive, ref } from 'vue';
-import { network } from './network-context';
-import { ApiError } from './api';
+import { network } from './reader-context';
+import { ApiError } from './api-error';
+import { ownerHeaders } from './reader-host';
+import { localCapabilities } from './local-capabilities';
 import type { NoteContent } from './generated/NoteContent';
 import type { NoteContext } from './generated/NoteContext';
 import type { PersonalNoteView } from './generated/PersonalNoteView';
@@ -21,10 +23,9 @@ export async function noteRequest<T>(action: string, input: unknown): Promise<T>
 export async function ownerRequest<T>(path: string, method = 'GET', input?: unknown): Promise<T> {
   const owner = notesOwner();
   if (!owner) throw new Error('登录后可以保存自己的想法');
-  const identity = network.value.identity;
   const result = await fetch(`/api${path}`, {
     method, credentials: 'same-origin', cache: 'no-store',
-    headers: { 'Content-Type': 'application/json', ...(identity ? { 'X-CSRF-Token': identity.csrf_token } : {}) },
+    headers: { 'Content-Type': 'application/json', ...ownerHeaders() },
     ...(input === undefined ? {} : { body: JSON.stringify(input) }),
   });
   const value = await result.json();
@@ -99,10 +100,10 @@ function browserNoteDrafts(owner?: string): Record<string, NoteDraft> {
   }
   return saved;
 }
-/** Restore the Local Debug device store before any capture UI can create a draft. */
+/** Restore the native device store before any capture UI can create a draft. */
 export function initializeNoteDraftStorage(): Promise<void> {
   return draftInitialization ??= (async () => {
-    if (import.meta.env.VITE_LOCAL_DEBUG !== '1') return;
+    if (!localCapabilities()?.noteDrafts) return;
     const { invoke, isTauri } = await import('@tauri-apps/api/core');
     if (!isTauri()) return;
     nativeDrafts = true;

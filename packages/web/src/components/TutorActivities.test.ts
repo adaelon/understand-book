@@ -145,7 +145,7 @@ it('sends only a selected calculation step, restores the draft, and grades only 
   } finally { wrapper.unmount(); localStorage.clear(); }
 });
 vi.mock('../api', () => ({ api, ApiError: class extends Error {} }));
-vi.mock('../network-context', async importOriginal => ({ ...await importOriginal<typeof import('../network-context')>(), bindSceneApi: (value: unknown) => value }));
+vi.mock('../reader-context', async importOriginal => ({ ...await importOriginal<typeof import('../reader-context')>(), bindSceneApi: (value: unknown) => value }));
 const notes = vi.hoisted(() => ({ openPersonalNotes: vi.fn() }));
 vi.mock('../personal-notes', () => notes);
 

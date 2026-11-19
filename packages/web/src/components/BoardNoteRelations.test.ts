@@ -11,7 +11,7 @@ const mocks = vi.hoisted(() => ({
   boardUpdate: vi.fn(),
 }));
 vi.mock('../api', () => ({ api: mocks }));
-vi.mock('../network-context', () => ({ bindSceneApi: (api: unknown) => api, readerKey: {} }));
+vi.mock('../reader-context', () => ({ bindSceneApi: (api: unknown) => api, readerKey: {} }));
 
 function noteItem(noteId: string, itemId = `item-${noteId}`, missing = false): BoardItem {
   return {

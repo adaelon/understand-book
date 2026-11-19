@@ -2,8 +2,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { ArrowLeft, ArrowUp, BookOpen, Check, ChevronDown, CornerDownRight, LayoutDashboard, LoaderCircle, MessageSquareText, Minimize, PanelRightClose, PanelRightOpen, Pause, Play, Plus, RefreshCw, Search, Shapes, SkipBack, SkipForward, Square, Trash2, X } from '@lucide/vue';
 import { api as sharedApi, type BoardCandidateRequest, type BoardCatalogItem, type BoardConversationSession, type BoardPrebuildCategory, type BoardDocument, type BoardImportSource, type BoardSummary, type BoardView } from '../api';
-import { bindSceneApi, readerKey } from '../network-context';
-import { requestWorkspaceRecovery } from '../network-client';
+import { bindSceneApi, readerKey } from '../reader-context';
+import { requestWorkspaceRecovery } from '../reader-host';
 import { t as uiText } from '../i18n';
 import type { ProductTourStep } from '../product-tour';
 import { boardDeliveryKey, mergeBoardDeliveries, boardDate, boardKindDescriptions, boardKindLabels, boardKinds, boardTextPreview, boardVisualKey, projectBoardRoute, defaultBoardView, type BoardKind, type BoardSourceRequest, type BoardQuestionRequest, type BoardRunView, type BoardLocation } from '../board-workspace';

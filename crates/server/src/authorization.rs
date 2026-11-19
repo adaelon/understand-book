@@ -11,16 +11,8 @@ use rusqlite::{params, OptionalExtension};
 use serde_json::{json, Value};
 use std::sync::{Arc, Mutex};
 
-pub(crate) fn missing() -> ToolError {
-    error("OBJECT_NOT_FOUND", "not_found", "Object is unavailable")
-}
-pub(crate) fn forbidden() -> ToolError {
-    error(
-        "CAPABILITY_FORBIDDEN",
-        "permission",
-        "This operation is not available to readers",
-    )
-}
+pub(crate) use reader_service::service_error::{missing, forbidden};
+
 pub(crate) fn deferred() -> ToolError {
     error(
         "CAPABILITY_NOT_READY",
@@ -542,12 +534,8 @@ impl AuthorizedContext {
         )
     }
 }
-pub(crate) fn turn_json(turn: &crate::AgentChatTurn) -> Value {
-    json!({"turn_id":turn.turn_id,"user":turn.user,"status":turn.status,"domain":turn.domain,
-        "board_commits":crate::session_runtime::board_commits(turn),
-        "board_follow_up":turn.board_follow_up,"board_delivery":turn.board_delivery,"board_delivery_error":turn.board_delivery_error.as_ref().map(crate::agent_failure::turn),
-        "teaching_ref":turn.teaching_ref,"goal_ref":turn.goal_ref,"presentation_follow_up":turn.presentation_follow_up,
-        "published_book_ref":turn.published_book_ref,"music_question":turn.music_question,"outcome":turn.outcome,
-        "usage":turn.run_summary.as_ref().and_then(|s|s.usage.as_ref()),
-        "error":turn.error.as_ref().map(crate::agent_failure::turn)})
+pub(crate) use reader_service::learning_record_api::turn_json;
+
+impl reader_service::agent_stream::ObservationAccess for AuthorizedObservation {
+    fn allows(&self, descriptor: &crate::agent_stream::RunDescriptor) -> bool { AuthorizedObservation::allows(self, descriptor) }
 }

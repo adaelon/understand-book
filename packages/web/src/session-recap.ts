@@ -1,7 +1,7 @@
 import { t as uiText, formatLocale } from './i18n';
 import type { AgentEffect } from './api';
 import type { PresentationRef } from './generated/PresentationRef';
-import type { PublishedBookRef } from './network-context';
+import type { PublishedBookRef } from './reader-context';
 import type { SharePart, ShareSource } from './reading-share';
 
 export interface RecapEvidence { turn_id: string; event_seq: number }

@@ -24,6 +24,7 @@ const props = defineProps<{
   buildIntentAvailable: boolean;
   workbenchAvailable: boolean;
   desktopHost: boolean;
+  modelSettingsAvailable?: boolean;
   mobileCollapsible: boolean;
   mobileOpen: boolean;
 }>();
@@ -135,6 +136,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
             <slot name="account" />
             <slot name="help" />
             <button v-if="desktopHost" type="button" @click="emit('open-settings')"><Settings />{{ uiText('打开桌面设置') }}</button>
+            <button v-else-if="modelSettingsAvailable" type="button" @click="emit('open-settings')"><Settings />{{ uiText('模型设置') }}</button>
             <button type="button" class="topbar-collapse" @click="collapse"><PanelTopClose />{{ uiText('收起工具栏') }}</button>
           </div>
         </section>

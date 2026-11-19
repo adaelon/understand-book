@@ -26,7 +26,7 @@ ssh root@115.190.121.150
 
 ```text
 /opt/understand-book/
-  source/                 源码、node_modules、packages/web/dist、target/release/server
+  source/                 源码、node_modules、packages/web/dist、target/release/reader
   tools/                  项目独立工具链
   books/                  完整书籍工作目录
   data/memory/            memory.json、session.json、agent-history.json 等
@@ -48,7 +48,7 @@ rustc --version
 cargo --version
 pnpm install --frozen-lockfile
 pnpm -C packages/web build
-cargo build --locked --release -p server --bin server -j 1
+cargo build --locked --release -p reader-service --bin reader -j 1
 ```
 
 本机 Cargo 网络索引较慢，验收使用了与锁文件匹配的 crate 缓存，并以 `cargo build --offline --locked --release -p server --bin server -j 1` 完成原生构建。离线命令要求缓存齐全；缓存准备的实际经过见 LX1。源码必须在最终运行目录编译，运行时继续保留源码与 Node/tsx 依赖。
@@ -97,7 +97,7 @@ systemctl enable --now understand-book
 systemctl status understand-book --no-pager
 ```
 
-启动脚本 [start-reader.sh](../scripts/linux/start-reader.sh) 用 `exec` 启动 `server --reader-only`。服务运行用户为 `understand-book`，不会依赖 root 登录 shell 的 PATH。修改环境文件后重启：
+双发行后的单用户启动脚本 [start-local-reader.sh](../scripts/linux/start-local-reader.sh) 用 `exec` 启动公共 `reader --reader-only`，不依赖云端 `server` crate。服务运行用户为 `understand-book`，不会依赖 root 登录 shell 的 PATH。修改环境文件后重启：
 
 ```bash
 systemctl restart understand-book

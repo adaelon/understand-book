@@ -5,8 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
-    "build:multi": "vue-tsc --noEmit && vite build --mode multi --outDir dist-multi",
+    "build": "vue-tsc --noEmit -p tsconfig.local.json && vite build",
+    "build:multi": "pnpm --filter @understand-book/cloud-reader build --outDir ../../packages/web/dist-multi",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
@@ -40,5 +40,17 @@
     "typescript": "^5.7.0",
     "vite": "^6.0.7",
     "vue-tsc": "^2.2.0"
+  },
+  "exports": {
+    ".": "./src/App.vue",
+    "./reader/*.vue": "./src/*.vue",
+    "./reader/*.css": "./src/*.css",
+    "./reader/*.js": "./src/*.js",
+    "./reader/*.md": "./src/*.md",
+    "./reader/*.json": "./src/*.json",
+    "./reader/assets/*": "./src/assets/*",
+    "./reader/*": "./src/*.ts",
+    "./build/*": "./*",
+    "./public/*": "./public/*"
   }
 }

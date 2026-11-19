@@ -13,7 +13,7 @@ import type { BoardEditOperation } from '../generated/BoardEditOperation';
 const mocks = vi.hoisted(() => ({ api: { boardConversation: vi.fn(), boardList: vi.fn(), boardRead: vi.fn(), boardUpdate: vi.fn(),
   boardViewSave: vi.fn(), boardSearch: vi.fn(), boardEdit: vi.fn(), boardUndo: vi.fn(), boardRedo: vi.fn() } }));
 vi.mock('../api', () => ({ api: mocks.api }));
-vi.mock('../network-context', () => ({ bindSceneApi: (api: unknown) => api, readerKey: () => 'reader-fixture' }));
+vi.mock('../reader-context', () => ({ bindSceneApi: (api: unknown) => api, readerKey: () => 'reader-fixture' }));
 vi.mock('./AgentPresentation.vue', () => ({ default: defineComponent({ setup(_, { expose }) { expose({ flushBoardState: async () => {} }); return () => h('div'); } }) }));
 
 let stored = boardFixture();

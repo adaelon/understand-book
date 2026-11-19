@@ -55,14 +55,19 @@ path, or request to “build this paper” is not by itself a natural-language r
 Do this classification before either plan-authoring surface is called. Never reinterpret an
 ordinary prebuild request as a reading goal merely because the workspace contains a paper.
 
-## Resolve the operator Build Engine and controller
+## Resolve the tools for the selected route
 
 1. Resolve `understand-book-build.exe` from `UNDERSTAND_BOOK_BUILD_EXE`, which must name an existing
    operator-provisioned executable. Cloud Windows Setup does not install the local build tools.
-2. Resolve `understand-book-maintenance.exe` from `UNDERSTAND_BOOK_DESKTOP_EXE`. Build it from
-   `apps/desktop/maintenance-host` in the operator environment. It preserves the
-   `--codex-build-intent` controller for reader-private intent planning.
-   Missing executables require operator provisioning; installing the cloud desktop is not a repair.
+2. Standard prebuild and course builds need only the Build Engine; do not require a maintenance
+   controller for those routes. Only the explicit reading-goal route resolves
+   `understand-book-maintenance.exe` from `UNDERSTAND_BOOK_DESKTOP_EXE`. Build this optional public
+   CLI with `cargo build -p understand-book-maintenance --release` from `crates/maintenance-host`.
+   It uses public Reader/Core services for `--codex-build-intent`. Set
+   `UNDERSTAND_BOOK_LOCAL_DATA_DIR` to the local Reader data home when using its library and private
+   plans; the CLI follows the existing `data-location.json` selection. Without that setting, the
+   existing Windows operator settings under `%LOCALAPPDATA%/UnderstandBook` remain in use.
+   Missing tools for the selected route require operator provisioning.
 3. Do not install Node, Bun, Cargo, or another runtime as an implicit fallback. Do not fall back to
    old build commands when the packaged entry reports an incompatible installation.
 
@@ -119,13 +124,14 @@ public files, stdout, stderr, logs, or the displayed plan.
 1. Request current planning context:
 
    ```json
-   {"version":"codex_build_intent_command.v2","operation":"planning.context","target":{"workspace_dir":"<absolute>"},"input":{}}
+   {"version":"codex_build_intent_command.v3","operation":"planning.context","target":{"workspace_dir":"<absolute>"},"input":{}}
    ```
 
    Consume one `codex_build_intent_result.v2` whose response is
-   `build_planning_context.v1`. Read only its bounded scope catalog, Blueprint Registry summaries,
-   candidate contract, and `context_digest`. If v2 is unavailable, stop as
-   `needs_user(CODEX_BUILD_INTENT_V2_REQUIRED)`. Never fall back to `codex_build_intent_command.v1`.
+   `build_planning_context.v2`. Read only its bounded scope catalog, Blueprint Registry summaries,
+   candidate contract, `context_id`, and `context_revision`. If v3 is unavailable, stop as
+   `needs_user(CODEX_BUILD_INTENT_V3_REQUIRED)`. Never fall back to `codex_build_intent_command.v1`
+   or the old digest-based v2 command.
 
 2. Create one strict `build_intent_planner_candidate.v2` from the explicit goal and current
    context. Select advertised Registry identities exactly or provide a complete bounded one-off
@@ -134,17 +140,18 @@ public files, stdout, stderr, logs, or the displayed plan.
    uses `analyzer=text`; bounded exact categories may use `analyzer=keyword`. Do not add code,
    recursion, remote schemas, raw goal text, plan identities, or Reader-private paths.
 
-3. Send `codex_build_intent_command.v2` with `operation=draft.candidate` and
-   `input={user_goal,planning_context_digest,candidate,budget?}` over protected stdin. On
+3. Send `codex_build_intent_command.v3` with `operation=draft.candidate` and
+   `input={user_goal,context_id,context_revision,candidate,budget?}` over protected stdin. On
    `BUILD_PLANNING_CONTEXT_DRIFT`, discard the old context and candidate, call `planning.context`
    again, and replan. Do not silently drop a requested artifact or invoke a second planner.
 
-4. Require `codex_build_intent_response.v1` with a `codex_build_intent_plan.v2` projection. Show the
+4. Require `codex_build_intent_response.v1` with a `codex_build_intent_plan.v3` projection. Show the
    goal kind, scope, artifact summaries, public stage closure, reuse/create/excluded work, estimates,
-   budget, `plan_id`, and `plan_digest`, then stop as `needs_user(plan_confirmation_required)`.
+   budget, `plan_id`, and `plan_revision`, then stop as `needs_user(plan_confirmation_required)`.
    After approval, re-read status; if identity drifted, show the new projection and reconfirm.
-   Otherwise confirm the exact identity with `confirmation_source=codex_conversation` and retain
-   the returned private `build_plan_path` without displaying it.
+   Otherwise call `confirm` with `input={plan_id,plan_revision}`; the controller records
+   `confirmation_source=codex_conversation`. Retain the returned private `build_plan_path` without
+   displaying it.
 
 ## Start or recover the deterministic driver
 

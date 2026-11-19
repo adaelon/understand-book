@@ -1,4 +1,4 @@
-import type { PublishedBookRef } from './network-context';
+import type { PublishedBookRef } from './reader-context';
 
 export interface BoardRoute {
   boardId: string;

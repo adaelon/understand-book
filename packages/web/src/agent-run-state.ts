@@ -1,5 +1,5 @@
 import { t as uiText } from './i18n';
-import { spendFailureMessage } from './account-allowance';
+import { runFailureMessage as spendFailureMessage } from './reader-host';
 import type { AgentAnswerView } from "./generated/AgentAnswerView";
 import type { RunActivity } from "./generated/RunActivity";
 import type { AgentEffect, ReaderState, AgentChatTurn } from "./api";
@@ -23,7 +23,7 @@ export interface RunSnapshot {
   persistence_state: "pending" | "saved" | "failed";
   activities: RunActivity[];
   final_view: AgentChatTurn | null;
-  error: import('./account-allowance').SpendError | null;
+  error: import('./reader-host').RunError | null;
 }
 export interface RunEvent { observation_epoch?: string; live_buffer_reset?: boolean; turn_id: string; seq: number; elapsed_ms: number; type: string; payload: unknown }
 export function initialRun(descriptor: RunDescriptor): RunSnapshot {
@@ -127,6 +127,7 @@ export function runStatusText(snapshot: RunSnapshot, connection: string): string
 export function agentFailureMessage(error: AgentChatTurn['error'], summary?: AgentChatTurn['run_summary']): string | undefined {
   if (!error) return;
   if (error.error_code === 'AGENT_RUN_CANCELLED') return;
+  if (error.error_code === 'LOCAL_AGENT_UNAVAILABLE') return uiText('本机 Agent 未能完成回答。请检查连接和终端登录状态，再重试原问题。');
   if (error.error_code === 'VIDEO_DRAFT_INVALID') return uiText('问题未提交：视频提问内容无效，请检查所选画面或附件后重新发送。');
   if (error.error_code === 'HTTP_413' || error.error_code === 'REQUEST_TOO_LARGE') return uiText('图片或附件过大，请缩小后重新发送。');
   if (error.error_code === 'SUBMISSION_STORAGE_FAILED') return uiText('问题尚未发送，浏览器暂时无法保存重试信息。请保留内容后重试。');

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-local-startup-status"
+description = "Enables the local_startup_status command without any pre-configured scope."
+commands.allow = ["local_startup_status"]
+
+[[permission]]
+identifier = "deny-local-startup-status"
+description = "Denies the local_startup_status command without any pre-configured scope."
+commands.deny = ["local_startup_status"]

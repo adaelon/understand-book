@@ -3,7 +3,7 @@ import { applicationOverlayTarget } from "../application-overlay";
 import { t as uiText } from '../i18n';
 
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue';
-import { learningRecords } from '../network-client';
+import { hostFetch } from '../reader-host';
 import { recapStatus, recapTime } from '../session-recap';
 import type { LearningRecordDetail } from '../learning-records';
 import SourceExcerpt from './SourceExcerpt.vue';
@@ -15,7 +15,7 @@ const previousFocus = document.activeElement as HTMLElement | null;
 let request = 0;
 async function load() {
   const current = ++request; loading.value = true; error.value = '';
-  try { const value = await learningRecords.read(props.sessionId, props.throughSeq); if (current === request) record.value = value; }
+  try { const value = await hostFetch<LearningRecordDetail>('GET', `/me/learning-records/${encodeURIComponent(props.sessionId)}?through_seq=${props.throughSeq}`); if (current === request) record.value = value; }
   catch (failure) { if (current === request) error.value = failure instanceof Error ? failure.message : String(failure); }
   finally { if (current === request) loading.value = false; }
 }

@@ -2,7 +2,9 @@
 import os
 from pathlib import Path
 import shutil
+import shlex
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -22,6 +24,7 @@ class BuildTest(unittest.TestCase):
         tools = self.root / "tools"
         tools.mkdir()
         scripts = {
+            "python3": f'exec {shlex.quote(Path(sys.executable).as_posix())} "$@"\n',
             "pnpm": '''printf '%s\\n' "$*" >> commands.log
 if [ "${1:-}" = --version ]; then echo test-pnpm; fi
 if [ "${2:-}" = packages/web ] && [ "${3:-}" = build:multi ]; then
@@ -54,6 +57,9 @@ echo test-node
             p.write_bytes(("#!/usr/bin/env bash\nset -eu\n" + body).encode("utf-8"))
             p.chmod(0o755)
         self.env = {**os.environ, "PATH": str(tools) + os.pathsep + os.environ["PATH"]}
+        # TEMP can be inside the checkout. This fixture represents an exported
+        # source directory and must not inherit the parent repository identity.
+        self.env["GIT_CEILING_DIRECTORIES"] = self.root.parent.as_posix()
         self.bash = os.environ.get("MU11_BASH", "bash")
 
     def run_build(self, fail=False, fail_admin=False, fail_embedding=False):
@@ -63,7 +69,7 @@ echo test-node
 
     def test_network_build_preserves_local_dist_and_records_source_copy(self):
         result = self.run_build()
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual((self.root / "packages/web/dist/index.html").read_text(), "local reader")
         self.assertIn('/assets/reader.js', (self.root / "packages/web/dist-multi/index.html").read_text())
         receipt = (self.root / "multi-reader-build.txt").read_text()
@@ -76,7 +82,8 @@ echo test-node
         commands = (self.root / "commands.log").read_text()
         self.assertLess(commands.index("packages/web build:multi"), commands.index("apps/admin build"))
         self.assertLess(commands.index("scripts/prepare-local-embedding.mjs"), commands.index("packages/web build:multi"))
-        for name in ["server", "manage_reader", "publish_book", "reader_maintenance", "presentation_worker"]:
+        self.assertIn("-p reader-service --bin reader", commands)
+        for name in ["server", "manage_reader", "publish_book", "reader_maintenance", "presentation_worker", "video_audio_review"]:
             self.assertIn("--bin " + name, commands)
 
     def test_failed_rebuild_does_not_leave_previous_success_receipt(self):

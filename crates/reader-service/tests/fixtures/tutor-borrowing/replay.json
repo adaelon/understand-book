@@ -1,0 +1,36 @@
+{
+  "presented_sources": [
+    {
+      "source_ref_id": "source_ref_fixture_shared_access",
+      "quote": "共享引用只借用访问权限，不转移被引用值的所有权。"
+    },
+    {
+      "source_ref_id": "source_ref_fixture_copy_access",
+      "quote": "Copy 与访问权限回答不同的问题。"
+    }
+  ],
+  "select": {
+    "operation": "select",
+    "move": {
+      "move_id": "public-borrowing-support",
+      "object_ids": [],
+      "capability": "explanation",
+      "kind": "explain",
+      "interaction_intent": "guided_inquiry",
+      "intent_origin": "current_request",
+      "prompt": "用一份 Foo 值、所有者和共享访问的关系说明借用，保持 Copy 与可写权限的区别。",
+      "target": {
+        "learning_focus": "共享借用、所有权与 Copy 条件",
+        "expected_performance": "区分拥有值、借用读取和可写权限，结合 Foo 是否实现 Copy 判断赋值结果。",
+        "capability": "explanation",
+        "source_bindings": [{ "start_lid": "1.1", "end_lid": "1.1" }],
+        "object_refs": []
+      }
+    }
+  },
+  "answers": {
+    "before": "先定位角色：foo 拥有 Foo，bar 借用读取同一份值。共享访问不会搬走所有权。[[source:source_ref_fixture_shared_access]] Copy 是值能否复制的条件，不会赋予共享引用写权限。[[source:source_ref_fixture_copy_access]]",
+    "after": "可以把这里分成两个问题：谁拥有值，以及谁能读取值。foo 仍是所有者，bar 提供共享访问。[[source:source_ref_fixture_shared_access]] 判断直接赋值时再检查 Copy；判断写字段时检查引用权限。[[source:source_ref_fixture_copy_access]]",
+    "prerequisite-repair": "先跟踪一份值：Foo(7) 由 foo 拥有，&foo 让 bar 获得读取入口。所有者没有因为借用而改变。[[source:source_ref_fixture_shared_access]] 值是否实现 Copy 和引用能否写入需要分别判断。[[source:source_ref_fixture_copy_access]]"
+  }
+}

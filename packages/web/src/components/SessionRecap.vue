@@ -4,7 +4,7 @@ import { t as uiText } from '../i18n';
 
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { api as sharedApi } from '../api';
-import { bindSceneApi, readerKey } from '../network-context';
+import { bindSceneApi, readerKey } from '../reader-context';
 import { recapEntries, recapGroups, recapShareSource, recapTime, type RecapTarget, type SessionRecap } from '../session-recap';
 import type { ShareSource } from '../reading-share';
 import ShareImagePanel from './ShareImagePanel.vue';

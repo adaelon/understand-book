@@ -5,7 +5,7 @@ use serde_json::{json, Value};
 use std::{
     collections::BTreeMap,
     sync::atomic::{AtomicBool, AtomicUsize, Ordering},
-    time::Instant,
+    time::{Instant, Duration},
 };
 
 #[test]
@@ -76,7 +76,7 @@ fn provider_capacity_stages_keep_user_isolation_limits_and_release_retry_slots()
                     scope.spawn(move || {
                         let owner = format!("reader-{}", i % 16);
                         let provider = ProviderRegistry::adapter_from_config_with_timeout(
-                            ProviderConfig {
+                            ProviderConfig { options: Default::default(),
                                 agent_reasoning_effort: Default::default(),
                                 mode: ProviderMode::Native,
                                 api_key: "shared-fixture-key".into(),

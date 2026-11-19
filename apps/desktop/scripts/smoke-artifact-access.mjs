@@ -155,7 +155,8 @@ function parseOutputPath(args) {
 }
 
 function resolveInstalledDesktop() {
-  const maintained = path.join(repoRoot, "apps", "desktop", "maintenance-host", "target", "debug", "understand-book-maintenance.exe");
+  const targetRoot = process.env.CARGO_TARGET_DIR ? path.resolve(repoRoot, process.env.CARGO_TARGET_DIR) : path.join(repoRoot, "target");
+  const maintained = process.env.UNDERSTAND_BOOK_DESKTOP_EXE ?? path.join(targetRoot, "debug", "understand-book-maintenance.exe");
   return existsSync(maintained) ? maintained : null;
 }
 

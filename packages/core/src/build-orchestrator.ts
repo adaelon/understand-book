@@ -236,7 +236,7 @@ export type SemanticExtractor =
   | "profile-sidecar-discourse-reducer"
   | "profile-sidecar-extractor"
   | "pass2-longrange-linker"
-  | "book-structure-outline" | "book-structure-outline-chapters" | "book-structure-outline-themes" | "book-structure-outline-theme-page" | "book-structure-chapter" | "book-structure-chapter-selection" | "book-structure-themes"
+  | "book-structure-outline" | "book-structure-outline-chapters" | "book-structure-outline-themes" | "book-structure-outline-theme-page" | "book-structure-chapter" | "book-structure-chapter-selection" | "book-structure-themes" | "book-structure-theme-plan-page"
   | "book-structure-extractor"
   | "book-structure-v2-extractor"
   | "book-structure-fragment-extractor"
@@ -802,9 +802,10 @@ export function automaticBuildExtractorForWorkUnitKind(
     if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
     return "book-structure-stitch-reducer";
   }
-  if (["structure_outline", "structure_outline_chapters", "structure_outline_themes", "structure_outline_theme_page", "structure_chapter", "structure_chapter_selection", "structure_theme_plan", "structure_theme", "structure_theme_reconcile"].includes(kind)) {
+  if (["structure_outline", "structure_outline_chapters", "structure_outline_themes", "structure_outline_theme_page", "structure_chapter", "structure_chapter_selection", "structure_theme_plan", "structure_theme_plan_page", "structure_theme", "structure_theme_reconcile"].includes(kind)) {
     if (stage !== "book_structure") throw new Error(`${kind} does not belong to stage ${stage}`);
     if (kind === "structure_outline_theme_page") return "book-structure-outline-theme-page";
+    if (kind === "structure_theme_plan_page") return "book-structure-theme-plan-page";
     return kind === "structure_outline_chapters" ? "book-structure-outline-chapters" : kind === "structure_outline_themes" ? "book-structure-outline-themes" : kind === "structure_outline" ? "book-structure-outline" : kind === "structure_chapter" ? "book-structure-chapter" : kind === "structure_chapter_selection" ? "book-structure-chapter-selection" : "book-structure-themes";
   }
   if (kind === "structure_relation_select" || kind === "structure_relation_delta") {

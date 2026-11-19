@@ -4,7 +4,7 @@ import VoiceInput from './VoiceInput.vue';
 import { api as sharedApi, type QuestionAttempt, type QuestionStep, type TutorActivity } from '../api';
 import { getLocale, t } from '../i18n';
 import { renderMarkdown } from '../md';
-import { bindSceneApi, network, readerPreferenceOwner } from '../network-context';
+import { bindSceneApi, network, readerPreferenceOwner } from '../reader-context';
 
 const props = defineProps<{ activity: TutorActivity; busy: boolean; ensureDisplayed: () => Promise<void> }>();
 const emit = defineEmits<{ change: [answer: string, reasoning: string]; reload: []; asking: [busy: boolean] }>();

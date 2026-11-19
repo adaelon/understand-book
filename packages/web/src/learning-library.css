@@ -2,7 +2,7 @@
 .network-library button { font: inherit; font-size: 13px; cursor: pointer; }
 .network-library button:disabled { opacity: .45; cursor: default; }
 .network-library.is-opening button:disabled { opacity: .72; cursor: wait; }
-.book-opening { position: fixed; z-index: 1100; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; width: min(660px, calc(100% - 32px)); padding: 18px 20px; box-sizing: border-box; border: 1px solid #ddd4c4; border-radius: 16px; color: #302d27; background: #fffdf8; box-shadow: 0 10px 38px #302d2724; font-family: var(--sans, 'Microsoft YaHei', sans-serif); }
+.book-opening { position: fixed; z-index: 11000; bottom: max(24px, env(safe-area-inset-bottom)); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; width: min(660px, calc(100% - 32px)); padding: 18px 20px; box-sizing: border-box; border: 1px solid #ddd4c4; border-radius: 16px; color: #302d27; background: #fffdf8; box-shadow: 0 10px 38px #302d2724; font-family: var(--sans, 'Microsoft YaHei', sans-serif); }
 .book-opening-copy { flex: 1; min-width: 0; }
 .book-opening-copy strong { display: block; font-size: 14px; font-weight: 600; line-height: 1.6; overflow-wrap: anywhere; }
 .book-opening-copy p { margin: 4px 0 0; font-size: 12px; line-height: 1.6; color: #79746b; overflow-wrap: anywhere; }

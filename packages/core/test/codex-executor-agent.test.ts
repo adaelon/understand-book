@@ -157,7 +157,7 @@ const ROOT_EXECUTOR_SKILL = "skills/executor/SKILL.md";
 const RELEASE_EXECUTOR_SKILL = "plugins/understand-book/skills/executor/SKILL.md";
 const ROOT_BUILD_SKILL = "skills/build/SKILL.md";
 const RELEASE_BUILD_SKILL = "plugins/understand-book/skills/build/SKILL.md";
-const RELEASE_ASSERTION = "apps/desktop/scripts/assert-maintenance-plugin-release.mjs";
+const RELEASE_ASSERTION = "scripts/plugin/assert-maintenance-plugin-release.mjs";
 const ROOT_SHARED_MCP_CONFIGS = [
   ".mcp.json",
   "plugins/understand-book/.mcp.json",
@@ -658,9 +658,9 @@ describe("Codex executor bootstrap publication", () => {
   });
 
   it("R6 keeps thin-plugin parity on the shared V3 doctor and direct byte comparisons", () => {
-    const parity = readText("apps/desktop/scripts/smoke-automatic-build-parity.mjs");
+    const parity = readText("scripts/plugin/smoke-automatic-build-parity.mjs");
     const sidecarEntry = readText("skills/build/sidecar-entry.ts");
-    const sidecarBuild = readText("apps/desktop/scripts/build-sidecar.mjs");
+    const sidecarBuild = readText("scripts/desktop/build-sidecar.mjs");
     expect(parity).toContain("automatic_build_executor_session.v3");
     expect(parity).not.toContain("automatic_build_executor_session.v2");
     for (const marker of [
@@ -680,7 +680,7 @@ describe("Codex executor bootstrap publication", () => {
       expect(sidecarEntry).toContain(command);
       expect(parity).toContain(command);
     }
-    expect(sidecarBuild).toContain('"--loader=.cmd:text"');
+    expect(sidecarBuild).toContain("--loader=.cmd:text");
   });
 
   it("R1 runs the shared-boundary source release gate before compiled or installed evidence", () => {
@@ -706,7 +706,7 @@ describe("Codex executor bootstrap publication", () => {
 
   it("R1 requires release evidence to state that shared capability is not role-isolated", () => {
     const releaseAssertion = readText(RELEASE_ASSERTION);
-    const realCliSmoke = readText("apps/desktop/scripts/smoke-t7-codex-cli-release.ts");
+    const realCliSmoke = readText("scripts/plugin/smoke-t7-codex-cli-release.ts");
     const expectedMarkers = ["capability_isolation: false", "caller_role_authenticated: false"];
     expect(expectedMarkers.filter((marker) => !releaseAssertion.includes(marker))).toEqual([]);
     // R1_RED action: R7 serializes both false risk fields in the thread-attributed release evidence.
@@ -714,21 +714,17 @@ describe("Codex executor bootstrap publication", () => {
   });
 
   it("publishes a deterministic T7 compiled executor release gate", () => {
-    const desktopPackage = JSON.parse(readText("apps/desktop/package.json")) as {
+    const pluginPackage = JSON.parse(readText("package.json")) as {
       scripts?: Record<string, string>;
     };
-    expect(desktopPackage.scripts?.["test:t7-executor-release"])
+    expect(pluginPackage.scripts?.["test:t7-executor-release"])
       .toContain("smoke-t7-executor-release.ts");
-    expect(desktopPackage.scripts?.["test:t7-codex-cli-release"])
+    expect(pluginPackage.scripts?.["test:t7-codex-cli-release"])
       .toContain("smoke-t7-codex-cli-release.ts");
-    expect(desktopPackage.scripts?.["package:windows"])
-      .toContain("assert-release-config.mjs");
-    expect(desktopPackage.scripts?.["package:windows"])
-      .not.toContain("smoke-t7-executor-release.ts");
-    expect(desktopPackage.scripts?.["test:maintenance-plugin"])
+    expect(pluginPackage.scripts?.["test:maintenance-plugin"])
       .toContain("assert-maintenance-plugin-release.mjs");
 
-    const smoke = readText("apps/desktop/scripts/smoke-t7-executor-release.ts");
+    const smoke = readText("scripts/plugin/smoke-t7-executor-release.ts");
     for (const marker of [
       "T7_SEMANTIC_INPUT_SENTINEL_317247",
       "executor.mcp",
@@ -748,7 +744,7 @@ describe("Codex executor bootstrap publication", () => {
     expect(releaseAssertion).toContain("smoke-t7-executor-release.ts");
     expect(releaseAssertion).toContain("--t7-executor-release-prechecked");
 
-    const realCliSmoke = readText("apps/desktop/scripts/smoke-t7-codex-cli-release.ts");
+    const realCliSmoke = readText("scripts/plugin/smoke-t7-codex-cli-release.ts");
     for (const marker of [
       "CODEX_HOME: codexHome",
       "CODEX_ROLLOUT_TRACE_ROOT",

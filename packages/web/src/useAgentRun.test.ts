@@ -5,7 +5,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { useAgentRun } from "./useAgentRun";
 import { initialRun } from "./agent-run-state";
 import { api, ApiError } from "./api";
-import { network } from "./network-context";
+import { network } from "./reader-context";
 
 class Source extends EventTarget {
   static instances: Source[] = [];

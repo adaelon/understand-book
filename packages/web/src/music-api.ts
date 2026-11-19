@@ -1,5 +1,5 @@
 import type { MusicSourceManifest, MusicQuestionContext, MusicRecordingRef, MusicSourceTarget } from '../../core/src/music-contract';
-import type { PublishedBookRef } from './network-context';
+import type { PublishedBookRef } from './reader-context';
 export type { MusicQuestionContext, MusicSourceTarget };
 export interface MusicSourceSnapshot { target: MusicSourceTarget; title: string; label: string; preview: string; material: unknown }
 export interface MusicContext {

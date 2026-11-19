@@ -4,9 +4,12 @@ import ReaderPane, { type Segment } from './ReaderPane.vue';
 import ReaderTypographyPanel from './ReaderTypographyPanel.vue';
 import { useReaderTypography } from '../useReaderTypography';
 import { renderInlineMarkdown, renderMarkdown, renderFormulaSource, renderTableSource } from '../md';
-import { network, installIdentity, readerPreferenceOwner, sceneKey } from '../network-context';
+import { network, readerPreferenceOwner, sceneKey } from '../reader-context';
 import type { MemoryRecord } from '../api';
 import { textPositionTop, type ScrollAnchor } from '../reader-text-anchor';
+function installIdentity(identity: typeof network.value.identity) {
+  network.value = { ...network.value, enabled: true, identity, workspace: null, epoch: network.value.epoch + 1 };
+}
 installIdentity({ user_id: 'A', csrf_token: 'fixture' });
 const typography = useReaderTypography(computed(readerPreferenceOwner));
 const reader = ref<InstanceType<typeof ReaderPane> | null>(null);

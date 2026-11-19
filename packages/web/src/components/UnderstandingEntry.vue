@@ -4,7 +4,7 @@ import { ArrowUpRight, Sparkles } from '@lucide/vue';
 import { t } from '../i18n';
 import { ApiError } from '../api';
 import { inquiryCourse } from '../inquiry-course';
-import { network, type PublishedBookRef } from '../network-context';
+import { network, type PublishedBookRef } from '../reader-context';
 const props=defineProps<{workspaceId:string;disabled?:boolean}>();
 defineEmits<{open:[reference?:PublishedBookRef]}>();
 const completed=ref(0),total=ref(0),recent=ref(''),reference=ref<PublishedBookRef>(),error=ref('');

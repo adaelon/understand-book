@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { Mic, Square, X } from '@lucide/vue';
 import { api as sharedApi, ApiError } from '../api';
-import { bindSceneApi, readerKey } from '../network-context';
+import { bindSceneApi, readerKey } from '../reader-context';
 import { getLocale, t } from '../i18n';
 import { voiceOwner } from '../voice-input';
 

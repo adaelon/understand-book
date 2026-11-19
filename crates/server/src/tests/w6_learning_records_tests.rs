@@ -292,7 +292,7 @@ fn om2_continuity_selected_prefix_keeps_origin_and_latest_correction_after_reope
     assert!(!view.to_string().contains("这条新作答没有被选入"),"{view:#}");
     assert!(view["teaching_implications"].as_array().unwrap().iter().any(|row|
         row["evidence_ref"]=="correction:om2-linked-correction" && row["historical"]==true));
-    let read=crate::workspace_record_context::read(&user,&scope,
+    let read=reader_service::tests::host_calls::workspace_record_context::read(&user,&scope,
         json!({"operation":"read","chat_session_id":chat,"limit":20})).unwrap();
     assert!(read["records"].as_array().unwrap().iter().any(|row|row["kind"]=="fact"
         && row["record"]["event_id"]==original.action_ref && row["record"]["payload"]["response"]==input["message"]));

@@ -1,0 +1,65 @@
+{
+  "evidence": {
+    "evidence_id": "interpretation:public-borrowing-history",
+    "action_ref": "fixture:learner-expression",
+    "delivery_ref": null,
+    "session_id": "fixture-borrowing-session",
+    "source_id": "$SOURCE_ID",
+    "source_revision": "$SOURCE_REVISION",
+    "map_revision": null,
+    "object_id": null,
+    "object_revision": null,
+    "nature": "hypothesis",
+    "target": {
+      "learning_focus": "Copy 与共享引用权限",
+      "expected_performance": "此前讲解和教具已显示结果；保留受助表达的条件，独立解释仍待观察。",
+      "capability": "explanation",
+      "source_bindings": [{ "source_id": "$SOURCE_ID", "source_revision": "$SOURCE_REVISION", "start_lid": "1.1", "end_lid": "1.1" }],
+      "object_refs": []
+    },
+    "fact_refs": ["fixture:learner-expression", "fixture:assistant-support"],
+    "teaching_implication": "继续区分复制条件和访问权限，不把复述示例当作独立应用。",
+    "label": "Copy 与共享访问",
+    "capability": "explanation",
+    "assistance_refs": [],
+    "attempt": 1,
+    "assessment_ref": null,
+    "status": "unassessed",
+    "interpretation": "用户能复述展示过的区别，独立说明改变条件后的结果仍未知。",
+    "learner_quote": "我能复述示例：Copy 不让共享引用可写，但还需要帮助把理由接起来。",
+    "interpreter_version": "public-test-fixture.v1",
+    "supersedes": null,
+    "correction": null,
+    "source_quotes": []
+  },
+  "read_facts": [
+    {
+      "event_id": "fixture:assistant-support",
+      "binding": {
+        "tutor_session_id": "fixture-borrowing-session",
+        "session_revision": 1,
+        "control_revision": 1,
+        "source_id": "$SOURCE_ID",
+        "source_revision": "$SOURCE_REVISION",
+        "chat_session_id": "fixture-chat",
+        "turn_id": "fixture-help-turn"
+      },
+      "kind": "usage_observed",
+      "content": { "usage": { "kind": "assistant_delivery" }, "answer": "Copy 说明值复制，共享引用仍只提供读取权限。" }
+    },
+    {
+      "event_id": "fixture:learner-expression",
+      "binding": {
+        "tutor_session_id": "fixture-borrowing-session",
+        "session_revision": 1,
+        "control_revision": 1,
+        "source_id": "$SOURCE_ID",
+        "source_revision": "$SOURCE_REVISION",
+        "chat_session_id": "fixture-chat",
+        "turn_id": "fixture-expression-turn"
+      },
+      "kind": "usage_observed",
+      "content": { "usage": { "kind": "user_message" }, "response": "我能复述示例：Copy 不让共享引用可写，但还需要帮助把理由接起来。" }
+    }
+  ]
+}

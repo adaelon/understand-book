@@ -63,7 +63,7 @@ fn stalled_response(wire: &'static str) -> (String, mpsc::Sender<()>, std::threa
 }
 
 fn config(mode: ProviderMode, url: String) -> ProviderConfig {
-    ProviderConfig { agent_reasoning_effort: Default::default(), mode, api_key: "fixture-key".into(), base_url: url, model: "fixture-model".into() }
+    ProviderConfig { options: Default::default(), agent_reasoning_effort: Default::default(), mode, api_key: "fixture-key".into(), base_url: url, model: "fixture-model".into() }
 }
 fn request() -> CompletionRequest {
     CompletionRequest {
@@ -116,7 +116,7 @@ fn provider_timeout_covers_stalled_body_and_keeps_partial_usage() {
         let error = if messages {
             let adapter = NativeAdapter::from_config_with_timeout(cfg, Duration::from_millis(250));
             charge(&adapter, ledger.clone());
-            adapter.post_provider_request(json!({"model":"fixture-model", "messages":[], "max_tokens":100}), &mut provider_stream::ignore, "structured", true).unwrap_err()
+            adapter.post_provider_request(json!({"model":"fixture-model", "messages":[], "max_tokens":100}), &mut provider_stream::ignore, "structured", crate::model_settings::ApiProtocol::DeepseekMessages).unwrap_err()
         } else {
             let adapter = ProviderRegistry::adapter_from_config_with_timeout(cfg, Duration::from_millis(250));
             charge(adapter.as_ref(), ledger.clone());

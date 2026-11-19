@@ -4,4 +4,8 @@ export type ModelUsage = { input_tokens: number | null, output_tokens: number | 
 /**
  * Included in output_tokens; never add this subset to the billed total.
  */
-reasoning_output_tokens?: number, cached_input_tokens: number | null, cache_creation_input_tokens: number | null, total_tokens: number | null, };
+reasoning_output_tokens?: number, cached_input_tokens: number | null, cache_creation_input_tokens: number | null, total_tokens: number | null, 
+/**
+ * Provider billing units, distinct from tokens consumed by the context.
+ */
+billed_input_tokens?: number, billed_output_tokens?: number, };

@@ -814,11 +814,18 @@ pub(crate) fn requires_practice_delivery(context: &Value) -> bool {
         && context["outside_current_request"] != true)
 }
 
+/// The same pedagogical contract is carried by a Resident tool call or by an
+/// external Agent's private final response.
+pub fn closed_book_instructions(practice: &Value, decision_transport: &str) -> String {
+    let rules = include_str!("closed_book_prompt.md").replace("{decision_transport}", decision_transport);
+    format!("{rules}\n\nCurrent host state: attempt={}, assisted={}, needs_retry={}. Help before this attempt is learning history; it does not change the current assisted field. Judge the current learner reply against this attempt's question: {}",
+        practice["attempt"],practice["assisted"],practice["needs_retry"],practice["current_question"])
+}
+
 pub fn control_instructions(context: &Value) -> String {
     if context["closed_book"]["status"] == "active" {
-        let practice=&context["closed_book"];
-        return format!("{}\n\nCurrent host state: attempt={}, assisted={}, needs_retry={}. Help before this attempt is learning history; it does not change the current assisted field. Judge the current learner reply against this attempt's question: {}",
-            include_str!("closed_book_prompt.md"),practice["attempt"],practice["assisted"],practice["needs_retry"],practice["current_question"]);
+        return closed_book_instructions(&context["closed_book"],
+            "Before delivery, call tutor.step with operation=closed_book and closed_book={action,text,provides_help,reason,...}. No separate final answer is needed after this accepted call.");
     }
     let status = context["status"].as_str().unwrap_or("inactive");
     let operations = match status {

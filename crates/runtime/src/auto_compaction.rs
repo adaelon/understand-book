@@ -229,6 +229,8 @@ mod tests {
         let mut meter = ContextTokenMeter::default();
         let mut capture = ContextUsageCapture::default();
         capture.observe(&ModelDelta::Usage(ModelUsage {
+            billed_input_tokens: None,
+            billed_output_tokens: None,
             input_tokens:Some(8_000), output_tokens:Some(200),
             cached_input_tokens:Some(7_900), cache_creation_input_tokens:Some(50),
             reasoning_output_tokens:Some(100), total_tokens:Some(8_200),

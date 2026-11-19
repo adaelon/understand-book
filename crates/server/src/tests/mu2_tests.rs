@@ -152,7 +152,7 @@ fn mu2_same_ids_are_isolated_and_two_handles_keep_both_writes_after_reload() {
                 "1",
             )
             .unwrap();
-        assert!(user.presentation_root().unwrap().starts_with(
+        assert!(user.test_presentation_root().unwrap().starts_with(
             dir.path()
                 .canonicalize()
                 .unwrap()
@@ -160,7 +160,7 @@ fn mu2_same_ids_are_isolated_and_two_handles_keep_both_writes_after_reload() {
                 .join(user.user_id().unwrap())
         ));
         assert_eq!(
-            user.intent_store().unwrap().root(),
+            user.test_intent_store().unwrap().root(),
             registry.paths(user.user_id().unwrap()).unwrap().private
         );
     }
@@ -314,7 +314,7 @@ fn mu2_prepared_confirmation_cannot_consume_replacement_operation() {
         OuterConfig::default(),
         prepared.scope.provider_binding.clone(),
     );
-    let port = crate::agent_run::BorrowedAppPort(RefCell::new(&mut state));
+    let port = reader_service::tests::host_calls::borrowed_app_port(&mut state);
     let error = run_precommitted_agent_chat(&port, &UnconfiguredAdapter, &prepared, &mut context)
         .unwrap_err();
     assert_eq!(error.error_code, "SENSITIVE_CONFIRMATION_EXPIRED");

@@ -3,11 +3,8 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { pendingNotePlacementLocation } from './note-placements';
 import { noteRequest, pendingNoteSource, noteSourceError, notesPanel, type NoteContext } from './personal-notes';
 import { openPersonalChat } from './personal-chat';
-import App from './LocalApp.vue';
-import NetworkApp from './NetworkApp.vue';
 import PersonalNotes from './components/PersonalNotes.vue';
 import PersonalChat from './components/PersonalChat.vue';
-const multiUser = import.meta.env.VITE_MULTI_USER === '1';
 watch(pendingNotePlacementLocation, async destination => {
   if (!destination || destination.kind !== 'attachment') return;
   try {
@@ -36,7 +33,7 @@ onBeforeUnmount(() => contentSize.disconnect());
 </script>
 <template>
   <div class="application-shell">
-    <div ref="content" class="application-content"><div id="application-overlays" /><NetworkApp v-if="multiUser" /><App v-else /><PersonalChat /></div>
+    <div ref="content" class="application-content"><div id="application-overlays" /><slot /><PersonalChat /></div>
     <PersonalNotes />
   </div>
 </template>

@@ -146,6 +146,7 @@ export function App() {
         </SidebarHeader>
         <SidebarContent className="p-3">
           <SidebarMenu>
+            <SidebarMenuItem><SidebarMenuButton asChild isActive={pathname === '/model-providers'}><Link to="/model-providers"><BookOpen /><span>模型服务</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem><SidebarMenuButton asChild isActive={pathname === '/monitor'}><Link to="/monitor"><Activity /><span>实时监控</span></Link></SidebarMenuButton></SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/users')}>

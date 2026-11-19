@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import KnowledgeTree from './KnowledgeTree.vue';
 import { api } from '../api';
 import type { KnowledgeTreeView, KnowledgeNodeView } from '../knowledge-tree';
-vi.mock('../network-context',async importOriginal=>({...await importOriginal<typeof import('../network-context')>(),bindSceneApi:(value:unknown)=>value,readerKey:()=> 'test-reader'}));
+vi.mock('../reader-context',async importOriginal=>({...await importOriginal<typeof import('../reader-context')>(),bindSceneApi:(value:unknown)=>value,readerKey:()=> 'test-reader'}));
 const node=(id:string,label:string,patch:Partial<KnowledgeNodeView>={}):KnowledgeNodeView=>({id,label,parent_id:'root',kind:'claim',summary:'',
   reference:{source_id:'book',source_revision:'v1',publication_id:null,artifact:'pass1',entry_id:id},sources:[{kind:'text',lid:'1.1'}],relations:[],child_count:0,fruit_count:0,...patch});
 const root=node('root','运动',{parent_id:null,kind:'material',child_count:2,fruit_count:1});

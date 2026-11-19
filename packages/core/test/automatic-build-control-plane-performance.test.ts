@@ -15,7 +15,7 @@ import type { AutomaticBuildExecutorSessionResponseV3 } from "../src/automatic-b
 import {
   createExecutorOuterTimingRecorder, reduceExecutorMcpTiming,
   type ExecutorTraceOperation, type ExecutorMcpServerTimingV2, type ExecutorMcpTimingJoinV2,
-} from "../../../apps/desktop/scripts/r7-rollout-trace";
+} from "../../../scripts/plugin/r7-rollout-trace";
 
 type FileOperation = "readFileSync" | "existsSync" | "readdirSync" | "mkdirSync" | "writeFileSync";
 interface Observation {
@@ -273,7 +273,12 @@ describe("B1 representative control plane", () => {
           version: "automatic_build_executor_candidate_submit.v3", opaque_session_ref: started.opaque_session_ref,
           candidate_sink_ref: started.candidate_sink_ref, candidate,
         });
-        expect(committed).toMatchObject({ kind: "DONE", status: "committed" });
+        // This fixture owns a persistent worker slot: a durable commit hands
+        // the same connection its next assignment while other work remains.
+        expect(committed.kind).toBe("DELIVER_INPUT");
+        if (committed.kind !== "DELIVER_INPUT") throw new Error(`B1 refill: ${committed.kind}`);
+        expect(committed.input_manifest.generation_input_ref)
+          .not.toBe(opened.input_manifest.generation_input_ref);
         expect(fs.existsSync(newArtifact)).toBe(true);
         for (const [file, bytes] of accepted) {
           if (!fs.readFileSync(path.join(current.root, file)).equals(bytes)) throw new Error("B1 changed an accepted artifact");

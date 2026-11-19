@@ -1,7 +1,7 @@
 import { t as uiText } from './i18n';
 import { computed, ref } from 'vue';
 import { api as sharedApi, ApiError } from './api';
-import { bindSceneApi, readerKey } from './network-context';
+import { bindSceneApi, readerKey } from './reader-context';
 import type { TutorState } from './generated/TutorState';
 import type { TutorAction } from './generated/TutorAction';
 import type { TutorMutation } from './generated/TutorMutation';

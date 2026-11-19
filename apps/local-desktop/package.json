@@ -1,0 +1,14 @@
+{
+  "name": "@understand-book/local-desktop",
+  "version": "0.3.11",
+  "private": true,
+  "scripts": {
+    "tauri": "tauri",
+    "prepare:resources": "node scripts/prepare-resources.mjs",
+    "build": "tauri build",
+    "package:windows": "node scripts/assert-release-config.mjs && tauri build --bundles nsis && node scripts/export-installer.mjs",
+    "package:macos": "node scripts/assert-release-config.mjs && tauri build --bundles dmg",
+    "test:release": "node scripts/assert-release-config.mjs --resources"
+  },
+  "devDependencies": { "@tauri-apps/cli": "^2.0.0" }
+}

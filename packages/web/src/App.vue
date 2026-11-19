@@ -15,7 +15,9 @@ import { api as sharedApi, ApiError } from "./api";
 import { activeOutline, readerOutline, outlineTitle, type OutlineItem } from './reader-outline';
 import { pendingReadingActions, type PendingReadingAction } from './local-reading-action';
 import { closedBookDraftKey as stableClosedBookDraftKey, closedBookMutationKey, executeClosedBookMutation, pendingClosedBookMutation } from './closed-book-recovery';
-import { network, bindSceneApi, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft, type LearningWorkspace } from './network-context';
+import { network, bindSceneApi, readerKey, readerPreferenceOwner, submittedRunDrafts, type ChatDraft, type LearningWorkspace } from './reader-context';
+import { learningDraftKey, readLearningDraft, saveLearningDraft } from './learning-workspace-state';
+import type { FollowUpNode, FollowUpOrigin, FollowUpStart } from './follow-up-conversations';
 import InquiryCoursePlayer from './components/InquiryCoursePlayer.vue';
 import { inquiryCourse } from './inquiry-course';
 import type { CourseLaunchTarget, LearningTaskSelection, LearningTaskView } from './learning-tasks';
@@ -35,18 +37,19 @@ import { createVideoQuestion, videoWindowId } from './video-question';
 import { createVideoAdoption } from './video-adoption';
 import type { PublishedVideo, VideoPlayback } from './video-api';
 import type { VideoQuestionContext } from '../../core/src/generated/VideoQuestionContext';
-import { publishedUrl, sharedWorkspaces } from './network-client';
+import { publishedUrl, localRequest, courseCollection as sharedWorkspaces } from './reader-host';
 import LoadingAnimation from './components/LoadingAnimation.vue';
 import type { ScrollAnchor } from './reader-text-anchor';
 import type { PaginationSource } from './reader-pagination';
 import { ReaderWindowTextCache } from './reader-window-text';
 import { FocusSource } from './reader-focus-source';
-import { recoverSubmissions, recoverWorkspaceBinding, requestWorkspaceRecovery, pendingSubmissions, retrySubmission } from './network-client';
+import { recoverSubmissions, recoverWorkspaceBinding, requestWorkspaceRecovery, pendingSubmissions, retrySubmission } from './reader-host';
 import type { RecapTarget } from './session-recap';
 import { resolveMcpSource, displayedSourceRange, type McpSource } from './mcp-source';
-const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean; materialTitle?: string; learningWorkspace?: LearningWorkspace | null }>(), { readerVisible: true });
+const recapProps = withDefaults(defineProps<{ recapTarget?: RecapTarget | null; mcpSource?: McpSource | null; chatDraft?: ChatDraft | null; readerVisible?: boolean; hostOpening?: boolean; materialTitle?: string; learningWorkspace?: LearningWorkspace | null }>(), { readerVisible: true });
 const recapEmit = defineEmits<{ (e: 'mcp-source-consumed'): void; (e: 'mcp-source-error', message: string): void; (e: 'recap-publication', target: RecapTarget): void; (e: 'recap-consumed'): void; (e: 'update:chatDraft', draft: ChatDraft): void; (e: 'show-allowance'): void; (e: 'show-library'): void; (e: 'board-visibility', visible: boolean): void; (e: 'understanding-visibility', visible: boolean): void; (e:'learning-collection', target:LearningCollectionTarget):void; (e:'course-launch', target:CourseLaunchTarget, learningWorkspaceId:string):void }>();
-import { spendNotice, type SpendNotice } from './account-allowance';
+import { runNotice as spendNotice, type RunNotice as SpendNotice } from './reader-host';
+import { localCapabilities } from './local-capabilities';
 const api = bindSceneApi(sharedApi, readerKey);
 const mountedReaderKey = readerKey();
 const publishedVideo = ref<PublishedVideo | null>(null);
@@ -247,12 +250,13 @@ import {
   type MarkedSourceRange,
 } from "./markdown-source-map";
 import { desktopLibraryNeedsSelection } from "./desktop-library";
-import {
-  desktopProviderDraft,
-  desktopProviderStatusLabel,
-  type DesktopProviderMode,
-  type DesktopProviderStatus,
-} from "./desktop-provider";
+import ModelProviderSettings from "./components/ModelProviderSettings.vue";
+import LocalAgentSettings from "./components/LocalAgentSettings.vue";
+import PersonalConnectionSettings, { type PersonalAccess } from "./components/PersonalConnectionSettings.vue";
+import LearningExtensions from "./components/LearningExtensions.vue";
+import PersonalNavigation, { type ExternalPassage } from "./components/PersonalNavigation.vue";
+import { useLocalAgents } from "./local-agents";
+import type { ModelSettingsClient } from "./desktop-provider";
 import { rangeToMarkdown } from "./selection";
 import {
   hasMappedPdfNavigationTarget,
@@ -442,6 +446,7 @@ const previousPdfAnchor = ref<PdfReadingAnchor | null>(null);
 const mobileGlobalActionsOpen = ref(false);
 const adaptiveNavigation = ref(false);
 const rightRailRef = ref<{
+  scrollToFollowUpOrigin: (origin: FollowUpOrigin) => Promise<boolean>;
   showCourseFeedback: () => void;
   prepareProductTour: () => boolean;
   prepareCompletionFeedback: () => (() => void) | undefined;
@@ -539,20 +544,46 @@ const newBookPdf = ref<File | null>(null);
 const openingBook = ref(false);
 const desktopNeedsBook = ref(false);
 const desktopHost = ref(false);
+const localAgentHost = ref(false);
+const localAgents = useLocalAgents();
+const localAgentSettingsRef = ref<InstanceType<typeof LocalAgentSettings> | null>(null);
+const personalAccess = ref<PersonalAccess | null>(null);
+const personalConnectionSaving = ref(false);
+watch(localAgentHost, async enabled => {
+  personalAccess.value = null;
+  if (!enabled) return;
+  void localAgents.request();
+  try {
+    const access = await localRequest<PersonalAccess>('GET', '/personal/connection');
+    if (localAgentHost.value && !personalAccess.value) personalAccess.value = access;
+  } catch { /* Settings surfaces connection errors and permits retry. */ }
+});
+async function chooseLocalAgent(event: Event) {
+  const select = event.currentTarget as HTMLSelectElement;
+  const id = select.value;
+  select.value = localAgents.selected.value;
+  if (id === ':settings') { await openDesktopSettings(); return; }
+  const settings = await localAgents.request({action: 'select', id: id || null});
+  if (!settings) banner.value = localAgents.error.value;
+}
+function readyToUseAgent() {
+  if (!localAgentHost.value || (localAgents.loaded.value && !localAgents.busy.value)) return true;
+  banner.value = localAgents.busy.value ? uiText('请等待 Agent 设置完成。') : uiText('请在“管理我的 Agent”中重新检测连接。');
+  return false;
+}
+async function openFailedAgentSettings(id?: string) {
+  await openDesktopSettings();
+  await nextTick();
+  if (id) await localAgentSettingsRef.value?.testAgent(id);
+}
+const nativeSettings = '__TAURI_INTERNALS__' in window;
 const readerOnly = ref(false);
 const desktopSettingsOpen = ref(false);
 const desktopLibraryRoot = ref("");
 const desktopLibraryAvailable = ref(true);
 const desktopLibraryChanging = ref(false);
 const desktopLibraryError = ref("");
-const desktopProviderStatus = ref<DesktopProviderStatus | null>(null);
-const desktopProviderMode = ref<DesktopProviderMode>("native");
-const desktopProviderBaseUrl = ref("");
-const desktopProviderModel = ref("");
-const desktopProviderApiKey = ref("");
-const desktopProviderLoading = ref(false);
 const desktopProviderSaving = ref(false);
-const desktopProviderError = ref("");
 const codexPluginLoading = ref(false);
 const codexPluginError = ref("");
 type CodexPluginState =
@@ -571,6 +602,7 @@ type CodexPluginStatus = {
 };
 const codexPluginStatus = ref<CodexPluginStatus | null>(null);
 const localDebug = import.meta.env.VITE_LOCAL_DEBUG === '1';
+const managedBuildEngine = localCapabilities()?.managedBuildEngine === true;
 const localBuildStatus = ref<{ available: boolean; path: string } | null>(null);
 const debugOpen = ref(false);
 const leftRailOpen = ref(true);
@@ -815,6 +847,25 @@ async function resumeLearningTask(task: LearningTaskView, signal?: AbortSignal) 
   await refreshClosedBook();
   signal?.throwIfAborted();
   if (!closedReady.value) throw new Error(closedError.value || uiText('原练习暂时无法恢复。'));
+  if (task.kind === 'external_question') {
+    if (closedCover.value) throw new Error(uiText('请先结束闭卷练习，再回到原问题。'));
+    const ref = task.source_ref;
+    if (ref && (ref.book_id !== buildWorkbenchSnapshot.value?.book_id || ref.source_revision !== noteSourceFingerprint.value)) {
+      throw new Error(uiText('来源材料版本不匹配。'));
+    }
+    const lid = ref?.lid ?? task.source_lid;
+    const ranges = ref?.range ? new Map<string,[number,number]>([[ref.lid,[ref.range.start,ref.range.end]]]) : undefined;
+    if (lid && !await doGoto(lid, null, undefined, ranges)) throw new Error(uiText('来源定位未完成，请重试。'));
+    signal?.throwIfAborted();
+    if (task.question && !agentInput.value.trim() && !askDraft.value) {
+      onAgentInput(task.question);
+      if (task.note_ref) personalDiscussion.value = {reference:task.note_ref};
+    } else if (task.question && agentInput.value !== task.question) {
+      banner.value = uiText('草稿已保留。待续问题为「{0}」', [task.question]);
+    }
+    workspaceRef.value?.showAssistant('agent');
+    return;
+  }
   if (task.kind === 'closed_book') {
     if (closedBook.value?.id !== task.closed_book_id) throw new Error(uiText('原练习已变化，请返回首页更新任务。'));
     if (closedBook.value.status === 'paused' || closedBook.value.status === 'ended') {
@@ -2733,13 +2784,13 @@ async function init() {
     });
     desktopHost.value = Boolean(desktop?.desktop_host);
     readerOnly.value = Boolean(desktop?.reader_only);
+    localAgentHost.value = desktopHost.value && !readerOnly.value && !network.value.enabled;
     desktopLibraryRoot.value = desktop?.library_root ?? "";
     desktopLibraryAvailable.value = desktop?.library_root_available ?? true;
     desktopNeedsBook.value = Boolean(desktop && !desktop.active_book);
     if (desktopLibraryNeedsSelection(desktop)) {
       desktopSettingsOpen.value = true;
       bookPickerOpen.value = false;
-      await refreshDesktopProviderStatus();
       return;
     }
     if (desktop && !desktop.active_book) {
@@ -2907,8 +2958,8 @@ async function refreshCodexPluginStatus() {
   codexPluginLoading.value = true;
   codexPluginError.value = "";
   try {
-    if (localDebug) {
-      localBuildStatus.value = await invokeDesktop('local_debug_build_status');
+    if (managedBuildEngine) {
+      localBuildStatus.value = await invokeDesktop('local_build_status');
       return;
     }
     codexPluginStatus.value = await invokeDesktop<CodexPluginStatus>("codex_plugin_status");
@@ -2921,52 +2972,19 @@ async function refreshCodexPluginStatus() {
 
 async function openDesktopSettings() {
   desktopSettingsOpen.value = true;
-  await Promise.all([refreshCodexPluginStatus(), refreshDesktopProviderStatus()]);
+  if (nativeSettings) await refreshCodexPluginStatus();
 }
 
 function closeDesktopSettings() {
-  if (desktopLibraryChanging.value || desktopProviderSaving.value || !desktopLibraryAvailable.value) return;
+  if (desktopLibraryChanging.value || desktopProviderSaving.value || personalConnectionSaving.value || (nativeSettings && !desktopLibraryAvailable.value)) return;
   desktopSettingsOpen.value = false;
 }
 
-async function refreshDesktopProviderStatus() {
-  desktopProviderLoading.value = true;
-  desktopProviderError.value = "";
-  try {
-    const status = await invokeDesktop<DesktopProviderStatus>("desktop_provider_status");
-    desktopProviderStatus.value = status;
-    const draft = desktopProviderDraft(status);
-    desktopProviderMode.value = draft.mode;
-    desktopProviderBaseUrl.value = draft.baseUrl;
-    desktopProviderModel.value = draft.model;
-    desktopProviderApiKey.value = draft.apiKey;
-  } catch (error) {
-    desktopProviderError.value = error instanceof Error ? error.message : String(error);
-  } finally {
-    desktopProviderLoading.value = false;
-  }
-}
-
-async function saveDesktopProviderSettings() {
-  desktopProviderSaving.value = true;
-  desktopProviderError.value = "";
-  try {
-    const status = await invokeDesktop<DesktopProviderStatus>("save_desktop_provider_settings", {
-      input: {
-        mode: desktopProviderMode.value,
-        api_key: desktopProviderApiKey.value,
-        base_url: desktopProviderBaseUrl.value,
-        model: desktopProviderModel.value,
-      },
-    });
-    desktopProviderStatus.value = status;
-    desktopProviderApiKey.value = "";
-  } catch (error) {
-    desktopProviderError.value = error instanceof Error ? error.message : String(error);
-  } finally {
-    desktopProviderSaving.value = false;
-  }
-}
+const desktopModelSettingsClient: ModelSettingsClient = {
+  load: () => nativeSettings ? invokeDesktop("desktop_model_settings") : localRequest('GET', '/model-settings'),
+  save: input => nativeSettings ? invokeDesktop("save_desktop_model_settings", { input }) : localRequest('POST', '/model-settings', input),
+  test: (modelConfigId, input) => nativeSettings ? invokeDesktop("test_desktop_model", { modelConfigId, input }) : localRequest('POST', '/model-settings/test', { model_config_id: modelConfigId, input }),
+};
 
 async function chooseDesktopLibraryDirectory() {
   desktopLibraryChanging.value = true;
@@ -3014,8 +3032,8 @@ function codexPluginStateLabel(state: CodexPluginState): string {
   return {
     installed_by_setup: uiText('已由安装程序安装'),
     installed_externally: uiText('已在 Codex 中安装'),
-    pending_configuration: uiText('等待发布配置'),
-    codex_not_found: uiText('未找到 Codex'),
+    pending_configuration: uiText('需要安装插件'),
+    codex_not_found: uiText('请先安装 Codex'),
     not_installed: uiText('尚未安装'),
     error: uiText('需要处理'),
   }[state];
@@ -3200,6 +3218,28 @@ async function doGoto(lid: string, focusQuote?: string | null, restoreCurrent?: 
   }
 }
 let openingMcpSource = false;
+async function openPersonalPassage(source: ExternalPassage) {
+  if (closedCover.value || !localAgentHost.value) return false;
+  const location = source.source_ref;
+  if (buildWorkbenchSnapshot.value?.book_id !== location.book_id) {
+    await submitOpenBook(source.book_dir);
+    if (buildWorkbenchSnapshot.value?.book_id === location.book_id && !closedReady.value) await refreshClosedBook();
+  }
+  if (closedCover.value || disposed || buildWorkbenchSnapshot.value?.book_id !== location.book_id
+    || noteSourceFingerprint.value !== location.source_revision) return false;
+  readerSurfacePreference.value = 'markdown';
+  workspaceRef.value?.showReader();
+  await nextTick();
+  const ranges = location.range ? new Map<string,[number,number]>([[location.lid, [location.range.start, location.range.end]]]) : undefined;
+  if (!await doGoto(location.lid, null, undefined, ranges)) return false;
+  await nextTick();
+  const displayed = await readerPaneRef.value?.scrollSourceIntoView(location.lid, location.range);
+  return displayed === true && !closedCover.value;
+}
+function refreshExternalWrites() {
+  refreshPersonalNotes();
+  void loadLocalLearningTasks().catch(fail);
+}
 watch(() => [recapProps.mcpSource, appSurface.value] as const, async ([source, surface]) => {
   if (!source || surface !== 'reader' || openingMcpSource || !sourceManifestTree.value) return;
   openingMcpSource = true;
@@ -3895,6 +3935,9 @@ function clearAskDraft() {
 
 // ── agent 对话区(外层 E agent 主入口)`[ADR-0030]` ──
 interface ChatTurn {
+  localAgentName?: string;
+  localAgentId?: string;
+  localAgentUnavailable?: boolean;
   noteReferences?: import("./generated/NoteRef").NoteRef[];
   boardFollowUp?: BoardFollowUp | null;
   boardDelivery?: BoardDelivery | null;
@@ -3938,6 +3981,11 @@ const chatSessions = ref<AgentChatSessionSummary[]>([]);
 const chatGoals = ref<ResidentGoal[]>([]);
 const targetGoalId = ref<string | null>(recapProps.chatDraft?.goalId ?? null);
 const activeChatSessionId = ref("");
+const followUpNodes = ref<FollowUpNode[]>([]);
+const preparedFollowUps = ref<FollowUpStart[]>([]);
+const followUpBusy = ref(false);
+const followUpError = ref('');
+let switchingFollowUp = false;
 const agentHistoryLoading = ref(true);
 const agentHistoryError = ref<string | null>(null);
 let startupHistoryRequestSeq = 0;
@@ -4182,7 +4230,12 @@ function captureLearningMedia(): LearningMediaContext {
   return {};
 }
 watch([agentInput, askDraft, targetGoalId, presentationRequested], ([message, quote, goalId, presentationRequested]) => {
-  if (!disposed) recapEmit('update:chatDraft', { message, quote, goalId, presentationRequested });
+  if (!disposed && !switchingFollowUp) {
+    const draft = { message, quote, goalId, presentationRequested };
+    recapEmit('update:chatDraft', draft);
+    if (localAgentHost.value || (followUpNodes.value.some(node => node.session_id === activeChatSessionId.value) && followUpNodes.value.some(node => node.origin)))
+      saveLearningDraft(followUpDraftKey(activeChatSessionId.value), draft);
+  }
 }, { flush: 'sync' });
 const unknownSubmissionsBySession = new Map<string, UnknownSubmissionRecord[]>();
 const workspaceAuxTab = ref<WorkspaceAuxTab | null>(null);
@@ -4912,6 +4965,7 @@ async function finishResidentRun(snapshot: RunSnapshot) {
     const history = await api.agentHistory();
     if (!current()) return;
     const completed = applyAgentHistory(history, snapshot);
+    if (followUpNodes.value.some(node => !!node.origin)) void loadFollowUps();
     if (completed && !sending.value) feedback?.();
   }
   submittedRunDrafts.delete(snapshot.descriptor.turn_id);
@@ -5031,7 +5085,14 @@ function localQuestionQuoteView(draft: AskDraft): AgentQuestionQuoteView {
 
 function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): ChatTurn {
   const matchingPrevious = previous?.user === turn.user ? previous : undefined;
+  const quote = turn.question_quote;
+  const ranges = quote?.evidence_ranges?.flatMap(evidence => evidence.ranges ?? []);
+  const savedSelection: AskDraft | null = quote?.status === 'resolved' && ranges?.length
+    ? { lid:ranges[0].lid, quote:quote.quote, status:'resolved', raw_quote:quote.quote, resolved_quote:quote.quote, ranges } : null;
   return {
+    localAgentName: turn.domain?.local_agent?.name,
+    localAgentId: turn.domain?.local_agent?.id,
+    localAgentUnavailable: turn.error?.error_code === 'LOCAL_AGENT_UNAVAILABLE',
     noteReferences: [...(turn.domain?.personal_notes?.references ?? []), ...(turn.domain?.personal_notes?.adopted_references ?? [])].filter((ref,index,all) => all.findIndex(other => other.note_id === ref.note_id && other.revision === ref.revision) === index),
     videoQuestion: turn.video_question,
     musicQuestion: turn.music_question,
@@ -5056,7 +5117,7 @@ function chatTurnFromHistory(turn: StoredAgentChatTurn, previous?: ChatTurn): Ch
     error: agentFailureMessage(turn.error, turn.run_summary),
     questionAnchorLid: matchingPrevious?.questionAnchorLid ?? null,
     questionQuote: turn.question_quote ? { ...turn.question_quote } : null,
-    questionSelection: matchingPrevious?.questionSelection ?? null,
+    questionSelection: matchingPrevious?.questionSelection ?? savedSelection,
     liveEffects: turn.run_summary?.effects.map(effect => ({ effect_id: effectId(effect), effect })),
     effectLabels: [...turn.effect_labels],
     activities: turn.run_summary?.activities ?? undefined,
@@ -5132,7 +5193,15 @@ async function loadStartupHistory() {
     const learningId = network.value.workspace?.learning_workspace_id;
     if (learningId ? history.current.learning_workspace_id !== learningId : history.current.book_id !== bookId)
       throw new Error(learningId ? uiText('对话所属工作区已变化，请重试') : uiText('对话所属书籍已变化，请重试'));
+    const resumeDraft = !activeChatSessionId.value && !agentInput.value && !askDraft.value
+      ? readLearningDraft(followUpDraftKey(history.current.id)) : null;
     applyAgentHistory(history);
+    if (resumeDraft && !agentInput.value) {
+      agentInput.value = resumeDraft.message;
+      askDraft.value = resumeDraft.quote;
+      targetGoalId.value = chatGoals.value.find(g => g.id === resumeDraft.goalId && g.status === 'open')?.id ?? null;
+      presentationRequested.value = !!resumeDraft.presentationRequested;
+    }
   } catch (error) {
     if (request === startupHistoryRequestSeq) {
       agentHistoryError.value = errorMessage(error);
@@ -5499,15 +5568,20 @@ async function chooseContinuation(view: import('./generated/TutorContinuationVie
     client_request_id: crypto.randomUUID(), expected_chat_head: view.expected_chat_head,
   });
 }
-async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: AgentChatMeta = {}, submittedDraft?: ChatDraft, learningMedia?: LearningMediaContext) {
+async function submitAgentMessage(msg: string, displayUser: string, draft: AskDraft | null, presentationFollowUp?: import("./generated/PresentationFollowUp").PresentationFollowUp, goalMeta: AgentChatMeta = {}, submittedDraft?: ChatDraft, learningMedia?: LearningMediaContext, followUpFirst = false) {
   if (sending.value || agentHistoryLoading.value || agentHistoryError.value) return;
+  if (!readyToUseAgent()) return;
+  const localAgentId = localAgentHost.value ? localAgents.selected.value : '';
   if (hasUnconfirmedReadingRequest()) { banner.value = uiText('原操作结果待核对，请先核对或重试原操作。'); return; }
-  if (courseMode.value && courseLesson.value && !goalMeta.board_follow_up && !presentationFollowUp && !goalMeta.note_refs && !workspaceNoteQuestion.value) {
+  const branchPublication = followUpNodes.value.find(node => node.session_id === activeChatSessionId.value)?.origin?.publication;
+  const sameCourseSource = !branchPublication || (branchPublication.book_id === coursePublication.value?.book_id
+    && (!network.value.enabled || branchPublication.publication_id === coursePublication.value?.publication_id));
+  if (courseMode.value && courseLesson.value && sameCourseSource && !goalMeta.board_follow_up && !presentationFollowUp && !goalMeta.note_refs && !workspaceNoteQuestion.value) {
     goalMeta = { ...goalMeta, course_context: { run_id: courseLesson.value.progress.run_id, revision: courseLesson.value.progress.revision,
       surface: courseSurface.value, ...(courseExploration.value ? { exploration: { ...courseExploration.value } } : {}) } };
   }
   const boardQuestion = !!goalMeta.board_follow_up;
-  if (!closedCover.value && !boardQuestion && !draft && !courseVisible.value && focusPaginationActive.value && goalMeta.teaching_response_origin?.kind !== 'interface_request' && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice && focusVisible.value) {
+  if (!followUpFirst && !closedCover.value && !boardQuestion && !draft && !courseVisible.value && focusPaginationActive.value && goalMeta.teaching_response_origin?.kind !== 'interface_request' && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice && focusVisible.value) {
     const visible = focusVisible.value;
     const quote = visible.ranges.map(r => visible.sources.find(s => s.lid === r.lid)!.text.slice(r.start, r.end)).join('');
     draft = { lid: visible.position.lid, quote, raw_quote: quote, resolved_quote: quote, status: 'resolved', resolution_basis: 'exact',
@@ -5515,10 +5589,12 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
   }
   let videoMeta: { video_window_id?: string; video_draft_id?: string } = {};
   const saveVideoDraft = !boardQuestion && learningMedia === undefined && publishedVideo.value && !goalMeta.entry_action && !goalMeta.answer_ref && !goalMeta.teaching_choice;
-  const questionAnchorLid = boardQuestion || learningMedia?.video || learningMedia?.music ? null
+  const questionAnchorLid = followUpFirst || boardQuestion || learningMedia?.video || learningMedia?.music ? null
     : goalMeta.chapter_lid ?? (goalMeta.answer_ref || goalMeta.teaching_choice ? null : draft?.lid ?? (goalMeta.course_context && courseVisible.value ? courseLesson.value?.summary.source.start_lid ?? null : selectedLid.value ?? readingAnchorLid.value));
   const turn = reactive<ChatTurn>({
     requestId: goalMeta.client_request_id ?? crypto.randomUUID(),
+    localAgentName: localAgents.agents.value.find(agent => agent.id === localAgentId)?.name,
+    localAgentId: localAgentId || undefined,
     recoveryDraft: submittedDraft ?? { message: displayUser, quote: draft, goalId: goalMeta.goal_id ?? null, presentationRequested: goalMeta.presentation_requested },
     boardFollowUp: goalMeta.board_follow_up,
     boardRequestId: boardQuestion ? goalMeta.client_request_id : undefined,
@@ -5564,6 +5640,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
     if (disposed || submission !== submissionSequence) return;
     requestStarted = true;
     const result = await api.agentRunCreate(msg, {
+      ...(localAgentId ? { local_agent_id: localAgentId } : {}),
       music_question: turn.musicQuestion ?? undefined,
       presentation_follow_up: presentationFollowUp,
       ...videoMeta,
@@ -5604,6 +5681,7 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
   } catch (error) {
     if (disposed || submission !== submissionSequence) return;
     turn.pending = false;
+    turn.localAgentUnavailable = error instanceof ApiError && error.errorCode === 'LOCAL_AGENT_UNAVAILABLE';
     const stop = error instanceof ApiError ? spendNotice({ error_code: error.errorCode, category: error.category, message: error.message }, 'unsubmitted') : undefined;
     if (!requestStarted) {
       // Saving a draft has not submitted a model request; retain it for a retry.
@@ -5635,9 +5713,20 @@ async function submitAgentMessage(msg: string, displayUser: string, draft: AskDr
 
 async function sendAgent() {
   if (questionImagePreparing.value || agentHistoryLoading.value || agentHistoryError.value || sending.value) return;
+  if (!readyToUseAgent()) return;
   if (hasUnconfirmedReadingRequest()) { banner.value = uiText('原操作结果待核对，请先核对或重试原操作。'); return; }
   const msg = agentInput.value.trim() || (musicQuestionContext.value?.image ? uiText('我是初学者，请从零解释这张谱面截图里的线条、音符和符号。') : videoQuestion.draft.value?.context.image ? uiText('请解释这张图片。') : '');
   if (!msg) return;
+  const unsent = followUpNodes.value.find(node => node.session_id === activeChatSessionId.value && node.status === 'unsent');
+  if (unsent?.origin && !chat.value.some(turn => turn.turnId)) {
+    if (unsent.origin.question !== msg) {
+      followUpError.value = uiText('这条追问的首问仍待发送。请从追问路径恢复首问，再继续交谈。');
+      banner.value = followUpError.value;
+      return;
+    }
+    await startFollowUp(unsent.origin);
+    return;
+  }
   const draft = askDraft.value;
   const submittedDraft = { message: agentInput.value, quote: draft, goalId: targetGoalId.value, presentationRequested: presentationRequested.value };
   if (!mediaMode.value) agentInput.value = "";
@@ -5829,7 +5918,23 @@ function captureReadingReturnPoint(turnId: string): ReadingReturnPoint {
 function captureAgentSourceReturnPoint(source: { turnId: string; sourceRefId: string }) {
   pendingReadingReturnPoint = captureReadingReturnPoint(source.turnId);
 }
-async function syncAfterAgentSourceOpen() {
+function evidenceFocusRanges(evidence: import('./api').EvidenceRange[]) {
+  const ranges = new Map<string,[number,number]>();
+  for (const item of evidence) {
+    if (item.ranges?.length) {
+      for (const {lid,range} of item.ranges) ranges.set(lid,[range.start,range.end]);
+      continue;
+    }
+    const first = leafOrder.value.indexOf(item.start_lid), last = leafOrder.value.indexOf(item.end_lid);
+    if (first < 0 || last < first) continue;
+    const leaves = new Set(leafOrder.value.slice(first,last+1));
+    for (const node of sourceManifestTree.value?.tree ?? []) {
+      if (leaves.has(node.lid)) ranges.set(node.lid, [0,node.span.end-node.span.start]);
+    }
+  }
+  return ranges;
+}
+async function syncAfterAgentSourceOpen(evidence?: import('./api').SourceOpenView['evidence_range']) {
   const returnPoint = pendingReadingReturnPoint;
   pendingReadingReturnPoint = null;
   if (returnPoint?.contextKey === workspaceContextKey.value) {
@@ -5844,8 +5949,27 @@ async function syncAfterAgentSourceOpen() {
   workspaceRef.value?.showReader();
   try {
     await syncViewport(true, true);
+    if (evidence && activeReaderSurface.value === 'markdown') {
+      const ranges = evidenceFocusRanges([evidence]);
+      sourceFocus.value = {lid:evidence.start_lid,quote:null,ranges};
+      await nextTick();
+      await readerPaneRef.value?.scrollSourceIntoView(evidence.start_lid, evidence.ranges?.[0]?.range);
+    }
   } catch (error) {
     fail(error);
+  }
+}
+
+async function openOriginalSelection(selection: import('./api').EvidenceRange[]) {
+  const first = selection[0];
+  if (!first || closedCover.value) return;
+  readerSurfacePreference.value = 'markdown';
+  workspaceRef.value?.showReader();
+  await nextTick();
+  const ranges = evidenceFocusRanges(selection);
+  if (await doGoto(first.start_lid, null, undefined, ranges)) {
+    await nextTick();
+    await readerPaneRef.value?.scrollSourceIntoView(first.start_lid,first.ranges?.[0]?.range);
   }
 }
 
@@ -5915,37 +6039,196 @@ async function newChat() {
     fail(e);
   } finally { if (!disposed) agentHistoryLoading.value = false; }
 }
-async function selectChat(sessionId: string, preserveDraft = false) {
-  if (!sessionId || sessionId === activeChatSessionId.value || agentHistoryLoading.value) return;
+function followUpDraftKey(sessionId: string) {
+  const scoped = learningDraftKey(sessionId);
+  if (scoped) return scoped;
+  const owner = readerPreferenceOwner();
+  const book = buildWorkbenchSnapshot.value?.book_id;
+  if (!sessionId || !book || !owner) return null;
+  const conversation = 'understand-book:book-chat-draft:' + JSON.stringify([owner, book, sessionId]);
+  return { conversation, material: conversation + ':' + JSON.stringify(noteSourceFingerprint.value) };
+}
+
+function editorDraft(): ChatDraft {
+  return { message: agentInput.value, quote: askDraft.value, goalId: targetGoalId.value, presentationRequested: presentationRequested.value };
+}
+
+function captureChatScene() {
+  return { workspace: presentationWorkspace.value, note: workspaceNoteQuestion.value, discussion: personalDiscussion.value,
+    music: musicQuestionContext.value, video: videoQuestion.draft.value };
+}
+const followUpScenes = new Map<string, ReturnType<typeof captureChatScene>>();
+function sceneStorageKey(sessionId: string) { return JSON.stringify([noteMaterialKey.value, sessionId]); }
+
+const followUpAllowed = computed(() => !!activeChatSessionId.value && appSurface.value === 'reader' && closedReady.value && !closedCover.value);
+const preparedFollowUpKey = computed(() => {
+  const book = buildWorkbenchSnapshot.value?.book_id;
+  const owner = readerPreferenceOwner();
+  if (!book || !owner) return null;
+  return 'understand-book:follow-up-drafts:' + JSON.stringify([owner, network.value.workspace?.learning_workspace_id ?? null,
+    book, network.value.workspace?.published_book_ref.publication_id ?? noteSourceFingerprint.value]);
+});
+watch(preparedFollowUpKey, key => {
+  preparedFollowUps.value = key ? JSON.parse(sessionStorage.getItem(key) ?? '[]') : [];
+}, {immediate:true, flush:'sync'});
+watch(preparedFollowUps, drafts => {
+  const key = preparedFollowUpKey.value;
+  if (!key) return;
+  if (drafts.length) sessionStorage.setItem(key, JSON.stringify(drafts));
+  else sessionStorage.removeItem(key);
+}, {deep:true, flush:'sync'});
+let followUpReadSeq = 0;
+async function loadFollowUps() {
+  const request = ++followUpReadSeq;
+  const session = activeChatSessionId.value;
+  if (!followUpAllowed.value) return;
+  try {
+    const path = await api.followUpPath(session);
+    if (!disposed && request === followUpReadSeq && activeChatSessionId.value === session && followUpAllowed.value) {
+      followUpNodes.value = path.nodes;
+      followUpError.value = '';
+    }
+  } catch (error) {
+    if (!disposed && request === followUpReadSeq && session === activeChatSessionId.value) followUpError.value = errorMessage(error);
+  }
+}
+watch([activeChatSessionId, noteMaterialKey, followUpAllowed], ([session, material, allowed], [, previousMaterial]) => {
+  ++followUpReadSeq;
+  if (material !== previousMaterial || closedBook.value && ['active','paused','complete'].includes(closedBook.value.status)
+    || !followUpNodes.value.some(node => node.session_id === session)) followUpNodes.value = [];
+  followUpError.value = '';
+  if (allowed) void loadFollowUps();
+});
+
+async function selectChat(sessionId: string, preserveDraft = false, followUp = false) {
+  if (!sessionId || agentHistoryLoading.value) return false;
+  if (sessionId === activeChatSessionId.value) return true;
   const previousChat = activeChatSessionId.value;
   const draft = preserveDraft ? { text: agentInput.value, quote: askDraft.value } : null;
   const scope = noteMaterialKey.value;
+  const pathSwitch = !preserveDraft && (localAgentHost.value || followUp || followUpNodes.value.some(node => !!node.origin));
+  let targetDraft: ChatDraft | null = null;
+  if (pathSwitch) {
+    saveLearningDraft(followUpDraftKey(previousChat), editorDraft());
+    followUpScenes.set(sceneStorageKey(previousChat), captureChatScene());
+    targetDraft = readLearningDraft(followUpDraftKey(sessionId));
+    switchingFollowUp = true;
+  }
   agentHistoryLoading.value = true;
   try {
     const history = await api.agentHistorySelect(sessionId);
-    if (disposed || scope !== noteMaterialKey.value) return;
+    if (disposed || scope !== noteMaterialKey.value || history.current.id !== sessionId) return false;
     applyAgentHistory(history);
     if (!preserveDraft) workspaceNoteQuestion.value = null;
     if (!preserveDraft) presentationRequested.value = false;
-    askDraft.value = draft?.quote ?? null;
-    agentInput.value = draft?.text ?? "";
+    askDraft.value = targetDraft?.quote ?? draft?.quote ?? null;
+    agentInput.value = targetDraft?.message ?? draft?.text ?? "";
+    if (pathSwitch) {
+      targetGoalId.value = chatGoals.value.find(goal => goal.id === targetDraft?.goalId && goal.status === 'open')?.id ?? null;
+      presentationRequested.value = !!targetDraft?.presentationRequested;
+      const scene = followUpScenes.get(sceneStorageKey(sessionId));
+      presentationWorkspace.value = scene?.workspace ?? null;
+      workspaceNoteQuestion.value = scene?.note ?? null;
+      musicQuestionContext.value = scene?.music ?? null;
+      videoQuestion.draft.value = scene?.video ?? null;
+      // The existing chat-change watcher resets the discussion on the next Vue tick.
+      await nextTick();
+      if (!disposed && activeChatSessionId.value === sessionId) personalDiscussion.value = scene?.discussion ?? null;
+    }
     void refreshProfileSurface(true);
+    return true;
   } catch (e) {
-    if (disposed || scope !== noteMaterialKey.value) return;
+    if (disposed || scope !== noteMaterialKey.value) return false;
     if (!disposed && activeChatSessionId.value !== previousChat) agentHistoryError.value = errorMessage(e);
     fail(e);
-  } finally { if (!disposed) agentHistoryLoading.value = false; }
+    return false;
+  } finally {
+    if (pathSwitch) {
+      switchingFollowUp = false;
+      if (!disposed && activeChatSessionId.value === sessionId) recapEmit('update:chatDraft', editorDraft());
+    }
+    if (!disposed) agentHistoryLoading.value = false;
+  }
+}
+
+async function enterFollowUp(sessionId: string) {
+  if (!followUpAllowed.value || followUpBusy.value || acceptingRun.value) return;
+  followUpBusy.value = true;
+  try { await selectChat(sessionId, false, true); }
+  finally { followUpBusy.value = false; }
+}
+
+async function returnToFollowUpParent() {
+  const origin = followUpNodes.value.find(node => node.session_id === activeChatSessionId.value)?.origin;
+  if (!origin || !followUpAllowed.value || followUpBusy.value || acceptingRun.value) return;
+  followUpBusy.value = true;
+  try {
+    if (!await selectChat(origin.parent_session_id, false, true)) return;
+    await nextTick();
+    if (!await rightRailRef.value?.scrollToFollowUpOrigin(origin)) banner.value = uiText('原回答中的这段文字位置已变化。');
+  } finally { followUpBusy.value = false; }
+}
+
+async function startFollowUp(input: FollowUpStart) {
+  if (!followUpAllowed.value || followUpBusy.value || acceptingRun.value || agentHistoryLoading.value) return;
+  const originalChat = activeChatSessionId.value;
+  const material = noteMaterialKey.value;
+  followUpBusy.value = true;
+  followUpError.value = '';
+  try {
+    const {session_id} = await api.createFollowUp(input);
+    if (disposed || material !== noteMaterialKey.value || originalChat !== activeChatSessionId.value || !followUpAllowed.value) return;
+    if (!await selectChat(session_id, false, true)) return;
+    if (network.value.enabled && pendingSubmissions().some(item => item.key === input.client_request_id && item.body.session_id === session_id)) {
+      await retrySubmission(input.client_request_id);
+      if (disposed || session_id !== activeChatSessionId.value || material !== noteMaterialKey.value) return;
+      const history = await api.agentHistory();
+      if (disposed || session_id !== activeChatSessionId.value || history.current.id !== session_id) return;
+      applyAgentHistory(history);
+      if (pendingSubmissions().some(item => item.key === input.client_request_id)) {
+        followUpError.value = uiText('原操作结果待核对，请先核对或重试原操作。');
+        return;
+      }
+    }
+    if (chat.value.some(turn => !!turn.turnId)) return;
+    await refreshClosedBook();
+    if (disposed || material !== noteMaterialKey.value || activeChatSessionId.value !== session_id || !followUpAllowed.value) return;
+    if (courseMode.value && !followUpNodes.value.some(node => node.session_id === session_id)) {
+      await loadFollowUps();
+      if (disposed || material !== noteMaterialKey.value || session_id !== activeChatSessionId.value || !followUpAllowed.value) return;
+    }
+    if (agentInput.value === input.question) agentInput.value = '';
+    const turn = await submitAgentMessage(input.question, input.question, null, undefined, {
+      session_id, client_request_id: input.client_request_id, expected_chat_head: null,
+    }, undefined, {}, true);
+    if (!turn?.turnId && !disposed && activeChatSessionId.value === session_id) {
+      if (!agentInput.value) agentInput.value = input.question;
+      if (turn?.error) banner.value = turn.error;
+    }
+    await loadFollowUps();
+  } catch (error) {
+    if (!disposed && material === noteMaterialKey.value) followUpError.value = errorMessage(error);
+  } finally { followUpBusy.value = false; }
 }
 async function deleteChat(sessionId: string) {
   if (!sessionId) return;
   if (!window.confirm(uiText('删除这个对话历史?'))) return;
+  const activeBefore = activeChatSessionId.value;
   try {
+    const history = await api.agentHistoryDelete(sessionId);
     unknownSubmissionsBySession.delete(sessionId);
-    applyAgentHistory(await api.agentHistoryDelete(sessionId));
-    presentationRequested.value = false;
-    workspaceNoteQuestion.value = null;
-    askDraft.value = null;
-    agentInput.value = "";
+    followUpScenes.delete(sceneStorageKey(sessionId));
+    preparedFollowUps.value = preparedFollowUps.value.filter(draft => draft.parent_session_id !== sessionId);
+    saveLearningDraft(followUpDraftKey(sessionId), null);
+    applyAgentHistory(history);
+    if (history.current.id !== activeBefore) {
+      const restored = readLearningDraft(followUpDraftKey(history.current.id));
+      presentationRequested.value = !!restored?.presentationRequested;
+      workspaceNoteQuestion.value = null;
+      askDraft.value = restored?.quote ?? null;
+      agentInput.value = restored?.message ?? '';
+    }
+    if (followUpAllowed.value) void loadFollowUps();
     await refreshProfileSurface(true);
   } catch (e) {
     fail(e);
@@ -6174,7 +6457,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
 </script>
 
 <template>
-  <div class="app" :inert="closedCover || undefined" :aria-hidden="closedCover || undefined" :style="[typography.style.value, closedCover ? { visibility: 'hidden' } : {}]">
+  <div class="app" :inert="closedCover || recapProps.hostOpening || undefined" :aria-busy="recapProps.hostOpening || undefined" :aria-hidden="closedCover || undefined" :style="[typography.style.value, closedCover ? { visibility: 'hidden' } : {}]">
     <TopBar
       :notes-available="!!network.workspace?.learning_workspace_id && appSurface === 'reader'"
       @open-notes="openWorkspaceNotes()"
@@ -6196,7 +6479,8 @@ watch(sending, (next,previous) => { if (previous && !next) {
       :build-intent-open="buildIntentOpen"
       :build-intent-available="!readerOnly && appSurface === 'reader'"
       :workbench-available="!readerOnly && appSurface === 'reader' && workbenchAvailable(buildWorkbenchSnapshot)"
-      :desktop-host="desktopHost"
+      :desktop-host="desktopHost && nativeSettings"
+      :model-settings-available="!network.enabled"
       :chat-unavailable="agentHistoryLoading || !!agentHistoryError"
       :mobile-collapsible="appSurface === 'reader'"
       :mobile-open="mobileGlobalActionsOpen"
@@ -6246,23 +6530,25 @@ watch(sending, (next,previous) => { if (previous && !next) {
       <button @click="openBook">{{ uiText('打开其他书籍') }}</button>
     </section>
 
+    <PersonalNavigation v-if="localAgentHost && personalAccess?.enabled && (personalAccess.navigate || personalAccess.write)"
+      :ready="appSurface === 'reader' && closedReady" :covered="closedCover" :navigate="openPersonalPassage" @changed="refreshExternalWrites" @error="banner = $event" />
     <div v-if="desktopSettingsOpen" class="desktop-settings-modal" @click.self="closeDesktopSettings">
       <section class="desktop-settings-dialog" role="dialog" aria-modal="true" aria-labelledby="desktop-settings-title">
         <header class="desktop-settings-head">
           <div>
-            <p class="formula-dialog-kicker">{{ uiText('桌面应用') }}</p>
-            <h3 id="desktop-settings-title">{{ uiText('设置') }}</h3>
+            <p class="formula-dialog-kicker">{{ nativeSettings ? uiText('桌面应用') : uiText('本地阅读器') }}</p>
+            <h3 id="desktop-settings-title">{{ nativeSettings || localAgentHost ? uiText('设置') : uiText('模型设置') }}</h3>
           </div>
           <button
             class="formula-dialog-close"
             :title="uiText('关闭')"
             :aria-label="uiText('关闭设置')"
-            :disabled="desktopLibraryChanging || desktopProviderSaving || !desktopLibraryAvailable"
+            :disabled="desktopLibraryChanging || desktopProviderSaving || personalConnectionSaving || (nativeSettings && !desktopLibraryAvailable)"
             @click="closeDesktopSettings"
           >×</button>
         </header>
         <div class="desktop-settings-body">
-          <div class="desktop-settings-section">
+          <div v-if="nativeSettings" class="desktop-settings-section">
             <div class="desktop-settings-row">
               <div>
                 <strong>{{ uiText('书库位置') }}</strong>
@@ -6280,79 +6566,31 @@ watch(sending, (next,previous) => { if (previous && !next) {
             <p v-if="desktopLibraryRoot" class="desktop-settings-path">{{ desktopLibraryRoot }}</p>
             <p v-if="desktopLibraryError" class="book-picker-error">{{ desktopLibraryError }}</p>
           </div>
-          <div class="desktop-settings-section">
-            <div class="desktop-settings-row desktop-provider-heading">
-              <div>
-                <strong>{{ uiText('AI 服务连接') }}</strong>
-                <p>{{ desktopProviderLoading ? uiText('正在读取...') : desktopProviderStatusLabel(desktopProviderStatus) }}</p>
-              </div>
-
-            </div>
-            <div class="desktop-provider-grid">
-              <label>
-                <span>{{ uiText('服务地址') }}</span>
-                <input v-model="desktopProviderBaseUrl" type="url" :disabled="desktopProviderSaving" placeholder="https://provider.example/v1" />
-              </label>
-              <label>
-                <span>{{ uiText('模型名称') }}</span>
-                <input v-model="desktopProviderModel" :disabled="desktopProviderSaving" placeholder="model-name" />
-              </label>
-              <label class="desktop-provider-key">
-                <span>API Key</span>
-                <input
-                  v-model="desktopProviderApiKey"
-                  type="password"
-                  autocomplete="new-password"
-                  :disabled="desktopProviderSaving"
-                  :placeholder="desktopProviderStatus?.api_key_configured ? uiText('留空保留已保存密钥') : uiText('输入 API Key')"
-                />
-              </label>
-            </div>
-            <details class="desktop-provider-advanced"><summary>{{ uiText('高级连接选项') }}</summary>
-              <p>{{ uiText('通常选择原生工具调用；服务不支持 tools 参数时，可改用文本工具调用（ReAct）。') }}</p>
-              <div class="desktop-provider-mode" role="group" :aria-label="uiText('AI 工具调用方式')">
-                <button
-                  type="button"
-                  :class="{ active: desktopProviderMode === 'native' }"
-                  :aria-pressed="desktopProviderMode === 'native'"
-                  :disabled="desktopProviderSaving"
-                  @click="desktopProviderMode = 'native'"
-                >{{ uiText('原生工具调用') }}</button>
-                <button
-                  type="button"
-                  :class="{ active: desktopProviderMode === 'react' }"
-                  :aria-pressed="desktopProviderMode === 'react'"
-                  :disabled="desktopProviderSaving"
-                  @click="desktopProviderMode = 'react'"
-                >{{ uiText('文本工具调用（ReAct）') }}</button>
-              </div>
-            </details>
-            <div class="desktop-provider-actions">
-              <p>{{ uiText('API Key 明文保存在当前 Windows 用户设置中。') }}</p>
-              <button
-                class="primary-action desktop-provider-save"
-                :disabled="desktopProviderSaving || !desktopProviderBaseUrl.trim() || !desktopProviderModel.trim()"
-                @click="saveDesktopProviderSettings"
-              >
-                <Save :size="16" aria-hidden="true" />
-                <span>{{ desktopProviderSaving ? uiText('应用中') : uiText('保存并应用') }}</span>
-              </button>
-            </div>
-            <p v-if="desktopProviderError" class="book-picker-error">{{ desktopProviderError }}</p>
+          <div v-if="localAgentHost" class="desktop-settings-section">
+            <LocalAgentSettings ref="localAgentSettingsRef" :controller="localAgents" />
           </div>
-          <div v-if="localDebug" class="desktop-settings-section">
+          <div v-if="localAgentHost" class="desktop-settings-section">
+            <PersonalConnectionSettings :current-book="buildWorkbenchSnapshot?.book_id" @changed="personalAccess = $event" @busy="personalConnectionSaving = $event" />
+          </div>
+          <div v-if="localAgentHost" class="desktop-settings-section">
+            <LearningExtensions @open="dir => { closeDesktopSettings(); if (!desktopSettingsOpen) void submitOpenBook(dir); }" />
+          </div>
+          <div class="desktop-settings-section">
+            <ModelProviderSettings :client="desktopModelSettingsClient" @busy="desktopProviderSaving = $event" />
+          </div>
+          <div v-if="nativeSettings && managedBuildEngine" class="desktop-settings-section">
             <div class="desktop-settings-row">
               <div>
                 <strong>{{ uiText('本地构建引擎') }}</strong>
-                <p>{{ codexPluginLoading ? uiText('正在检测...') : localBuildStatus?.available ? uiText('已就绪') : uiText('构建引擎缺失，请重新打包') }}</p>
+                <p>{{ codexPluginLoading ? uiText('正在检测...') : localBuildStatus?.available ? uiText('已就绪') : uiText('本地材料工具不可用，请重新安装应用') }}</p>
               </div>
               <button :disabled="codexPluginLoading" @click="refreshCodexPluginStatus">{{ uiText('刷新') }}</button>
             </div>
             <p class="desktop-settings-message">{{ uiText('材料导入和构建工作台使用随附引擎。完整 AI 预构建需在 Codex 中使用 Understand Book 构建技能和执行器。') }}</p>
-            <p v-if="localBuildStatus" class="desktop-settings-path">{{ localBuildStatus.path }}</p>
+            <p v-if="localDebug && localBuildStatus" class="desktop-settings-path">{{ localBuildStatus.path }}</p>
             <p v-if="codexPluginError" class="book-picker-error">{{ codexPluginError }}</p>
           </div>
-          <div v-else class="desktop-settings-section">
+          <div v-else-if="nativeSettings" class="desktop-settings-section">
             <div class="desktop-settings-row">
               <div>
                 <strong>{{ uiText('Codex 预构建插件') }}</strong>
@@ -6360,7 +6598,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
                 <p v-else>{{ codexPluginLoading ? uiText('正在检测...') : uiText('尚未检测') }}</p>
               </div>
               <button
-                v-if="codexPluginStatus && !['installed_by_setup', 'installed_externally'].includes(codexPluginStatus.state)"
+                v-if="codexPluginStatus?.state === 'not_installed'"
                 class="primary-action"
                 :disabled="codexPluginLoading"
                 @click="installCodexPlugin"
@@ -6369,7 +6607,9 @@ watch(sending, (next,previous) => { if (previous && !next) {
               </button>
               <button v-else :disabled="codexPluginLoading" @click="refreshCodexPluginStatus">{{ uiText('刷新') }}</button>
             </div>
-            <p v-if="codexPluginStatus" class="desktop-settings-message">{{ codexPluginStatus.message }}</p>
+            <p v-if="codexPluginStatus?.state === 'pending_configuration'" class="desktop-settings-message">{{ uiText('在 Codex 的插件目录中安装 Understand Book，然后回到这里刷新。') }}</p>
+            <p v-else-if="codexPluginStatus?.state === 'codex_not_found'" class="desktop-settings-message">{{ uiText('请先安装并启动 Codex，再回到这里刷新检测。') }}</p>
+            <p v-else-if="codexPluginStatus" class="desktop-settings-message">{{ codexPluginStatus.message }}</p>
             <p v-if="codexPluginStatus?.codex_path" class="desktop-settings-path">{{ codexPluginStatus.codex_path }}</p>
             <p v-if="codexPluginError" class="book-picker-error">{{ codexPluginError }}</p>
           </div>
@@ -6714,6 +6954,15 @@ watch(sending, (next,previous) => { if (previous && !next) {
       ></div>
 
       <RightRail
+        v-model:follow-up-drafts="preparedFollowUps"
+        :follow-up-nodes="followUpNodes"
+        :follow-up-busy="followUpBusy || acceptingRun || agentHistoryLoading"
+        :follow-up-error="followUpError"
+        :follow-up-allowed="followUpAllowed"
+        @follow-up-load="loadFollowUps"
+        @follow-up-start="startFollowUp"
+        @follow-up-enter="enterFollowUp"
+        @follow-up-parent="returnToFollowUpParent"
         :course-active="courseMode"
         :closed-book-ready="closedReady && !closedBusy"
         :workspace-notes-available="!!network.workspace?.learning_workspace_id"
@@ -6840,6 +7089,8 @@ watch(sending, (next,previous) => { if (previous && !next) {
         @delete-highlight="deleteHighlight"
         @agent-source-will-open="captureAgentSourceReturnPoint"
         @agent-source-opened="syncAfterAgentSourceOpen"
+        @original-selection="openOriginalSelection"
+        @failed-agent-settings="openFailedAgentSettings"
         @media-source-enter="enterMediaSource"
         @music-source-enter="enterMusicSource"
         @refresh-profile="refreshProfileSurface()"
@@ -6856,6 +7107,15 @@ watch(sending, (next,previous) => { if (previous && !next) {
       >
         <template v-if="workspaceNoteQuestion" #note-question>
           <span class="note-question-context">{{ uiText('围绕笔记提问：{0}', [workspaceNoteQuestion.title]) }} <button type="button" @click="workspaceNoteQuestion = null">{{ uiText('取消') }}</button></span>
+        </template>
+        <template v-if="localAgentHost" #agent-picker>
+          <select class="local-agent-picker" :aria-label="uiText('当前问答 Agent')" :value="localAgents.loaded.value ? localAgents.selected.value : ':pending'"
+            :disabled="localAgents.busy.value || sending" @change="chooseLocalAgent">
+            <option v-if="!localAgents.loaded.value" value=":pending" disabled>{{ localAgents.error.value ? uiText('Agent 设置暂不可用') : uiText('正在读取...') }}</option>
+            <option value="">{{ uiText('内置 Agent') }}</option>
+            <option v-for="agent in localAgents.agents.value.filter(item => item.configured)" :key="agent.id" :value="agent.id" :disabled="!agent.available">{{ agent.name }}</option>
+            <option value=":settings">{{ uiText('管理我的 Agent…') }}</option>
+          </select>
         </template>
         <template #learning-actions>
           <button type="button" @click="openTutorPanel('knowledge')">{{ uiText('知识树') }}</button>
@@ -7120,6 +7380,7 @@ watch(sending, (next,previous) => { if (previous && !next) {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+.local-agent-picker { max-width:9.5rem; min-height:30px; border:1px solid var(--line); border-radius:7px; color:var(--ink); background:transparent; font:inherit; font-size:.78rem; }
 .desktop-settings-dialog {
   width: min(32rem, 94vw);
   max-height: min(90vh, 48rem);

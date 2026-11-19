@@ -1,4 +1,5 @@
 //! Durable admission metadata; business input and output remain in private History.
+pub use reader_service::run_input::{ProviderBinding, FrozenTurn, normalize};
 use crate::*;
 #[path="personal_admission.rs"]
 mod personal;
@@ -11,6 +12,7 @@ use crate::{
     workspace_registry::WorkspaceStamp,
 };
 use runtime::run_context::CancellationToken;
+use runtime::model_settings::{ModelSettings, ModelPurpose};
 use rusqlite::{params, OptionalExtension};
 use std::sync::{Arc, Mutex};
 
@@ -33,133 +35,56 @@ fn invalid() -> ToolError {
     fault("RUN_INPUT_INVALID", "validation")
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub(crate) struct ProviderBinding {
-    mode: String,
-    endpoint: String,
-    model: String,
-    profile: runtime::ModelRuntimeProfile,
-}
 #[derive(Clone)]
 struct RunProvider {
     binding: ProviderBinding,
+    config: Option<ProviderConfig>,
+    teaching_binding: ProviderBinding,
+    make_teaching: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
     make: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
     make_task: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
     make_review: Arc<dyn Fn() -> Box<dyn ModelAdapter + Send> + Send + Sync>,
 }
 
-/// Only the necessary request/scene/provider metadata; credentials and temporary candidates are absent.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct FrozenTurn<M = Vec<Message>> {
-    #[serde(default)]
-    pub(crate) board_context: Option<crate::board_api::FrozenBoardFollowUp>,
-    #[serde(default)]
-    exam_sprint: Option<crate::exam_sprints::SprintInput>,
-    version: u32,
-    #[serde(default)]
-    pub(crate) learning_workspace_id: Option<String>,
-    #[serde(default)]
-    pub(crate) learning_workspace_goal: Option<base_schema::WorkspaceGoal>,
-    #[serde(default)]
-    pub(crate) learning_workspace_members: Option<Vec<PublishedBookRef>>,
-    owner: String,
-    workspace: String,
-    generation: u64,
-    effect_revision: u64,
-    chat: String,
-    turn: String,
-    ordinal: u64,
-    head: Option<String>,
-    publication: Option<PublishedBookRef>,
-    normalized: Value,
-    reader: Option<runtime::run_context::ReaderInputSnapshot>,
-    #[serde(default)]
-    music_question: Option<base_schema::MusicQuestionContext>,
-    confirmation: Option<String>,
-    provider: ProviderBinding,
-    message: String,
-    agent_message: String,
-    pub(crate) messages: M,
-    quote: Option<AskQuote>,
-    presentation: Option<runtime::presentation::PresentationFollowUp>,
-    teaching: teaching::FrozenTeachingPreparation,
-    goal: Option<runtime::goal::ResidentGoal>,
-    now: String,
-    preparation_complete: bool,
-}
-impl<M> FrozenTurn<M> {
-    pub(crate) fn coach_provider_binding(&self) -> Value { json!(self.provider) }
-    pub(crate) fn map_messages<N>(self, map: impl FnOnce(M) -> N) -> FrozenTurn<N> {
-        FrozenTurn {
-            board_context: self.board_context,
-            exam_sprint: self.exam_sprint,
-            learning_workspace_id: self.learning_workspace_id,
-            learning_workspace_goal: self.learning_workspace_goal,
-            learning_workspace_members: self.learning_workspace_members,
-            version: self.version, owner: self.owner, workspace: self.workspace,
-            generation: self.generation, effect_revision: self.effect_revision, chat: self.chat,
-            turn: self.turn, ordinal: self.ordinal, head: self.head, publication: self.publication,
-            normalized: self.normalized, reader: self.reader, confirmation: self.confirmation,
-            music_question: self.music_question,
-            provider: self.provider, message: self.message, agent_message: self.agent_message,
-            messages: map(self.messages), quote: self.quote, presentation: self.presentation,
-            teaching: self.teaching, goal: self.goal, now: self.now,
-            preparation_complete: self.preparation_complete,
-        }
-    }
-    pub(crate) fn set_prepared(&mut self, teaching: teaching::FrozenTeachingPreparation) {
-        self.teaching = teaching;
-        self.preparation_complete = true;
-    }
-}
-impl FrozenTurn {
-    fn turn_ref(&self) -> AgentTurnRef {
-        AgentTurnRef {
-            session_id: self.chat.clone(),
-            turn_id: self.turn.clone(),
-            user_turn_ordinal: self.ordinal,
-        }
-    }
-    fn prepared(&self, access: &Authorization) -> Result<PreparedAgentChat, ToolError> {
-        if self.version != 1 {
+fn prepare_frozen(frozen: &FrozenTurn, access: &Authorization) -> Result<PreparedAgentChat, ToolError> {
+        if frozen.version != 1 {
             return Err(fault("RUN_INPUT_INCOMPATIBLE", "conflict"));
         }
-        let publication = self.publication.as_ref().map(|reference|access.library.lock().unwrap().load(&self.owner,reference)).transpose()?;
+        let publication = frozen.publication.as_ref().map(|reference|access.library.lock().unwrap().load(&frozen.owner,reference)).transpose()?;
         Ok(PreparedAgentChat {
-            response_language: runtime::response_language::ResponseLanguage::from_request(&self.normalized)?,
-            exam_calendar: self.exam_sprint.as_ref().map(|sprint| sprint.calendar(
-                crate::multi_user_host::now(), self.learning_workspace_goal.as_ref().map_or(0, |goal| goal.revision),
+            response_language: runtime::response_language::ResponseLanguage::from_request(&frozen.normalized)?,
+            exam_calendar: frozen.exam_sprint.as_ref().map(|sprint| sprint.calendar(
+                crate::multi_user_host::now(), frozen.learning_workspace_goal.as_ref().map_or(0, |goal| goal.revision),
             )).transpose()?,
             accepted_workspace_goal: None,
             scope: run_scope::RunScope {
-                board_context: self.board_context.clone(),
-                learning_workspace_id: self.learning_workspace_id.clone(),
-                goal: self.learning_workspace_goal.clone(), members: self.learning_workspace_members.clone(),
-                user_id: self.owner.clone(),
-                workspace_id: self.workspace.clone(),
-                workspace_generation: self.generation,
-                chat_session_id: self.chat.clone(),
-                turn_id: self.turn.clone(),
-                confirmation_id: self.confirmation.clone(),
+                board_context: frozen.board_context.clone(),
+                learning_workspace_id: frozen.learning_workspace_id.clone(),
+                goal: frozen.learning_workspace_goal.clone(), members: frozen.learning_workspace_members.clone(),
+                user_id: frozen.owner.clone(),
+                workspace_id: frozen.workspace.clone(),
+                workspace_generation: frozen.generation,
+                chat_session_id: frozen.chat.clone(),
+                turn_id: frozen.turn.clone(),
+                confirmation_id: frozen.confirmation.clone(),
                 book: publication.as_ref().map(|p|p.book.clone()),
                 book_dir: publication.as_ref().map(|p|p.directory().to_path_buf()).unwrap_or_default(),
                 publication,
-                provider_binding: self.provider.profile.clone(),
-                reader_input: self.reader.clone(),
-                question_quote: self.quote.clone(),
-                music_question: self.music_question.clone(),
-                presentation_follow_up: self.presentation.clone(),
+                provider_binding: frozen.provider.profile.clone(),
+                reader_input: frozen.reader.clone(),
+                question_quote: frozen.quote.clone(),
+                music_question: frozen.music_question.clone(),
+                presentation_follow_up: frozen.presentation.clone(),
             },
-            tutor: self.teaching.context.clone(),
-            goal: self.goal.clone(),
-            turn_ref: self.turn_ref(),
-            message: self.message.clone(),
-            agent_message: self.agent_message.clone(),
-            messages: self.messages.clone(),
-            now: self.now.clone(),
+            tutor: frozen.teaching.context.clone(),
+            goal: frozen.goal.clone(),
+            turn_ref: frozen.turn_ref(),
+            message: frozen.message.clone(),
+            agent_message: frozen.agent_message.clone(),
+            messages: frozen.messages.clone(),
+            now: frozen.now.clone(),
         })
     }
-}
 
 #[derive(Debug, Clone)]
 struct Admission {
@@ -219,6 +144,9 @@ struct State {
 pub(crate) struct RunAdmissions {
     state: Mutex<State>,
     provider: Mutex<Option<RunProvider>>,
+    model_settings: Mutex<Option<crate::model_settings_api::StoredModelSettings>>,
+    model_settings_path: std::path::PathBuf,
+    model_settings_source: Mutex<&'static str>,
     pub(crate) observability: Arc<crate::observability::ObservabilityRuntime>,
     pub(crate) boot: String,
     pub(crate) limits: Arc<crate::service_limits::ServiceLimits>,
@@ -230,8 +158,12 @@ impl RunAdmissions {
         control: ControlStore,
         limits: Arc<crate::service_limits::ServiceLimits>,
     ) -> Self {
+        let model_settings_path=control.writer.root().join("model-settings.json");
         Self {
             limits,
+            model_settings_path,
+            model_settings_source: Mutex::new("environment"),
+            model_settings: Mutex::new(None),
             state: Mutex::new(State {
                 control,
                 deleting: BTreeSet::new(),
@@ -250,20 +182,26 @@ impl RunAdmissions {
             fail_after: Mutex::new(None),
         }
     }
-    pub(crate) fn configure(&self, config: ProviderConfig) -> Result<(), ToolError> {
+    fn make_provider(&self, config: ProviderConfig, task_config: ProviderConfig, review_config: ProviderConfig,
+        teaching_config: ProviderConfig) -> Result<RunProvider,ToolError> {
         let url = url::Url::parse(&config.base_url).map_err(|_| invalid())?;
-        if !url.username().is_empty() || url.password().is_some() || url.query().is_some() {
+        if !url.username().is_empty() || url.password().is_some() {
             return Err(invalid());
         }
         let profile = ProviderRegistry::adapter_from_config(config.clone()).model_runtime_profile();
         let binding = ProviderBinding {
+            configuration: config.options.binding.clone(),
+            api_protocol: config.options.api_protocol,
             mode: config.mode.as_str().into(),
             endpoint: config.base_url.clone(),
             model: config.model.clone(),
             profile,
         };
-        let task_config = config.clone();
-        let review_config = config.clone();
+        let teaching_binding = ProviderBinding {
+            configuration: teaching_config.options.binding.clone(), api_protocol: teaching_config.options.api_protocol,
+            mode: teaching_config.mode.as_str().into(), endpoint: teaching_config.base_url.clone(),
+            model: teaching_config.model.clone(), profile: ProviderRegistry::adapter_from_config(teaching_config.clone()).model_runtime_profile(),
+        };
         let timeouts = runtime::ProviderRequestTimeouts {
             request: std::time::Duration::from_secs(self.limits.model_request_timeout_seconds),
             connect: std::time::Duration::from_secs(self.limits.model_connect_timeout_seconds),
@@ -276,8 +214,9 @@ impl RunAdmissions {
             request: crate::SELECTION_TRANSLATION_TIMEOUT,
             ..timeouts
         };
-        *self.provider.lock().unwrap() = Some(RunProvider {
-            binding,
+        Ok(RunProvider {
+            config: Some(config.clone()), binding, teaching_binding,
+            make_teaching: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeouts(teaching_config.clone(),review_timeouts)),
             make: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeouts(config.clone(), timeouts)),
             make_task: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeouts(
                 task_config.clone(), task_timeouts,
@@ -285,7 +224,11 @@ impl RunAdmissions {
             make_review: Arc::new(move || ProviderRegistry::adapter_from_config_with_timeouts(
                 review_config.clone(), review_timeouts,
             )),
-        });
+        })
+    }
+    pub(crate) fn configure(&self, config: ProviderConfig) -> Result<(),ToolError> {
+        let provider=self.make_provider(config.clone(),config.clone(),config.clone(),config)?;
+        *self.provider.lock().unwrap()=Some(provider);
         Ok(())
     }
     pub(crate) fn task_adapter(&self) -> Result<Box<dyn ModelAdapter + Send>, ToolError> {
@@ -306,9 +249,97 @@ impl RunAdmissions {
         Ok(make())
     }
     pub(crate) fn coach_provider_binding(&self) -> Result<Value, ToolError> {
-        self.provider.lock().unwrap().as_ref().map(|p|json!(p.binding))
+        self.provider.lock().unwrap().as_ref().map(|p|json!(p.teaching_binding))
             .ok_or_else(||fault("TUTOR_COACH_PROVIDER_UNCONFIGURED","provider"))
     }
+    pub(crate) fn teaching_adapter(&self) -> Result<Box<dyn ModelAdapter + Send>,ToolError> {
+        let make=self.provider.lock().unwrap().as_ref().map(|provider|provider.make_teaching.clone())
+            .ok_or_else(||fault("TUTOR_COACH_PROVIDER_UNCONFIGURED","provider"))?;
+        Ok(make())
+    }
+
+    fn provider_from_settings(&self, settings: &ModelSettings) -> Result<RunProvider,ToolError> {
+        let resolve=|purpose|settings.resolve(purpose).map_err(crate::model_settings_api::invalid);
+        self.make_provider(resolve(ModelPurpose::Agent)?,resolve(ModelPurpose::Background)?,
+            resolve(ModelPurpose::Background)?,resolve(ModelPurpose::Teaching)?)
+    }
+
+    pub(crate) fn configure_model_catalog(&self, settings:ModelSettings) -> Result<(),ToolError> {
+        let provider=self.provider_from_settings(&settings)?;
+        *self.model_settings.lock().unwrap()=Some(crate::model_settings_api::StoredModelSettings {settings,history:vec![]});
+        *self.model_settings_source.lock().unwrap()="environment";
+        *self.provider.lock().unwrap()=Some(provider);
+        Ok(())
+    }
+
+    pub(crate) fn load_model_settings(&self) -> Result<bool,ToolError> {
+        let Some(stored)=crate::model_settings_api::StoredModelSettings::load(&self.model_settings_path)? else {return Ok(false)};
+        let provider=self.provider_from_settings(&stored.settings)?;
+        *self.model_settings.lock().unwrap()=Some(stored);
+        *self.model_settings_source.lock().unwrap()="settings";
+        *self.provider.lock().unwrap()=Some(provider);
+        Ok(true)
+    }
+
+    pub(crate) fn model_settings_status(&self) -> Value {
+        let stored=self.model_settings.lock().unwrap();
+        if let Some(stored)=stored.as_ref() {return reader_service::model_settings::status(Some(&stored.settings),*self.model_settings_source.lock().unwrap())}
+        let legacy=self.provider.lock().unwrap().as_ref().and_then(|p|p.config.as_ref()).map(ModelSettings::from_resolved);
+        reader_service::model_settings::status(legacy.as_ref(),"environment")
+    }
+
+    pub(crate) fn save_model_settings(&self, input:ModelSettings, _spend:&crate::model_spend_store::ModelSpendStore) -> Result<Value,ToolError> {
+        let mut stored=self.model_settings.lock().unwrap();
+        let legacy=self.provider.lock().unwrap().as_ref().and_then(|p|p.config.as_ref()).map(ModelSettings::from_resolved);
+        let old=stored.as_ref().map(|s|&s.settings).or(legacy.as_ref());
+        let settings=input.prepare_update(old).map_err(crate::model_settings_api::invalid)?;
+        let provider=self.provider_from_settings(&settings)?;
+        let mut history=stored.as_ref().map(|s|s.history.clone()).unwrap_or_default();
+        if let Some(old)=old {history.push(old.clone())}
+        let candidate=crate::model_settings_api::StoredModelSettings {settings,history};
+        candidate.save(&self.model_settings_path)?;
+        let status=reader_service::model_settings::status(Some(&candidate.settings),"settings");
+        *stored=Some(candidate);
+        *self.model_settings_source.lock().unwrap()="settings";
+        *self.provider.lock().unwrap()=Some(provider);
+        Ok(status)
+    }
+
+    fn provider_for_binding(&self,binding:&ProviderBinding) -> Result<Option<RunProvider>,ToolError> {
+        if let Some(provider)=self.provider.lock().unwrap().as_ref().filter(|p|&p.binding==binding).cloned() {return Ok(Some(provider))}
+        let stored=self.model_settings.lock().unwrap();
+        let Some(stored)=stored.as_ref() else {return Ok(None)};
+        for settings in std::iter::once(&stored.settings).chain(stored.history.iter().rev()) {
+            let ids:Vec<&str>=if let Some(id)=binding.configuration.as_ref() {
+                if id.revision!=settings.revision {continue}
+                vec![id.model_config_id.as_str()]
+            } else {settings.models.iter().map(|m|m.id.as_str()).collect()};
+            for id in ids {
+                let Ok(mut config)=settings.resolve_model(id) else {continue};
+                if binding.configuration.is_none() {config.options=Default::default()}
+                let provider=self.make_provider(config.clone(),config.clone(),config.clone(),config)?;
+                if &provider.binding==binding {return Ok(Some(provider))}
+            }
+        }
+        Ok(None)
+    }
+
+    pub(crate) fn teaching_adapter_for_binding(&self, binding:Option<&Value>) -> Result<Box<dyn ModelAdapter + Send>,ToolError> {
+        if let Some(value)=binding.filter(|value|!value.is_null()) {
+            let binding:ProviderBinding=serde_json::from_value(value.clone()).map_err(|_|invalid())?;
+            return self.provider_for_binding(&binding)?.map(|provider|(provider.make)())
+                .ok_or_else(||fault("PROVIDER_BINDING_UNAVAILABLE","provider"));
+        }
+        self.teaching_adapter()
+    }
+
+    pub(crate) fn test_model_settings(&self,id:&str,input:Option<ModelSettings>,spend:Arc<crate::model_spend_store::ModelSpendStore>) -> Result<Value,ToolError> {
+        let current=self.model_settings.lock().unwrap().as_ref().map(|s|s.settings.clone())
+            .or_else(||self.provider.lock().unwrap().as_ref().and_then(|p|p.config.as_ref()).map(ModelSettings::from_resolved));
+        let settings=reader_service::model_settings::prepare_test_settings(current,input).map_err(crate::model_settings_api::invalid)?;
+        crate::model_settings_api::test_model(&settings,id,spend)
+    }
+
     #[cfg(test)]
     pub(crate) fn configure_fake(
         &self,
@@ -317,7 +348,14 @@ impl RunAdmissions {
         let profile = make().model_runtime_profile();
         let make = Arc::new(make);
         *self.provider.lock().unwrap() = Some(RunProvider {
+            config: None,
+            teaching_binding: ProviderBinding {
+                configuration: None, api_protocol: Default::default(), mode: "fixture".into(),
+                endpoint: "fixture".into(), model: "fixture".into(), profile: profile.clone(),
+            },
+            make_teaching: make.clone(),
             binding: ProviderBinding {
+                configuration: None, api_protocol: Default::default(),
                 mode: "fixture".into(),
                 endpoint: "fixture".into(),
                 model: "fixture".into(),
@@ -428,23 +466,31 @@ impl RunAdmissions {
             .filter(|s| !s.is_empty() && s.len() <= 128)
             .ok_or_else(invalid)?;
         let normalized = normalize(workspace, input)?;
-        if let Some(row) = self.by_key(context.user_id(), key)? {
+        if let Some(row) = self.by_key(context.user_id(), key)?
+            .filter(|r| !r.closed || r.state != "admission_failed")
+        {
             return self.repeat(access, context, &row, &normalized);
         }
-        let provider = self
-            .provider
-            .lock()
-            .unwrap()
-            .clone()
-            .ok_or_else(|| fault("PROVIDER_NOT_CONFIGURED", "unavailable"))?;
         let mut user = context.user.lock().unwrap();
         // Another admission can have finished while this request waited for the private authority.
         #[cfg(test)]
         let _timing = crate::tests::mu10_tests::measure("user_lock");
-        if let Some(row) = self.by_key(context.user_id(), key)? {
-            drop(user);
-            return self.repeat(access, context, &row, &normalized);
-        }
+        let interrupted_start = if let Some(row) = self.by_key(context.user_id(), key)? {
+            // A branch already owns its first request key in session.created. Recovery can
+            // close its preparing row before turn.accepted exists. Only that still-empty
+            // child may finish the original admission, retaining its original turn ID.
+            let unsent_branch = row.closed && row.state == "admission_failed" && !row.cancel
+                && input["session_id"] == row.chat && user.agent_history.sessions.iter().any(|s|
+                    s.id == row.chat && s.turns.is_empty()
+                        && s.follow_up_origin.as_ref().is_some_and(|o| o.client_request_id == key));
+            if !unsent_branch {
+                drop(user);
+                return self.repeat(access, context, &row, &normalized);
+            }
+            Some(row.turn)
+        } else { None };
+        let provider = self.provider.lock().unwrap().clone()
+            .ok_or_else(|| fault("PROVIDER_NOT_CONFIGURED", "unavailable"))?;
         let mut registry = access.workspaces.lock().unwrap();
         let scene = registry.scene(
             context.user_id(),
@@ -493,7 +539,8 @@ impl RunAdmissions {
             .ok_or_else(invalid)?;
         // A failed preparation may keep a closed admission without appending a History turn.
         // Allocate here so a new request at that same chat ordinal cannot collide with its tombstone.
-        let turn = format!("turn_{}", uuid::Uuid::now_v7());
+        let resume_first_question = interrupted_start.is_some();
+        let turn = interrupted_start.unwrap_or_else(|| format!("turn_{}", uuid::Uuid::now_v7()));
         let validated = match validate_agent_input(&mut user, &scene.workspace, &input.to_string()) {
             Ok(value) => value,
             Err(reply) if reply.status == 200 => return serde_json::from_str(&reply.body).map_err(|_|invalid()),
@@ -548,12 +595,24 @@ impl RunAdmissions {
             {
                 return Err(fault("RUN_QUEUE_FULL", "rate_limit"));
             }
-            tx.execute("INSERT INTO run_admissions(owner_user_id,client_request_id,turn_id,chat_session_id,workspace_id,workspace_generation,book_id,publication_id,dispatch_state) VALUES(?,?,?,?,?,?,?,?,'preparing')",params![row.owner,row.key,row.turn,row.chat,row.workspace,row.generation,row.publication.as_ref().map(|r|&r.book_id),row.publication.as_ref().map(|r|&r.publication_id)]).map_err(|_|storage())?;
+            let publication = row.publication.as_ref().expect("workspace has a publication");
+            if resume_first_question {
+                let reopened = tx.execute(
+                    "UPDATE run_admissions SET workspace_id=?,workspace_generation=?,book_id=?,publication_id=?,
+                     dispatch_state='preparing',key_closed=0 WHERE owner_user_id=? AND turn_id=? AND
+                     dispatch_state='admission_failed' AND key_closed=1 AND attempt=0 AND cancel_requested=0",
+                    params![row.workspace,row.generation,publication.book_id,publication.publication_id,row.owner,row.turn]
+                ).map_err(|_|storage())?;
+                if reopened != 1 { return Err(closed()); }
+            } else {
+                tx.execute("INSERT INTO run_admissions(owner_user_id,client_request_id,turn_id,chat_session_id,workspace_id,workspace_generation,book_id,publication_id,dispatch_state) VALUES(?,?,?,?,?,?,?,?,'preparing')",params![row.owner,row.key,row.turn,row.chat,row.workspace,row.generation,publication.book_id,publication.publication_id]).map_err(|_|storage())?;
+            }
             tx.commit().map_err(|_| storage())?;
         }
         self.point("preparing")?;
         let result: Result<(), ToolError> = (|| {
             let ValidatedAgentInput {
+                first_follow_up: _,
                 personal_notes,
                 board_context,
                 music_question,
@@ -638,6 +697,7 @@ impl RunAdmissions {
                 },
                 confirmation: user.agent_history.confirmation_id(chat).map(str::to_owned),
                 provider: provider.binding,
+                teaching_provider: Some(provider.teaching_binding),
                 message,
                 agent_message,
                 messages: session.messages.clone(),
@@ -907,43 +967,6 @@ fn reply_error(reply: Reply) -> ToolError {
         "validation",
     )
 }
-pub(crate) fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
-    crate::interaction_input::InteractionInput::parse(input)?;
-    runtime::response_language::ResponseLanguage::from_request(input)?;
-    presentation_requested(input)?;
-    let message = input["message"]
-        .as_str()
-        .ok_or_else(invalid)?;
-    let mut v = json!({"workspace_id":workspace,"message":message,"display_user":input["display_user"].as_str().unwrap_or(message)});
-    for key in [
-        "session_id",
-        "generation",
-        "expected_revision",
-        "attachment_id",
-        "published_book_ref",
-        "expected_chat_head",
-        "question_anchor_lid",
-        "question_quote",
-        "presentation_follow_up",
-        "note_mem_id",
-        "teaching_ref",
-        "goal_id",
-        "goal_action",
-        "retry_of",
-        "video_window_id",
-        "video_draft_id",
-    ] {
-        v[key] = input[key].clone();
-    }
-    // Keep ordinary requests byte-for-byte equivalent to the pre-TC1 normalized
-    // value, so retrying a previously accepted key does not become a conflict.
-    for key in ["scope", "personal_chat_ref", "note_refs", "note_reply_to", "understanding_ref", "board_follow_up", "response_language", "presentation_requested", "music_question", "entry_action", "learning_purpose", "note_ref", "answer_ref", "teaching_choice", "source_id", "source_revision", "chapter_lid", "teaching_response_origin"] {
-        if let Some(value) = input.get(key).filter(|v| !v.is_null()) {
-            v[key] = value.clone();
-        }
-    }
-    Ok(v)
-}
 impl RunAdmissions {
     /// Startup reconciliation never calls a Provider or the original prepare function.
     pub(crate) fn recover(&self, access: &Arc<Authorization>) -> Result<(), ToolError> {
@@ -1127,8 +1150,7 @@ impl RunAdmissions {
                 return Ok(true);
             }
         }
-        let provider = self.provider.lock().unwrap().clone();
-        let Some(provider) = provider.filter(|p| p.binding == frozen.provider) else {
+        let Some(provider) = self.provider_for_binding(&frozen.provider)? else {
             let mut user = handle.lock().unwrap();
             if let Err(e) = self.end_pending(&mut user, &row, "PROVIDER_BINDING_UNAVAILABLE", false)
             {
@@ -1138,7 +1160,7 @@ impl RunAdmissions {
             self.update(&row, "settled", false)?;
             return Ok(true);
         };
-        let mut prepared = frozen.prepared(access)?;
+        let mut prepared = prepare_frozen(&frozen, access)?;
         prepared.accepted_workspace_goal = find_turn(&handle.lock().unwrap(), &row)
             .and_then(|turn| turn.domain.workspace_goal_update.clone());
         let mut port = workspace_registry::NetworkRunPort::resume(
@@ -1774,5 +1796,74 @@ fn validate_frozen(
         Ok(())
     } else {
         Err(fault("RUN_INPUT_INCOMPLETE", "conflict"))
+    }
+}
+
+#[cfg(test)]
+mod model_settings_tests {
+    use super::*;
+
+    #[test]
+    fn model_settings_resolved_and_full_catalog_keep_explicit_protocols_in_status_and_save() {
+        let root=tempfile::tempdir().unwrap();
+        let access=Authorization::new(crate::user_registry::UserRegistry::open(root.path()).unwrap()).unwrap();
+        let config=ProviderConfig::from_values("native","initial-key","http://127.0.0.1:11434","local-one").unwrap();
+        let mut settings=ModelSettings::from_legacy(&config);
+        settings.services[0].auth=runtime::model_settings::AuthMethod::None;
+        settings.services[0].api_key.clear();
+        settings.models[0].api_protocol=runtime::model_settings::ApiProtocol::OllamaChat;
+        settings.models[0].agent_reasoning_effort=None;
+        settings.models[0].capabilities.native_tools=Some(true);
+        access.runs.configure(settings.resolve(ModelPurpose::Agent).unwrap()).unwrap();
+        let single=access.runs.model_settings_status();
+        assert_eq!(single["settings"]["models"][0]["api_protocol"],"ollama_chat");
+        assert_eq!(single["settings"]["services"][0]["auth"],"none");
+        let mut second=settings.models[0].clone();second.id="teacher".into();second.model_id="local-teacher".into();
+        settings.models.push(second);settings.bindings.teaching=Some("teacher".into());
+        access.runs.configure_model_catalog(settings).unwrap();
+        let before=access.runs.model_settings_status();
+        assert_eq!(before["source"],"environment");
+        assert_eq!(before["settings"]["models"].as_array().unwrap().len(),2);
+        let saved=access.runs.save_model_settings(serde_json::from_value(before["settings"].clone()).unwrap(),&access.spend).unwrap();
+        assert_eq!(saved["source"],"settings");
+        assert_eq!(saved["settings"]["models"][0]["api_protocol"],"ollama_chat");
+        assert_eq!(access.runs.coach_provider_binding().unwrap()["model"],"local-teacher");
+        assert_eq!(access.runs.provider.lock().unwrap().as_ref().unwrap().config.as_ref().unwrap().options.auth,runtime::model_settings::AuthMethod::None);
+    }
+
+    #[test]
+    fn model_settings_original_bindings_survive_default_changes_and_restart() {
+        let root=tempfile::tempdir().unwrap();
+        let access=Authorization::new(crate::user_registry::UserRegistry::open(root.path()).unwrap()).unwrap();
+        let config=ProviderConfig::from_values("native","private-key","https://models.example/v1","first").unwrap();
+        access.runs.configure(config.clone()).unwrap();
+        let legacy_binding=access.runs.provider.lock().unwrap().as_ref().unwrap().binding.clone();
+        let settings=ModelSettings::from_legacy(&config);
+        access.runs.save_model_settings(settings,&access.spend).unwrap();
+        let frozen=access.runs.provider.lock().unwrap().as_ref().unwrap().binding.clone();
+        let mut update=access.runs.model_settings.lock().unwrap().as_ref().unwrap().settings.clone();
+        let mut teacher=update.models[0].clone();teacher.id="teacher".into();teacher.model_id="feedback".into();
+        update.models.push(teacher);update.bindings.teaching=Some("teacher".into());
+        update.models[0].model_id="second".into();update.services[0].api_key.clear();
+        let value=access.runs.save_model_settings(update,&access.spend).unwrap();
+        assert!(!value.to_string().contains("private-key"));
+        assert_eq!(access.runs.coach_provider_binding().unwrap()["model"],"feedback");
+        assert_eq!(access.runs.provider.lock().unwrap().as_ref().unwrap().binding.model,"second");
+        assert_eq!(access.runs.provider_for_binding(&frozen).unwrap().unwrap().binding,frozen);
+        assert!(access.runs.provider_for_binding(&legacy_binding).unwrap().is_some());
+        let writer=access.runs.state.lock().unwrap().control.writer.clone();
+        let restored=RunAdmissions::with_limits(ControlStore::open(writer).unwrap(),access.runs.limits.clone());
+        assert!(restored.load_model_settings().unwrap());
+        assert_eq!(restored.provider_for_binding(&frozen).unwrap().unwrap().binding,frozen);
+        let teacher_binding=access.runs.coach_provider_binding().unwrap();
+        assert_eq!(restored.teaching_adapter_for_binding(Some(&teacher_binding)).unwrap().model_runtime_profile().matched_model,"feedback");
+        let mut missing=frozen.clone();missing.configuration.as_mut().unwrap().revision=99;
+        assert!(restored.provider_for_binding(&missing).unwrap().is_none());
+        // A failed file replacement leaves the last applied model usable.
+        std::fs::create_dir(root.path().join("model-settings.json.tmp")).unwrap();
+        let mut update=restored.model_settings.lock().unwrap().as_ref().unwrap().settings.clone();
+        update.models[0].model_id="never-applied".into();
+        assert!(restored.save_model_settings(update,&access.spend).is_err());
+        assert_eq!(restored.provider.lock().unwrap().as_ref().unwrap().binding.model,"second");
     }
 }

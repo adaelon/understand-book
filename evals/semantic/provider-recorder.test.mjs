@@ -53,6 +53,9 @@ test('native Messages preserves wire bytes, tools and cumulative cached usage wi
 test('cost purposes follow system signatures, preserve unknown and missing usage', () => {
   const request = content => ({ messages: [{ role: 'system', content }] });
   assert.equal(requestPurpose(request('source_answer_repair.v3\ncontract')), 'source_repair');
+  assert.equal(requestPurpose({ system: [{ type: 'text', text: 'source_answer_repair.v5\nReturn one revised final answer' }] }), 'source_repair');
+  assert.equal(requestPurpose(request('You are the resident learning agent. The active turn may include a real reading material')), 'business_loop');
+  assert.equal(requestPurpose({ messages: [{ role: 'user', content: 'source_answer_repair.v5' }] }), 'unclassified');
   assert.equal(requestPurpose(request('You are the resident reading agent for the current book.\nfinalization_sampling.v1')), 'finalization');
   assert.equal(requestPurpose({ messages: [{ role: 'user', content: 'source_answer_repair.v3' }] }), 'unclassified');
   assert.equal(requestPurpose(request('unknown')), 'unclassified');

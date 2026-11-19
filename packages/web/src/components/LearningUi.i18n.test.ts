@@ -55,6 +55,21 @@ it('localizes practice recovery, pause, changed-goal and completion states', asy
   await w.setProps({state:{...practice,course:false,status:'complete'}});
   expect(w.text()).toContain('Return to learning'); expect(w.text()).not.toContain('Return to lesson');
 });
+it('shows neutral loading and retry until a saved practice is known', async () => {
+  const w=renderPractice(null);
+  await w.setProps({restoring:true});
+  expect(w.find('h1').exists()).toBe(false);
+  expect(w.get('[role=status]').attributes('aria-label')).toBe('Loading');
+  expect(w.findAll('button')).toHaveLength(0);
+  await w.get('dialog').trigger('cancel');expect(w.emitted('leave')).toBeUndefined();
+  await w.setProps({error:'Offline'});
+  expect(w.get('[role=alert]').text()).toContain('Your learning could not be restored. Please retry.');
+  expect(w.text()).not.toContain('practice');
+  await w.get('button').trigger('click');expect(w.emitted('retry')).toHaveLength(1);
+  await w.setProps({restoring:false,error:'',state:practice});
+  expect(w.get('h1').text()).toBe('Practice to mastery');
+  expect(w.find('textarea').exists()).toBe(true);
+});
 it('localizes question scaffolding and leaves inserted learner text unchanged', async () => {
   const w=mount(CourseQuestions,{props:{expressions:[],resolved:[]}});mounted.push(w);
   expect(w.attributes('aria-label')).toBe('My questions');

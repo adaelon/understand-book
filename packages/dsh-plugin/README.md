@@ -2,6 +2,8 @@
 
 在 DeepSeek Harness 中确认并执行 Understand Book 的标准预构建计划。DSH 提供模型和原生 child；Build Engine 负责计划、预算、候选接纳、质量门和发布。
 
+独立标准预构建只需要本适配器与公共 Build Engine，不需要 `understand-book-maintenance` 或云端服务。下文运营后台任务、个人资料计量和共享发布属于云端集成；其中的发布器与服务凭据不是普通本地构建的前置条件。
+
 当前提供 Windows x64 预发布包 `0.1.0-rc.3`，增加课程构建入口，支持合同仍为官方 DSH Desktop `0.1.7-rc.2`。插件与 Engine 分开交付，运行时不需要源码仓库或全局 Node/Bun/Cargo。课程流程已通过受控候选验证，详见课程构建记录。真实模型完整构建与语义质量验收仍属于 DH6 后续工作。
 
 ## Windows Desktop 安装
@@ -98,7 +100,7 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 
 音乐任务不需要配置 Codex、Whisper 或视频暂存发布器。FFmpeg / FFprobe 按现有媒体工具规则读取；已有运营 `video.ffmpegExecutable`、`video.ffprobeExecutable` 也可作为明确的媒体工具路径。任务保留统一平台预算，本地导入、谱面渲染、接纳标注不会创建供应商模型调用回执；用户实际伴听时的模型费用继续走既有运行时计费。
 
-`node apps/desktop/scripts/build-sidecar.mjs` 同时准备 Engine 相邻 `resources/music/`。Verovio 6.3.0 的 ESM/WASM 模块以可替换文件分发，附原始许可、确切对应源码及构建/替换说明；`resources/music/NOTICE.txt` 是谱面使用的 Leipzig 字体版权与 OFL 许可。部署时保留整个目录，不能只复制 `.exe`。首次构建会从官方来源取得固定版本源码与许可并缓存到 `target/dependencies/verovio-6.3.0`，后续构建复用缓存。
+`node scripts/desktop/build-sidecar.mjs` 将公共 Engine 写入 `dist/build-engine/<目标平台>/`，同时准备相邻 `resources/music/`。Verovio 6.3.0 的 ESM/WASM 模块以可替换文件分发，附原始许可、确切对应源码及构建/替换说明；`resources/music/NOTICE.txt` 是谱面使用的 Leipzig 字体版权与 OFL 许可。部署时保留整个目录，不能只复制主程序。首次构建会从官方来源取得固定版本源码与许可并缓存到 `target/dependencies/verovio-6.3.0`，后续构建复用缓存。
 
 本地音乐校准工作台通过同一 Engine 的 `music-calibrate --book-dir <workspace> --revision-file <revision.json>` 保存修订，保留前后记录、已有来源和候选状态；已发布目录禁止原地校准。该本地命令不创建新队列或模型费用，校准后的共享版本仍沿原发布流程生成。
 

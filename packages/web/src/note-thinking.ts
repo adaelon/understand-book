@@ -2,7 +2,7 @@ import { ref } from 'vue';
 import { emptyNoteContext, noteRequest, pendingNoteSource, noteSourceError, type NoteContext, type NoteRef } from './personal-notes';
 import type { TeachingTarget } from './generated/TeachingTarget';
 import { api as sharedApi } from './api';
-import { bindSceneApi } from './network-context';
+import { bindSceneApi } from './reader-context';
 
 export interface UnderstandingReference { note_id?: string; workspace_id: string | null; evidence_ref: string }
 export interface UnderstandingSummary {

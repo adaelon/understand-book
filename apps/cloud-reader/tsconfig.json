@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "declaration": false,
+    "resolveJsonModule": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": ["vite/client"],
+    "jsx": "preserve",
+    "paths": {
+      "@understand-book/web/reader/*": ["../../packages/web/src/*"],
+      "@understand-book/core/src/*": ["../../packages/core/src/*"]
+    }
+  },
+  "include": ["src", "../../packages/web/src/env.d.ts"]
+}

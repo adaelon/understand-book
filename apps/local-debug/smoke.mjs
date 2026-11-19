@@ -1,17 +1,33 @@
 // Exercises the packaged native WebView, real local server and persisted settings.
-// Close each native window when READY_FOR_CLOSE appears to verify clean shutdown.
+// Also accepts an installed local edition: --edition local --executable <path> --out <fresh directory>.
+// Windows closes through the normal OS window message; --manual-close keeps the interactive workflow.
 import { chromium, expect } from '@playwright/test';
-import { spawn } from 'node:child_process';
+import { spawn, execFile } from 'node:child_process';
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import assert from 'node:assert/strict';
+import { parseArgs, promisify } from 'node:util';
 
 const repo = fileURLToPath(new URL('../../', import.meta.url));
-const root = await mkdtemp(path.join(repo, 'target/local-debug-smoke-'));
+const { values: options } = parseArgs({ options: {
+  edition: { type: 'string', default: 'debug' },
+  executable: { type: 'string' },
+  out: { type: 'string' },
+  'manual-close': { type: 'boolean', default: false },
+  'legacy-debug': { type: 'boolean', default: false },
+} });
+assert(['debug', 'local'].includes(options.edition), '--edition must be debug or local');
+assert(!options['legacy-debug'] || options.edition === 'debug', '--legacy-debug is only for an existing pre-split Debug package');
+assert(options.edition !== 'local' || options.executable, '--executable must identify the installed local application');
+const executable = path.resolve(options.executable ?? path.join(repo, 'dist/UnderstandBookLocalDebug/UnderstandBookLocalDebug.exe'));
+const root = options.out ? path.resolve(options.out) : await mkdtemp(path.join(repo, 'target/local-desktop-smoke-'));
+await mkdir(root, { recursive: true });
 const data = path.join(root, 'data');
 const book = path.join(root, 'book');
+// A fresh directory is part of the first-use assertion. Keep earlier evidence intact.
 await mkdir(book);
 const source = '本地阅读验证\n资料保存在自己的电脑上，阅读记录可以在重新打开后继续使用。\n';
 await writeFile(path.join(book, 'source.txt'), source);
@@ -26,10 +42,19 @@ const model = createServer(async (req, res) => {
 });
 await new Promise(resolve => model.listen(0, '127.0.0.1', resolve));
 const baseUrl = `http://127.0.0.1:${model.address().port}/v1`;
-const env = { ...process.env, UNDERSTAND_BOOK_DEBUG_DATA_DIR: data };
-for (const key of ['OPENCODE_API_KEY', 'OPENCODE_BASE_URL', 'FLUID_LLM_MODEL', 'UNDERSTAND_BOOK_PROVIDER', 'UNDERSTAND_BOOK_BUILD_SIDECAR']) delete env[key];
+const env = { ...process.env, [options.edition === 'local' ? 'UNDERSTAND_BOOK_LOCAL_DATA_DIR' : 'UNDERSTAND_BOOK_DEBUG_DATA_DIR']: data };
+for (const key of ['OPENCODE_API_KEY', 'OPENCODE_BASE_URL', 'FLUID_LLM_MODEL', 'UNDERSTAND_BOOK_PROVIDER', 'UNDERSTAND_BOOK_MODEL_SETTINGS', 'UNDERSTAND_BOOK_MODEL_CONFIG_ID', 'UNDERSTAND_BOOK_BUILD_SIDECAR', 'UNDERSTAND_BOOK_NODE', 'UNDERSTAND_BOOK_STAGE_RUNNER']) delete env[key];
+if (process.platform === 'win32' && options.edition === 'local') {
+  for (const key of Object.keys(env)) if (key.toUpperCase() === 'PATH') delete env[key];
+  env.PATH = `${process.env.SystemRoot}\\System32;${process.env.SystemRoot}`;
+}
 const remoteRequests = [];
+const pageErrors = [];
+const draftText = '关闭应用后继续写的本地草稿。';
+const execute = promisify(execFile);
 let child;
+let activePage;
+let applicationOutput = '';
 try {
   for (let run = 1; run <= 2; run++) {
     const cdp = createServer();
@@ -38,60 +63,113 @@ try {
     await new Promise(resolve => cdp.close(resolve));
     env.WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS = `--remote-debugging-port=${cdpPort}`;
     let output = '';
-    child = spawn(path.join(repo, 'dist/UnderstandBookLocalDebug/UnderstandBookLocalDebug.exe'), run === 1 ? [book] : [], {
+    applicationOutput = '';
+    child = spawn(executable, options.edition === 'debug' && run === 1 ? [book] : [], {
       env, cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     });
-    child.stderr.on('data', chunk => { output += chunk; });
+    child.stderr.on('data', chunk => { output += chunk; applicationOutput = output; });
+    child.stdout.on('data', chunk => { output += chunk; applicationOutput = output; });
+    let spawnError;
+    child.once('error', error => { spawnError = error; });
     const exited = new Promise(resolve => child.once('exit', resolve));
     await expect.poll(async () => {
+      if (spawnError) throw spawnError;
       if (child.exitCode !== null) throw new Error(output);
-      try { return (await fetch(`http://127.0.0.1:${cdpPort}/json/version`)).ok; } catch { return false; }
+      try {
+        const targets = await (await fetch(`http://127.0.0.1:${cdpPort}/json/list`)).json();
+        return targets.some(target => target.type === 'page' && /^http:\/\/(tauri\.localhost|127\.0\.0\.1:)/.test(target.url));
+      } catch { return false; }
     }, { timeout: 45000 }).toBe(true);
     const browser = await chromium.connectOverCDP(`http://127.0.0.1:${cdpPort}`);
     const context = browser.contexts()[0];
-    await expect.poll(() => context.pages().length).toBeGreaterThan(0);
-    const page = context.pages()[0];
+    await expect.poll(() => context.pages().some(page => /^http:\/\/(tauri\.localhost|127\.0\.0\.1:)/.test(page.url())), {
+      timeout: 45000, message: 'The native WebView must finish its initial navigation before interaction',
+    }).toBe(true);
+    const page = context.pages().find(page => /^http:\/\/(tauri\.localhost|127\.0\.0\.1:)/.test(page.url()));
+    assert(page, 'The native application page must exist');
+    activePage = page;
+    page.on('pageerror', error => pageErrors.push(error.message));
     page.setDefaultTimeout(15000);
     await context.route('**/*', route => {
       const url = new URL(route.request().url());
-      if (['http:', 'https:'].includes(url.protocol) && !['127.0.0.1', 'localhost', 'ipc.localhost'].includes(url.hostname)) {
+      if (['http:', 'https:'].includes(url.protocol) && !['127.0.0.1', 'localhost', 'ipc.localhost', 'tauri.localhost'].includes(url.hostname)) {
         remoteRequests.push(url.origin); return route.abort();
       }
       return route.continue();
     });
-    await expect.poll(() => page.url()).toMatch(/^http:\/\/127\.0\.0\.1:/);
+    if (options.edition === 'local' && run === 1) {
+      await page.getByRole('button', { name: '开始阅读', exact: true }).waitFor();
+      await page.screenshot({ path: path.join(root, 'first-run.png') });
+      await page.getByRole('button', { name: '开始阅读', exact: true }).click();
+    }
+    await expect.poll(async () => {
+      const startupError = page.locator('#startup-error');
+      if (await startupError.isVisible()) throw new Error(await startupError.innerText());
+      return page.url();
+    }, { timeout: 45000 }).toMatch(/^http:\/\/127\.0\.0\.1:/);
     await page.reload();
-    await expect(page.locator('.reader-pane')).toBeVisible();
+    await expect(page.locator('.reader-pane')).toBeVisible({ timeout: 15000 });
     const url = new URL(page.url()).origin;
     async function api(endpoint, body) {
       const response = await fetch(url + '/api' + endpoint, body === undefined ? {} : { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
       const result = await response.json();
       assert.equal(response.ok, true, JSON.stringify(result)); return result;
     }
+    if (options.edition === 'local' && run === 1) {
+      await api('/book/open', { dir: book });
+      await page.reload();
+      await expect(page.locator('.reader-pane')).toBeVisible({ timeout: 15000 });
+      await page.getByRole('button', { name: '跳过引导', exact: true }).click();
+    }
     const status = await api('/desktop/status');
     assert.equal(status.desktop_host, true); assert.equal(status.reader_only, false);
     assert.equal(status.book_dir, book);
     assert.equal((await api('/book/manifest')).tree[0].lid, '1');
+    // A new loopback origin can show the existing first-use tour again on restart.
+    const skipTour = page.getByRole('button', { name: '跳过引导', exact: true });
+    if (await skipTour.isVisible()) await skipTour.click();
     if (run === 1) {
       const initial = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('desktop_provider_status'));
       assert.equal(initial.configured, false);
       await page.getByRole('button', { name: '更多阅读工具', exact: true }).click();
       await page.getByRole('button', { name: '打开桌面设置', exact: true }).click();
-      await expect(page.getByText('本地构建引擎', { exact: true })).toBeVisible();
-      await expect(page.getByText('已就绪', { exact: true })).toBeVisible();
-      await expect(page.getByRole('button', { name: '安装或重试', exact: true })).toHaveCount(0);
+      const capabilities = await page.evaluate(() => window.__UNDERSTAND_BOOK_LOCAL__);
+      if (!options['legacy-debug']) assert.equal(capabilities?.noteDrafts, true, 'Native drafts must be declared by both local hosts');
+      if (capabilities?.managedBuildEngine || options['legacy-debug']) {
+        await expect(page.getByText('本地构建引擎', { exact: true })).toBeVisible();
+        await expect(page.getByText('已就绪', { exact: true })).toBeVisible();
+        await expect(page.getByRole('button', { name: '安装或重试', exact: true })).toHaveCount(0);
+      }
       await expect(page.getByText('尚未配置', { exact: true })).toBeVisible();
+      if (!options['legacy-debug']) await page.getByRole('button', { name: '添加模型服务', exact: true }).click();
       await page.getByLabel('服务地址', { exact: true }).fill(baseUrl);
-      await page.getByLabel('模型名称', { exact: true }).fill('local-smoke-model');
+      const modelIdLabel = options['legacy-debug'] ? '模型名称' : '模型 ID';
+      await page.getByLabel(modelIdLabel, { exact: true }).fill('local-smoke-model');
+      if (!options['legacy-debug']) await page.getByTestId('model-native-tools').selectOption({ label: '支持' });
       await page.getByLabel('API Key', { exact: true }).fill('local-test-key');
       await page.getByRole('button', { name: '保存并应用', exact: true }).click();
       await expect(page.getByText('已保存并应用', { exact: true })).toBeVisible();
       await expect(page.getByLabel('服务地址', { exact: true })).toHaveValue(baseUrl);
-      await expect(page.getByLabel('模型名称', { exact: true })).toHaveValue('local-smoke-model');
+      await expect(page.getByLabel(modelIdLabel, { exact: true })).toHaveValue('local-smoke-model');
+      if (!options['legacy-debug']) {
+        await page.getByRole('button', { name: '添加模型', exact: true }).click();
+        await page.getByLabel('模型 ID', { exact: true }).fill('local-feedback-model');
+        await page.getByTestId('model-native-tools').selectOption({ label: '支持' });
+        await page.getByText('按用途选择模型', { exact: true }).click();
+        await page.getByRole('combobox', { name: '教学与练习反馈', exact: true }).selectOption({ label: 'local-feedback-model' });
+        await page.getByRole('button', { name: '保存并应用', exact: true }).click();
+        await expect(page.getByText('已保存并应用', { exact: true })).toBeVisible();
+        const catalog = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('desktop_model_settings'));
+        assert.equal(catalog.settings.models.length, 2);
+        assert.equal(catalog.settings.models.find(model => model.id === catalog.settings.bindings.default_model).model_id, 'local-smoke-model');
+        assert.equal(catalog.settings.models.find(model => model.id === catalog.settings.bindings.teaching).model_id, 'local-feedback-model');
+        assert.equal(Object.hasOwn(catalog.settings.services[0], 'api_key'), false);
+        await writeFile(path.join(root, 'model-settings.json'), JSON.stringify(catalog, null, 2));
+      }
       await page.screenshot({ path: path.join(root, 'settings.png') });
       await page.getByRole('button', { name: '关闭设置', exact: true }).click();
       const { source_fingerprint } = await api('/book/source_fingerprint');
-      await api('/memory/save', { type: 'note', content: 'Local debug persistence proof',
+      await api('/memory/save', { type: 'note', content: 'Local desktop persistence proof',
         note_placement: { kind: 'lid_block', lid: '1', source_fingerprint } });
       const answer = await api('/agent/chat', { message: '你好，请回复一句问候即可。', response_language: 'zh-CN' });
       await writeFile(path.join(root, 'answer.json'), JSON.stringify(answer, null, 2));
@@ -99,22 +177,80 @@ try {
       assert.equal(answer.answer, '本地模型接口已接通。');
       assert.equal(answer.incomplete, false);
       console.log('MODEL_INTERFACE_OK', JSON.stringify(calls));
+      await page.getByRole('button', { name: '记一下', exact: true }).click();
+      await page.getByLabel('想法正文', { exact: true }).fill(draftText);
+      await expect.poll(async () => {
+        try { return (await readFile(path.join(data, 'personal-note-drafts.json'), 'utf8')).includes(draftText); }
+        catch { return false; }
+      }).toBe(true);
     } else {
       const saved = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('desktop_provider_status'));
       assert.equal(saved.source, 'settings'); assert.equal(saved.model, 'local-smoke-model');
+      if (!options['legacy-debug']) {
+        const catalog = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke('desktop_model_settings'));
+        assert.equal(catalog.settings.models.length, 2);
+        assert.equal(catalog.settings.models.find(model => model.id === catalog.settings.bindings.default_model).model_id, 'local-smoke-model');
+        assert.equal(catalog.settings.models.find(model => model.id === catalog.settings.bindings.teaching).model_id, 'local-feedback-model');
+        assert.equal(Object.hasOwn(catalog.settings.services[0], 'api_key'), false);
+      }
       const notes = await api('/memory/recall', { type: 'note' });
-      assert.ok(JSON.stringify(notes).includes('Local debug persistence proof'));
+      assert.ok(JSON.stringify(notes).includes('Local desktop persistence proof'));
+      await page.getByRole('button', { name: '记一下', exact: true }).click();
+      await expect(page.getByLabel('想法正文', { exact: true })).toHaveValue(draftText);
       console.log('RESTART_PERSISTENCE_OK');
     }
     assert.deepEqual(remoteRequests, []);
     await page.screenshot({ path: path.join(root, `reader-${run}.png`) });
+    if (run === 2) {
+      await page.setViewportSize({ width: 960, height: 720 });
+      await page.screenshot({ path: path.join(root, 'draft-narrow.png') });
+      await page.goto(`${url}/?lang=en`);
+      const backToReading = page.getByRole('button', { name: 'Back to reading', exact: true });
+      await expect.poll(async () => await backToReading.isVisible() || await page.locator('.reader-pane').isVisible()).toBe(true);
+      if (await backToReading.isVisible()) await backToReading.click();
+      await expect(page.locator('.reader-pane')).toBeVisible();
+      if (options.edition === 'local') {
+        await expect(page.getByRole('button', { name: 'Make a note', exact: true })).toBeVisible();
+      }
+      await page.screenshot({ path: path.join(root, 'reader-en-narrow.png') });
+    }
     console.log(`READY_FOR_CLOSE ${run} ${root}`);
+    if (process.platform === 'win32' && !options['manual-close']) {
+      const closed = await execute('powershell.exe', ['-NoProfile', '-Command',
+        `(Get-Process -Id ${child.pid}).CloseMainWindow()`], { windowsHide: true });
+      assert.equal(closed.stdout.trim(), 'True', 'The application must receive a normal window close request');
+    }
+    await expect.poll(() => child.exitCode, { timeout: 45000 }).not.toBeNull();
     await exited;
     assert.equal(child.exitCode, 0, output);
-    await expect.poll(async () => { try { await fetch(url + '/api/desktop/status'); return true; } catch { return false; } }).toBe(false);
+    // Check a fresh TCP connection. A pooled HTTP request can stall on a socket
+    // from the previous view even after the embedded listener has exited.
+    const port = Number(new URL(url).port);
+    await expect.poll(() => new Promise((resolve, reject) => {
+      const socket = connect(port, '127.0.0.1');
+      socket.once('connect', () => { socket.destroy(); resolve(true); });
+      socket.once('error', error => error.code === 'ECONNREFUSED' ? resolve(false) : reject(error));
+    }), { message: `The installed reader listener on port ${port} must close` }).toBe(false);
     await expect.poll(async () => { try { await readFile(path.join(data, 'debug-session.json')); return true; } catch { return false; } }).toBe(false);
     console.log(`CLEAN_SHUTDOWN_OK ${run}`);
+    await writeFile(path.join(root, `application-${run}.log`), output);
   }
-  await writeFile(path.join(root, 'result.json'), JSON.stringify({ result: 'passed', remoteRequests, modelCalls: calls, tested: ['native reader', 'settings form', 'local model HTTP', 'note persistence', 'restart', 'clean shutdown'] }, null, 2));
+  assert.deepEqual(pageErrors, []);
+  await writeFile(path.join(root, 'result.json'), JSON.stringify({ result: 'passed', edition: options.edition, executable, remoteRequests, pageErrors, modelCalls: calls, tested: ['native reader', 'settings form', 'local model HTTP (controlled endpoint)', 'note persistence', 'unsaved native draft', 'restart', 'normal window close', 'service shutdown'] }, null, 2));
   console.log('PASS', root);
+} catch (error) {
+  if (activePage && !activePage.isClosed()) {
+    await activePage.screenshot({ path: path.join(root, 'failure.png') }).catch(() => {});
+    await writeFile(path.join(root, 'failure-page.txt'), await activePage.locator('body').innerText().catch(() => '')).catch(() => {});
+    if (/^http:\/\/127\.0\.0\.1:/.test(activePage.url())) {
+      const origin = new URL(activePage.url()).origin;
+      for (const endpoint of ['book/manifest', 'desktop/status']) {
+        const body = await fetch(`${origin}/api/${endpoint}`, { signal: AbortSignal.timeout(5000) }).then(response => response.text()).catch(error => error.message);
+        await writeFile(path.join(root, `failure-${endpoint.replace('/', '-')}.json`), body);
+      }
+    }
+  }
+  await writeFile(path.join(root, 'failure-application.log'), applicationOutput);
+  await writeFile(path.join(root, 'failure.json'), JSON.stringify({ message: error.message, stack: error.stack, remoteRequests, pageErrors, modelCalls: calls }, null, 2));
+  throw error;
 } finally { if (child?.exitCode === null) child.kill(); model.close(); }

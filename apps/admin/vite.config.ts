@@ -1,11 +1,12 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import vue from "@vitejs/plugin-vue";
 import tailwind from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 
 export default defineConfig({
   base: "/admin/",
-  plugins: [react(), tailwind()],
+  plugins: [react(), vue(), tailwind()],
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
   server: {
     proxy: {

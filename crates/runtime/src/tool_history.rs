@@ -1,7 +1,27 @@
 //! Tool definitions retain their first declaration and activation position.
 //! Execution authority remains the current ToolExposurePlan, never this history.
-use crate::{deepseek_messages::{ToolDeclaration, ToolHistoryProjection, ToolUpdate, ToolUpdateMode}, AgentRequestPlan, Message, ToolSpec};
+use crate::{deepseek_messages::ToolUpdateMode, AgentRequestPlan, Message, ToolSpec};
 use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ToolDeclaration {
+    pub spec: ToolSpec,
+    pub defer_loading: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ToolUpdate {
+    /// Before request.input[index]; input.len() means after its last message.
+    pub message_index: usize,
+    pub added: Vec<String>,
+    pub removed: Vec<String>,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ToolHistoryProjection {
+    pub declarations: Vec<ToolDeclaration>,
+    pub updates: Vec<ToolUpdate>,
+}
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct ToolDeclarationHistory {

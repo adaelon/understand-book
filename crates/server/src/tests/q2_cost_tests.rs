@@ -6,14 +6,14 @@ use runtime::{
 use serde_json::{json, Value};
 use std::time::Duration;
 
-fn identity(call: &str, scope: ChargeScope) -> SendIdentity {
+pub fn identity(call: &str, scope: ChargeScope) -> SendIdentity {
     SendIdentity {
         call_id: call.into(), logical_call_id: call.into(), attempt: 1,
         scope: Some(scope), purpose: "prebuild".into(),
         model: "fixture-model".into(), provider: "fixture".into(),
     }
 }
-fn usage(tokens: u32, succeeded: bool) -> SendOutcome {
+pub fn usage(tokens: u32, succeeded: bool) -> SendOutcome {
     SendOutcome {
         evidence: SendEvidence::Response,
         usage: Some(ModelUsage {
@@ -23,16 +23,16 @@ fn usage(tokens: u32, succeeded: bool) -> SendOutcome {
         succeeded,
     }
 }
-fn request() -> Value {
+pub fn request() -> Value {
     json!({"model":"fixture-model","messages":[{"role":"user","content":"fixture"}],"max_tokens":100})
 }
-fn charge(f: &Fixture, call: &str) -> Value {
+pub fn charge(f: &Fixture, call: &str) -> Value {
     f.ok(&f.b, "GET", &format!("/api/admin/charges/{call}"), json!({}))
 }
-fn balance(f: &Fixture) -> Value {
+pub fn balance(f: &Fixture) -> Value {
     f.ok(&f.a, "GET", "/api/account/allowance", json!({}))["current_allowance"]["balance"].clone()
 }
-fn workspace(f: &Fixture, owner: &str, id: &str) {
+pub fn workspace(f: &Fixture, owner: &str, id: &str) {
     f.control.connection.execute(
         "INSERT INTO learning_workspaces(owner_user_id,learning_workspace_id,created_at,updated_at) VALUES(?,?,0,0)",
         rusqlite::params![owner, id],

@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { ArrowRight, Link2, LoaderCircle, Pencil, Plus, Trash2 } from '@lucide/vue';
 import { api as sharedApi } from '../api';
-import { bindSceneApi, readerKey } from '../network-context';
+import { bindSceneApi, readerKey } from '../reader-context';
 import { t as uiText } from '../i18n';
 import type { BoardItem } from '../generated/BoardItem';
 

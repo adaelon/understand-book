@@ -1,7 +1,9 @@
-import { network } from './network-context';
-import type { PublishedBookRef } from './network-context';
-import { getLocale, errorMessage } from './i18n';
-import { networkFetch, networkRequest, publishedUrl, workspaceAction } from './network-client';
+import { network } from './reader-context';
+import type { PublishedBookRef } from './reader-context';
+import { getLocale } from './i18n';
+import { hostFetch, readerRequest as http, publishedUrl, workspaceAction } from './reader-host';
+import { ApiError } from './api-error';
+export { ApiError } from './api-error';
 import { createReadingAction, recoverReadingAction, type PendingReadingAction } from './local-reading-action';
 import type { RunDescriptor, RunSnapshot, RunActivity } from "./agent-run-state";
 // 类型化命令面 REST 客户端 `[ADR-0028]`:前端经 `/api` dev proxy 打到 tiny_http。
@@ -1176,6 +1178,7 @@ export interface AgentQuestionQuoteView {
   label: string;
   quote: string;
   status?: SelectionResolution;
+  evidence_ranges?: EvidenceRange[];
 }
 export interface PendingBoardEdit {
   candidate_id?: string; candidate_revision: number; current_board_revision: number; item_ids: string[]; message: string; summary: string;
@@ -1189,8 +1192,11 @@ export interface AgentChatTurn {
   board_delivery_error?: { error_code: string; category: string; message: string } | null;
   music_question?: import('./music-api').MusicQuestionContext | null;
   video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
-  published_book_ref?: import('./network-context').PublishedBookRef | null;
-  domain?: { personal_notes?: { references: import("./generated/NoteRef").NoteRef[]; adopted_references?: import("./generated/NoteRef").NoteRef[] } | null; workspace_goal_update?: import('./network-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[] };
+  published_book_ref?: import('./reader-context').PublishedBookRef | null;
+  domain?: {
+    local_agent?: { id: string; name: string };
+    personal_notes?: { references: import("./generated/NoteRef").NoteRef[]; adopted_references?: import("./generated/NoteRef").NoteRef[] } | null; workspace_goal_update?: import('./reader-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[];
+  };
   teaching_ref?: string | null;
   pending_board_edit?: PendingBoardEdit | null;
   presentation_follow_up?: import('./generated/PresentationFollowUp').PresentationFollowUp | null;
@@ -1322,6 +1328,7 @@ export interface LearningEvidenceView {
 }
 export interface UnderstandingTimeline { entries: LearningEvidenceView[]; next: number | null; order: 'oldest_first' }
 export interface AgentChatMeta {
+  local_agent_id?: string;
   course_context?: { run_id: string; revision: number; surface: 'course' | 'source' | 'experiment'; exploration?: import('./generated/CourseResourceState').CourseResourceState };
   knowledge_focus?: {reference:import('./generated/KnowledgeReference').KnowledgeReference;node_id:string};
   understanding_ref?: import('./note-thinking').UnderstandingReference;
@@ -1395,46 +1402,12 @@ export interface SourcePopupView {
   excerpt?: { text: string; highlight: { start: number; end: number } } | null;
   heading_path?: string[];
 }
+export interface EvidenceRange { start_lid: string; end_lid: string; ranges?: SelectedRange[] }
 export interface SourceOpenView {
   source_url?: string;
   source_ref_id: string;
   opened: boolean;
-}
-
-/** 携带 §4.4 分类信封的错误(category/error_code 供 UI 分流瞬时 vs 永久)。 */
-export class ApiError extends Error {
-  constructor(
-    public status: number,
-    public errorCode: string,
-    public category: string,
-    message: string,
-    public details?: { request_id?: string; expires_at?: number; resend_after?: number },
-  ) {
-    super(errorMessage(message, errorCode));
-    this.name = "ApiError";
-  }
-}
-
-async function http<T>(method: "GET" | "POST", path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
-  if (network.value.enabled) return networkRequest<T>(method, path, body, signal);
-  const init: RequestInit = { method, signal };
-  if (body !== undefined) {
-    init.headers = { "Content-Type": "application/json" };
-    init.body = JSON.stringify(body);
-  }
-  const res = await fetch(BASE + path, init);
-  const raw = await res.text();
-  const json: unknown = raw ? JSON.parse(raw) : null;
-  if (!res.ok) {
-    const e = json as ToolError | null;
-    throw new ApiError(
-      res.status,
-      e?.error_code ?? `HTTP_${res.status}`,
-      e?.category ?? "internal",
-      e?.message ?? raw,
-    );
-  }
-  return json as T;
+  evidence_range?: EvidenceRange;
 }
 
 function qs(params: Record<string, string | undefined>): string {
@@ -1446,7 +1419,7 @@ function qs(params: Record<string, string | undefined>): string {
 
 function notebookRequest<T>(operation: string, body: unknown, learningWorkspaceId?: string | null): Promise<T> {
   return network.value.enabled && learningWorkspaceId
-    ? networkFetch<T>('POST', `/learning-workspaces/${encodeURIComponent(learningWorkspaceId)}/notes/${operation}`, body)
+    ? hostFetch<T>('POST', `/learning-workspaces/${encodeURIComponent(learningWorkspaceId)}/notes/${operation}`, body)
     : http<T>('POST', `/notes/${operation}`, body);
 }
 
@@ -1476,8 +1449,8 @@ export const api = {
   // ── book.*(只读 GET)──
   manifest: () => http<Manifest>("GET", "/book/manifest"),
   bookLibrary: () => http<BookLibraryResponse>("GET", "/book/library"),
-  assetManifest: (reference?: import('./network-context').PublishedBookRef) => reference
-    ? networkFetch<AssetManifest>('GET', `/books/${encodeURIComponent(reference.book_id)}/publications/${encodeURIComponent(reference.publication_id)}/asset_manifest`)
+  assetManifest: (reference?: import('./reader-context').PublishedBookRef) => reference
+    ? hostFetch<AssetManifest>('GET', `/books/${encodeURIComponent(reference.book_id)}/publications/${encodeURIComponent(reference.publication_id)}/asset_manifest`)
     : http<AssetManifest>("GET", "/book/asset_manifest"),
   buildWorkbench: () => http<BuildWorkbenchSnapshot>("GET", "/book/build_workbench"),
   sourceManifest: async () => parseSourceManifestV2(
@@ -1679,6 +1652,10 @@ export const api = {
   disposeEffect: (body: { session_id: string; turn_id: string; effect_id: string; action: "keep" | "undo" | "dismiss" }) =>
     http<import("./effect-disposition").EffectDisposition>("POST", "/agent/effect/dispose", body),
   agentHistory: () => http<AgentHistoryResponse>("GET", "/agent/history"),
+  followUpPath: (sessionId: string) =>
+    http<{nodes: import('./follow-up-conversations').FollowUpNode[]}>('GET', `/agent/follow-ups?session_id=${encodeURIComponent(sessionId)}`),
+  createFollowUp: (request: import('./follow-up-conversations').FollowUpStart) =>
+    http<{session_id: string}>('POST', '/agent/follow-ups', request),
   sessionRecap: (session_id: string, through_seq?: number) =>
     http<import('./session-recap').SessionRecap>('GET', `/agent/history/recap?session_id=${encodeURIComponent(session_id)}${through_seq === undefined ? '' : `&through_seq=${through_seq}`}`),
   agentGoalCancel: (goal_id: string) =>

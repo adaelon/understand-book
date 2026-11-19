@@ -1,371 +1,11 @@
+pub use reader_service::tests::tutor_loop_tests::closed_book_tests::*;
 use super::*;
+#[path = "model_trial_budget.rs"]
+mod model_trial_budget;
 
-fn control(state: &mut AppState, action: &str, extra: Value) -> Value {
-    let chat = state
-        .workspace
-        .selected_chat
-        .clone()
-        .expect("the fixture opens a chat before practice");
-    let saved = state
-        .user
-        .learning_store()
-        .unwrap()
-        .closed_book(&chat, &state.workspace.book.base.book_id)
-        .unwrap();
-    let mut body = json!({"action":action,"chat_session_id":chat,"revision":saved.as_ref().map_or(0,|v|v.revision),"operation_id":uuid::Uuid::now_v7().to_string()});
-    body.as_object_mut()
-        .unwrap()
-        .extend(extra.as_object().unwrap().clone());
-    let reply = post(state, "/tutor/closed-book", &body.to_string());
-    assert_eq!(reply.status, 200, "{}", reply.body);
-    serde_json::from_str(&reply.body).unwrap()
-}
-
-fn exercise(state: &mut AppState, message: &str, decision: Value) -> Value {
-    let run = prepare_agent_chat(state, &json!({"message":message}).to_string(), "now")
-        .unwrap_or_else(|e| panic!("{}", e.body));
-    if decision["action"] != "start" {
-        assert_eq!(
-            run.tutor.as_ref().unwrap()["closed_book"]["status"],
-            "active"
-        );
-    }
-    let adapter = ChatStubAdapter::scripted(vec![call(
-        "tutor.step",
-        json!({"operation":"closed_book","closed_book":decision}),
-    )]);
-    let result = agent_run::execute_prepared(
-        &agent_run::BorrowedAppPort(RefCell::new(state)),
-        &adapter,
-        run,
-        Default::default(),
-    );
-    assert_eq!(result.reply.status, 200, "{}", result.reply.body);
-    control(state, "state", json!({}))
-}
 
 #[test]
-fn closed_book_selected_explanation_is_frozen_even_after_a_newer_answer() {
-    let (_root,mut state)=fixture_with_assets(false);
-    post(&mut state,"/agent/new","{}");
-    let mut turn_ids=Vec::new();
-    for (question,text) in [("停车为什么影响全程平均速度？","全程总时间包含停车，距离不变时总时间增加会降低平均速度。"),
-        ("怎样比较资源下界？","比较计算与读取两项时间下限。")] {
-        let run=prepare_agent_chat(&mut state,&json!({"message":question}).to_string(),"now").unwrap_or_else(|reply|panic!("{}",reply.body));
-        turn_ids.push(run.turn_ref.turn_id.clone());
-        let adapter=ChatStubAdapter::scripted(vec![answer(text)]);
-        let result=agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,run,Default::default());
-        assert_eq!(result.reply.status,200,"{}",result.reply.body);
-    }
-    let started=control(&mut state,"start",json!({"answer_turn_id":turn_ids[0],"target":"解释刚才内容"}));
-    assert_eq!(started["target"],"停车为什么影响全程平均速度？");
-    assert_eq!(started["answer_origin"]["turn_id"],turn_ids[0]);
-    assert!(started["answer_origin"]["answer"].as_str().unwrap().contains("包含停车"));
-    assert!(!started["answer_origin"]["answer"].as_str().unwrap().contains("资源"));
-    let run=prepare_agent_chat(&mut state,&json!({"message":"开始练习"}).to_string(),"now").unwrap_or_else(|reply|panic!("{}",reply.body));
-    assert_eq!(run.tutor.as_ref().unwrap()["closed_book"]["answer_origin"],started["answer_origin"]);
-}
-
-#[test]
-fn closed_book_controls_replay_committed_operations_before_revision_checks() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    let chat = state.workspace.selected_chat.clone().unwrap();
-    let start = json!({"action":"start","chat_session_id":chat,"revision":0,
-        "operation_id":"lost-start-response","target":"全程平均速度"});
-    let first = post(&mut state, "/tutor/closed-book", &start.to_string());
-    assert_eq!(first.status, 200, "{}", first.body);
-    let started: Value = serde_json::from_str(&first.body).unwrap();
-    let replay = post(&mut state, "/tutor/closed-book", &start.to_string());
-    assert_eq!(replay.status, 200, "{}", replay.body);
-    assert_eq!(serde_json::from_str::<Value>(&replay.body).unwrap(), started);
-
-    let pause = json!({"action":"pause","chat_session_id":chat,"revision":started["revision"],
-        "operation_id":"lost-pause-response","draft":"全程时间包含停车"});
-    let first = post(&mut state, "/tutor/closed-book", &pause.to_string());
-    assert_eq!(first.status, 200, "{}", first.body);
-    let paused: Value = serde_json::from_str(&first.body).unwrap();
-    let resumed = control(&mut state, "resume", json!({"draft":"全程时间从出发到抵达"}));
-    let replay = post(&mut state, "/tutor/closed-book", &pause.to_string());
-    assert_eq!(replay.status, 200, "{}", replay.body);
-    assert_eq!(serde_json::from_str::<Value>(&replay.body).unwrap(), paused);
-    assert_eq!(control(&mut state, "state", json!({})), resumed,
-        "replaying an older receipt must not overwrite newer progress or drafts");
-
-    let mut stale = pause;
-    stale["operation_id"] = json!("new-operation-with-stale-revision");
-    let rejected = post(&mut state, "/tutor/closed-book", &stale.to_string());
-    assert_eq!(rejected.status, 409, "{}", rejected.body);
-    let failure: Value = serde_json::from_str(&rejected.body).unwrap();
-    assert_eq!(failure["error_code"], "CLOSED_BOOK_REVISION_CONFLICT");
-    assert_eq!(control(&mut state, "state", json!({})), resumed);
-
-    post(&mut state, "/agent/new", "{}");
-    let mut other_chat = start;
-    other_chat["chat_session_id"] = json!(state.workspace.selected_chat);
-    let rejected = post(&mut state, "/tutor/closed-book", &other_chat.to_string());
-    assert_eq!(rejected.status, 400, "{}", rejected.body);
-    assert!(control(&mut state, "state", json!({})).is_null());
-}
-
-#[test]
-fn closed_book_spoken_start_and_stop_use_the_same_durable_resident_path() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    let started = exercise(
-        &mut state,
-        "开启闭卷练到会，练习刚讲过的全程平均速度。",
-        json!({
-        "action":"start","learner_quote":"开启闭卷练到会","target":"解释全程平均速度","criteria":"说明总时间的范围",
-        "text":"出发与到达之间有一次停留，你会怎样确定全程平均速度所用的时间？","provides_help":false,"reason":"用户明确开启"}),
-    );
-    assert_eq!(started["status"], "active");
-    let paused = exercise(
-        &mut state,
-        "暂停一下",
-        json!({"action":"pause","text":"已经暂停，回来可以接着回答。","provides_help":false,"reason":"用户要求暂停"}),
-    );
-    assert_eq!(paused["status"], "paused");
-    assert_eq!(paused["needs_retry"], false);
-    control(&mut state, "resume", json!({}));
-    let ended = exercise(
-        &mut state,
-        "先不练了，回去看看原文",
-        json!({"action":"exit","text":"已保留当前进度，可以回去看资料了。","provides_help":false,"reason":"用户要求结束并查阅"}),
-    );
-    assert_eq!(ended["status"], "ended");
-    assert_eq!(ended["needs_retry"], true);
-    assert_eq!(ended["completion_reason"], "");
-}
-
-#[test]
-fn closed_book_does_not_count_prepared_or_interrupted_delivery() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    control(&mut state, "start", json!({"target":"全程平均速度"}));
-    for interrupted in [true, false] {
-        let run = prepare_agent_chat(&mut state, r#"{"message":"开始提问"}"#, "now")
-            .unwrap_or_else(|e| panic!("{}", e.body));
-        teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"closed_book","closed_book":{
-            "action":"question","criteria":"完整时间范围","text":"总时间包括什么？","provides_help":false,"reason":"初次邀请"}}),&[],&[]).unwrap();
-        assert_eq!(
-            control(&mut state, "state", json!({}))["visible_turn_ids"],
-            json!([])
-        );
-        if !interrupted {
-            control(&mut state, "pause", json!({}));
-        }
-        let mut delivered = outcome(None);
-        delivered.incomplete = interrupted;
-        finish(&mut state, &run.turn_ref, &delivered);
-        let saved = control(&mut state, "state", json!({}));
-        assert_eq!(saved["visible_turn_ids"], json!([]));
-        assert_eq!(saved["criteria"], "");
-    }
-}
-
-#[test]
-fn closed_book_course_keeps_the_original_owner_and_progress() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    let mut course: memory::course::InquiryCourse = serde_json::from_str(include_str!(
-        "../../../../docs/examples/inquiry-course/ai-infra-resource-bounds.v1.course.json"
-    ))
-    .unwrap();
-    let lesson = &mut course.lessons[0];
-    lesson.summary.source.publication.book_id = state.workspace.book.base.book_id.clone();
-    lesson.summary.source.publication.publication_id = "local".into();
-    lesson.summary.source.source_revision = state.workspace.book.source_fingerprint().into();
-    let mut store = state.user.learning_store().unwrap();
-    let before = store.state().unwrap();
-    let opened=store.mutate_course(&serde_json::from_value(json!({"operation_id":"closed-course","run_id":null,
-        "expected_revision":0,"release_version":1,"action":{"kind":"start","lesson_id":lesson.summary.id}})).unwrap(),
-        Some(("fixture",1,lesson)),before.workspace_goal_revision.unwrap_or(0),"now",None).unwrap();
-    let started = control(
-        &mut state,
-        "start",
-        json!({"course_run_id":opened.progress.run_id}),
-    );
-    assert_eq!(started["owner_id"], opened.progress.run_id);
-    assert_eq!(started["course"], true);
-    assert_eq!(started["course_origin"]["stage"],"introduction");
-    assert_eq!(started["course_origin"]["round_index"],0);
-    assert_eq!(started["target"],lesson.summary.objective);
-    assert!(started["result_ref"].is_null());
-    exercise(
-        &mut state,
-        "开始",
-        json!({"action":"question","criteria":"比较时间约束","text":"怎样比较两个资源耗时？","provides_help":false,"reason":"观察当前课程理解"}),
-    );
-    let completed=exercise(
-        &mut state,
-        "需要同时满足两项约束，较慢的一项决定下界。",
-        json!({"action":"complete",
-        "text":"你独立说明了两项约束。","learner_quote":"需要同时满足两项约束，较慢的一项决定下界","provides_help":false,"reason":"本次能解释下界，不替代原课程任务"}),
-    );
-    let turn=completed["visible_turn_ids"].as_array().unwrap().last().unwrap().as_str().unwrap();
-    assert_eq!(completed["result_ref"],format!("closed-book:delivery:{turn}"));
-    assert_eq!(
-        store.course_view(&opened.progress.run_id).unwrap().progress,
-        opened.progress
-    );
-    assert_eq!(store.state().unwrap().sessions.len(), before.sessions.len());
-}
-
-#[test]
-#[ignore = "configured-provider semantic trial against a local published source; writes isolated evidence"]
-fn closed_book_live_model_trial() {
-    let directory = std::env::var("CLOSED_BOOK_TRIAL_SOURCE").expect("CLOSED_BOOK_TRIAL_SOURCE");
-    let output = std::path::PathBuf::from(
-        std::env::var("CLOSED_BOOK_TRIAL_OUTPUT").expect("CLOSED_BOOK_TRIAL_OUTPUT"),
-    );
-    std::fs::create_dir_all(&output).unwrap();
-    let source =
-        std::fs::read_to_string(std::path::Path::new(&directory).join("source.txt")).unwrap();
-    let book = Book::load(&directory).unwrap();
-    let (_root, mut state) = fixture_with_book(false, book, &source);
-    post(&mut state, "/agent/new", "{}");
-    let config = runtime::ProviderConfig::from_env().unwrap();
-    let model = config.model.clone();
-    let adapter = runtime::ProviderRegistry::adapter_from_config(config);
-    let replay = |state: &mut AppState, index: usize, message: &str| -> Value {
-        let run = prepare_agent_chat(state, &json!({"message":message}).to_string(), "now")
-            .unwrap_or_else(|e| panic!("{}", e.body));
-        let turn = run.turn_ref.clone();
-        let began = std::time::Instant::now();
-        let result = agent_run::execute_prepared(
-            &agent_run::BorrowedAppPort(RefCell::new(state)),
-            adapter.as_ref(),
-            run,
-            Default::default(),
-        );
-        let store = state.user.learning_store().unwrap();
-        let proposal = store
-            .teaching_event(&format!("closed-book-proposal:{}", turn.turn_id))
-            .ok();
-        let saved = store
-            .closed_book(&turn.session_id, &state.workspace.book.base.book_id)
-            .unwrap();
-        let response = state
-            .user
-            .agent_history
-            .sessions
-            .iter()
-            .find(|s| s.id == turn.session_id)
-            .unwrap()
-            .turns
-            .last()
-            .unwrap();
-        let report = json!({"model":model,"source_id":state.workspace.book.base.book_id,"source_revision":state.workspace.book.source_fingerprint(),
-            "message":message,"elapsed_ms":began.elapsed().as_millis(),"reply_status":result.reply.status,
-            "answer":response.outcome.as_ref().and_then(|o|o.answer.as_ref()),"decision":proposal.map(|p|p.payload),"state":saved,
-            "tokens_spent":response.outcome.as_ref().map(|outcome|outcome.tokens_spent),"scope":"scripted learner responses through the real Resident and configured model; isolated private state"});
-        std::fs::write(
-            output.join(format!("turn-{index}.json")),
-            serde_json::to_vec_pretty(&report).unwrap(),
-        )
-        .unwrap();
-        assert_eq!(result.reply.status, 200, "{}", result.reply.body);
-        eprintln!(
-            "Closed-book trial turn {index}: {}",
-            report["decision"]["decision"]["action"]
-        );
-        report
-    };
-    replay(&mut state,0,"请依据《深入理解 AI Infra》的原文，简短讲解：容量足够且计算和读写充分重叠时，为什么耗时下界取两项必要时间的最大值，以及为什么它不等于实际耗时。现在只讲解，不出题。");
-    control(
-        &mut state,
-        "start",
-        json!({"target":"解释充分重叠时两项时间约束及下界含义，并独立判断算力改变后的下界"}),
-    );
-    let first = replay(
-        &mut state,
-        1,
-        "开启闭卷练到会，请围绕刚讲过的重点先让我自己解释，等我回答。",
-    );
-    assert_eq!(first["decision"]["decision"]["action"], "question");
-    let vague = replay(&mut state, 2, "懂了。");
-    assert_ne!(vague["state"]["status"], "complete");
-    let help = replay(
-        &mut state,
-        3,
-        "我还是不知道为什么，请直接把缺的这一步讲明白。",
-    );
-    assert_eq!(help["state"]["assisted"], true);
-    let retry=replay(&mut state,4,"换一个同目标的新问题让我独立试。请用计算时间下界 8ms、读写时间下界 3ms、容量充足且充分重叠、只将算力翻倍这个新条件出题，先不要给答案。");
-    assert_eq!(retry["decision"]["decision"]["action"], "retry");
-    assert_eq!(retry["state"]["assisted"], false);
-    let done=replay(&mut state,5,"算力翻倍后，计算所需时间下界从 8ms 变为 4ms，读写仍需 3ms。任务要同时满足两项资源的时间约束，所以在容量充足、计算和读写充分重叠的条件下，总时间下界是 max(4,3)=4ms，而不是相加为 7ms。4ms 只是理想下界，不保证实际耗时正好是 4ms，实际还有调度等开销。");
-    assert_eq!(
-        done["state"]["status"], "complete",
-        "The frozen target is now satisfied by an independent explanation and application"
-    );
-}
-
-#[test]
-fn closed_book_real_resident_delivery_help_retry_and_completion() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    let started = control(
-        &mut state,
-        "start",
-        json!({"target":"Explain whole-trip average speed"}),
-    );
-    assert_eq!(started["status"], "active");
-    let first = exercise(
-        &mut state,
-        "Start",
-        json!({"action":"question","target":"Explain whole-trip average speed",
-        "criteria":"Include stopped time and explain its effect","text":"Why does a stop change the average speed of a whole journey?","provides_help":false,"reason":"Observe the denominator"}),
-    );
-    assert_eq!(first["visible_turn_ids"].as_array().unwrap().len(), 1);
-    control(
-        &mut state,
-        "draft",
-        json!({"draft":"My unfinished explanation"}),
-    );
-    let helped = exercise(
-        &mut state,
-        "Please explain",
-        json!({"action":"help","text":"Total elapsed time includes the stop; the distance does not increase during it.","provides_help":true,"reason":"Supply the missing relationship"}),
-    );
-    assert_eq!(helped["assisted"], true);
-    assert_eq!(
-        helped["draft"], "My unfinished explanation",
-        "receiving help must not consume an unsent draft"
-    );
-    let attempt = exercise(
-        &mut state,
-        "Try a new problem",
-        json!({"action":"retry","text":"Two journeys cover the same distance. A takes 12 minutes including stops; B takes 15. Which has greater whole-trip average speed, and why?","provides_help":false,"reason":"Independent comparison"}),
-    );
-    assert_eq!(attempt["attempt"], 2);
-    assert_eq!(attempt["assisted"], false);
-    assert_eq!(attempt["visible_turn_ids"].as_array().unwrap().len(), 1);
-    assert_ne!(attempt["visible_turn_ids"][0], first["visible_turn_ids"][0]);
-    let done = exercise(
-        &mut state,
-        "A: the same distance divided by less total elapsed time gives a higher speed.",
-        json!({"action":"complete",
-        "text":"You used total elapsed time to compare both journeys independently.","provides_help":false,
-        "learner_quote":"the same distance divided by less total elapsed time gives a higher speed","reason":"Correct relationship and comparison, with no help in this attempt"}),
-    );
-    assert_eq!(done["status"], "complete");
-    assert!(
-        state
-            .user
-            .agent_history
-            .sessions
-            .last()
-            .unwrap()
-            .turns
-            .len()
-            >= 4
-    );
-}
-
-#[test]
-#[ignore = "paid single-sample course reuse trial; retains failed evidence and requires an isolated output directory"]
+#[ignore = "paid single-sample course reuse trial; up to three operator-answered followups; retains isolated evidence"]
 fn closed_book_course_live_model_trial() {
     use memory::course::{CourseAction, CourseLessonView, CourseMutation, CoursePreset, CourseResponse, CourseStage};
     use runtime::run_context::CancellationToken;
@@ -436,7 +76,11 @@ fn closed_book_course_live_model_trial() {
     let model=config.model.clone();
     let official_flash=config.base_url.strip_prefix("https://api.deepseek.com").is_some_and(|path|path.is_empty()||path.starts_with('/'))
         && matches!(model.as_str(),"deepseek-flash"|"deepseek-v4-flash"|"deepseek-v4-flash-vision-exp");
+    write(&output,"selected-provider.json",&json!({"model":model,"api_protocol":config.options.api_protocol,
+        "binding":config.options.binding,"provider_origin":url::Url::parse(&config.base_url).unwrap().origin().ascii_serialization()}));
     let provider=runtime::ProviderRegistry::adapter_from_config_with_timeout(config,Duration::from_secs(180));
+    provider.set_spend_context(runtime::model_spend::ChargeScope::OperatorTask { task_ref:"course-model-trial".into() },
+        Some(Arc::new(model_trial_budget::TrialBudget::open(&output))));
     let adapter=crate::service_limits::LimitedAdapter { inner:provider.as_ref(),
         resources:crate::service_limits::Resources::new(Arc::new(crate::service_limits::ServiceLimits::default())),
         owner:"closed-book-course-trial".into(),background:false,cancellation:CancellationToken::default(),
@@ -449,7 +93,7 @@ fn closed_book_course_live_model_trial() {
         let frozen_course=run.tutor.as_ref().map(|context|context["inquiry_course"].clone());
         let calls_before=adapter.usage.lock().unwrap().calls.len();
         let step_started=Instant::now();
-        let result=bounded(|cancel|agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut *state)),&adapter,run,cancel));
+        let result=bounded(|cancel|reader_service::tests::host_calls::agent_run::execute_prepared(&reader_service::tests::host_calls::borrowed_app_port(&mut *state),&adapter,run,cancel));
         let store=state.user.learning_store().map_err(|error|error.message)?;
         let proposal=store.teaching_event(&format!("closed-book-proposal:{}",turn.turn_id)).ok();
         let practice=store.closed_book(&turn.session_id,&state.workspace.book.base.book_id).map_err(|error|error.message)?;
@@ -458,14 +102,14 @@ fn closed_book_course_live_model_trial() {
         let response=state.user.agent_history.sessions.iter().find(|session|session.id==turn.session_id).unwrap()
             .turns.iter().find(|saved|saved.turn_id==turn.turn_id).unwrap();
         let calls=adapter.usage.lock().unwrap().calls[calls_before..].to_vec();
-        let report=json!({"turn_ref":turn.turn_id,"message":message,"reply_status":result.reply.status,
+        let report=json!({"turn_ref":turn.turn_id,"message":message,"reply_status":result.status,
             "elapsed_ms":step_started.elapsed().as_millis(),"frozen_course":frozen_course,
             "answer":response.outcome.as_ref().and_then(|outcome|outcome.answer.as_ref()),"error":response.error,
             "decision":proposal.map(|event|event.payload),"practice":practice,"ordinary_after_turn_coach":ordinary_coach,
             "usage_calls":calls,"usage_scope":"Resident and its ordinary after-delivery Coach; the original-course reuse Coach runs separately"});
         write(&output,&format!("turn-{index}.json"),&report);
         eprintln!("Course reuse trial turn {index}: {}",report["decision"]["decision"]["action"]);
-        if result.reply.status!=200 { return Err(format!("Resident turn {index} failed with HTTP {}",result.reply.status)); }
+        if result.status!=200 { return Err(format!("Resident turn {index} failed with HTTP {}",result.status)); }
         Ok(report)
     };
     let attempt=(|| -> Result<Value,String> {
@@ -499,8 +143,11 @@ fn closed_book_course_live_model_trial() {
         let retry=replay(&mut state,&view,3,"换一个同目标的新问题让我独立试。保留原配置作为对照，再加入读取量从70GB减至28GB、其他条件不变这个新改动；让我解释它和只升级硬件的区别，并回看自己的预测。请只给题面，不给解法。")?;
         if retry["decision"]["decision"]["action"]!="retry" || retry["practice"]["assisted"]!=false {return Err("A new independent attempt was not delivered".into());}
         let done=replay(&mut state,&view,4,"原配置的计算下限是140/989.4≈0.1415ms，读取下限是70/3.35≈20.90ms。两项都是总耗时必须满足的下限，容量足够且充分重叠时取较大值，不相加。只把算力翻倍，计算变为约0.0707ms，读取仍约20.90ms，所以下界不改善；带宽翻倍或读取量减半，读取变为约10.45ms，仍大于9ms。新改动把读取量降至28GB，读取下限约8.36ms，计算仍约0.1415ms，所以下界约8.36ms，低于9ms但不保证实测达标，还可能有调度和传输开销。减少读取量改变工作量，增加带宽改变硬件能力，虽然都能降低读取下限，前者还要核对质量和转换成本。我原来选了算力翻倍会使整个任务下界减半；现在保留算力会缩短计算那一项的判断，修正了它必然缩短总下界的预测，要先比较哪个资源约束更大。")?;
+        let done=finish_course_trial_dialogue(done,|index,previous| {
+            let answer=course_trial_followup_answer(&output,index,previous)?;
+            replay(&mut state,&view,index,&answer)
+        })?;
         write(&output,"closed-book-completion.json",&done);
-        if done["practice"]["status"]!="complete" || done["practice"]["assisted"]!=false {return Err("The real closed-book teacher did not accept this independent answer; no replay is attempted".into());}
         let result_ref=done["practice"]["result_ref"].as_str().ok_or("No delivered completion reference")?.to_owned();
         view=act(&mut store,&view,"trial-use-result",CourseAction::UseClosedBook{result_ref:result_ref.clone()},goal)?;
         let expression=view.expressions.last().ok_or("Reuse did not create a course expression")?.clone();
@@ -514,7 +161,7 @@ fn closed_book_course_live_model_trial() {
             "premature_advance_rejected":premature.is_err(),"dispatch":"Existing drive_inline dependency selects the UseClosedBook-created job; original source hydration, model validation and evidence commit remain enabled"}));
         if premature.is_ok(){return Err("Course advanced before its original Coach accepted the reflection".into());}
         let calls_before=adapter.usage.lock().unwrap().calls.len();let coach_started=Instant::now();
-        let executed=bounded(|cancel|crate::teaching_coach::drive_inline(&agent_run::BorrowedAppPort(RefCell::new(&mut state)),&adapter,None,&turn,false,&cancel));
+        let executed=bounded(|cancel|reader_service::tests::host_calls::teaching_coach::drive_inline(&reader_service::tests::host_calls::borrowed_app_port(&mut state),&adapter,None,&turn,false,&cancel));
         let reviewed=store.coach_job(&expression.job_ref).map_err(|error|error.message)?.unwrap();
         write(&output,"original-course-coach.json",&json!({"elapsed_ms":coach_started.elapsed().as_millis(),"job":reviewed,
             "error":executed.as_ref().err(),"usage_calls":adapter.usage.lock().unwrap().calls[calls_before..]}));
@@ -523,131 +170,193 @@ fn closed_book_course_live_model_trial() {
         view=act(&mut store,&view,"trial-read-feedback",CourseAction::ReadFeedback{job_ref:expression.job_ref},goal)?;
         let displayed=store.course_view(&view.progress.run_id).map_err(|error|error.message)?;
         write(&output,"feedback-read.json",&json!(displayed));
+        let interpretations=store.teaching_expression_interpretations(&expression.fact_ref).map_err(|error|error.message)?;
+        if interpretations.iter().any(|e| !e.assistance_refs.is_empty() || !e.support_delivery_refs.is_empty()) {
+            return Err("The imported independent attempt was relabeled with prior course help; inspect its understanding evidence".into());
+        }
         if store.course_run(&view.progress.run_id).map_err(|error|error.message)?.reflection.is_none() {
             return Err("Original-course Coach did not accept the imported reflection; its concrete gap is retained".into());
         }
         view=act(&mut store,&view,"trial-next-round",CourseAction::Advance,goal)?;
         if view.round_index!=1 || view.progress.stage!=CourseStage::Prediction {return Err("Accepted reflection did not return to the next original course round".into());}
         write(&output,"next-course-step.json",&json!(view));
+        let before_reopen=store.course_view(&view.progress.run_id).map_err(|error|error.message)?;
+        drop(store);
+        let restored=state.user.learning_store().map_err(|error|error.message)?
+            .course_view(&view.progress.run_id).map_err(|error|error.message)?;
+        write(&output,"resumed-course.json",&json!({"chat_session_id":state.workspace.selected_chat,
+            "before_reopen":before_reopen,"view":restored}));
+        if serde_json::to_value(&restored).unwrap()!=serde_json::to_value(&before_reopen).unwrap() {
+            return Err("Reopening private storage did not restore the same course step".into());
+        }
         Ok(json!({"result_ref":result_ref,"next_round":view.round_index,"next_stage":view.progress.stage,"course_complete":false}))
     })();
     let usage=adapter.usage.lock().unwrap().clone();
     write(&output,"trial-result.json",&json!({"model":model,"elapsed_ms":began.elapsed().as_millis(),"passed":attempt.is_ok(),
         "result":attempt.as_ref().ok(),"failure":attempt.as_ref().err(),"usage":usage,"cost":cost(&usage,official_flash),
-        "sample_count":1,"planned_logical_calls":9,"step_timeout_seconds":180,
-        "planned_scope":"Scripted learner through real Resident deliveries, ordinary after-delivery Coaches, actual persisted completion reference, original course Coach, ReadFeedback and Advance. A failed attempt stops at the recorded failure; missing later artifacts mean those steps were not executed. No synthetic model proposals or judgments; no rerun to obtain a passing sample.",
+        "sample_count":1,"max_learner_turns":4+COURSE_TRIAL_MAX_FOLLOWUPS,"step_timeout_seconds":180,
+        "planned_scope":"Scripted learner followed by at most three operator answers to actual follow-ups, through real Resident deliveries, ordinary after-delivery Coaches, persisted completion reference, original course Coach, ReadFeedback, Advance and reopened private storage. A failed attempt stops at the recorded failure; missing later artifacts mean those steps were not executed. No synthetic teacher proposals or judgments; no rerun to obtain a passing sample.",
         "not_covered":["Human first-use learning experience","Decision/transfer semantic live sample","Prediction Coach"]}));
     assert!(attempt.is_ok(),"{}",attempt.unwrap_err());
 }
 
-#[test]
-fn closed_book_unassisted_answer_cannot_trigger_an_unrequested_retry() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    control(&mut state, "start", json!({"target":"时间范围"}));
-    exercise(
-        &mut state,
-        "开始",
-        json!({"action":"question","criteria":"说明整个旅程的时间","text":"旅程包含一次停留，应计入哪段时间？","provides_help":false,"reason":"当前目标"}),
-    );
-    let run = prepare_agent_chat(
-        &mut state,
-        r#"{"message":"应计入从出发到抵达的全部时间，因为停留也占用了旅程的时间。"}"#,
-        "now",
-    )
-    .unwrap_or_else(|e| panic!("{}", e.body));
-    assert_eq!(
-        run.tutor.as_ref().unwrap()["closed_book"]["current_question"],
-        "旅程包含一次停留，应计入哪段时间？"
-    );
-    let error = teaching::step(
-        &state.private_context(),
-        &run.turn_ref,
-        json!({"operation":"closed_book","closed_book":{
-        "action":"retry","text":"再换一道题","provides_help":false,"reason":"之前得到过帮助"}}),
-        &[],
-        &[],
-    )
-    .unwrap_err();
-    assert!(error.message.contains("本次尝试未受助"));
-    teaching::step(&state.private_context(),&run.turn_ref,json!({"operation":"closed_book","closed_book":{
-        "action":"complete","text":"你独立解释了时间范围。","provides_help":false,"learner_quote":"停留也占用了旅程的时间","reason":"当前未受助回答说明了完整时间范围"}}),&[],&[]).unwrap();
-    let mut delivered = outcome(None);
-    delivered.answer = Some("你独立解释了时间范围。".into());
-    finish(&mut state, &run.turn_ref, &delivered);
-    assert_eq!(
-        control(&mut state, "state", json!({}))["status"],
-        "complete"
-    );
-}
 
 #[test]
-fn closed_book_clarifying_a_topic_does_not_complete_the_learning_goal() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    control(&mut state, "start", json!({}));
-    let clarification = exercise(
-        &mut state,
-        "我想练到会",
-        json!({"action":"clarify","text":"你想练哪个概念或哪道题？","provides_help":false,"reason":"先确定对象"}),
-    );
-    assert_eq!(clarification["criteria"], "");
-    assert_eq!(clarification["status"], "active");
-    let question = exercise(
-        &mut state,
-        "平均速度",
-        json!({"action":"question","target":"解释平均速度的时间范围","criteria":"说明旅程的全部时间",
-        "text":"旅程中停留的一段时间该怎样处理？为什么？","provides_help":false,"reason":"现在可以观察理解"}),
-    );
-    assert_eq!(question["visible_turn_ids"].as_array().unwrap().len(), 1);
-    assert_ne!(
-        question["visible_turn_ids"][0],
-        clarification["visible_turn_ids"][0]
-    );
-    assert_eq!(question["status"], "active");
-}
+#[ignore = "paid single-model protocol trial; three logical calls; requires explicit request and CNY budgets"]
+fn model_provider_live_tool_and_structured_trial() {
+    use runtime::{AgentRequestPlan, CompletionRequest, Message, Role, ToolSpec};
+    use runtime::provider_stream::{ModelDelta, ModelObserver};
+    use std::{fs::OpenOptions, io::Write, path::{Path,PathBuf}, sync::Arc, time::{Duration,Instant}};
 
-#[test]
-fn closed_book_cannot_complete_assisted_or_unanswered_and_preserves_resume_conditions() {
-    let (_root, mut state) = fixture_with_assets(false);
-    post(&mut state, "/agent/new", "{}");
-    control(&mut state, "start", json!({"target":"Total time"}));
-    exercise(
-        &mut state,
-        "Start",
-        json!({"action":"question","criteria":"Explain time","text":"What time belongs in the denominator?","provides_help":false,"reason":"Observe explanation"}),
-    );
-    control(&mut state, "help", json!({}));
-    let run = prepare_agent_chat(&mut state, r#"{"message":"All elapsed time"}"#, "now")
-        .unwrap_or_else(|e| panic!("{}", e.body));
-    let result = teaching::step(
-        &state.private_context(),
-        &run.turn_ref,
-        json!({"operation":"closed_book","closed_book":{
-        "action":"complete","text":"Done","learner_quote":"All elapsed time","provides_help":false,"reason":"Correct"}}),
-        &[],
-        &[],
-    );
-    assert!(result.is_err());
-    let paused = control(&mut state, "pause", json!({"draft":"Unfinished thought"}));
-    assert_eq!(paused["draft"], "Unfinished thought");
-    let restored = control(&mut state, "resume", json!({}));
-    assert_eq!(restored["assisted"], true);
-    assert_eq!(
-        restored["needs_retry"], false,
-        "pausing keeps sources covered and preserves the attempt"
-    );
-    control(&mut state, "exit", json!({}));
-    assert_eq!(control(&mut state, "state", json!({}))["needs_retry"], true);
-    assert!(teaching::step(
-        &state.private_context(),
-        &run.turn_ref,
-        json!({"operation":"closed_book","closed_book":{
-        "action":"retry","text":"Another question","provides_help":false}}),
-        &[],
-        &[]
-    )
-    .is_err());
-    post(&mut state, "/agent/new", "{}");
-    assert!(control(&mut state, "state", json!({})).is_null());
+    const SOURCE_PATH:&str="examples/quickstart/book.md";
+    const SECTION:&str="从问题回到原文";
+    const SOURCE_ID:&str="quickstart:source-evidence";
+    const OUTPUT_LIMIT:u32=4096;
+
+    fn write_new(directory:&Path,name:&str,value:&Value) {
+        let mut file=OpenOptions::new().write(true).create_new(true).open(directory.join(name))
+            .expect("Choose a fresh evidence directory; earlier trial artifacts must remain unchanged");
+        file.write_all(&serde_json::to_vec_pretty(value).unwrap()).unwrap();
+        file.flush().unwrap();
+    }
+    struct Trace {
+        file:std::fs::File,
+        started:Instant,
+        first_text_ms:Option<u128>,
+        text:String,
+        usage:Option<runtime::provider_stream::ModelUsage>,
+        finish:Option<String>,
+        request_events:u32,
+    }
+    impl Trace {
+        fn open(directory:&Path,stage:&str)->Self {
+            Self {file:OpenOptions::new().write(true).create_new(true).open(directory.join(format!("{stage}-events.jsonl"))).unwrap(),
+                started:Instant::now(),first_text_ms:None,text:String::new(),usage:None,finish:None,request_events:0}
+        }
+        fn summary(&self)->Value {
+            json!({"elapsed_ms":self.started.elapsed().as_millis(),"first_text_ms":self.first_text_ms,
+                "observed_text":self.text,"usage":self.usage,"finish":self.finish,"request_events":self.request_events,
+                "actual_send_ledger":"provider-sends.jsonl"})
+        }
+    }
+    impl ModelObserver for Trace {
+        fn observe(&mut self,delta:ModelDelta) {
+            let event=match delta {
+                ModelDelta::Request(value)=>{self.request_events+=1;json!({"kind":"request","body":value.as_ref()})},
+                ModelDelta::Response(value)=>json!({"kind":"response","body":value.as_ref()}),
+                ModelDelta::RetryReset=>{self.text.clear();json!({"kind":"retry_reset"})},
+                ModelDelta::Text(text)=>{
+                    if !text.is_empty() && self.first_text_ms.is_none(){self.first_text_ms=Some(self.started.elapsed().as_millis());}
+                    self.text.push_str(&text);json!({"kind":"text","text":text})
+                },
+                ModelDelta::ToolArguments{index,id,name,arguments}=>json!({"kind":"tool_arguments","index":index,"id":id,"name":name,"arguments":arguments}),
+                ModelDelta::Usage(usage)=>{self.usage=Some(usage.clone());json!({"kind":"usage","usage":usage})},
+                ModelDelta::Finish(reason)=>{self.finish=Some(reason.clone());json!({"kind":"finish","reason":reason})},
+            };
+            writeln!(self.file,"{}",json!({"elapsed_ms":self.started.elapsed().as_millis(),"event":event})).unwrap();
+            self.file.flush().unwrap();
+        }
+    }
+
+    let max_requests=std::env::var("MODEL_TRIAL_MAX_REQUESTS").expect("Set an explicit request budget (3 to 6)")
+        .parse::<u64>().expect("MODEL_TRIAL_MAX_REQUESTS must be an integer");
+    assert!((3..=6).contains(&max_requests),"This trial permits at most six actual sends, including transport retries");
+    let max_cost=std::env::var("MODEL_TRIAL_MAX_COST_MICRO_CNY").expect("Set the authorized per-sample CNY budget")
+        .parse::<u64>().expect("MODEL_TRIAL_MAX_COST_MICRO_CNY must be an integer");
+    assert!((1..=200_000).contains(&max_cost),"A protocol sample must not reserve more than CNY 0.20");
+    std::env::var("MODEL_TRIAL_RATES_FILE").expect("MODEL_TRIAL_RATES_FILE supplies the verified rate snapshot");
+    let output=PathBuf::from(std::env::var("MODEL_PROTOCOL_TRIAL_OUTPUT").expect("MODEL_PROTOCOL_TRIAL_OUTPUT"));
+    std::fs::create_dir_all(&output).unwrap();
+    let config=runtime::ProviderConfig::from_env().expect("Select exactly one configured protocol model");
+    let model=config.model.clone();
+    let protocol=config.options.api_protocol;
+    let origin=url::Url::parse(&config.base_url).unwrap().origin().ascii_serialization();
+    write_new(&output,"trial-start.json",&json!({"model":model,"api_protocol":protocol,"binding":config.options.binding,
+        "provider_origin":origin,"source_path":SOURCE_PATH,"section":SECTION,"source_id":SOURCE_ID,
+        "logical_calls":3,"max_actual_sends":max_requests,"max_cost_micro_cny":max_cost,"output_token_limit":OUTPUT_LIMIT,
+        "semantic_evaluation":"pending_review"}));
+    eprintln!("Protocol trial: source={SOURCE_PATH}, model={model}, protocol={}, origin={origin}",protocol.as_str());
+    let provider=runtime::ProviderRegistry::adapter_from_config_with_timeout(config,Duration::from_secs(180));
+    provider.set_spend_context(runtime::model_spend::ChargeScope::OperatorTask {task_ref:format!("protocol-trial-{}",uuid::Uuid::now_v7())},
+        Some(Arc::new(model_trial_budget::TrialBudget::open(&output))));
+    let began=Instant::now();
+    let attempt=(||->Result<Value,String> {
+        let source_file=Path::new(env!("CARGO_MANIFEST_DIR")).join("../..").join(SOURCE_PATH);
+        let tools=vec![ToolSpec {name:"source_read".into(),description:"Read the named section from the original local source file.".into(),
+            parameters:json!({"type":"object","properties":{"path":{"type":"string","enum":[SOURCE_PATH]},
+                "section":{"type":"string","enum":[SECTION]}},"required":["path","section"],"additionalProperties":false})}];
+        let question=format!("知识图谱中的关系边与支撑回答的事实证据是什么关系？先调用 source_read 读取 {SOURCE_PATH} 中的「{SECTION}」小节，收到原文后用一两句话回答，并用 [{SOURCE_ID}] 标注来源。");
+        let mut messages=vec![Message::system("你是阅读助手。回答必须依据工具返回的原文。尚未读取原文时，只请求 source_read，不要凭已有知识作答。完成一次读取后直接回答，不重复读取。"),Message::user(question)];
+        let mut request=AgentRequestPlan::for_ad_hoc(provider.model_runtime_profile(),&messages,&tools);
+        request.output_token_limit=Some(OUTPUT_LIMIT);
+        request.parallel_tool_calls=false;
+        provider.set_model_purpose("protocol_trial_tool");
+        let mut first_trace=Trace::open(&output,"01-tool");
+        let first=provider.chat_observed(&request,&mut first_trace);
+        write_new(&output,"01-tool-result.json",&json!({"trace":first_trace.summary(),"response":first.as_ref().ok(),
+            "error":first.as_ref().err().map(|error|&error.message)}));
+        let first=first.map_err(|error|error.message)?;
+        if first.tool_calls.len()!=1 {return Err(format!("Expected exactly one source_read call; received {}",first.tool_calls.len()));}
+        let call=&first.tool_calls[0];
+        if call.name!="source_read" || call.id.is_empty() {return Err("The model returned the wrong tool or an empty tool call ID".into());}
+        let arguments:Value=serde_json::from_str(&call.arguments).map_err(|error|format!("Incomplete tool arguments: {error}"))?;
+        if arguments!=json!({"path":SOURCE_PATH,"section":SECTION}) {return Err("The tool arguments do not select the requested source section".into());}
+
+        // The file is actually read only after the model requests the checked tool.
+        let source=std::fs::read_to_string(&source_file).map_err(|error|error.to_string())?;
+        let marker=format!("## {SECTION}");
+        let section=source.split_once(&marker).ok_or("The requested source heading is missing")?.1
+            .split("\n## ").next().unwrap().trim().to_owned();
+        if section.is_empty(){return Err("The original source section is empty".into());}
+        let tool_result=json!({"source_id":SOURCE_ID,"path":SOURCE_PATH,"section":SECTION,"text":section});
+        write_new(&output,"source-tool-result.json",&tool_result);
+        messages.push(Message {provider_continuation:first.provider_continuation.clone(),role:Role::Assistant,
+            content:first.text.clone(),tool_calls:first.tool_calls.clone(),tool_call_id:None});
+        messages.push(Message {provider_continuation:None,role:Role::Tool,content:Some(tool_result.to_string()),
+            tool_calls:vec![],tool_call_id:Some(call.id.clone())});
+        write_new(&output,"retained-tool-history.json",&json!(messages));
+        // Reopen the serialized history so the second call exercises private-state persistence too.
+        let restored:Vec<Message>=serde_json::from_slice(&std::fs::read(output.join("retained-tool-history.json")).map_err(|error|error.to_string())?)
+            .map_err(|error|error.to_string())?;
+        if restored!=messages{return Err("Tool history changed during serialization".into());}
+        let mut answer_request=AgentRequestPlan::for_ad_hoc(provider.model_runtime_profile(),&restored,&tools);
+        answer_request.output_token_limit=Some(OUTPUT_LIMIT);
+        answer_request.parallel_tool_calls=false;
+        answer_request.tool_choice=runtime::model_runtime::ToolChoice::None;
+        provider.set_model_purpose("protocol_trial_answer");
+        let mut answer_trace=Trace::open(&output,"02-answer");
+        let answer=provider.chat_observed(&answer_request,&mut answer_trace);
+        write_new(&output,"02-answer-result.json",&json!({"trace":answer_trace.summary(),"response":answer.as_ref().ok(),
+            "error":answer.as_ref().err().map(|error|&error.message)}));
+        let answer=answer.map_err(|error|error.message)?;
+        let text=answer.text.as_deref().filter(|text|!text.trim().is_empty()).ok_or("The source-grounded answer is empty")?;
+        if !answer.tool_calls.is_empty() || !text.contains(&format!("[{SOURCE_ID}]")) {
+            return Err("The second call must deliver an answer with the original source label and no further tool calls".into());
+        }
+
+        provider.set_model_purpose("protocol_trial_structured");
+        let mut structured_trace=Trace::open(&output,"03-structured");
+        let structured=provider.complete_structured_observed(CompletionRequest {
+            system:"你是原文信息提取器。只返回 JSON 对象，字段为 source_id、claim、supporting_quote。claim 用一句话概括原文对知识图谱与事实证据关系的判断；supporting_quote 必须是原文中直接支持该判断的一段逐字引用。source_id 原样保留输入标识。不要使用外部资料。".into(),
+            user:tool_result.to_string(),images:vec![],followup_user:None,output_token_limit:Some(OUTPUT_LIMIT),reasoning_effort:None,
+        },&mut structured_trace);
+        write_new(&output,"03-structured-result.json",&json!({"trace":structured_trace.summary(),"output":structured.as_ref().ok(),
+            "error":structured.as_ref().err().map(|error|&error.message)}));
+        let structured=structured.map_err(|error|error.message)?;
+        if !structured.is_object() || structured["source_id"]!=SOURCE_ID {
+            return Err("Structured output does not preserve the source identity".into());
+        }
+        let claim=structured["claim"].as_str().filter(|text|!text.trim().is_empty()).ok_or("Structured output has no claim")?;
+        let quote=structured["supporting_quote"].as_str().filter(|text|!text.trim().is_empty()).ok_or("Structured output has no supporting quote")?;
+        if !section.contains(quote) {return Err("The supporting quote is not verbatim original source text".into());}
+        Ok(json!({"tool_id":call.id,"tool_name":call.name,"source_id":SOURCE_ID,"answer":text,"structured_claim":claim,
+            "supporting_quote":quote,"tool_history_reloaded":true,"logical_calls_completed":3,
+            "semantic_evaluation":"pending_review","program_assertions":["tool_name_and_arguments","tool_id_round_trip",
+                "private_state_serialization","answer_source_label","structured_source_identity","verbatim_supporting_quote"]}))
+    })();
+    write_new(&output,"trial-result.json",&json!({"model":model,"api_protocol":protocol,"source_path":SOURCE_PATH,
+        "elapsed_ms":began.elapsed().as_millis(),"execution_passed":attempt.is_ok(),"result":attempt.as_ref().ok(),
+        "failure":attempt.as_ref().err(),"semantic_evaluation":"pending_review","actual_send_ledger":"provider-sends.jsonl"}));
+    eprintln!("Protocol trial result: model={model}, protocol={}, execution_passed={}, source={SOURCE_PATH}",protocol.as_str(),attempt.is_ok());
+    assert!(attempt.is_ok(),"{}",attempt.unwrap_err());
 }

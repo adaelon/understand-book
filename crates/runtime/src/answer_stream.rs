@@ -113,6 +113,15 @@ impl AnswerProjector {
             self.withdrawn = true;
         }
     }
+    pub(crate) fn update_evidence(
+        &mut self,
+        bindings: Vec<SourceBinding>,
+        provenance: &AnswerProvenanceLedger,
+    ) {
+        self.events.source_bindings(&bindings);
+        self.bindings = bindings;
+        self.provenance = provenance.clone();
+    }
     fn push(&mut self, delta: &str) {
         self.raw.push_str(delta);
         if self.withdrawn {

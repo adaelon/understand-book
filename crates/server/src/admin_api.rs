@@ -118,6 +118,20 @@ pub(crate) fn dispatch(
     now: i64,
 ) -> Result<Value, ToolError> {
     let parts: Vec<_> = path.trim_start_matches('/').split('/').collect();
+    if path=="/admin/model-settings" {
+        if !query.is_empty() {return Err(admin_store::invalid())}
+        return match method {
+            "GET"=>Ok(access.runs.model_settings_status()),
+            "POST"=>access.runs.save_model_settings(parse(input)?,&access.spend),
+            _=>Err(admin_store::invalid()),
+        };
+    }
+    if path=="/admin/model-settings/test" {
+        if method!="POST" || !query.is_empty() {return Err(admin_store::invalid())}
+        let request:reader_service::model_settings::ModelTestRequest=parse(input)?;
+        return access.runs.test_model_settings(&request.model_config_id,request.input,access.spend.clone());
+    }
+
     if parts.as_slice() == ["admin", "operations"] {
         if method != "GET" || !query.is_empty() { return Err(admin_store::invalid()); }
         return crate::operations::report(access, now);

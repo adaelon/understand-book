@@ -332,7 +332,7 @@ fn cross_book_learning_scenario(scope: Option<&str>) {
     let evidence=user.learning_store_for_workspace(scope).unwrap().evidence(revised["evidence_ref"].as_str().unwrap()).unwrap();
     assert_eq!(evidence.assistance_refs.len(),1);
     assert_eq!(evidence.supersedes.as_deref(),first["evidence_ref"].as_str());
-    let reopened=crate::teaching::understanding(&context!(&user),&f.a.book_id,None,0).unwrap();
+    let reopened=reader_service::tests::host_calls::teaching::understanding(&context!(&user),&f.a.book_id,None,0).unwrap();
     assert_eq!(reopened["interpretations"].as_array().unwrap().len(),1);
     assert_eq!(reopened["interpretations"][0]["evidence_id"],revised["evidence_ref"]);
 }

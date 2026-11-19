@@ -19,6 +19,13 @@ pub struct ModelUsage {
     pub cached_input_tokens: Option<u32>,
     pub cache_creation_input_tokens: Option<u32>,
     pub total_tokens: Option<u32>,
+    /// Provider billing units, distinct from tokens consumed by the context.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub billed_input_tokens: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub billed_output_tokens: Option<u32>,
 }
 
 impl ModelUsage {
@@ -29,6 +36,8 @@ impl ModelUsage {
             || self.cached_input_tokens.is_some()
             || self.cache_creation_input_tokens.is_some()
             || self.total_tokens.is_some()
+            || self.billed_input_tokens.is_some()
+            || self.billed_output_tokens.is_some()
     }
 
     /// Add usage from separate transport attempts. Within one attempt, usage frames
@@ -45,6 +54,8 @@ impl ModelUsage {
             cached_input_tokens: sum(self.cached_input_tokens, other.cached_input_tokens),
             cache_creation_input_tokens: sum(self.cache_creation_input_tokens, other.cache_creation_input_tokens),
             total_tokens: sum(self.total_tokens, other.total_tokens),
+            billed_input_tokens: sum(self.billed_input_tokens, other.billed_input_tokens),
+            billed_output_tokens: sum(self.billed_output_tokens, other.billed_output_tokens),
         }
     }
 
@@ -56,6 +67,8 @@ impl ModelUsage {
             "prompt_tokens_details": {"cached_tokens": self.cached_input_tokens},
             "input_tokens_details": {"cache_creation_tokens": self.cache_creation_input_tokens},
             "total_tokens": self.total_tokens,
+            "billed_input_tokens": self.billed_input_tokens,
+            "billed_output_tokens": self.billed_output_tokens,
         })
     }
 }
@@ -125,6 +138,8 @@ pub fn model_usage(value: &Value) -> Option<ModelUsage> {
             .map(|(input, output)| input + output)
     });
     let snapshot = ModelUsage {
+        billed_input_tokens: usage_u32(&usage["billed_input_tokens"]),
+        billed_output_tokens: usage_u32(&usage["billed_output_tokens"]),
         input_tokens,
         output_tokens,
         reasoning_output_tokens,
@@ -514,6 +529,7 @@ mod tests {
                 "prompt_tokens_details": {"cached_tokens": 3}
             }})),
             Some(ModelUsage {
+                billed_input_tokens: None, billed_output_tokens: None,
                 input_tokens: Some(21),
                 output_tokens: Some(8),
                 reasoning_output_tokens: None,
@@ -557,6 +573,7 @@ mod tests {
         assert_eq!(
             deltas,
             vec![ModelDelta::Usage(ModelUsage {
+                billed_input_tokens: None, billed_output_tokens: None,
                 input_tokens: Some(5),
                 output_tokens: Some(2),
                 total_tokens: Some(7),

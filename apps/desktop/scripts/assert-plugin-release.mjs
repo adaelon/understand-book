@@ -4,6 +4,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const repo = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (relative) => readFileSync(path.join(repo, relative), 'utf8');
+const marketplace = JSON.parse(read('.agents/plugins/marketplace.json'));
+assert(!marketplace.plugins?.some(plugin => plugin.name === 'understand-book'),
+  'Operator maintenance plugin must not be advertised by the cloud marketplace');
+const desktopPackage = JSON.parse(read('apps/desktop/package.json'));
+assert(!desktopPackage.scripts?.['package:windows']?.includes('smoke-automatic-build-parity.mjs'),
+  'Cloud package must not build the operator executor');
 const manifest = JSON.parse(read('plugins/understand-book/.codex-plugin/plugin.json'));
 assert.match(manifest.description, /Operator-only/);
 for (const [file, setting] of [['start-build-executor-mcp.cmd','UNDERSTAND_BOOK_BUILD_EXE'],['start-video.cmd','UNDERSTAND_BOOK_BUILD_EXE'],['start-book-mcp.cmd','UNDERSTAND_BOOK_MCP_BIN']]) {

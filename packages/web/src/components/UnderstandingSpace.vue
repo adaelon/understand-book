@@ -4,7 +4,7 @@ import { t as uiText, formatLocale } from '../i18n';
 import { computed, onMounted, onBeforeUnmount, nextTick, ref, watch } from 'vue';
 import { ChevronRight, CornerDownRight, LayoutDashboard, Lightbulb, MessageSquareText, PencilLine, Shapes } from '@lucide/vue';
 import { api as sharedApi, ApiError, type UnderstandingView, type UnderstandingRow, type LearningEvidenceView, type UnderstandingTimeline } from '../api';
-import { bindSceneApi, readerKey } from '../network-context';
+import { bindSceneApi, readerKey } from '../reader-context';
 import LearningRecordPreview from './LearningRecordPreview.vue';
 import UnderstandingSummaryCard from './UnderstandingSummary.vue';
 import { openPersonalNotes } from '../personal-notes';

@@ -8,13 +8,13 @@ export function requestPurpose(request) {
     : (request?.system ?? []).map(block => block.text ?? '').join('\n');
   const system = [nativeSystem, ...(request?.messages ?? []).filter(m => m.role === 'system' || m.role === 'developer')
     .map(m => typeof m.content === 'string' ? m.content : '')].filter(Boolean).join('\n');
-  if (system.includes('source_answer_repair.v3')) return 'source_repair';
+  if (system.startsWith('source_answer_repair.v5') || system.includes('source_answer_repair.v3')) return 'source_repair';
   if (system.includes('finalization_sampling.v1')) return 'finalization';
   if (system.includes('agent-compaction.generation.v1')) return 'compaction';
   if (system.startsWith('You extract durable reader-profile candidates from resident user turns.')) return 'background_profile_review';
   if (system.startsWith('You are the bounded PlanGate and referent resolver.')) return 'inner_query';
   if (system.startsWith('You are an in-book synthesizer.')) return 'inner_synthesis';
-  if (system.includes('You are the resident reading agent for the current book.')) return 'business_loop';
+  if (system.startsWith('You are the resident learning agent.') || system.includes('You are the resident reading agent for the current book.')) return 'business_loop';
   if (system.startsWith('你是封闭原文阅读助手。仅依据提供的原文证据自然地回答')) return 'business_loop';
   return 'unclassified';
 }

@@ -43,7 +43,7 @@ describe("paper minimap migration boundary", () => {
     const app = readFileSync("src/App.vue", "utf8");
     const gotoHandler = app.slice(
       app.indexOf("async function doGoto"),
-      app.indexOf("async function focusSource"),
+      app.indexOf("function focusSource"),
     );
 
     expect(gotoHandler).toContain("hasMappedPdfNavigationTarget");

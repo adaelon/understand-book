@@ -144,7 +144,7 @@ fn cross_book_resident_loop_preserves_main_task_references_learning_and_followup
     let publication=f.access.library.lock().unwrap().load("A",&rust).unwrap();
     {
         let user=handle.lock().unwrap();
-        let understanding=crate::teaching::understanding(&crate::PrivateBookContext { learning_workspace_id:None,user:&user,book:&publication.book,book_dir:publication.directory(),messages:&[],selected_chat:None},&rust.book_id,None,0).unwrap();
+        let understanding=reader_service::tests::host_calls::teaching::understanding(&crate::PrivateBookContext { learning_workspace_id:None,user:&user,book:&publication.book,book_dir:publication.directory(),messages:&[],selected_chat:None},&rust.book_id,None,0).unwrap();
         let interpreted=understanding["interpretations"].as_array().unwrap();
         assert_eq!(interpreted.len(),1);assert_eq!(interpreted[0]["learner_quote"],"所以共享借用只读取，原所有者依然拥有值。");
         assert_eq!(interpreted[0]["assistance_refs"].as_array().unwrap().len(),1);

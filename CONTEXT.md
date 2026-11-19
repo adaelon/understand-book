@@ -1,7 +1,13 @@
 # CONTEXT —— 术语表
 
 ## 云端学习产品（CloudLearningProduct）
-网站与正式 Windows 客户端共用账号、资料授权、私人工作区和服务额度；核心 Agent、教学策略与资料准备在服务器执行，客户端保留阅读交互和必要本机能力。状态：BOUNDARY_CHANGE，2026-10-20 云端 Reader、系统浏览器授权及独立维护工具已实现，联合验收和发布状态见[实施计划](docs/实施计划-云端学习与考试冲刺.md)与[ADR-0173](docs/adr/0173-cloud-learning-subscriptions-and-exam-sprints.md)。
+网站与云服务客户端共用账号、资料授权、私人工作区和服务额度；云端宿主在服务器装配公共学习核心，提供托管模型、云存储和运营服务。现有云端实现与发布见[实施计划](docs/实施计划-云端学习与考试冲刺.md)及[ADR-0173](docs/adr/0173-cloud-learning-subscriptions-and-exam-sprints.md)；2026-11-17 已依 [ADR-0187](docs/adr/0187-open-source-desktop-and-cloud-editions.md)拆分为引用公共 Reader 的云端宿主与应用入口，独立发行验收中。
+
+## 开源本地应用（LocalLearningApplication）
+在用户设备运行公共学习核心、持有本机资料与私人记录并使用用户模型配置的独立产品。基础阅读和本机学习不依赖网站账号，完整资料预构建由插件与外部 Harness 提供。正式应用为 `apps/local-desktop`，独立身份为 `app.understandbook.local`。`local-debug` 共用本地宿主供开发使用。产品归属见 [ADR-0187](docs/adr/0187-open-source-desktop-and-cloud-editions.md)，各平台实测范围见[双发行实施记录](docs/切片方案-开源本地应用与云端服务双发行.md#9-当前状态与已知限制)。
+
+## 公共学习核心与产品宿主（SharedLearningCore / ProductHost）
+公共学习核心持有两种产品共同的阅读、教学、工具、来源与学习状态语义；产品宿主装配本地或云端的身份范围、存储、模型选择、准入和系统资源。公共核心是跨现有 crates/packages 的职责集合，不特指 TypeScript packages/core 构建引擎。`reader-service` 和 `packages/web` 提供共享服务与界面，`server` 与 `apps/cloud-reader` 提供云端装配，正式和 Debug 本地壳共用 `local-desktop-host`。拆分已落地，联合验收见[双发行方案](docs/切片方案-开源本地应用与云端服务双发行.md)。
 
 ## 套餐权益期（PlanEntitlementPeriod）
 账号在确定时段内拥有的套餐档位、私人空间、课程访问范围及服务额度授予事实；关联原有 AllowancePeriod，不另建平行余额。同账号同一时刻只有一个有效权益组合；商品调整不改写已售事实。状态：NEW，三档月付与1/3/7天冲刺、人工核款、续期及下一期换档已实现；正式商品值待配置，见[运行说明](docs/运行说明-云端学习与考试冲刺.md)。
@@ -404,6 +410,8 @@ paper profile 预构建产物与读时用户任务之间的产品入口层。第
 ## LLM 后端 (LLM backend)
 读时 ③ 用的大模型提供方,**用户自选**(Anthropic / OpenAI / 本地 Ollama 等),由阅读器后端的 provider 抽象接入。区别于预构建期由 harness 提供的 LLM。
 
+读时配置按模型服务连接、模型配置和用途绑定组织；协议与模型能力分别表达，运行冻结确切选择。配置与协议公共实现已接入本地/云宿主，实际验收状态由切片方案维护；协议范围与当前支持见 [ADR-0186](docs/adr/0186-multi-protocol-reader-model-providers.md)及其切片方案。
+
 ## 书 agent / 模块 E (book agent)
 读时"这本书的 agent"。承接用户对本书任何问题的**单一入口**,带 **memory** + **skills**,架在确定性导航(②)+ LLM 问答(③)之上,跑用户自选后端。运行时由我们在阅读器后端**自建**(最小工具调用 loop + 记忆;弱后端走 ReAct 兜底)。详见 [docs/adr/0005]。
 
@@ -499,6 +507,8 @@ LID 的字符串编码 = 各级序号点分串(如 `3.2.5.2`)。比较用**逐�
 
 ## ModelAdapter (provider 适配层)
 统一 loop 骨架与具体后端之间的薄序列化层 `[ADR-0016]`。loop 控制(请求校验、候选/证据预算、停机、状态聚合、citations 校验)**provider 无关恒定**,只通过 `complete(messages, tools?, schema?) → ParsedResponse` 跟模型打交道;两实现:**NativeAdapter**(原生 tools API + JSON mode,直接拿结构化)/ **ReActAdapter**(无原生 tool-calling 的弱后端:注入 ReAct/JSON 模板 + 解析文本回填成同一 ParsedResponse)。弱后端只改输出解析方式;开放语义相关性由 LLM 判断,结构红线([docs/adr/0004])仍由确定性 citations 过滤。状态:BOUNDARY_CHANGE(详见 [docs/adr/0016][docs/adr/0077])。
+
+[ADR-0186](docs/adr/0186-multi-protocol-reader-model-providers.md)扩展设计：API 协议与 Native / ReAct 工具调用策略分开，协议适配器归一化消息、事件、结束原因及用量，私有续接状态绑定原服务与协议；业务 loop 与工具合同继续共用。当前公共接口还包括 chat、结构化生成、观测、取消和用量上下文；九类协议实现已接入，实际厂商与型号验收见[切片方案当前状态](docs/切片方案-多协议模型接入与配置.md#8-当前状态与已知限制)。
 
 ## book.query / book.synthesize(LLM 命令分工)
 两个 LLM 命令按**证据所有权**分工:`book.query(query,intent,targets,obligations,anchor_lid)` 只处理显式 referent 的语义问答,系统先解析 target、冻结唯一 referent,再围绕它隐式取证并回答;`anchor_lid` 只作弱排序先验。`book.synthesize(lids:[LID...], task?)` 由调用方拥有证据选择权,系统只在给定离散 LID 内综合、无检索、无外扩。章节主旨/论文贡献先用 `book.structure`/`book.guide_path`(technical book)或 `book.paper_reading_guide`(paper)选 LID 再 synthesize;当前 passage 优先 `book.text`/`book.context` 或已知 LID 的 synthesize;query 不承担文档级搜索,也不在答后重复调用 synthesize。两者 citations 都只能指向各自允许的来源 LID。状态:BOUNDARY_CHANGE(原分工承 [docs/adr/0017],query 边界由 [docs/adr/0077] 修订)。
@@ -630,7 +640,7 @@ runtime 在读者回合开始前从 `GlobalReaderProfile`、当前 `BookReadingS
 对话会话的切分仍由用户显式控制 `[ADR-0030]`;idle 只触发 ReviewJob,不自动创建新对话。新对话、切书和 context compression 是记忆审核边界,新回合以自动 `ReaderProfileSnapshot` 冷启动而非依赖 agent 主动 recall。状态:BOUNDARY_CHANGE(详见 [docs/adr/0030], [docs/adr/0075])。
 
 ## agent 对话历史 (agent chat history)
-住户 agent 的本地、读者私有、按 `book_id` 分组的可恢复对话会话列表 `[ADR-0030]`。它不是 memory 真相,但其中的用户回合可作为 ReviewJob 的画像证据引用;删除原会话不等同于执行 memory“忘记”,且历史绝不暴露给 visitor/MCP。状态:BOUNDARY_CHANGE(详见 [docs/adr/0030], [docs/adr/0075])。
+住户 Agent 与读者的可恢复私人聊天，按所属书籍或学习工作区读取。用户回合可作为 ReviewJob 的画像证据引用。删除聊天与记忆“忘记”分别处理。访客 Book MCP 只持有访客会话。按已接受的 [ADR-0189](docs/adr/0189-local-agent-learning-with-acp-and-mcp.md)，个人学习连接可取得读者所选任务的接续信息。
 
 ## route(导航原语)
 图谱上的**确定性多跳导航原语** `[ADR-0034]`,零 LLM,只保证返回的 LID/边真实("确定性 LID 由 route 保证")。两形态:`route_from(at)` = **前沿式内核**(站在当前 LID 返回可走的下一步);`route_to(from, target)` = 同批边上跑 BFS 的确定性组合(派生)。区别于 `book.context`(单跳"相关点"):route 是把 context 链起来 + 按边语义排序成"可导航下一步"的多跳找路。route 内核是 Core(架在 book.context 上);教学性排序/过滤属 technical_learning policy。状态:NEW(详见 [docs/adr/0034])。
@@ -641,11 +651,15 @@ runtime 在读者回合开始前从 `GlobalReaderProfile`、当前 `BookReadingS
 ## 住户 / 访客 (resident / visitor)
 读时两类 agent 的本质区别 `[ADR-0034][ADR-0035]`:**住户**携带当前位置与自动注入的 `ReaderProfileSnapshot`,和读者有持续关系;**访客**只带外来意图和临时会话,不得读取、生成或修改读者私人记忆。可共享的是 route/世界模型,不可让渡的是读者私人层。状态:BOUNDARY_CHANGE(详见 [docs/adr/0034], [docs/adr/0035], [docs/adr/0075])。
 
+## 个人学习连接
+
+读者在本机为自己的 Agent 或 CLI 明确启用的 Reader 入口，绑定可用资料及允许的私人操作。学习记录归读者，可在该范围内从另一个 Agent 接续。书内问答通过 ACP 交给读者选择的 Agent，个人 MCP 和 CLI 提供从外部开始的路径。[ADR-0189](docs/adr/0189-local-agent-learning-with-acp-and-mcp.md)
+
 ## 三类记忆 (three memory classes)
 读时记忆按可见性分三类 `[ADR-0035]`:**① 世界模型**(公共,可借:route/book.text/citation gate)/ **② 读者私人记忆**(durable + 读者所有:MemoryDocument/GlobalReaderProfile/BookReadingState)/ **③ 访客会话记忆**(ephemeral + 访客交互所有)。③ 不得成为②的证据来源。状态:BOUNDARY_CHANGE(详见 [docs/adr/0035], [docs/adr/0075])。
 
 ## 访客会话 (visitor session)
-外部 agent 经 MCP 连接我们时的 ephemeral 会话 `[ADR-0035]`,**TCP 式握手/挥手**维护:握手发 `session_id`、传输期迭代引导(支持"不对"refine)、挥手即焚 + 超时 GC。内容 = `transcript`(交互记录)+ 临时**游标** `cursor{at_lid, last_frontier}`(访客自己的位置,≠ 读者 viewport)。绝不写入 ② 的 durable store。修订了 P7 原"无状态"假设(见 [docs/adr/0035])。状态:NEW(详见 [docs/adr/0035])。
+外部 Agent 使用访客 Book MCP 向导时建立的临时会话。握手返回 `session_id`，后续调用可以调整引导方向。交互记录和临时游标 `cursor{at_lid, last_frontier}` 只属于这次访问，关闭或超时后释放。读者自己的视口与私人学习记录由 Reader 持有。[ADR-0035](docs/adr/0035-book-mcp访客会话-修订p7无状态为连接式-三类记忆-临时游标-book-guide投影.md)
 
 ## book_guide(访客向导命令)
 外部 agent 投影的只读 LLM 命令 `[ADR-0035]`:`book_guide(intent, anchor?)` 返回 `意图→入口节点→route 路线(每步理由+证据 LID)`。是 `book_query` 的姊妹——**query 返答案,guide 返路线**。配访客会话态可跨调用 refine。返回全是真 LID/真边,外部可独立验证。状态:NEW(详见 [docs/adr/0035])。
@@ -1273,6 +1287,10 @@ Resident Run 开始时固定的用户、原聊天、原材料与原现场代次�
 
 ## Agent 会话顺序日志（Resident session log）
 一个住户聊天所发生事件的持久顺序记录，保存原提问现场、对话、来源关联、实际成果及任务状态，供恢复当前聊天和回看阅读活动。阅读现场、教学事实和私人记忆继续按既有领域合同持有。状态：BOUNDARY_CHANGE，JL0–JL7 会话、运行、领域关联、成果处置与新日志启用已实现（[ADR-0152](docs/adr/0152-resident-linear-jsonl-session-log.md)）。
+
+## 追问对话与追问路径（follow-up conversation / conversation path）
+
+**追问对话**是读者从一段已交付回答的确切原句显式开启的私人聊天，可以连续交谈并回到直接父回答。**追问路径**按这些出处组织聊天，允许先预览已有问答或待发送的首问，再决定是否进入。预览保留当前聊天和输入草稿。[ADR-0188](docs/adr/0188-follow-up-conversations-and-path-preview.md)
 
 ## 阅读成果处置回执（Reading effect disposition receipt）
 读者对助手产生的阅读成果执行保留、撤销或忽略后，由实际处理方确认的结果，关联原成果及处理后成果；它表达发生过的处理，不保证成果此后仍然存在。状态：NEW，JL6 已实现；未能确认的实际结果保留待核对状态（[ADR-0152 §4](docs/adr/0152-resident-linear-jsonl-session-log.md)）。

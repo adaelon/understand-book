@@ -344,15 +344,15 @@ fn video_publication_local_pins_resume_and_preserves_reader_chat_and_draft() {
     batch(&input,"zh","translation");
     let newer = f.access.library.lock().unwrap().publish(&input).unwrap().reference;
     let latest = f.access.library.lock().unwrap().load("A", &newer).unwrap();
-    crate::video_publication::persist_local_binding(&state.workspace).unwrap();
-    assert_eq!(crate::video_publication::local_resume_directory(latest.directory(), &state.workspace.session_path), old.directory());
-    let result = crate::video_publication::adopt_local(&mut state).unwrap();
+    reader_service::tests::host_calls::video_publication::persist_local_binding(&state.workspace).unwrap();
+    assert_eq!(reader_service::tests::host_calls::video_publication::local_resume_directory(latest.directory(), &state.workspace.session_path), old.directory());
+    let result = reader_service::tests::host_calls::video_publication::adopt_local(&mut state).unwrap();
     assert_eq!(result["status"], "adopted");
     assert_eq!(state.workspace.selected_chat,chat); assert_eq!(state.workspace.generation,generation);
     assert_eq!(serde_json::to_value(state.workspace.reader.checkpoint()).unwrap(), reader);
     assert!(state.workspace.publication.is_none(), "local ordinary book switching stays available");
-    assert_eq!(crate::video_publication::local_resume_directory(latest.directory(), &state.workspace.session_path), latest.directory());
-    assert_eq!(crate::video_publication::adopt_local(&mut state).unwrap()["status"], "current");
+    assert_eq!(reader_service::tests::host_calls::video_publication::local_resume_directory(latest.directory(), &state.workspace.session_path), latest.directory());
+    assert_eq!(reader_service::tests::host_calls::video_publication::adopt_local(&mut state).unwrap()["status"], "current");
 }
 
 #[test]

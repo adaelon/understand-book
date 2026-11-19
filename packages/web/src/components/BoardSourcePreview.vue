@@ -4,7 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } fro
 import { ArrowUpRight, BookOpen, LoaderCircle, X } from '@lucide/vue';
 import { t as uiText } from '../i18n';
 import { api as sharedApi, type SourcePopupView, type SourceWindowLoader } from '../api';
-import { bindSceneApi } from '../network-context';
+import { bindSceneApi } from '../reader-context';
 import type { BoardSourceRequest } from '../board-workspace';
 import MediaSourcePreview from './MediaSourcePreview.vue';
 import MusicSourcePreview from './MusicSourcePreview.vue';

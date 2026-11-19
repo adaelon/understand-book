@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import NotesWorkspace from './NotesWorkspace.vue';
 import type { WorkspaceNote } from '../generated/WorkspaceNote';
 import type { WorkspaceNoteRelation } from '../generated/WorkspaceNoteRelation';
-import { network } from '../network-context';
+import { network } from '../reader-context';
 
 const mocks = vi.hoisted(() => ({
   workspaceNotes: vi.fn(), workspaceNote: vi.fn(), workspaceNoteCreate: vi.fn(), workspaceNoteUpdate: vi.fn(),

@@ -137,6 +137,43 @@ impl LearningStore {
             .transpose()
     }
 
+    /// Chats whose ordinary transcript is covered by the latest practice on
+    /// a source. A learning workspace may contain chats spanning several sources.
+    pub fn covered_follow_up_chats(
+        &self,
+        source: Option<&str>,
+    ) -> Result<std::collections::HashSet<String>, ToolError> {
+        self.covered_practice_chats(source, true)
+    }
+
+    /// While a practice is active or paused, external learner tools must not
+    /// reveal its material, even after another window or chat was selected.
+    pub fn open_closed_book_chats(&self, source: Option<&str>) -> Result<std::collections::HashSet<String>, ToolError> {
+        self.covered_practice_chats(source, false)
+    }
+
+    fn covered_practice_chats(&self, source: Option<&str>, completed: bool) -> Result<std::collections::HashSet<String>, ToolError> {
+        let mut query = self.connection.prepare(
+            "WITH changes AS (
+                SELECT json_extract(event,'$.binding.chat_session_id') AS chat,
+                       json_extract(event,'$.binding.source_id') AS source,
+                       json_extract(event,'$.payload.status') AS status, seq
+                FROM teaching_trace
+                WHERE learning_workspace_id=?1 AND event_id GLOB 'closed-book:*'
+                      AND json_extract(event,'$.kind')='closed_book_changed'
+             ), latest AS (
+                SELECT chat, status,
+                       row_number() OVER (PARTITION BY chat,source ORDER BY seq DESC) AS rank
+                FROM changes WHERE ?2 IS NULL OR source=?2
+             )
+             SELECT DISTINCT chat FROM latest WHERE rank=1 AND
+                (status IN ('active','paused') OR (?3 AND status='complete'))"
+        ).map_err(storage)?;
+        let rows = query.query_map(params![self.workspace_scope, source, completed], |row| row.get(0))
+            .map_err(storage)?;
+        rows.collect::<rusqlite::Result<_>>().map_err(storage)
+    }
+
     pub fn save_closed_book(
         &mut self,
         mut value: ClosedBookPractice,
@@ -199,5 +236,37 @@ mod tests {
         assert_eq!(store.save_closed_book(other, "start", "t4").unwrap_err().error_code, "TEACHING_INVALID");
         let other = LearningStore::open(&path, false).unwrap().with_workspace(Some("another-workspace"));
         assert!(other.closed_book_operation("start").unwrap().is_none());
+    }
+
+    #[test]
+    fn follow_up_visibility_uses_latest_practice_per_chat_and_source() {
+        let root = tempfile::tempdir().unwrap();
+        let path = root.path().join("learning.db");
+        let mut store = LearningStore::open(&path, false).unwrap().with_workspace(Some("class"));
+        let initial = ClosedBookPractice {
+            id: "a".into(), owner_id: "lesson".into(), course: true,
+            chat_session_id: "parent".into(), source_id: "algebra".into(), source_revision: "v1".into(),
+            goal_revision: None, course_origin: None, answer_origin: None, result_ref: None,
+            revision: 0, status: "active".into(), can_resume: true, target: "compare".into(),
+            criteria: String::new(), attempt: 1, assisted: false, needs_retry: false,
+            visible_turn_ids: vec![], draft: String::new(), completion_reason: String::new(), learner_quote: String::new(),
+        };
+        let mut first = store.save_closed_book(initial.clone(), "first", "t0").unwrap();
+        let mut second = store.save_closed_book(ClosedBookPractice {
+            id: "b".into(), source_id: "physics".into(), ..initial
+        }, "second", "t1").unwrap();
+        first.status = "ended".into();
+        store.save_closed_book(first, "exit-first", "t2").unwrap();
+        for status in ["active", "paused", "complete"] {
+            second.status = status.into();
+            second = store.save_closed_book(second, status, "t3").unwrap();
+            assert!(store.covered_follow_up_chats(Some("algebra")).unwrap().is_empty());
+            assert!(store.covered_follow_up_chats(None).unwrap().contains("parent"));
+        }
+        let other = LearningStore::open(&path, false).unwrap().with_workspace(Some("other"));
+        assert!(other.covered_follow_up_chats(None).unwrap().is_empty());
+        second.status = "ended".into();
+        store.save_closed_book(second, "exit-second", "t4").unwrap();
+        assert!(store.covered_follow_up_chats(None).unwrap().is_empty());
     }
 }

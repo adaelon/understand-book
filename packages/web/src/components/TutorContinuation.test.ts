@@ -4,7 +4,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import TutorContinuation from './TutorContinuation.vue';
 const api = vi.hoisted(() => ({ tutorActivities: vi.fn(), tutorContinuationDisplayed: vi.fn() }));
 vi.mock('../api', () => ({ api }));
-vi.mock('../network-context', () => ({ bindSceneApi: (value: unknown) => value }));
+vi.mock('../reader-context', () => ({ bindSceneApi: (value: unknown) => value }));
 let intersect: IntersectionObserverCallback;
 const view = { delivery_ref: 'delivery', origin_turn_id: 'origin', expected_chat_head: 'origin', target_summary: '总时间为什么在分母',
   availability: { status: 'eligible' }, continuation: { recommended_option_id: 'compare', options: [

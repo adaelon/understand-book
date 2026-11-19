@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-load-local-note-drafts"
+description = "Enables the load_local_note_drafts command without any pre-configured scope."
+commands.allow = ["load_local_note_drafts"]
+
+[[permission]]
+identifier = "deny-load-local-note-drafts"
+description = "Denies the load_local_note_drafts command without any pre-configured scope."
+commands.deny = ["load_local_note_drafts"]

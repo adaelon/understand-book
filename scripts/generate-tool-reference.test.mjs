@@ -71,6 +71,7 @@ test('generated links resolve and examples are valid JSON after Markdown renderi
   const anchors = new Set([...markdown.matchAll(/<a id="([^"]+)"><\/a>/g)].map(match => match[1]));
   for (const [, target] of markdown.matchAll(/\]\(([^)]+)\)/g)) {
     if (target.startsWith('#')) assert.ok(anchors.has(target.slice(1)), target);
+    else if (/^https?:\/\//.test(target)) assert.doesNotThrow(() => new URL(target));
     else assert.ok(existsSync(path.resolve(ROOT, 'docs', target.split('#')[0])), target);
   }
   for (const [, body] of markdown.matchAll(/```json\n([\s\S]*?)\n```/g)) assert.doesNotThrow(() => JSON.parse(body));

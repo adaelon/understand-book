@@ -418,11 +418,20 @@ impl MemoryStore {
         before: Option<&str>,
         limit: usize,
     ) -> Vec<PersonalNoteView> {
+        self.personal_notes_page(book_id, None, before, limit)
+    }
+
+    pub fn personal_notes_for_workspace(&self, book_id: &str, workspace_id: Option<&str>, before: Option<&str>, limit: usize) -> Vec<PersonalNoteView> {
+        self.personal_notes_page(Some(book_id), Some(workspace_id), before, limit)
+    }
+
+    fn personal_notes_page(&self, book_id: Option<&str>, workspace: Option<Option<&str>>, before: Option<&str>, limit: usize) -> Vec<PersonalNoteView> {
         let mut notes: Vec<_> = self
             .document
             .notes
             .iter()
             .filter(|n| book_id.is_none_or(|id| n.current().context.book_id.as_deref() == Some(id)))
+            .filter(|n| workspace.is_none_or(|scope| n.current().context.workspace_id.as_deref() == scope))
             .filter(|n| before.is_none_or(|id| n.note_id.as_str() < id))
             .collect();
         notes.sort_by(|a, b| b.note_id.cmp(&a.note_id));

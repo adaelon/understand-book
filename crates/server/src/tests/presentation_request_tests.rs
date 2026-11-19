@@ -51,12 +51,12 @@ fn presentation_request_adds_delivery_to_an_open_goal_without_losing_content() {
 fn presentation_request_is_frozen_for_retries_and_validated_before_acceptance() {
     let plain = json!({"message":"解释一下这里"});
     let page = json!({"message":"解释一下这里", "presentation_requested":true});
-    let frozen = crate::run_admission::normalize("workspace", &page).unwrap();
+    let frozen = crate::run_input::normalize("workspace", &page).unwrap();
     assert_eq!(frozen["presentation_requested"], true);
-    assert_ne!(frozen, crate::run_admission::normalize("workspace", &plain).unwrap());
+    assert_ne!(frozen, crate::run_input::normalize("workspace", &plain).unwrap());
     let mut state = state_named("presentation-request-invalid");
     let invalid = json!({"message":"解释一下这里", "presentation_requested":"true"});
-    assert!(crate::run_admission::normalize("workspace", &invalid).is_err());
+    assert!(crate::run_input::normalize("workspace", &invalid).is_err());
     let before = state.user.agent_history.sessions.clone();
     let reply = match prepare_agent_chat(&mut state, &invalid.to_string(), "1") {
         Err(reply) => reply,

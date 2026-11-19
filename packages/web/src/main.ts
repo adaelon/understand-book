@@ -1,30 +1,4 @@
-import { t as uiText } from './i18n';
-import { createApp } from "vue";
-import ApplicationShell from "./ApplicationShell.vue";
-import { installAppViewportHeightFallback } from "./app-viewport-height";
-import "katex/dist/katex.min.css"; // agent 答案 LaTeX 公式样式
-import "./style.css";
-import { initializeLanguage } from './i18n';
-import { initializeDesktopLanguage } from './desktop-language';
-import { initializeNoteDraftStorage } from './personal-notes';
+import LocalApp from './LocalApp.vue';
+import { mountReader } from './mount-reader';
 
-initializeLanguage(uiText('understand-book 阅读器'));
-initializeDesktopLanguage();
-
-async function mountReader() {
-  // Keep the inline startup animation visible while production styles download.
-  const styles = Array.from(document.querySelectorAll<HTMLLinkElement>("link[data-app-styles]"));
-  await Promise.all(styles.map(style => new Promise<void>(resolve => {
-    style.addEventListener("load", () => resolve(), { once: true });
-    style.addEventListener("error", () => resolve(), { once: true });
-    style.media = "print";
-    style.rel = "stylesheet";
-  })));
-  styles.forEach(style => { style.media = "all"; });
-  await initializeNoteDraftStorage();
-  const stopViewportHeightFallback = installAppViewportHeightFallback();
-  createApp(ApplicationShell).mount("#app");
-  if (import.meta.hot) import.meta.hot.dispose(stopViewportHeightFallback);
-}
-
-void mountReader();
+void mountReader(LocalApp);

@@ -1,4 +1,5 @@
 import ReactDOM from "react-dom/client";
+import { lazy, Suspense } from 'react';
 import { QueryClientProvider } from "@tanstack/react-query";
 import {
   createRootRoute,
@@ -16,6 +17,7 @@ import { MonitorPage } from "./pages/monitor";
 import { InvitesPage } from "./pages/invites";
 import { WorkspaceReleasesPage } from "./pages/workspace-releases";
 import { OperatorBuildsPage } from './pages/operator-builds';
+const ModelProvidersPage = lazy(() => import('./pages/model-providers').then(page => ({ default: page.ModelProvidersPage })));
 import "./styles/index.css";
 
 const root = createRootRoute({
@@ -46,8 +48,9 @@ const user = createRoute({
   },
 });
 const usage = createRoute({getParentRoute: () => root, path: '/usage', component: UsagePage});
+const models = createRoute({getParentRoute: () => root, path: '/model-providers', component: () => <Suspense fallback={<p role="status">正在读取模型设置…</p>}><ModelProvidersPage /></Suspense>});
 const router = createRouter({
-  routeTree: root.addChildren([index, login, users, user, usage, createRoute({getParentRoute: () => root, path: '/monitor', component: MonitorPage}), createRoute({getParentRoute: () => root, path: '/invites', component: InvitesPage}), createRoute({getParentRoute: () => root, path: '/workspace-releases', component: WorkspaceReleasesPage}), createRoute({getParentRoute: () => root, path: '/operator-builds', component: OperatorBuildsPage})]),
+  routeTree: root.addChildren([index, login, users, user, usage, models, createRoute({getParentRoute: () => root, path: '/monitor', component: MonitorPage}), createRoute({getParentRoute: () => root, path: '/invites', component: InvitesPage}), createRoute({getParentRoute: () => root, path: '/workspace-releases', component: WorkspaceReleasesPage}), createRoute({getParentRoute: () => root, path: '/operator-builds', component: OperatorBuildsPage})]),
   basepath: "/admin",
 });
 ReactDOM.createRoot(document.getElementById("root")!).render(

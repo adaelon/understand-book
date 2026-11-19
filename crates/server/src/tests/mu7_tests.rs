@@ -63,7 +63,7 @@ fn mu7_invalid_sandbox_configuration_stays_disabled() {
 
 #[test]
 fn mu7_generated_outputs_reject_escape_size_type_and_missing_files() {
-    use crate::presentation_sandbox::output_file;
+    use reader_service::tests::host_calls::presentation_sandbox::output_file;
     let root = tempfile::tempdir().unwrap();
     std::fs::write(root.path().join("result"), b"1234").unwrap();
     assert_eq!(output_file(root.path(), "result", 4).unwrap(), b"1234");
@@ -78,7 +78,7 @@ fn mu7_generated_outputs_reject_escape_size_type_and_missing_files() {
         std::os::unix::fs::symlink(root.path().join("result"), root.path().join("link")).unwrap();
         assert!(output_file(root.path(), "link", 4).is_err());
     }
-    assert!(crate::presentation_sandbox::png(b"not an image", 800, 480).is_err());
+    assert!(reader_service::tests::host_calls::presentation_sandbox::png(b"not an image", 800, 480).is_err());
 }
 
 #[cfg(target_os = "linux")]

@@ -767,6 +767,7 @@ describe("automatic build orchestrator", () => {
       "structure_stitch_fragment",
       "structure_theme",
       "structure_theme_plan",
+      "structure_theme_plan_page",
       "structure_theme_reconcile",
       "structure_unit",
     ]);

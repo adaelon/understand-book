@@ -53,6 +53,16 @@ pub mod memory_policy;
 pub mod memory_review;
 pub mod model_runtime;
 pub mod model_spend;
+pub mod model_settings;
+mod openai_responses;
+mod anthropic_messages;
+mod gemini_generate;
+mod gemini_interactions;
+mod ollama_chat;
+mod cohere_chat;
+mod bedrock_converse;
+pub mod cloud_provider;
+use model_settings::{ApiProtocol, AuthMethod, OutputTokenParameter, ProviderOptions};
 #[cfg(test)]
 mod output_retry_tests;
 #[cfg(test)]
@@ -76,6 +86,10 @@ pub mod provider_stream;
 mod provider_retry;
 #[cfg(test)]
 mod provider_timeout_tests;
+#[cfg(test)]
+mod provider_protocol_tests;
+#[cfg(test)]
+mod multi_protocol_tests;
 pub mod request_diagnostics;
 pub mod run_context;
 pub mod personal_notes;
@@ -219,6 +233,7 @@ impl AgentReasoningEffort {
 
 #[derive(Debug, Clone)]
 pub struct ProviderConfig {
+    pub options: ProviderOptions,
     pub mode: ProviderMode,
     pub api_key: String,
     pub base_url: String,
@@ -260,6 +275,7 @@ impl ProviderConfig {
             });
         }
         Ok(ProviderConfig {
+            options: ProviderOptions::default(),
             agent_reasoning_effort: Default::default(),
             mode,
             api_key,
@@ -272,6 +288,20 @@ impl ProviderConfig {
     where
         F: FnMut(&str) -> Option<String>,
     {
+        let settings_path = get("UNDERSTAND_BOOK_MODEL_SETTINGS");
+        let selected_model = get("UNDERSTAND_BOOK_MODEL_CONFIG_ID");
+        if let Some(path) = settings_path {
+            let failure = |message: String| AdapterError { spend_stop: None, message };
+            let text = std::fs::read_to_string(path).map_err(|error| failure(format!("无法读取 UNDERSTAND_BOOK_MODEL_SETTINGS: {error}")))?;
+            let settings: model_settings::ModelSettings = serde_json::from_str(&text).map_err(|error| failure(format!("模型设置 JSON 无效: {error}")))?;
+            return match selected_model {
+                Some(id) => settings.resolve_model(&id),
+                None => settings.resolve(model_settings::ModelPurpose::Agent),
+            }.map_err(failure);
+        }
+        if selected_model.is_some() {
+            return Err(AdapterError { spend_stop: None, message: "UNDERSTAND_BOOK_MODEL_CONFIG_ID 需要同时指定 UNDERSTAND_BOOK_MODEL_SETTINGS".into() });
+        }
         let required = |k: &str, get: &mut F| {
             get(k).ok_or_else(|| AdapterError {
                 spend_stop: None,
@@ -379,7 +409,20 @@ pub enum Role {
 
 /// Private provider protocol state, carried with its assistant message across reloads.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ProviderContinuationIdentity {
+    pub service_id: Option<String>,
+    pub base_url: String,
+    pub api_protocol: ApiProtocol,
+    #[serde(default)]
+    pub deployment: cloud_provider::Deployment,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProviderContinuation {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider_identity: Option<ProviderContinuationIdentity>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub protocol_state: Option<serde_json::Value>,
     pub model: String,
     pub reasoning_content: String,
     /// Native Messages block order/signatures; text and tool arguments are held
@@ -2773,6 +2816,8 @@ Rules:\n\
 
 /// NativeAdapter:对接 `.env` 配置的 OpenAI-兼容后端 `[ADR-0003/0025]`。
 pub struct NativeAdapter {
+    options: ProviderOptions,
+    cloud_auth: std::sync::OnceLock<Result<cloud_provider::CloudAuth, String>>,
     api_key: String,
     base_url: String,
     model: String,
@@ -2814,9 +2859,12 @@ impl NativeAdapter {
         runtime_profile: Option<ModelRuntimeProfile>,
         request_timeouts: ProviderRequestTimeouts,
     ) -> NativeAdapter {
-        let resolved_profile =
-            ModelRuntimeCatalog::default().resolve(&cfg.model, protocol, runtime_profile);
+        let resolved_profile = ModelRuntimeCatalog::default().resolve(
+            &cfg.model, protocol, cfg.options.runtime_profile.clone().or(runtime_profile),
+        );
         NativeAdapter {
+            options: cfg.options,
+            cloud_auth: Default::default(),
             api_key: cfg.api_key,
             base_url: cfg.base_url,
             model: cfg.model,
@@ -2844,13 +2892,16 @@ impl NativeAdapter {
         observer: &mut dyn provider_stream::ModelObserver,
         entry: &str,
     ) -> Result<serde_json::Value, AdapterError> {
-        self.post_provider_request(body, observer, entry, false)
+        self.post_provider_request(body, observer, entry, self.request_protocol()?)
     }
 
     fn discovered_messages_capabilities(&self) -> Option<deepseek_messages::MessagesCapabilities> {
         *self.messages_capabilities.get_or_init(|| {
+            if !matches!(self.options.api_protocol, ApiProtocol::LegacyAuto | ApiProtocol::DeepseekMessages) {
+                return None;
+            }
             // A non-DeepSeek OpenAI-compatible route keeps its existing behavior.
-            if !self.model.starts_with("deepseek-")
+            if self.options.api_protocol != ApiProtocol::DeepseekMessages && !self.model.starts_with("deepseek-")
                 && url::Url::parse(&self.base_url).ok().and_then(|u| u.host_str().map(str::to_owned)).as_deref() != Some("api.deepseek.com") {
                 return None;
             }
@@ -2860,9 +2911,10 @@ impl NativeAdapter {
             let agent = ureq::AgentBuilder::new().redirects(0)
                 .timeout(timeout)
                 .timeout_connect(self.request_timeouts.connect.min(timeout)).build();
-            let listing: serde_json::Value = agent.get(&models_url)
-                .set("Authorization", &format!("Bearer {}", self.api_key))
-                .call().ok()?.into_json().ok()?;
+            self.validate_protocol_request(&serde_json::json!({}), ApiProtocol::DeepseekMessages).ok()?;
+            let mut request = self.authenticate_request(agent.get(&models_url), ApiProtocol::DeepseekMessages);
+            for (header, value) in &self.options.headers { request = request.set(header, value); }
+            let listing: serde_json::Value = request.call().ok()?.into_json().ok()?;
             deepseek_messages::capabilities_for_route(&listing, &self.base_url, &self.model)
         })
     }
@@ -2871,11 +2923,78 @@ impl NativeAdapter {
         self.messages_capabilities.get().copied().flatten()
     }
 
-    fn normalize_provider_body(&self, body: &mut serde_json::Value, messages: bool) -> Result<(), AdapterError> {
-        body["stream"] = serde_json::json!(true);
-        if !messages { body["stream_options"] = serde_json::json!({"include_usage": true}); }
+    fn request_protocol(&self) -> Result<ApiProtocol, AdapterError> {
+        match self.options.api_protocol {
+            ApiProtocol::LegacyAuto => Ok(if self.bound_messages_capabilities().is_some() {
+                ApiProtocol::DeepseekMessages
+            } else { ApiProtocol::OpenaiChatCompletions }),
+            ApiProtocol::DeepseekMessages if self.discovered_messages_capabilities().is_none() => Err(AdapterError {
+                spend_stop: None,
+                message: "所选服务的模型目录未确认 DeepSeek Messages 能力；请检查模型 ID、服务地址和认证，或显式选择该服务支持的协议".into(),
+            }),
+            protocol => Ok(protocol),
+        }
+    }
+
+    fn continuation_identity(&self, protocol: ApiProtocol) -> ProviderContinuationIdentity {
+        ProviderContinuationIdentity {
+            service_id: self.options.binding.as_ref().map(|binding| binding.service_id.clone()),
+            base_url: self.base_url.clone(),
+            api_protocol: protocol,
+            deployment: self.options.deployment.clone(),
+        }
+    }
+
+    fn request_history<'a>(&self, request: &'a AgentRequestPlan, protocol: ApiProtocol) -> std::borrow::Cow<'a, AgentRequestPlan> {
+        let identity = self.continuation_identity(protocol);
+        let compatible = |state: &ProviderContinuation| {
+            state.model == self.model && match &state.provider_identity {
+                Some(saved) => saved == &identity,
+                None => self.options.api_protocol == ApiProtocol::LegacyAuto && self.options.binding.is_none(),
+            }
+        };
+        if request.input.iter().all(|message| message.provider_continuation.as_ref().is_none_or(&compatible)) {
+            return std::borrow::Cow::Borrowed(request);
+        }
+        let mut projected = request.clone();
+        for message in &mut projected.input {
+            if message.provider_continuation.as_ref().is_some_and(|state| !compatible(state)) {
+                message.provider_continuation = None;
+            }
+        }
+        std::borrow::Cow::Owned(projected)
+    }
+
+    fn normalize_provider_body(&self, body: &mut serde_json::Value, protocol: ApiProtocol) -> Result<(), AdapterError> {
+        let tools = body["tools"].as_array().is_some_and(|tools| !tools.is_empty());
+        let stream = self.options.capabilities.streaming != Some(false)
+            && (!tools || self.options.capabilities.streaming_tools != Some(false));
+        body["stream"] = serde_json::json!(stream);
+        if protocol != ApiProtocol::DeepseekMessages && stream { body["stream_options"] = serde_json::json!({"include_usage": true}); }
+        else { body.as_object_mut().expect("request object").remove("stream_options"); }
+        if self.options.api_protocol != ApiProtocol::LegacyAuto && protocol != ApiProtocol::DeepseekMessages && self.options.capabilities.reasoning_effort != Some(true) {
+            body.as_object_mut().expect("request object").remove("reasoning_effort");
+        }
+        match self.options.generation.temperature {
+            Some(temperature) => body["temperature"] = serde_json::json!(temperature),
+            None if self.options.api_protocol != ApiProtocol::LegacyAuto => { body.as_object_mut().expect("request object").remove("temperature"); }
+            None => {}
+        }
+        if self.options.api_protocol != ApiProtocol::LegacyAuto && self.options.capabilities.json_object != Some(true)
+            && body["response_format"]["type"] == "json_object" {
+            body.as_object_mut().expect("request object").remove("response_format");
+            if let Some(messages) = body["messages"].as_array_mut() {
+                let instruction = "Return exactly one JSON object and no Markdown code fence.";
+                if let Some(message) = messages.iter_mut().find(|message| message["role"] == "system") {
+                    message["content"] = serde_json::json!(format!("{}\n\n{instruction}", message["content"].as_str().unwrap_or("")));
+                } else {
+                    messages.insert(0, serde_json::json!({"role":"system","content":instruction}));
+                }
+            }
+        }
         let estimate = model_runtime::estimate_provider_request_input_tokens(body);
         let requested = body["max_tokens"].as_u64().and_then(|v| u32::try_from(v).ok());
+        let requested = self.options.output_token_limit.map(|limit| requested.unwrap_or(self.runtime_profile.output_reserve_tokens).min(limit)).or(requested);
         body["max_tokens"] = serde_json::json!(self.runtime_profile.output_token_limit(requested, estimate)?);
         Ok(())
     }
@@ -2885,7 +3004,7 @@ impl NativeAdapter {
         mut body: serde_json::Value,
         observer: &mut dyn provider_stream::ModelObserver,
         entry: &str,
-        messages: bool,
+        protocol: ApiProtocol,
     ) -> Result<serde_json::Value, AdapterError> {
         let estimated_input_tokens = model_runtime::estimate_provider_request_input_tokens(&body);
         let requested_output_tokens = body["max_tokens"].as_u64()
@@ -2894,10 +3013,29 @@ impl NativeAdapter {
         // caller policy, rather than the default allowance that may be expanded.
         let allow_output_retry = requested_output_tokens
             .is_none_or(|requested| requested >= self.runtime_profile.output_reserve_tokens);
-        self.normalize_provider_body(&mut body, messages)?;
-        let url = if messages { deepseek_messages::endpoint_urls(&self.base_url).1 }
-            else { format!("{}/chat/completions", self.base_url.trim_end_matches('/')) };
-        let mut body = std::sync::Arc::new(body);
+        self.validate_protocol_request(&body, protocol)?;
+        self.normalize_provider_body(&mut body, protocol)?;
+        let stream = body["stream"] == true;
+        let url = match cloud_provider::endpoint_with_stream(&self.options.deployment, protocol, &self.base_url, &self.model, stream)? {
+            Some(endpoint) => endpoint,
+            None => protocol_endpoint(protocol, &self.base_url, &self.model, stream)?,
+        };
+        let mut canonical_body = std::sync::Arc::new(body);
+        let project = |body: std::sync::Arc<serde_json::Value>| -> Result<std::sync::Arc<serde_json::Value>, AdapterError> {
+            let completion_tokens = protocol == ApiProtocol::OpenaiChatCompletions
+                && self.options.generation.output_token_parameter == Some(OutputTokenParameter::MaxCompletionTokens);
+            if matches!(protocol, ApiProtocol::OpenaiChatCompletions | ApiProtocol::DeepseekMessages)
+                && self.options.deployment == cloud_provider::Deployment::Direct && !completion_tokens {
+                return Ok(body);
+            }
+            let mut wire = project_protocol_request(protocol, (*body).clone())?;
+            if completion_tokens {
+                if let Some(limit) = wire.as_object_mut().expect("request object").remove("max_tokens") { wire["max_completion_tokens"] = limit; }
+            }
+            cloud_provider::project_body(&self.options.deployment, protocol, wire)
+                .map(std::sync::Arc::new)
+        };
+        let mut body = project(canonical_body.clone())?;
         observer.observe(provider_stream::ModelDelta::Request(body.clone()));
         let port = self.spend.borrow().clone();
         let scope = self.spend_scope.borrow().clone();
@@ -2917,6 +3055,7 @@ impl NativeAdapter {
                 spend_stop: None, message: error.message,
             })?;
             provider_retry::remaining(deadline)?;
+            let auth_headers = self.cloud_authentication_headers(provider_retry::remaining(deadline)?, &cancellation)?;
             attempt += 1;
             let identity = model_spend::SendIdentity {
                 call_id: uuid::Uuid::now_v7().to_string(), logical_call_id: logical_call_id.clone(),
@@ -2937,7 +3076,7 @@ impl NativeAdapter {
                 cancellation.check().map_err(|error| AdapterError { spend_stop: None, message: error.message })?;
                 return Err(AdapterError { spend_stop: None, message: "模型调用超时（包含重试等待）".into() });
             }
-            match self.send_provider_request_once(&url, &body, messages, timeout) {
+            match self.send_provider_request_once(&url, &body, protocol, timeout, &auth_headers) {
                 Ok(resp) => {
                     let mut usage = None;
                     let mut response_observer = |delta: provider_stream::ModelDelta| {
@@ -2950,8 +3089,7 @@ impl NativeAdapter {
                         }
                     };
                     let cancellation = self.cancellation.borrow().clone().unwrap_or_default();
-                    let result = if messages { deepseek_messages_stream::read_response(resp, &cancellation, &mut response_observer) }
-                        else { provider_stream::read_response(resp, &cancellation, &mut response_observer) };
+                    let result = read_protocol_response(protocol, resp, &cancellation, &mut response_observer);
                     let length_limited = result.as_ref().is_ok_and(|value| value["choices"][0]["finish_reason"] == "length");
                     let current_usage = usage.clone().unwrap_or_default();
                     let cumulative_usage = prior_usage.as_ref().map_or_else(|| current_usage.clone(), |prior| prior.plus(&current_usage));
@@ -2969,12 +3107,15 @@ impl NativeAdapter {
                         .unwrap_or(estimated_input_tokens);
                     prior_usage = Some(cumulative_usage.clone());
                     if length_limited {
-                        let current = body["max_tokens"].as_u64().unwrap() as u32;
+                        let current = canonical_body["max_tokens"].as_u64().unwrap() as u32;
                         if allow_output_retry && !output_retried {
-                            if let Some(next) = self.runtime_profile.retry_output_token_limit(current, retry_input_tokens) {
+                            if let Some(next) = self.runtime_profile.retry_output_token_limit(current, retry_input_tokens)
+                                .map(|next| self.options.output_token_limit.map_or(next, |limit| next.min(limit)))
+                                .filter(|next| *next > current) {
                                 output_retried = true;
                                 observer.observe(provider_stream::ModelDelta::RetryReset);
-                                std::sync::Arc::make_mut(&mut body)["max_tokens"] = serde_json::json!(next);
+                                std::sync::Arc::make_mut(&mut canonical_body)["max_tokens"] = serde_json::json!(next);
+                                body = project(canonical_body.clone())?;
                                 observer.observe(provider_stream::ModelDelta::Request(body.clone()));
                                 continue;
                             }
@@ -3003,7 +3144,7 @@ impl NativeAdapter {
                         let retry_after = provider_retry::retry_after(&response);
                         let text = response.into_string().unwrap_or_else(|e|e.to_string());
                         let parsed = serde_json::from_str(&text).ok();
-                        let usage = parsed.as_ref().and_then(|v| if messages { deepseek_messages_stream::model_usage(v) } else { provider_stream::model_usage(v) });
+                        let usage = parsed.as_ref().and_then(|v| protocol_error_usage(protocol, v));
                         let current_usage = usage.clone().unwrap_or_default();
                         let cumulative = prior_usage.as_ref().map_or_else(|| current_usage.clone(), |prior| prior.plus(&current_usage));
                         observer.observe(provider_stream::ModelDelta::Usage(cumulative.clone()));
@@ -3046,8 +3187,9 @@ impl NativeAdapter {
         &self,
         url: &str,
         body: &serde_json::Value,
-        messages: bool,
+        protocol: ApiProtocol,
         timeout: std::time::Duration,
+        auth_headers: &BTreeMap<String, String>,
     ) -> Result<ureq::Response, ureq::Error> {
         // ureq enforces this deadline on the socket while reading the response
         // body too. Its total timeout overrides timeout_read, so do not expose
@@ -3055,15 +3197,144 @@ impl NativeAdapter {
         let builder = ureq::AgentBuilder::new()
             .timeout(timeout)
             .timeout_connect(self.request_timeouts.connect.min(timeout));
-        let agent = if messages { builder.redirects(0) } else { builder }.build();
-        let request = agent.post(url)
-            .set("Authorization", &format!("Bearer {}", self.api_key))
-            .set("Content-Type", "application/json");
-        let request = if messages {
-            let request = request.set("anthropic-version", "2023-06-01").set("x-api-key", &self.api_key);
-            if deepseek_messages::uses_tool_updates(body) { request.set("anthropic-beta", deepseek_messages::TOOL_CHANGES_BETA) } else { request }
-        } else { request };
+        let agent = if protocol == ApiProtocol::DeepseekMessages { builder.redirects(0) } else { builder }.build();
+        let mut request = self.authenticate_request(agent.post(url), protocol).set("Content-Type", "application/json");
+        for (header, value) in &self.options.headers { request = request.set(header, value); }
+        for (header, value) in auth_headers { request = request.set(header, value); }
+        if matches!(protocol, ApiProtocol::DeepseekMessages | ApiProtocol::AnthropicMessages) && !matches!(self.options.deployment, cloud_provider::Deployment::Vertex { .. }) {
+            request = request.set("anthropic-version", "2023-06-01");
+        }
+        if protocol == ApiProtocol::DeepseekMessages && deepseek_messages::uses_tool_updates(body) {
+            request = request.set("anthropic-beta", deepseek_messages::TOOL_CHANGES_BETA);
+        }
         request.send_json(body)
+    }
+
+    fn authenticate_request(&self, request: ureq::Request, protocol: ApiProtocol) -> ureq::Request {
+        match self.options.auth {
+            AuthMethod::None | AuthMethod::GoogleAdc | AuthMethod::AzureDeveloperTools | AuthMethod::AzureManagedIdentity | AuthMethod::AzureWorkloadIdentity => request,
+            AuthMethod::Bearer => {
+                let request = request.set("Authorization", &format!("Bearer {}", self.api_key));
+                if protocol == ApiProtocol::DeepseekMessages { request.set("x-api-key", &self.api_key) } else { request }
+            }
+            AuthMethod::ApiKey => request.set(match protocol {
+                ApiProtocol::GeminiGenerateContent | ApiProtocol::GeminiInteractions => "x-goog-api-key",
+                ApiProtocol::OpenaiChatCompletions | ApiProtocol::OpenaiResponses => "api-key",
+                _ => "x-api-key",
+            }, &self.api_key),
+        }
+    }
+
+    fn cloud_authentication_headers(&self, timeout: std::time::Duration, cancellation: &run_context::CancellationToken) -> Result<BTreeMap<String, String>, AdapterError> {
+        if !matches!(self.options.auth, AuthMethod::GoogleAdc | AuthMethod::AzureDeveloperTools | AuthMethod::AzureManagedIdentity | AuthMethod::AzureWorkloadIdentity) {
+            return Ok(BTreeMap::new());
+        }
+        let auth = self.cloud_auth.get_or_init(|| cloud_provider::CloudAuth::new(self.options.auth, &self.options.deployment));
+        match auth {
+            Ok(auth) => auth.headers(timeout, cancellation),
+            Err(message) => Err(AdapterError { spend_stop: None, message: message.clone() }),
+        }
+    }
+
+    fn validate_protocol_request(&self, body: &serde_json::Value, protocol: ApiProtocol) -> Result<(), AdapterError> {
+        let fail = |message: &str| AdapterError { spend_stop: None, message: message.into() };
+        if self.options.auth.requires_api_key() && self.api_key.trim().is_empty() {
+            return Err(fail("所选模型服务的认证凭据为空；请补充凭据或为免认证服务选择无认证"));
+        }
+        for (name, value) in &self.options.headers {
+            if matches!(name.to_ascii_lowercase().as_str(), "authorization" | "x-api-key" | "api-key" | "x-goog-api-key" | "content-type" | "content-length" | "host" | "anthropic-version" | "anthropic-beta") {
+                return Err(fail("额外请求头不能覆盖认证、传输或协议管理的请求头"));
+            }
+            if name.is_empty() || name.bytes().any(|byte| !byte.is_ascii_alphanumeric() && byte != b'-') || value.contains(['\r', '\n']) {
+                return Err(fail("模型服务的额外请求头格式无效"));
+            }
+        }
+        if (self.options.capabilities.images == Some(false)
+            || self.options.api_protocol != ApiProtocol::LegacyAuto && self.options.capabilities.images != Some(true)) && request_contains_images(body) {
+            return Err(fail("当前模型配置不支持图像；请为本任务选择支持图像的模型"));
+        }
+        if self.options.capabilities.native_tools == Some(false) && body["tools"].as_array().is_some_and(|tools| !tools.is_empty()) {
+            return Err(fail("当前模型配置不支持原生工具调用；请选择支持工具的模型或显式配置 ReAct"));
+        }
+        if protocol == ApiProtocol::LegacyAuto {
+            return Err(fail("请求发送前必须解析为明确的 API 协议"));
+        }
+        if self.options.generation.output_token_parameter.is_some() && protocol != ApiProtocol::OpenaiChatCompletions {
+            return Err(fail("输出预算参数名只适用于 Chat Completions；请检查模型协议与生成参数"));
+        }
+        Ok(())
+    }
+}
+
+fn request_contains_images(value: &serde_json::Value) -> bool {
+    if matches!(value["type"].as_str(), Some("image_url" | "image")) { return true; }
+    match value {
+        serde_json::Value::Array(values) => values.iter().any(request_contains_images),
+        serde_json::Value::Object(values) => values.values().any(request_contains_images),
+        _ => false,
+    }
+}
+
+/// Append an API path without moving a configured version query into the path.
+pub(crate) fn append_provider_path(base_url: &str, suffix: &str) -> Result<String, AdapterError> {
+    let mut url = url::Url::parse(base_url).map_err(|error| AdapterError { spend_stop: None, message: format!("模型服务地址无效: {error}") })?;
+    let path = format!("{}/{}", url.path().trim_end_matches('/'), suffix.trim_start_matches('/'));
+    url.set_path(&path);
+    Ok(url.into())
+}
+
+fn protocol_endpoint(protocol: ApiProtocol, base_url: &str, model: &str, stream: bool) -> Result<String, AdapterError> {
+    match protocol {
+        ApiProtocol::OpenaiChatCompletions | ApiProtocol::LegacyAuto => append_provider_path(base_url, "chat/completions"),
+        ApiProtocol::DeepseekMessages => Ok(deepseek_messages::endpoint_urls(base_url).1),
+        ApiProtocol::OpenaiResponses => openai_responses::endpoint(base_url, model),
+        ApiProtocol::AnthropicMessages => anthropic_messages::endpoint(base_url, model),
+        ApiProtocol::GeminiGenerateContent => gemini_generate::endpoint_with_stream(base_url, model, stream),
+        ApiProtocol::GeminiInteractions => gemini_interactions::endpoint(base_url, model),
+        ApiProtocol::OllamaChat => ollama_chat::endpoint(base_url, model),
+        ApiProtocol::CohereV2Chat => cohere_chat::endpoint(base_url, model),
+        ApiProtocol::BedrockConverse => bedrock_converse::endpoint_with_stream(base_url, model, stream),
+    }
+}
+
+fn project_protocol_request(protocol: ApiProtocol, body: serde_json::Value) -> Result<serde_json::Value, AdapterError> {
+    match protocol {
+        ApiProtocol::OpenaiChatCompletions | ApiProtocol::LegacyAuto | ApiProtocol::DeepseekMessages => Ok(body),
+        ApiProtocol::OpenaiResponses => openai_responses::project_request(body),
+        ApiProtocol::AnthropicMessages => anthropic_messages::project_request(body),
+        ApiProtocol::GeminiGenerateContent => gemini_generate::project_request(body),
+        ApiProtocol::GeminiInteractions => gemini_interactions::project_request(body),
+        ApiProtocol::OllamaChat => ollama_chat::project_request(body),
+        ApiProtocol::CohereV2Chat => cohere_chat::project_request(body),
+        ApiProtocol::BedrockConverse => bedrock_converse::project_request(body),
+    }
+}
+
+fn read_protocol_response(protocol: ApiProtocol, response: ureq::Response, cancellation: &run_context::CancellationToken, observer: &mut dyn provider_stream::ModelObserver) -> Result<serde_json::Value, AdapterError> {
+    match protocol {
+        ApiProtocol::OpenaiChatCompletions | ApiProtocol::LegacyAuto => provider_stream::read_response(response, cancellation, observer),
+        ApiProtocol::DeepseekMessages => deepseek_messages_stream::read_response(response, cancellation, observer),
+        ApiProtocol::OpenaiResponses => openai_responses::read_response(response, cancellation, observer),
+        ApiProtocol::AnthropicMessages => anthropic_messages::read_response(response, cancellation, observer),
+        ApiProtocol::GeminiGenerateContent => gemini_generate::read_response(response, cancellation, observer),
+        ApiProtocol::GeminiInteractions => gemini_interactions::read_response(response, cancellation, observer),
+        ApiProtocol::OllamaChat => ollama_chat::read_response(response, cancellation, observer),
+        ApiProtocol::CohereV2Chat => cohere_chat::read_response(response, cancellation, observer),
+        ApiProtocol::BedrockConverse => bedrock_converse::read_response(response, cancellation, observer),
+    }
+}
+
+fn protocol_error_usage(protocol: ApiProtocol, value: &serde_json::Value) -> Option<provider_stream::ModelUsage> {
+    match protocol {
+        ApiProtocol::OpenaiChatCompletions | ApiProtocol::LegacyAuto => provider_stream::model_usage(value),
+        ApiProtocol::DeepseekMessages => deepseek_messages_stream::model_usage(value),
+        ApiProtocol::OpenaiResponses => openai_responses::model_usage(value),
+        ApiProtocol::AnthropicMessages => anthropic_messages::model_usage(value),
+        ApiProtocol::GeminiGenerateContent => gemini_generate::model_usage(value),
+        ApiProtocol::GeminiInteractions => gemini_interactions::model_usage(value),
+        ApiProtocol::OllamaChat => ollama_chat::model_usage(value),
+        ApiProtocol::CohereV2Chat => cohere_chat::model_usage(value),
+        ApiProtocol::BedrockConverse => bedrock_converse::model_usage(value),
     }
 }
 
@@ -3612,18 +3883,21 @@ impl ModelAdapter for NativeAdapter {
         self.discovered_messages_capabilities().map(|capabilities| capabilities.tool_update)
     }
     fn projection_identity(&self) -> Option<String> {
-        Some(serde_json::json!([if self.discovered_messages_capabilities().is_some() {"deepseek-messages"} else {"native-chat"}, self.base_url, self.model, self.agent_reasoning_effort.as_str()]).to_string())
+        if matches!(self.options.api_protocol, ApiProtocol::LegacyAuto | ApiProtocol::DeepseekMessages) { self.discovered_messages_capabilities(); }
+        let protocol = self.request_protocol().ok()?;
+        Some(serde_json::json!([self.continuation_identity(protocol), self.model, self.agent_reasoning_effort.as_str(), self.options.deployment]).to_string())
     }
     fn context_request_projection(&self, request: &AgentRequestPlan) -> Option<serde_json::Value> {
-        let capabilities = self.bound_messages_capabilities();
-        let body = match capabilities {
-            Some(capabilities) => deepseek_messages::context_projection(self.agent_reasoning_effort, &self.model, request, capabilities).ok()?,
-            None => native_chat_request_projection(&self.model, request).0,
+        let protocol = self.request_protocol().ok()?;
+        let request = self.request_history(request, protocol);
+        let body = match protocol {
+            ApiProtocol::DeepseekMessages => deepseek_messages::context_projection(self.agent_reasoning_effort, &self.model, &request, self.bound_messages_capabilities()?).ok()?,
+            _ => project_protocol_request(protocol, native_chat_request_projection(&self.model, &request).0).ok()?,
         };
         // Context measurement must see an oversized wire request so it can
         // compact it. Send-time output validation would hide precisely that
         // request and leave the smaller common-plan estimate in effect.
-        Some(body)
+        cloud_provider::project_body(&self.options.deployment, protocol, body).ok()
     }
     fn model_provider(&self) -> Option<String> {
         let endpoint = url::Url::parse(&self.base_url).ok()?;
@@ -3653,10 +3927,11 @@ impl ModelAdapter for NativeAdapter {
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<ParsedResponse, AdapterError> {
         let system = format!("{}\n\n{}", req.system, OUTPUT_CONTRACT);
-        if self.bound_messages_capabilities().is_some() {
+        let protocol = self.request_protocol()?;
+        if protocol == ApiProtocol::DeepseekMessages {
             req.system = system;
             let body = deepseek_messages::completion_projection(&self.model, &req)?;
-            let value = self.post_provider_request(body, observer, "complete", true)?;
+            let value = self.post_provider_request(body, observer, "complete", protocol)?;
             return parsed_response_from_content(response_message_content(&value)?);
         }
         let body = native_completion_request_projection(&self.model, &system, &req);
@@ -3675,10 +3950,11 @@ impl ModelAdapter for NativeAdapter {
         mut req: CompletionRequest,
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<serde_json::Value, AdapterError> {
-        if self.bound_messages_capabilities().is_some() {
+        let protocol = self.request_protocol()?;
+        if protocol == ApiProtocol::DeepseekMessages {
             req.system.push_str("\n\nReturn exactly one JSON object and no Markdown code fence.");
             let body = deepseek_messages::completion_projection(&self.model, &req)?;
-            let value = self.post_provider_request(body, observer, "structured", true)?;
+            let value = self.post_provider_request(body, observer, "structured", protocol)?;
             return structured_json_from_content(response_message_content(&value)?);
         }
         let body = native_completion_request_projection(&self.model, &req.system, &req);
@@ -3695,12 +3971,16 @@ impl ModelAdapter for NativeAdapter {
         request: &AgentRequestPlan,
         observer: &mut dyn provider_stream::ModelObserver,
     ) -> Result<AssistantTurn, AdapterError> {
-        let capabilities = self.bound_messages_capabilities();
-        let (body, provider_to_internal) = match capabilities {
-            Some(capabilities) => deepseek_messages::request_projection(self.agent_reasoning_effort, &self.model, request, capabilities)?,
-            None => native_chat_request_projection(&self.model, request),
+        let protocol = self.request_protocol()?;
+        let request = self.request_history(request, protocol);
+        let (mut body, provider_to_internal) = match protocol {
+            ApiProtocol::DeepseekMessages => deepseek_messages::request_projection(self.agent_reasoning_effort, &self.model, &request, self.bound_messages_capabilities().expect("resolved Messages capability"))?,
+            _ => native_chat_request_projection(&self.model, &request),
         };
-        let v = self.post_provider_request(body, observer, "chat", capabilities.is_some())?;
+        if protocol != ApiProtocol::DeepseekMessages && self.options.capabilities.reasoning_effort == Some(true) {
+            body["reasoning_effort"] = serde_json::json!(self.agent_reasoning_effort.as_str());
+        }
+        let v = self.post_provider_request(body, observer, "chat", protocol)?;
         let msg = &v["choices"][0]["message"];
         let text = msg["content"]
             .as_str()
@@ -3724,7 +4004,9 @@ impl ModelAdapter for NativeAdapter {
                 });
             }
         }
-        let provider_continuation = (msg["reasoning_content"].is_string() || msg["messages_content"].is_array()).then(|| ProviderContinuation {
+        let provider_continuation = (msg["reasoning_content"].is_string() || msg["messages_content"].is_array() || !msg["protocol_state"].is_null()).then(|| ProviderContinuation {
+            provider_identity: Some(self.continuation_identity(protocol)),
+            protocol_state: msg.get("protocol_state").cloned().filter(|value| !value.is_null()),
             model: self.model.clone(),
             reasoning_content: msg["reasoning_content"].as_str().unwrap_or("").to_string(),
             messages_content: msg["messages_content"].as_array().map(|blocks| deepseek_messages::continuation_blocks(blocks)).unwrap_or_default(),
@@ -3852,7 +4134,8 @@ fn native_chat_request_projection(
             let mut value = native_message_to_json(m, &internal_to_provider);
             if m.role == Role::Assistant {
                 if let Some(state) = m.provider_continuation.as_ref().filter(|state| state.model == model) {
-                    value["reasoning_content"] = serde_json::json!(state.reasoning_content);
+                    if !state.reasoning_content.is_empty() { value["reasoning_content"] = serde_json::json!(state.reasoning_content); }
+                    if let Some(private) = &state.protocol_state { value["protocol_state"] = private.clone(); }
                 }
             }
             value
@@ -5608,6 +5891,7 @@ mod tests {
         profile.output_reserve_tokens = 1_000;
         profile.safety_margin_tokens = 1_000;
         let config = |mode| ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode, api_key: "unused".into(), base_url: "http://127.0.0.1:1".into(),
             model: profile.matched_model.clone(),
@@ -6095,7 +6379,8 @@ mod tests {
                 request
             });
             let config = ProviderConfig {
-                agent_reasoning_effort: Default::default(),
+                options: Default::default(),
+            agent_reasoning_effort: Default::default(),
                 mode,
                 api_key: "test-key".into(),
                 base_url: format!("http://{addr}"),
@@ -6223,7 +6508,8 @@ mod tests {
                         body
                     });
                     let adapter = ProviderRegistry::adapter_from_config(ProviderConfig {
-                        agent_reasoning_effort: Default::default(),
+                        options: Default::default(),
+            agent_reasoning_effort: Default::default(),
                         mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-v4-flash".into(),
                     });
                     let request = CompletionRequest {
@@ -6300,6 +6586,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
@@ -6356,7 +6643,8 @@ mod tests {
                 }
                 requests
             });
-            let config = ProviderConfig { agent_reasoning_effort: Default::default(), mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-flash".into() };
+            let config = ProviderConfig { options: Default::default(),
+            agent_reasoning_effort: Default::default(), mode, api_key: "test-key".into(), base_url: format!("http://{addr}"), model: "deepseek-flash".into() };
             let adapter: Box<dyn ModelAdapter> = match mode {
                 ProviderMode::Native => Box::new(NativeAdapter::from_config(config)),
                 ProviderMode::ReAct => Box::new(ReActAdapter::from_config(config)),
@@ -6407,6 +6695,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
@@ -6443,7 +6732,8 @@ mod tests {
 
         let adapter = ProviderRegistry::adapter_from_config_with_timeout(
             ProviderConfig {
-                agent_reasoning_effort: Default::default(),
+                options: Default::default(),
+            agent_reasoning_effort: Default::default(),
                 mode: ProviderMode::Native,
                 api_key: "test-key".into(),
                 base_url: format!("http://{addr}"),
@@ -6496,6 +6786,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
@@ -6541,6 +6832,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),
@@ -6586,6 +6878,7 @@ mod tests {
         });
 
         let adapter = NativeAdapter::from_config(ProviderConfig {
+            options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: ProviderMode::Native,
             api_key: "test-key".into(),

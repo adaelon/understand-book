@@ -178,12 +178,6 @@ fn until(mut predicate: impl FnMut() -> bool, seconds: u64) {
         std::thread::sleep(Duration::from_millis(20));
     }
 }
-pub(crate) fn kill_barrier() -> ! {
-    std::fs::write(std::env::var_os("MU10_READY").unwrap(), b"committed").unwrap();
-    loop {
-        std::thread::sleep(Duration::from_secs(1));
-    }
-}
 struct KilledChild(Child);
 impl Drop for KilledChild {
     fn drop(&mut self) {
@@ -210,7 +204,7 @@ fn mu10_kill_host_child() {
         user.learning_store().unwrap().mutate(&serde_json::from_value(json!({"operation_id":"historical-on","expected_revision":0,
             "action":{"kind":"set_enabled","enabled":true}})).unwrap(),"before-upgrade").unwrap();
         let publication = f.access.library.lock().unwrap().load("A", &f.x).unwrap();
-        teaching::start_request(
+        reader_service::tests::host_calls::teaching::start_request(
             &PrivateBookContext { learning_workspace_id:None,
                 user: &user,
                 book: &publication.book,
@@ -941,3 +935,5 @@ fn mu10_recovery_100_unclaimed_turns_keeps_original_inputs() {
     drop(db);
     drop(retained);
 }
+
+pub(crate) use reader_service::tests::kill_barrier;

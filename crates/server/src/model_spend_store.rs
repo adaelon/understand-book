@@ -136,7 +136,7 @@ impl ModelSpendStore {
             .as_ref()
             .map_err(|e| *e)?
             .select(&id.provider, &id.model, now)?;
-        let estimate = rate.estimate(request)?;
+        let estimate = rate.estimate_for_model(&id.model, request)?;
         let mut control = self.control.lock().unwrap();
         {
             let tx = control

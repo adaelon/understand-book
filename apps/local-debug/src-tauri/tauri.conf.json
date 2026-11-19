@@ -3,7 +3,19 @@
   "productName": "Understand Book Local Debug",
   "version": "0.3.8",
   "identifier": "app.understandbook.local-debug",
-  "build": { "frontendDist": "../bootstrap" },
-  "app": { "windows": [], "security": { "csp": null } },
-  "bundle": { "active": false, "icon": ["../../desktop/src-tauri/icons/icon.ico"] }
+  "build": {
+    "frontendDist": "../../../crates/local-desktop-host/bootstrap"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": false,
+    "icon": [
+      "../../../scripts/desktop/icons/icon.ico"
+    ]
+  }
 }

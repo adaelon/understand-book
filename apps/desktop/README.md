@@ -67,14 +67,17 @@ not automatically upload or migrate local files. The new local library stores it
 cloud upload is a separate explicit action. Existing 0.3.0 installations require the new installer to
 gain native local storage; the web UI explains the update instead of presenting cloud upload as local.
 
-The old intent-planning controller is retained as an operator-only crate:
+The intent-planning controller is a public optional operator CLI in `crates/maintenance-host`:
 
 ```powershell
-cargo build --manifest-path apps/desktop/maintenance-host/Cargo.toml
-$env:UNDERSTAND_BOOK_DESKTOP_EXE = (Resolve-Path apps/desktop/maintenance-host/target/debug/understand-book-maintenance.exe)
+cargo build -p understand-book-maintenance
+$env:UNDERSTAND_BOOK_DESKTOP_EXE = (Resolve-Path target/debug/understand-book-maintenance.exe).Path
 ```
 
 Operators provision `UNDERSTAND_BOOK_BUILD_EXE` and (when needed) `UNDERSTAND_BOOK_MCP_BIN` independently.
+Standard prebuild and external-harness registration do not require the maintenance CLI; explicit
+reading-goal planning does. See [the local plugin guide](../../plugins/understand-book/README.md)
+for the current revision-bound command and local data-directory selection.
 The existing build-sidecar and core maintenance scripts remain available. The source plugin under
 `plugins/understand-book` is documented as an explicit maintenance installation; its launchers no
 longer assume the cloud Setup includes local executables. Cloud read-only Book MCP remains the

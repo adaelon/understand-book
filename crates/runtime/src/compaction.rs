@@ -2246,7 +2246,7 @@ mod tests {
         let plan = AgentRequestPlan::for_ad_hoc(profile.clone(), &projected, &[]);
         assert!(plan.active_context.fits);
         assert!(prepared.bind_generation_prefix(&plan, &raw));
-        let native = crate::NativeAdapter::from_config_with_runtime_profile(crate::ProviderConfig {
+        let native = crate::NativeAdapter::from_config_with_runtime_profile(crate::ProviderConfig { options: Default::default(),
             agent_reasoning_effort: Default::default(),
             mode: crate::ProviderMode::Native, api_key: "unused".into(),
             base_url: "http://127.0.0.1:1".into(), model: profile.matched_model.clone(),
@@ -2373,20 +2373,25 @@ mod tests {
             vec![], vec![], vec![], BTreeMap::new(), 100_000).is_err(), "a task shorter than the recent budget stays raw");
     }
 
-    fn feedback5_recording(name: &str) -> serde_json::Value {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-            .join("../../docs/performance/presentation-staged-authoring-ex12-4/mechanism-staged-feedback5")
-            .join(name);
-        serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap()
-    }
-
     #[test]
     fn ex13_compaction_replays_source_failure_with_stable_repair_prefix() {
-        let original = feedback5_recording("completion-00-request.json");
-        let request: CompactionRequest = serde_json::from_str(original["user"].as_str().unwrap()).unwrap();
-        let rejected = feedback5_recording("completion-00-response.json")["response"].clone();
-        let repaired = feedback5_recording("completion-01-response.json")["response"].clone();
-        let invalid: CompactionDraft = serde_json::from_value(rejected.clone()).unwrap();
+        // Minimized form of the recorded failure: one invented semantic source
+        // and one missing coverage row. Keep the original diagnostics and retry
+        // contract without requiring the private model recording at checkout.
+        let raw = completed_turn("Keep the original clock example", "The stopped interval remains visible");
+        let prepared = prepare_compaction(CompactionPhase::PreTurn, &raw, &raw,
+            vec![], vec![], vec![], BTreeMap::new()).unwrap();
+        let request = prepared.request;
+        let mut valid = covering_draft(&request, "Keep the clock example and the stopped interval");
+        valid.active_goal[0].item_id = "item.fact.quote_receipts".into();
+        for coverage in &mut valid.source_coverage {
+            coverage.target_item_ids = vec!["item.fact.quote_receipts".into()];
+        }
+        let mut invalid = valid.clone();
+        invalid.active_goal[0].source_item_ids.push("source.invented".into());
+        invalid.source_coverage.pop();
+        let rejected = serde_json::to_value(&invalid).unwrap();
+        let repaired = serde_json::to_value(&valid).unwrap();
         let error = validate_draft(&request, &invalid, &BTreeMap::new()).unwrap_err();
         assert_eq!(error.message, concat!(
             "semantic item item.fact.quote_receipts invented or duplicated a source ID\n",
@@ -2937,7 +2942,7 @@ mod tests {
         let long = "historical detail ".repeat(1_200);
         let mut raw = vec![Message::system("canonical base")];
         raw.extend(completed_turn(&long, &long));
-        raw.last_mut().unwrap().provider_continuation = Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "private-compaction-probe".into(), messages_content: Vec::new() });
+        raw.last_mut().unwrap().provider_continuation = Some(crate::ProviderContinuation { provider_identity: None, protocol_state: None, model: "deepseek-flash".into(), reasoning_content: "private-compaction-probe".into(), messages_content: Vec::new() });
         raw.push(Message::user("current user text must remain byte exact"));
         let before = serde_json::to_vec(&raw).unwrap();
         let prepared = prepare_compaction(

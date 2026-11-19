@@ -14,7 +14,8 @@ let closeHandler: CloseHandler;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 
 beforeEach(() => {
-  vi.resetModules(); vi.clearAllMocks(); vi.stubEnv('VITE_LOCAL_DEBUG', '1');
+  vi.resetModules(); vi.clearAllMocks();
+  window.__UNDERSTAND_BOOK_LOCAL__ = { noteDrafts: true, managedBuildEngine: false };
   localStorage.clear(); disk = null; failWrites = false; writeBarrier = null;
   native.onCloseRequested.mockImplementation(async (handler: CloseHandler) => { closeHandler = handler; return () => {}; });
   native.invoke.mockImplementation(async (command: string, args: {
@@ -31,7 +32,7 @@ beforeEach(() => {
     throw new Error(`Unexpected native command: ${command}`);
   });
 });
-afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
+afterEach(() => { delete window.__UNDERSTAND_BOOK_LOCAL__; vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 async function openReader() {
   vi.resetModules();
@@ -124,8 +125,8 @@ it('does not import a stale origin when the authoritative native store cannot be
   expect(notes.draftStorageError.value).toContain('无法读取');
 });
 
-it('keeps ordinary browser storage behavior outside the Local Debug build', async () => {
-  vi.stubEnv('VITE_LOCAL_DEBUG', '0');
+it('keeps ordinary browser storage when the host does not declare native drafts', async () => {
+  delete window.__UNDERSTAND_BOOK_LOCAL__;
   const notes = await openReader();
   const draft = notes.startThought({}, '浏览器草稿');
   expect(JSON.parse(localStorage.getItem(`understand-book:thought-draft:local:${draft.draft_id}`)!).value.content).toBe('浏览器草稿');

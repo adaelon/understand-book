@@ -1,6 +1,6 @@
 import { t as uiText } from './i18n';
 import type { Manifest } from './api';
-import type { PublishedBookRef } from './network-context';
+import type { PublishedBookRef } from './reader-context';
 
 export interface McpSource {
   published_book_ref: PublishedBookRef;

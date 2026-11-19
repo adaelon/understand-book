@@ -1,5 +1,5 @@
 import { t as uiText } from './i18n';
-import type { LearningWorkspace, PublishedBookRef } from './network-context';
+import type { LearningWorkspace, PublishedBookRef } from './reader-context';
 import { bookTitle } from './book-title';
 
 export interface SharedMaterial { published_book_ref: PublishedBookRef; required_capabilities: string[] }

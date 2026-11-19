@@ -1,0 +1,26 @@
+{
+  "version": "public.borrowing.fixture.v1",
+  "reader_origin": "Original scripted test inputs; no captured learner or model data.",
+  "cases": [
+    {
+      "id": "starting-assignment",
+      "background": "我能执行变量赋值和打印，还没学过所有权或引用。",
+      "request": "请用例子里的 foo 和 bar 帮我区分拥有值与借用访问，然后留给我判断去掉 & 的机会。"
+    },
+    {
+      "id": "starting-ownership",
+      "background": "我知道没有 Copy 的值赋值时会移动，也知道旧绑定不能再使用；我正在学习引用。",
+      "request": "请用例子里的 foo 和 bar 帮我区分拥有值与借用访问，然后留给我判断去掉 & 的机会。"
+    },
+    {
+      "id": "misconception-copy",
+      "background": "我把借用理解成产生一份新的值。",
+      "request": "bar = &foo 是否复制了 Foo？请用同一个值与不同访问方式的关系帮我修正判断，再让我复述。"
+    },
+    {
+      "id": "direct-explanation",
+      "background": "我已经知道非 Copy 值移动后的旧绑定不能使用。",
+      "request": "请直接讲完这个例子：谁拥有 Foo，&Foo 怎样访问它，为什么能够打印两者，以及 Copy 为什么不让共享引用可写。不要先提问。"
+    }
+  ]
+}

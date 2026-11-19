@@ -194,7 +194,7 @@ fn ex14_selected_guidance_reaches_sampling_without_static_or_global_leaks() {
     }
     // Media additions follow the accepted baseline without replacing its contracts.
     let manim = include_str!("../../../skills/presentation/references/manim.md").trim();
-    assert!(manim.starts_with(include_str!("../../../docs/performance/presentation-critical-moments-ex14/baseline/source/skills/presentation/references/manim.md").trim()));
+    assert!(manim.starts_with(include_str!("../fixtures/manim-guidance-baseline.md").trim()));
     assert!(manim.contains("limited initial screening"));
     for (index, plan) in plans.iter().enumerate() {
         assert_eq!(active_definition_contains(plan, "resident-agent.presentation.reference.manim", manim), index == 6);
@@ -393,10 +393,9 @@ fn ex14_review_scene_guidance_survives_compaction() {
 
 #[test]
 fn ex14_visual_static_revision_loads_local_and_keeps_scripted_patch_scope() {
-    let baseline: Value = serde_json::from_str(include_str!(
-        "../../../docs/performance/presentation-critical-moments-ex14/materials/N3/version.json"
-    ))
-    .unwrap();
+    // This controlled port verifies the patch route and exact identity. Real
+    // rendering/storage of the original page belongs to the host tests.
+    let baseline = json!({"reference":{"presentation_id":"conditions-page","revision":1}});
     let b = book();
     let mut port = AuthoringPort::new(&b, "ex14-static-revision");
     let adapter = RequestPlanRecordingAdapter::new(

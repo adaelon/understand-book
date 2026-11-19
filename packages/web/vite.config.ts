@@ -3,6 +3,7 @@ import vue from "@vitejs/plugin-vue";
 import { pdfOcrAssets } from "./pdf-ocr-assets.mjs";
 import { boardPreviewAssets } from "./board-preview-assets.mjs";
 import { fileURLToPath } from "node:url";
+import { readerEdition } from './reader-edition.mjs';
 
 // dev proxy:前端 `/api/*` → tiny_http server(同源、无 CORS,承 ADR-0022)。
 // 打包形态(S10e)由 tiny_http 同端口服 dist + API,proxy 仅 dev 用。
@@ -10,16 +11,10 @@ const backend = process.env.UNDERSTAND_BOOK_ADDR
   ? `http://${process.env.UNDERSTAND_BOOK_ADDR}`
   : "http://127.0.0.1:8787";
 
-export default defineConfig(({ mode }) => ({
-  define: mode === "multi" ? { "import.meta.env.VITE_MULTI_USER": JSON.stringify("1") } : {},
-  plugins: [vue(), pdfOcrAssets(), boardPreviewAssets(), {
-    name: "reader-build-mode",
-    apply: "build",
-    transformIndexHtml: () => [{ tag: "meta", attrs: {
-      name: "understand-book-mode",
-      content: mode === "multi" || process.env.VITE_MULTI_USER === "1" ? "multi-user" : "local",
-    }, injectTo: "head" }],
-  }, {
+export default defineConfig({
+  resolve: { alias: { '/reader-src': fileURLToPath(new URL('./src', import.meta.url)) } },
+  define: { "import.meta.env.VITE_MULTI_USER": JSON.stringify("0") },
+  plugins: [vue(), pdfOcrAssets(), boardPreviewAssets(), readerEdition(false), {
     name: "reader-startup-styles",
     apply: "build",
     transformIndexHtml: {
@@ -32,7 +27,6 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       input: {
         reader: fileURLToPath(new URL("./index.html", import.meta.url)),
-        home: fileURLToPath(new URL("./home.html", import.meta.url)),
       },
     },
   },
@@ -48,4 +42,4 @@ export default defineConfig(({ mode }) => ({
       },
     },
   },
-}));
+});

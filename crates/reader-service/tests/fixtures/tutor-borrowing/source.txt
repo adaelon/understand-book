@@ -1,0 +1,15 @@
+Rust 借用练习：所有权与访问
+
+共享引用只借用访问权限，不转移被引用值的所有权。下面的 Foo 没有实现 Copy。
+
+#[derive(Debug)]
+struct Foo(u32);
+let foo = Foo(7);
+let bar = &foo;
+println!("owner: {foo:?}; borrowed: {bar:?}");
+
+foo 拥有一个 Foo 值。bar 的类型是 &Foo；它让代码读取同一个值，不创建第二个 Foo。格式化打印借用传入的值，因此这行代码可以同时显示 foo 和 bar。
+
+没有实现 Copy 的值通过直接赋值交给新绑定后，旧绑定不能再读取该值。把上面的 let bar = &foo 改成 let bar = foo 会移动 Foo，后面的打印不能继续使用 foo。
+
+Copy 与访问权限回答不同的问题。如果另一个 Foo 类型实现了 Copy，直接赋值可以复制它的值；但 &Foo 仍然是共享引用，不能通过它修改字段。即使 Foo 实现 Copy，let b = &a 之后的 b.0 = 8 也不允许。需要修改值时必须满足可变借用的规则，而不能从 Copy 推出可写权限。

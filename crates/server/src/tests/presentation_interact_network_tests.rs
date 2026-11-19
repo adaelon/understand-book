@@ -30,7 +30,7 @@ fn om4_network_command_wait_releases_locks_and_uses_workspace_saved_receipt() {
             effect:crate::session_event::DeliveredEffect::Presentation {reference:reference.clone()},
         });
         let turn_ref=AgentTurnRef {session_id:session.id.clone(),turn_id:first.scope.turn_id.clone(),user_turn_ordinal:1};
-        crate::session_runtime::finish(&mut user,&turn_ref,&session,"done").unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user,&turn_ref,&session,"done").unwrap();
         reference
     };
     let mut port=f.run(&w,"om4");

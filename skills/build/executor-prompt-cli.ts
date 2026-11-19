@@ -22,6 +22,7 @@ export const AUTOMATIC_BUILD_EXTRACTOR_PROMPT_NAMES = [
   "book-structure-outline.md", "book-structure-chapter.md", "book-structure-chapter-selection.md", "book-structure-themes.md",
   "book-structure-outline-chapters.md", "book-structure-outline-themes.md",
   "book-structure-outline-theme-page.md",
+  "book-structure-theme-plan-page.md",
   "book-structure-extractor.md",
   "book-structure-v2-extractor.md",
   "book-structure-fragment-extractor.md",

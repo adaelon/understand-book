@@ -23,7 +23,7 @@ function normalizeBootstrapContract(text: string): string {
 }
 
 describe("automatic build executor prompt", () => {
-  it.each(["structure_outline_chapters", "structure_outline_themes", "structure_outline_theme_page"] as const)("delivers the registered %s semantic contract through the production prompt route", kind => {
+  it.each(["structure_outline_chapters", "structure_outline_themes", "structure_outline_theme_page", "structure_theme_plan_page"] as const)("delivers the registered %s semantic contract through the production prompt route", kind => {
     const name = `${automaticBuildExtractorForWorkUnitKind("book_structure", kind)}.md`;
     let stdout = "", stderr = "";
     expect(runAutomaticBuildExecutorPromptCli([name, "--executor-protocol", "dispatch"], {

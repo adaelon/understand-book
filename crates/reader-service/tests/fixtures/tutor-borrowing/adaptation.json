@@ -1,0 +1,30 @@
+{
+  "version": "public.borrowing.followup.fixture.v1",
+  "reader_origin": "Original scripted follow-up cases, not observations of human learners.",
+  "cases": [
+    {
+      "id": "cannot-start",
+      "prior": "prerequisite-repair/starting-assignment",
+      "response": "我认得变量名，但还不能把拥有值和能打印联系起来。请示范一次怎样追踪所有者。",
+      "reopen_request": "继续刚才的例子，帮助我从所有者走到打印结果。"
+    },
+    {
+      "id": "missing-reason",
+      "prior": "after/starting-ownership",
+      "response": "我猜移动之后不能打印旧变量，但还说不出 bar 的类型与这个结果的关系。请先帮我连接理由。",
+      "reopen_request": "沿用上次的变量关系，再补一步解释。"
+    },
+    {
+      "id": "support-mismatch",
+      "prior": "after/misconception-copy",
+      "response": "我已经不认为借用复制 Foo 了；箭头图让我分心。请改用类型和权限的对照来说明。",
+      "reopen_request": "继续类型与权限的对照，不再重复复制的猜测。"
+    },
+    {
+      "id": "independent-step",
+      "prior": "after/direct-explanation",
+      "response": "看过完整讲解后，我能说出 a 拥有 Foo，b = &a 只借用读取。Copy 决定直接赋值是否复制值，不改变引用的权限。请给我一个改变 Copy 条件的练习，先不要给答案。",
+      "reopen_request": "继续上次尚未作答的 Copy 条件练习。"
+    }
+  ]
+}

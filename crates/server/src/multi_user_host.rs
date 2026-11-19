@@ -211,9 +211,7 @@ fn request_body_limit(url: &str, default: usize) -> usize {
         _ => default,
     }
 }
-pub(crate) fn now() -> i64 {
-    time::OffsetDateTime::now_utc().unix_timestamp()
-}
+pub(crate) use reader_service::service_error::now;
 
 pub fn start(config: MultiUserConfig) -> Result<RunningMultiUserServer, String> {
     if !config.addr.ip().is_loopback() {
@@ -228,11 +226,14 @@ pub fn start(config: MultiUserConfig) -> Result<RunningMultiUserServer, String> 
         .map_err(|e| e.error_code)?;
     access.runs.observability = crate::observability::ObservabilityRuntime::from_env();
     let access = Arc::new(access);
-    if let Ok(provider) = crate::ProviderConfig::from_env() {
-        if let Err(e) = access.spend.validate_provider(&provider.base_url, &provider.model) {
-            eprintln!("Managed model sends unavailable: {}; check model-rates.json", e.code());
+    if !access.runs.load_model_settings().map_err(|error|error.message)? {
+        if let Some(settings)=runtime::model_settings::ModelSettings::from_env()? {
+            let provider=settings.resolve(runtime::model_settings::ModelPurpose::Agent)?;
+            if let Err(e)=access.spend.validate_provider(&provider.base_url,&provider.model) {
+                eprintln!("Managed model sends unavailable: {}; check model-rates.json",e.code());
+            }
+            access.runs.configure_model_catalog(settings).map_err(|error|error.message)?;
         }
-        access.runs.configure(provider).map_err(|e| e.error_code)?;
     }
     start_with_access(config.addr, site, access)
 }

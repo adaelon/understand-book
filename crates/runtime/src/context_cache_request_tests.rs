@@ -119,7 +119,7 @@ fn messages_saved_request_cache_measurement() {
                     content: (!content.is_empty()).then_some(content),
                     tool_calls,
                     tool_call_id: None,
-                    provider_continuation: Some(ProviderContinuation {
+                    provider_continuation: Some(ProviderContinuation { provider_identity: None, protocol_state: None,
                         model: model.into(),
                         reasoning_content: reasoning,
                         messages_content: blocks.clone(),

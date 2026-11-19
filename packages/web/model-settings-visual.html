@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="zh-CN" class="model-settings-preview-root">
+<head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>Model settings component preview</title>
+<style>html.model-settings-preview-root,body.model-settings-preview-body{height:auto;min-height:100%;overflow:visible}body.model-settings-preview-body{margin:0;padding:24px;background:#f2f4ef}#model-preview{width:min(620px,100%);box-sizing:border-box;margin:auto;padding:24px;background:white;border:1px solid #d9e0dc;border-radius:8px}@media(max-width:480px){body.model-settings-preview-body{padding:12px}#model-preview{padding:16px}}</style></head>
+<body class="model-settings-preview-body"><main id="model-preview"></main><script type="module">
+import { createApp, h } from 'vue';
+import ModelProviderSettings from '/src/components/ModelProviderSettings.vue';
+import '/src/style.css';
+const scenario = new URLSearchParams(location.search).get('scenario');
+let settings = scenario === 'empty' ? null : {
+  revision: 1,
+  services: [
+    {id:'reading-service',name:'阅读与教学服务',base_url:'https://model.example/v1',auth:'bearer',api_key_configured:true,headers:{},deployment:{kind:'direct'}},
+    {id:'local-service',name:'本地模型',base_url:'http://localhost:11434',auth:'none',api_key_configured:false,headers:{},deployment:{kind:'direct'}},
+  ],
+  models: [
+    {id:'reading-model',name:scenario==='long'?'研究资料阅读与跨章节连续追问 — Long context research and reference model':'阅读与连续追问',service_id:'reading-service',model_id:'reader-model',api_protocol:'openai_chat_completions',mode:'native',capabilities:{native_tools:true,json_object:true,streaming:true}},
+    {id:'teaching-model',name:'教学反馈',service_id:'reading-service',model_id:'feedback-model',api_protocol:'openai_responses',mode:'native',capabilities:{native_tools:true,json_schema:true}},
+    {id:'local-model',name:'本地助手',service_id:'local-service',model_id:'local-tool-model',api_protocol:'ollama_chat',mode:'native',capabilities:{native_tools:true}},
+  ],
+  bindings:{default_model:'reading-model',agent:null,teaching:'teaching-model',background:'local-model'},
+};
+const calls = {saves:[],tests:[],testInputs:[]};
+window.__MODEL_SETTINGS_PREVIEW__ = calls;
+const status = () => ({configured:!!settings,source:settings?'settings':'unconfigured',settings});
+const client = {
+  load:async()=>status(),
+  save:async input=>{
+    calls.saves.push(input);
+    if(scenario==='save-failure') throw new Error('Settings file is not writable. Choose a writable data directory.');
+    settings=JSON.parse(JSON.stringify(input));settings.revision++;
+    settings.services=settings.services.map(({api_key,clear_api_key,...service})=>({...service,api_key_configured:clear_api_key?false:!!api_key||service.auth!=='none'}));
+    return status();
+  },
+  test:async (model_config_id,input)=>{
+    calls.tests.push(model_config_id);
+    calls.testInputs.push(input??null);
+    if(scenario==='test-failure') throw new Error('HTTP 401: update the API key for this service.');
+    return {ok:true,message:'Text generated',model_config_id};
+  },
+};
+createApp({render:()=>h(ModelProviderSettings,{client})}).mount('#model-preview');
+</script></body></html>

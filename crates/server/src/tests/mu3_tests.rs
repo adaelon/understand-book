@@ -192,14 +192,15 @@ fn book_cover_local_reads_an_unopened_book_and_pdf_without_switching_the_reader(
     let entries = list_mixed_book_library(root.path());
     assert_eq!(entries.len(), 2);
     for (entry, kind, bytes) in [(&entries[0], "image", b"image".as_slice()), (&entries[1], "pdf", b"%PDF-first-page".as_slice())] {
-        let cover = entry.cover.as_ref().unwrap();
-        assert_eq!(cover.kind, kind);
-        let result = crate::book_cover::route_local(&state, cover.url.strip_prefix("/api").unwrap()).unwrap();
+        let cover = book_entry_cover(entry);
+        assert!(!cover.is_null());
+        assert_eq!(cover["kind"], kind);
+        let result = reader_service::tests::host_calls::book_cover::route_local(&state, cover["url"].as_str().unwrap().strip_prefix("/api").unwrap()).unwrap();
         assert_eq!(result.status, 200);
         assert_eq!(result.body, bytes);
     }
     assert_eq!(state.workspace.book_dir, before);
-    assert_eq!(crate::book_cover::route_local(&state, "/book/library/cover?dir=unknown").unwrap().status, 404);
+    assert_eq!(reader_service::tests::host_calls::book_cover::route_local(&state, "/book/library/cover?dir=unknown").unwrap().status, 404);
 }
 
 #[test]
@@ -345,13 +346,13 @@ fn mu3_default_change_keeps_old_run_history_and_capacity_pins() {
         tool_calls: vec![],
         usage_total_tokens: Some(3),
     }]);
-    let result = agent_run::execute_prepared(
-        &agent_run::BorrowedAppPort(std::cell::RefCell::new(&mut state)),
+    let result = reader_service::tests::host_calls::agent_run::execute_prepared(
+        &reader_service::tests::host_calls::borrowed_app_port(&mut state),
         &adapter,
         prepared,
         Default::default(),
     );
-    assert_eq!(result.reply.status, 200, "{}", result.reply.body);
+    assert_eq!(result.status, 200, "{}", result.body);
     let saved = load_agent_history(&state.user.history_path).unwrap();
     assert_eq!(
         saved.sessions[0].turns[0].status,
@@ -367,11 +368,11 @@ fn mu3_default_change_keeps_old_run_history_and_capacity_pins() {
     state.workspace.bind_publication(newest);
     let source = agent_source_binding(
         &state,
-        &AgentSourceRequest {
-            note_mem_id: None,
-            turn_id: saved.sessions[0].turns[0].turn_id.clone(),
-            source_ref_id: "s1".into(),
-        },
+        &serde_json::from_value::<AgentSourceRequest>(json!({
+            "note_mem_id":null,
+            "turn_id":saved.sessions[0].turns[0].turn_id,
+            "source_ref_id":"s1",
+        })).unwrap(),
     );
     assert!(matches!(source, Err(e) if e.error_code=="PUBLICATION_BINDING_REQUIRED"));
     library.set_default(&first.reference).unwrap();
@@ -428,19 +429,19 @@ fn mu3_published_localization_is_shared_single_flight_and_urls_are_bound() {
     };
     std::thread::scope(|scope| {
         let first = scope.spawn(|| {
-            localize_paper_minimap(base.clone(), Some(a.localization_cache.clone()), &adapter)
+            localize_paper_minimap(base.clone(), Some(a.localization_cache().to_path_buf()), &adapter)
         });
         let second = scope.spawn(|| {
-            localize_paper_minimap(base.clone(), Some(b.localization_cache.clone()), &adapter)
+            localize_paper_minimap(base.clone(), Some(b.localization_cache().to_path_buf()), &adapter)
         });
         assert_eq!(first.join().unwrap().status, 200);
         assert_eq!(second.join().unwrap().status, 200);
     });
     assert_eq!(calls.lock().unwrap().len(), 1);
     assert!(a
-        .localization_cache
+        .localization_cache()
         .starts_with(root.path().canonicalize().unwrap().join("shared-cache")));
-    assert!(a.localization_cache.is_file());
+    assert!(a.localization_cache().is_file());
     assert!(!a
         .directory()
         .join("paper-minimap-localizations.json")

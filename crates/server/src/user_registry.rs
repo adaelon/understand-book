@@ -97,7 +97,7 @@ impl UserRegistry {
                     "All resident user slots are occupied",
                 ));
             }
-            let mut user = UserRuntime::open_service(&paths, self.control.writer.clone(), now)?;
+            let mut user = open_service(&paths, self.control.writer.clone(), now)?;
             user.presentation_limits = Some(self.presentation_limits);
             self.users.insert(owner.into(), Arc::new(Mutex::new(user)));
         }
@@ -217,7 +217,7 @@ impl UserRegistry {
             if handle
                 .lock()
                 .unwrap_or_else(|e| e.into_inner())
-                .prepare_eviction(now)?
+                .prepare_eviction(now, USER_IDLE_TTL)?
             {
                 self.users.remove(&key);
                 removed += 1;
@@ -225,4 +225,19 @@ impl UserRegistry {
         }
         Ok(removed)
     }
+}
+
+pub(crate) fn open_service(paths: &crate::user_storage_paths::UserStoragePaths, writer: Arc<ServiceWriter>, now: &str) -> Result<UserRuntime, ToolError> {
+    let mut user = UserRuntime::open_private_storage(paths, writer.clone())?;
+        let mut control = crate::control_store::ControlStore::open(writer.clone())?;
+        {
+            let tx=control.connection.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .map_err(|_| crate::agent_history_internal("Cannot account for retained user files"))?;
+            crate::cloud_storage::adopt(&tx,writer.root(),&paths.owner,crate::service_error::now())?;
+            tx.commit().map_err(|_| crate::agent_history_internal("Cannot account for retained user files"))?;
+        }
+        let mut query = control.connection.prepare("SELECT turn_id FROM run_admissions WHERE owner_user_id=?").map_err(|_| crate::agent_history_internal("Cannot read admission recovery index"))?;
+        let admitted = query.query_map([&paths.owner], |r| r.get::<_,String>(0)).map_err(|_| crate::agent_history_internal("Cannot read admission recovery index"))?.collect::<Result<std::collections::BTreeSet<_>,_>>().map_err(|_| crate::agent_history_internal("Cannot read admission recovery index"))?;
+    user.recover_private_state(&admitted, now)?;
+    Ok(user)
 }

@@ -5,7 +5,16 @@ import { renderMarkdown } from './md';
 import { sourceChipLabel } from './source-chip.js';
 import { pitchName } from './music-example-player';
 
-export type AnswerDisplayPart = { kind: "html"; html: string; markdown: string[]; blocks?: string[]; socratic?: boolean } | Extract<AgentAnswerPart, { kind: "presentation" }>;
+export interface AnswerHtmlPart {
+  kind: "html";
+  html: string;
+  markdown: string[];
+  /** Index in the delivered answer for each text segment; music labels only belong to the display. */
+  sourcePartIndices: (number | null)[];
+  blocks?: string[];
+  socratic?: boolean;
+}
+export type AnswerDisplayPart = AnswerHtmlPart | Extract<AgentAnswerPart, { kind: "presentation" }>;
 
 /** Bind raw teaching citations only to sources already published with this answer. */
 export function sourceMarkedParts(text: string, sources: AgentAnswerSource[]): AgentAnswerPart[] {
@@ -123,14 +132,15 @@ export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullabl
   const display: AnswerDisplayPart[] = [];
   let markdown = "";
   let markdownParts: string[] = [];
+  let sourcePartIndices: (number | null)[] = [];
   const inlineSources = new Map<number, Extract<AgentAnswerPart, { kind: "sources" | "music_example" }>>();
-  let hasMusic = false;
   const flush = () => {
     if (!markdown) return;
     if (inlineSources.size === 0) {
-      display.push({ kind: "html", html: render(markdown), markdown: markdownParts });
+      display.push({ kind: "html", html: render(markdown), markdown: markdownParts, sourcePartIndices });
       markdown = "";
       markdownParts = [];
+      sourcePartIndices = [];
       return;
     }
     const template = document.createElement("template");
@@ -156,17 +166,22 @@ export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullabl
       replacement.append(document.createTextNode(content.slice(cursor)));
       node.replaceWith(replacement);
     }
-    display.push({ kind: "html", html: template.innerHTML, markdown: hasMusic ? [markdownParts.join('')] : markdownParts });
+    display.push({ kind: "html", html: template.innerHTML, markdown: markdownParts, sourcePartIndices });
     markdown = "";
     markdownParts = [];
+    sourcePartIndices = [];
     inlineSources.clear();
-    hasMusic = false;
   };
   parts.forEach((part, index) => {
-    if (part.kind === "markdown") { markdown += part.text; markdownParts.push(part.text); }
+    if (part.kind === "markdown") {
+      if (!part.text) return;
+      markdown += part.text;
+      markdownParts.push(part.text);
+      sourcePartIndices.push(index);
+    }
     else if (part.kind === "socratic_question") {
       flush();
-      display.push({ kind: "html", html: render(part.text), markdown: [part.text], socratic: true });
+      display.push({ kind: "html", html: render(part.text), markdown: [part.text], sourcePartIndices: [index], socratic: true });
     }
     else if (part.kind === "sources") {
       markdown += `\uE000UB_SOURCE_${index}\uE001`;
@@ -174,8 +189,8 @@ export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullabl
     } else if (part.kind === "music_example") {
       markdown += `\uE000UB_SOURCE_${index}\uE001`;
       markdownParts.push(part.example.label);
+      sourcePartIndices.push(null);
       inlineSources.set(index, part);
-      hasMusic = true;
     } else {
       flush();
       display.push(part);

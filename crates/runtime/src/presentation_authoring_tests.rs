@@ -459,16 +459,16 @@ fn ex12_scroll_history_keeps_candidate_environment_and_action() {
 fn ex13_saved_source_projection_keeps_observed_source_and_provider_prefix_until_pressure() {
     let b = book();
     let mut port = AuthoringPort::new(&b, "ex13-saved-source");
-    let source = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../docs/performance/presentation-staged-authoring-ex12-4/mechanism-staged-catalog");
     let writes: Vec<AssistantTurn> = [13, 18].into_iter().map(|n| {
-        let recorded: Value = serde_json::from_slice(&std::fs::read(source.join(format!("response-{n:02}.json"))).unwrap()).unwrap();
-        let original = &recorded["tool_calls"][0];
-        let mut args: Value = serde_json::from_str(original["arguments"].as_str().unwrap()).unwrap();
-        // This controlled port has no book source observations; recorded source
-        // bindings are verified separately by the ledger and real storage tests.
-        args["source_ref_ids"] = json!([]);
-        author(original["id"].as_str().unwrap(), args)
+        // Preserve substantial, distinct HTML inputs without depending on local
+        // model recordings or including a reader's source material in tests.
+        let body = format!("<p>Saved candidate {n}: the clock includes stopped time.</p>").repeat(300);
+        author(&format!("write-{n}"), json!({
+            "operation":"write", "title":format!("Trip clock {n}"),
+            "html":format!("<!doctype html><html><body>{body}<script>window.step = {n};</script></body></html>"),
+            "readable_content":format!("Candidate {n}: stopped time is part of the trip."),
+            "source_ref_ids":[]
+        }))
     }).collect();
     let original_calls: Vec<_> = writes.iter().map(|t| t.tool_calls[0].clone()).collect();
     let adapter = RequestPlanRecordingAdapter::new(vec![

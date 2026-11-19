@@ -6,11 +6,11 @@ Windows 本地阅读器和 AI 运行引擎使用同一进程。窗口连接本�
 
 在 `dist/UnderstandBookLocalDebug` 中双击 **Start.cmd**。保留同目录的 `resources`、`node_modules` 和 `understand-book-build.exe`。关闭应用窗口后本机后台一起退出。
 
-首次打开会显示“选择阅读材料”，默认扫描 `E:\allwork\download\agent\understand-book\.understand-book`，从列表中选择材料即可。也可展开“通过目录打开 / 查看材料位置”，选择另一份预构建材料的目录（内含 `base.json` 和 `source.txt`）。进入阅读器后点击右上角“更多阅读工具” → “打开桌面设置”，填写模型服务地址、模型名称和 API Key，点击“保存并应用”。设置也可以切换整个书库位置。新材料通过书库的新建入口准备；模型未配置时仍可阅读已有材料。
+首次打开会显示“选择阅读材料”，默认扫描打包时源码目录内的 `.understand-book`，从列表中选择材料即可。也可展开“通过目录打开 / 查看材料位置”，选择另一份预构建材料的目录（内含 `base.json` 和 `source.txt`）。进入阅读器后点击右上角“更多阅读工具” → “打开桌面设置”，填写模型服务地址、模型名称和 API Key，点击“保存并应用”。设置也可以切换整个书库位置。新材料通过书库的新建入口准备；模型未配置时仍可阅读已有材料。
 
 启动脚本把独立数据保存在包内 `data`：
 
-- 默认书库：`E:\allwork\download\agent\understand-book\.understand-book`，位置记录在 `settings.json`；原书保留在该目录。
+- 默认书库：打包时源码目录内的 `.understand-book`，位置记录在 `settings.json`；原书保留在该目录。
 - `memory`：阅读记录、笔记、会话。
 - `personal-note-drafts.json`：尚未提交的个人笔记草稿，包括待确认保存和放置进度；本机服务端口变化后仍可恢复。关闭窗口会先等待草稿写入，写入失败时保留窗口并提示重试。
 - `private`：本地构建意图和私有产物。
@@ -33,13 +33,13 @@ Windows 本地阅读器和 AI 运行引擎使用同一进程。窗口连接本�
 | 动画 | `UNDERSTAND_BOOK_ANIMATION_PYTHON`，需要 `scripts/presentation-animation-requirements.txt` 中的 Manim 0.21.0 |
 | 网页演示预览 | 默认发现本机 Edge，也可指定 `UNDERSTAND_BOOK_PREVIEW_BROWSER` |
 
-当前机器已将独立 Manim 环境装在 `.cache/local-debug-animation` 并接入两个启动配置。数学公式动画沿用本机已安装的 TeX Live。扫描 PDF 的 Node、Canvas、OCR worker、WASM 和中英文识别数据随包提供，识别过程不下载模型。
+数学公式动画还需要本机安装 TeX Live。扫描 PDF 的 Node、Canvas、OCR worker、WASM 和中英文识别数据随包提供，识别过程不下载模型。
 
 ## 开发
 
 仓库根目录执行 `node apps/local-debug/package.mjs`，构建当前工作区前端（带 source map）、Rust debug 可执行文件和本地构建引擎。需要已安装项目依赖、Rust MSVC、Bun。运行需要 Windows WebView2。可通过 WebView 的开发者工具调试页面。
 
-本地入口：`src-tauri/src/main.rs` → `server::host::start_server` → `packages/web/src/LocalApp.vue`。设置和图片导出复用桌面维护模块；本机服务随窗口退出而关闭。原有云端桌面发行入口独立保留。
+本地入口：`src-tauri/src/main.rs` → `local_desktop_host::run` → `reader_service::host::start_server` → `packages/web/src/LocalApp.vue`。设置、草稿、插件发现与图片导出由公共 `desktop-support` 维护，Debug 与正式本地版使用同一本地壳；本机服务随窗口退出而关闭。正式安装产品见[本地版](../local-desktop/README.md)，原有云端桌面发行入口独立保留。
 
 ## 验证记录（2026-11-13）
 

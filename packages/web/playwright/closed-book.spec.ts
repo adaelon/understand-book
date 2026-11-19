@@ -73,9 +73,11 @@ for (const width of [1366, 390, 320]) test(`closed-book dialogue hides sources a
   await expect(dialog).toBeVisible();await expect(input).toHaveValue('我想把全部经过的时间算进去。');
   await expect(dialog).toContainText('中途停留了 10 分钟');
   stateUnavailable=true;await page.reload();
-  await expect(dialog).toContainText('资料仍保持收起');
+  const recovery=page.getByRole('dialog',{name:'正在加载',exact:true});
+  await expect(recovery).toContainText('暂时无法恢复学习，请重试。');
+  await expect(dialog).not.toBeVisible();
   await expect(page.locator('.app')).toHaveAttribute('inert','');
-  stateUnavailable=false;await dialog.getByRole('button',{name:'重试',exact:true}).click();
+  stateUnavailable=false;await recovery.getByRole('button',{name:'重试',exact:true}).click();
   await expect(input).toHaveValue('我想把全部经过的时间算进去。');
   expect(fixture.requests).toHaveLength(1);
   await dialog.getByRole('button',{name:'给一点提示'}).click();
@@ -106,4 +108,49 @@ for (const width of [1366, 390, 320]) test(`closed-book dialogue hides sources a
   await page.screenshot({path:info.outputPath(`closed-book-${width}.png`)});
   await dialog.getByRole('button',{name:'回到学习'}).click();await expect(dialog).not.toBeVisible();
   expect(fixture.errors).toEqual([]);
+});
+
+for (const entry of ['open', 'first-question'] as const) test(`ordinary ${entry} waits without flashing practice controls`, async ({page}, info) => {
+  const fixture=await setup(page,'markdown',true);
+  if (entry==='first-question') {
+    await page.route('**/api/agent/history', route => {
+      const id=fixture.turns.length ? 'tc0-chat' : '';
+      return route.fulfill({json:{active_session_id:id,sessions:[],current:{id,book_id:scenario.book_id,turns:fixture.turns,goals:[]}}});
+    });
+    await page.reload();
+    await expect(page.locator('.agent-input textarea')).toBeVisible();
+  }
+  let releaseState!: () => void;
+  const stateReady=new Promise<void>(resolve=>{releaseState=resolve;});
+  const actions:string[]=[];
+  await page.route('**/api/tutor/closed-book',async route=>{
+    actions.push(route.request().postDataJSON().action);
+    await stateReady;
+    await route.fulfill({json:null});
+  });
+  try {
+    if(entry==='open') await page.reload({waitUntil:'domcontentloaded'});
+    else {
+      await page.locator('.agent-input textarea').fill('为什么平均速度要用总时间？');
+      await page.locator('.agent-input').getByRole('button',{name:'发送',exact:true}).click();
+    }
+    const loading=page.getByRole('dialog',{name:'正在加载',exact:true});
+    await expect(loading.getByRole('status',{name:'正在加载',exact:true})).toBeVisible();
+    await expect(page.getByRole('dialog',{name:'练到会',exact:true})).not.toBeVisible();
+    await expect(loading.locator('h1,button,textarea')).toHaveCount(0);
+    await expect(page.locator('.app')).toHaveAttribute('inert','');
+    await page.screenshot({path:info.outputPath(`neutral-${entry}.png`)});
+    if(entry==='open') {
+      await page.setViewportSize({width:390,height:844});
+      await page.screenshot({path:info.outputPath('neutral-open-mobile.png')});
+      await page.setViewportSize({width:1440,height:960});
+    }
+    releaseState();
+    await expect(loading).not.toBeVisible();
+    await expect(page.locator('.app')).not.toHaveAttribute('inert','');
+    await expect(page.locator('.agent-input textarea')).toBeVisible();
+    expect(actions.length).toBeGreaterThan(0);expect(actions.every(action=>action==='state')).toBe(true);
+    if(entry==='first-question') expect(fixture.requests).toHaveLength(1);
+    expect(fixture.errors).toEqual([]);
+  } finally {releaseState();}
 });

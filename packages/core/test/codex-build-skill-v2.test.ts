@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  validateCodexBuildIntentCommandV2,
+  issueBuildPlanningContextV2,
+  validateCodexBuildIntentCommandV3,
   validateCodexBuildIntentResultV2,
 } from "../src/build-planning-context";
 
@@ -11,6 +12,15 @@ const CONTEXT_FIXTURE = JSON.parse(readFileSync(
   path.join(__dirname, "fixtures", "build-planning-context.v1.golden.json"),
   "utf8",
 ));
+const CURRENT_CONTEXT = issueBuildPlanningContextV2({
+  context_id: "context-skill-fixture",
+  planning: {
+    ...CONTEXT_FIXTURE.input,
+    blueprint_registry: CONTEXT_FIXTURE.input.blueprint_registry.map(
+      ({ digest: _digest, ...entry }: { digest: string } & Record<string, unknown>) => entry,
+    ),
+  },
+});
 const SKILL_PATHS = [
   "skills/build/SKILL.md",
   "plugins/understand-book/skills/build/SKILL.md",
@@ -20,7 +30,7 @@ function readSkill(relativePath: string): string {
   return readFileSync(path.join(REPO_ROOT, relativePath), "utf8");
 }
 
-describe("Codex-owned build planning skill v2", () => {
+describe("Codex-owned build planning skill v3", () => {
   it("routes ordinary prebuild work to the standard plan before opening Reader planning", () => {
     for (const relativePath of SKILL_PATHS) {
       const skill = readSkill(relativePath);
@@ -31,6 +41,9 @@ describe("Codex-owned build planning skill v2", () => {
       expect(skill).toContain("Ordinary prebuild is the default");
       expect(skill).toContain("Do not call `planning.context`");
       expect(skill).toContain("<build-exe> legacy-plan <target>");
+      expect(skill).toContain("Standard prebuild and course builds need only the Build Engine");
+      expect(skill).toContain("crates/maintenance-host");
+      expect(skill).not.toContain("apps/desktop/maintenance-host");
     }
   });
 
@@ -38,15 +51,18 @@ describe("Codex-owned build planning skill v2", () => {
     for (const relativePath of SKILL_PATHS) {
       const skill = readSkill(relativePath);
       for (const marker of [
-        "codex_build_intent_command.v2",
+        "codex_build_intent_command.v3",
         "codex_build_intent_result.v2",
         "codex_build_intent_response.v1",
-        "build_planning_context.v1",
+        "build_planning_context.v2",
+        "context_id",
+        "context_revision",
+        "plan_revision",
         "build_intent_planner_candidate.v2",
         "planning.context",
         "draft.candidate",
         "BUILD_PLANNING_CONTEXT_DRIFT",
-        "CODEX_BUILD_INTENT_V2_REQUIRED",
+        "CODEX_BUILD_INTENT_V3_REQUIRED",
         "free-form string",
         "Never fall back to `codex_build_intent_command.v1`",
       ]) {
@@ -62,8 +78,8 @@ describe("Codex-owned build planning skill v2", () => {
   it("freezes a body-private fake controller transcript and reacquires context after drift", () => {
     const privateGoal = "CB5_PRIVATE_GOAL_SENTINEL";
     const candidate = CONTEXT_FIXTURE.commands.draft_candidate.input.candidate;
-    const contextCommand = validateCodexBuildIntentCommandV2({
-      version: "codex_build_intent_command.v2",
+    const contextCommand = validateCodexBuildIntentCommandV3({
+      version: "codex_build_intent_command.v3",
       operation: "planning.context",
       target: { workspace_dir: "C:\\Reader\\library\\book" },
       input: {},
@@ -71,15 +87,16 @@ describe("Codex-owned build planning skill v2", () => {
     const contextResult = validateCodexBuildIntentResultV2({
       version: "codex_build_intent_result.v2",
       status: "ok",
-      response: CONTEXT_FIXTURE.context,
+      response: CURRENT_CONTEXT,
     });
-    const draftCommand = validateCodexBuildIntentCommandV2({
-      version: "codex_build_intent_command.v2",
+    const draftCommand = validateCodexBuildIntentCommandV3({
+      version: "codex_build_intent_command.v3",
       operation: "draft.candidate",
       target: contextCommand.target,
       input: {
         user_goal: privateGoal,
-        planning_context_digest: CONTEXT_FIXTURE.context.context_digest,
+        context_id: CURRENT_CONTEXT.context_id,
+        context_revision: CURRENT_CONTEXT.context_revision,
         candidate,
       },
     });
@@ -94,8 +111,8 @@ describe("Codex-owned build planning skill v2", () => {
         message: "Build planning context changed; request a fresh context",
       },
     });
-    const reacquireCommand = validateCodexBuildIntentCommandV2({
-      version: "codex_build_intent_command.v2",
+    const reacquireCommand = validateCodexBuildIntentCommandV3({
+      version: "codex_build_intent_command.v3",
       operation: "planning.context",
       target: contextCommand.target,
       input: {},

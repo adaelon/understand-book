@@ -15,7 +15,7 @@
 
 只阅读原书时，最优化与 AI Infra 的正文位于各包的 `original/`；论文原 PDF 位于 `agent-memory-paper/prebuilt/original.pdf`。音乐音频与乐谱位于各乐章的 `prebuilt/m1/` 至 `prebuilt/m4/` 中。
 
-使用[本地阅读器](../apps/local-debug/README.md)时，选择“通过目录打开 / 查看材料位置”，打开对应的预构建目录：
+使用[本地阅读器](../apps/local-desktop/README.md)时，选择已有书库，打开对应的预构建目录：
 
 | 材料 | 解压后的预构建目录 |
 | --- | --- |
@@ -27,7 +27,7 @@
 也可以按仓库根目录的 [Quick Start](../README.md#quick-start) 准备开发环境，然后将目录传给服务。例如，解压到仓库的 `downloads/` 下时：
 
 ```powershell
-cargo run -p server --bin server -- downloads/optimization-review/prebuilt
+cargo run -p reader-service --bin reader -- --reader-only downloads/optimization-review/prebuilt
 ```
 
 阅读现成材料无需重新运行预构建。AI 问答和教学使用阅读器中配置的模型接口。

@@ -698,6 +698,8 @@ pub(crate) fn attach_presentation_images(
 
 const SOURCE_PRESENTATION_LOCALE: &str = "zh-CN";
 
+pub mod external_evidence;
+
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct SourcePresentArgs {
@@ -17016,7 +17018,7 @@ user_question=\"这段怎么理解？\"",
 
     #[test]
     fn source_presentation_tb2_borrowing_suffixes_preserve_clickable_sources() {
-        let raw = include_str!("../../../docs/performance/tutor-building-blocks-tb2/to3-after/starting-ownership/answer.md");
+        let raw = include_str!("../fixtures/source-suffixes.md");
         let bindings = [
             "source_ref_b7cdf804a5f27a0d", "source_ref_9af277d1d3d785d4",
             "source_ref_1a3ec5f7971d4632", "source_ref_e2f1f69dfb7b32e3",
@@ -18331,12 +18333,12 @@ user_question={}",
         let adapter = RequestPlanRecordingAdapter::new(
             vec![
                 AssistantTurn {
-                    provider_continuation: Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "tool-private-state".into(), messages_content: Vec::new() }),
+                    provider_continuation: Some(crate::ProviderContinuation { provider_identity: None, protocol_state: None, model: "deepseek-flash".into(), reasoning_content: "tool-private-state".into(), messages_content: Vec::new() }),
                     ..turn_calls(vec![call("manifest", "book.manifest", "{}")])
                 },
                 turn_calls(vec![call("structure", "book.structure", "{}")]),
                 AssistantTurn {
-                    provider_continuation: Some(crate::ProviderContinuation { model: "deepseek-flash".into(), reasoning_content: "final-private-state".into(), messages_content: Vec::new() }),
+                    provider_continuation: Some(crate::ProviderContinuation { provider_identity: None, protocol_state: None, model: "deepseek-flash".into(), reasoning_content: "final-private-state".into(), messages_content: Vec::new() }),
                     ..turn_final("根据已有证据收束回答。")
                 },
             ],

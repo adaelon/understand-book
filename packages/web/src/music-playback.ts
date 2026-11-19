@@ -1,5 +1,5 @@
 import type { MusicSourceManifest, MusicNoteAlignment, MusicQuestionContext, MusicEvent } from '../../core/src/music-contract';
-import type { PublishedBookRef } from './network-context';
+import type { PublishedBookRef } from './reader-context';
 
 /** Prefix end bounds retain overlapping sustained notes without scanning the whole score each frame. */
 export class MusicTimeline<T extends { start_ms: number; end_ms: number }> {

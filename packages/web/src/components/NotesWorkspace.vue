@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { ArrowLeft, ArrowUpRight, BookOpen, Check, ChevronRight, FilePenLine, LayoutDashboard, Link2, LoaderCircle, MessageSquareText, NotebookPen, Pencil, Plus, Search, Trash2, X } from '@lucide/vue';
 import { api as sharedApi } from '../api';
-import { bindSceneApi, readerKey } from '../network-context';
+import { bindSceneApi, readerKey } from '../reader-context';
 import { t as uiText } from '../i18n';
 import { boardDate } from '../board-workspace';
 import { renderMarkdown } from '../md';

@@ -381,9 +381,7 @@ fn mu9_t62_real_snapshot_restore_keeps_wal_users_learning_presentations_and_publ
     );
     let a = users.get("A", "3").unwrap();
     let a = a.lock().unwrap();
-    let presentation = crate::presentation_store::PresentationStore::for_user(&a)
-        .unwrap()
-        .read_version(
+    let presentation = reader_service::tests::host_calls::read_presentation_version(&a,
             &runtime::presentation::PresentationOwner {
                 book_id: "mu9-book".into(),
                 session_id: "chat-old".into(),

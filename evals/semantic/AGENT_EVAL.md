@@ -5,7 +5,7 @@
 ## 运行
 
 ```powershell
-cargo build -p server --bin server
+cargo build -p reader-service --bin reader
 pnpm eval:semantic:test
 node evals/semantic/agent-run.mjs --validate
 # 显式任务合同版本；正式产品运行前先做无模型校验

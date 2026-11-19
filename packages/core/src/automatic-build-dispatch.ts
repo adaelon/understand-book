@@ -55,6 +55,7 @@ export const AUTOMATIC_BUILD_DISPATCH_LIMITS: Record<WorkUnitKind, AutomaticBuil
   structure_chapter: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_chapter_selection: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_theme_plan: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
+  structure_theme_plan_page: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_theme: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_theme_reconcile: { max_units: 1, max_input_tokens: 20000, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },
   structure_unit: { max_units: 1, max_input_tokens: BOOK_STRUCTURE_MAX_INPUT_TOKENS, max_predicted_service_ms: MAX_DISPATCH_SERVICE_MS },

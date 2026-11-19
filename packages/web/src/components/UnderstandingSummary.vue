@@ -2,7 +2,7 @@
 import { ArrowUpRight, CircleHelp, Check, PencilLine } from '@lucide/vue';
 import { computed } from 'vue';
 import { thinkingTime, type UnderstandingSummary } from '../note-thinking';
-import { readerKey } from '../network-context';
+import { readerKey } from '../reader-context';
 const props = defineProps<{ item: UnderstandingSummary; compact?: boolean; busy?: boolean; noteId?: string; showQuote?: boolean }>();
 const summary = computed(() => props.item.correction ? null : props.item.learner_summary);
 function showOnTree(){const reference=props.item.knowledge_links?.[0]?.reference;if(reference)window.dispatchEvent(new CustomEvent('knowledge-show',{detail:{reference,reader_key:readerKey()}}));}

@@ -71,7 +71,7 @@ fn video_revision_failure_history_notes_and_explicit_switch_keep_original_source
     assert_eq!(resolved["result"]["stale"],false);
     let loaded=f.access.library.lock().unwrap().load("A",&revision.reference).unwrap();
     let local=reader_workspace::ReaderWorkspace::local(loaded.directory().into(),loaded.book.clone(),Reader::new(&loaded.book,DEFAULT_RADIUS),vec![],None);
-    assert_eq!(crate::video_source::local_directory(&local,&original).unwrap(),port.scope.book_dir);
+    assert_eq!(reader_service::tests::host_calls::video_source::local_directory(&local,&original).unwrap(),port.scope.book_dir);
     let user=handle.lock().unwrap();
     let notes=user.store.recall(&memory::RecallQuery {text:Some("VI17 original note".into()),..Default::default()});
     assert_eq!(notes.len(),1);
@@ -155,7 +155,7 @@ fn video_source_original_frames_translations_joint_snapshot_and_unavailable() {
             assert_eq!(popup["frames"][0]["frame"], json!(frame));
             assert_eq!(popup["frames"][0]["url"], format!("data:image/png;base64,{}", batch.images[0].png_base64));
         }
-        let absent = crate::video_source::popup(&saved, Err(authorization::missing()), "unavailable".into());
+        let absent = crate::video_source::popup(&saved, Err(service_error::missing()), "unavailable".into());
         assert_eq!(absent["stale"], true); assert_eq!(absent["label"], "原片来源");
         assert_eq!(absent["media"], json!(binding.media.unwrap())); assert!(absent["media_url"].is_null());
     }

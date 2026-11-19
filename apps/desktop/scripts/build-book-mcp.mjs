@@ -1,31 +1,33 @@
-import { copyFileSync, mkdirSync } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { copyFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { desktopTarget, repoRoot, run } from "../../../scripts/desktop/platform.mjs";
 
 if (process.platform !== "win32") {
-  throw new Error("the packaged Book MCP sidecar currently supports Windows only");
+  throw new Error("the cloud maintenance sidecars currently support Windows only");
 }
 
 const desktopRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const repoRoot = path.resolve(desktopRoot, "..", "..");
+const target = desktopTarget();
 const targetRoot = process.env.CARGO_TARGET_DIR
   ? path.resolve(repoRoot, process.env.CARGO_TARGET_DIR)
   : path.join(repoRoot, "target");
-const source = path.join(targetRoot, "release", "book_mcp.exe");
-const outputDir = path.join(desktopRoot, "src-tauri", "binaries");
-const output = path.join(outputDir, "book-mcp-x86_64-pc-windows-msvc.exe");
+process.env.UNDERSTAND_BOOK_MCP_OUTPUT_DIR ??= path.join(desktopRoot, "src-tauri", "binaries");
+const outputDir = path.resolve(process.env.UNDERSTAND_BOOK_MCP_OUTPUT_DIR);
 
-const result = spawnSync(
-  process.env.CARGO ?? "cargo",
-  ["build", "--locked", "--release", "-p", "server", "--bin", "book_mcp", "--bin", "publish_book", "--bin", "video_audio_review"],
-  { cwd: repoRoot, stdio: "inherit" },
-);
-if (result.error) throw result.error;
-if (result.status !== 0) process.exit(result.status ?? 1);
+// The public MCP remains independently buildable; cloud video maintenance also
+// needs the audio reviewer and the private publication command.
+await import("../../../scripts/plugin/build-book-mcp.mjs");
+run(process.env.CARGO ?? "cargo", [
+  "build", "--locked", "--release", "-p", "reader-service", "--bin", "video_audio_review",
+]);
+run(process.env.CARGO ?? "cargo", [
+  "build", "--locked", "--release", "-p", "server", "--bin", "publish_book",
+]);
 
-mkdirSync(outputDir, { recursive: true });
-copyFileSync(source, output);
-for (const [sourceName,targetName] of [['publish_book','publish-book'],['video_audio_review','video-audio-review']])
-  copyFileSync(path.join(targetRoot,'release',`${sourceName}.exe`),path.join(outputDir,`${targetName}-x86_64-pc-windows-msvc.exe`));
-console.log(output);
+for (const [sourceName, targetName] of [["publish_book", "publish-book"], ["video_audio_review", "video-audio-review"]]) {
+  copyFileSync(
+    path.join(targetRoot, "release", `${sourceName}${target.suffix}`),
+    path.join(outputDir, `${targetName}-${target.triple}${target.suffix}`),
+  );
+}

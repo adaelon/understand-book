@@ -2,7 +2,7 @@
 import { t as uiText } from '../i18n';
 
 import { sharedBookKey, sharedBookLabel, sharedCapability, type SharedBook, type SharedRelease } from '../shared-workspaces';
-import type { PublishedBookRef } from '../network-context';
+import type { PublishedBookRef } from '../reader-context';
 import MaterialCover from './MaterialCover.vue';
 const props = defineProps<{ release: SharedRelease; books: SharedBook[] }>();
 const label = (reference: PublishedBookRef) => sharedBookLabel(reference, props.books, props.release.manifest.materials);

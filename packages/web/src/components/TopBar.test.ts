@@ -18,6 +18,17 @@ const props = {
 };
 
 describe("TopBar", () => {
+  it('offers model settings to a local browser and keeps them out of ordinary hosted readers', async () => {
+    const wrapper = mount(TopBar, { props });
+    expect(wrapper.findAll('button').some(button => button.text() === '模型设置')).toBe(false);
+    await wrapper.setProps({ modelSettingsAvailable: true, mobileOpen: true });
+    await wrapper.findAll('button').find(button => button.text() === '模型设置')!.trigger('click');
+    expect(wrapper.emitted('open-settings')).toHaveLength(1);
+    await wrapper.setProps({ desktopHost: true });
+    expect(wrapper.findAll('button').some(button => button.text() === '打开桌面设置')).toBe(true);
+    expect(wrapper.findAll('button').some(button => button.text() === '模型设置')).toBe(false);
+    wrapper.unmount();
+  });
   it('offers the board only when available and closes the mobile menu after opening it', async () => {
     const wrapper = mount(TopBar, { props: { ...props, mobileOpen: true } });
     expect(wrapper.findAll('button').some(button => button.text() === '当前资料的画板')).toBe(false);

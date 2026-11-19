@@ -3,8 +3,8 @@ import path from 'node:path';
 
 // Use a new process and isolated memory; never attach to the user's running Reader.
 export async function startServer(bookDir, memoryDir, root = process.cwd(), extraEnv = {}) {
-  const executable = process.env.SEMANTIC_EVAL_SERVER ?? path.join(root, 'target', 'debug', process.platform === 'win32' ? 'server.exe' : 'server');
-  const child = spawn(executable, [bookDir], { cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
+  const executable = process.env.SEMANTIC_EVAL_SERVER ?? path.join(root, 'target', 'debug', process.platform === 'win32' ? 'reader.exe' : 'reader');
+  const child = spawn(executable, ['--reader-only', bookDir], { cwd: root, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, ...extraEnv, UNDERSTAND_BOOK_ADDR: '127.0.0.1:0', UNDERSTAND_BOOK_MEMORY_DIR: memoryDir,
       UNDERSTAND_BOOK_REVIEW_DRAIN_TIMEOUT_MS: '50', UNDERSTAND_BOOK_WEB_DIST: extraEnv.UNDERSTAND_BOOK_WEB_DIST ?? path.join(root, 'packages/web/dist') } });
   let log = '';

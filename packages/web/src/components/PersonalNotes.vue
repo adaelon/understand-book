@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowUpRight, Check, ChevronDown, ChevronRight, FileText, Gr
 import { useNoteWindow, type NoteWindowAction } from '../note-window';
 import { useNoteLauncher } from '../note-launcher';
 import { renderMarkdown } from '../md';
+import { t as uiText } from '../i18n';
 import { openPersonalChat, personalChat } from '../personal-chat';
 import { currentThoughtContext, emptyNoteContext, noteRequest, noteContentFromView, pendingNoteSource, noteSourceError, type NoteContext } from '../personal-notes';
 import { ApiError } from '../api';
@@ -333,7 +334,7 @@ onBeforeUnmount(() => { clearTimeout(searchTimer); window.removeEventListener('k
     </section>
   <div v-if="notesOwner()" v-show="!notesPanel.open" ref="launcherElement" class="thought-toolbar" :class="{ 'is-dragging': launcher.dragging.value, 'keyboard-open': launcher.keyboardOpen.value }" :style="launcher.style.value" data-personal-notes>
     <span v-if="notice" class="toolbar-notice" role="status"><Check :size="14" />{{ notice }}</span>
-    <button class="thought-entry" data-tour="thought-entry" aria-label="记一下" :title="drafts.length ? '继续草稿 · 可拖动 · Ctrl / ⌘ + Shift + M' : '记一下 · 可拖动 · Ctrl / ⌘ + Shift + M'" aria-description="点击直接记录；拖动或按 Alt 加方向键移动入口" aria-keyshortcuts="Control+Shift+M Meta+Shift+M" aria-controls="personal-thought-window" :aria-expanded="notesPanel.open && notesPanel.view === 'capture'" @pointerdown="launcher.begin" @keydown="launcher.keyboard" @click="launcher.click($event, capture)"><PenLine :size="17" /><span>记一下</span><span v-if="drafts.length" class="draft-dot" aria-label="有未完成的草稿" /></button>
+    <button class="thought-entry" data-tour="thought-entry" :aria-label="uiText('记一下')" :title="drafts.length ? uiText('继续草稿 · 可拖动 · Ctrl / ⌘ + Shift + M') : uiText('记一下 · 可拖动 · Ctrl / ⌘ + Shift + M')" :aria-description="uiText('点击直接记录；拖动或按 Alt 加方向键移动入口')" aria-keyshortcuts="Control+Shift+M Meta+Shift+M" aria-controls="personal-thought-window" :aria-expanded="notesPanel.open && notesPanel.view === 'capture'" @pointerdown="launcher.begin" @keydown="launcher.keyboard" @click="launcher.click($event, capture)"><PenLine :size="17" /><span>{{ uiText('记一下') }}</span><span v-if="drafts.length" class="draft-dot" :aria-label="uiText('有未完成的草稿')" /></button>
   </div>
 </template>
 

@@ -3,58 +3,12 @@ use crate::{control_store::ControlStore, learning_workspace, user_storage_paths:
 use base_schema::WorkspaceGoalInput;
 use read_tools::ToolError;
 use rusqlite::{params, Connection, OptionalExtension};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::{json, Value};
 
-fn invalid() -> ToolError { error("EXAM_SPRINT_INVALID", "validation", "请填写有效考试日期、复习范围和每天可用时间。") }
 fn storage() -> ToolError { error("EXAM_SPRINT_UNAVAILABLE", "unavailable", "考试安排暂时无法读取或保存。") }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub(crate) struct SprintInput {
-    pub exam_date: String,
-    #[serde(default)]
-    pub syllabus: String,
-    pub daily_minutes: Option<u32>,
-    /// Calendar boundaries are explicitly the student's local offset, in minutes.
-    pub utc_offset_minutes: i32,
-    pub entry_mode: String,
-}
-
-impl SprintInput {
-    fn date(&self) -> Result<time::Date, ToolError> {
-        let format = time::format_description::parse("[year]-[month]-[day]").map_err(|_| invalid())?;
-        time::Date::parse(&self.exam_date, &format).map_err(|_| invalid())
-    }
-    pub(crate) fn validate(&self) -> Result<(), ToolError> {
-        self.date()?;
-        if !matches!(self.entry_mode.as_str(), "diagnostic" | "question")
-            || self.daily_minutes.is_some_and(|minutes| minutes == 0 || minutes > 1440)
-            || !(-720..=840).contains(&self.utc_offset_minutes) { return Err(invalid()); }
-        Ok(())
-    }
-    pub(crate) fn constraints(&self) -> Vec<String> {
-        let mut constraints = vec![format!("考试日期：{}（UTC{:+} 分钟）；按当前日期安排复习。", self.exam_date, self.utc_offset_minutes)];
-        constraints.push(if self.syllabus.trim().is_empty() { "考试范围暂未提供；先依据课程注明的适用范围，不猜测学校考纲。".into() }
-            else { format!("已确认考试范围：{}", self.syllabus.trim()) });
-        if let Some(minutes) = self.daily_minutes { constraints.push(format!("每天可用复习时间：{minutes} 分钟。")); }
-        constraints.push(if self.entry_mode == "diagnostic" { "开始方式：先做短诊断，根据实际作答调整；观看视频不代表已掌握。".into() }
-            else { "开始方式：直接处理我提出的问题，无需先做诊断；根据实际作答调整。".into() });
-        constraints
-    }
-    fn remaining_days(&self, now: i64) -> Result<i64, ToolError> {
-        let offset = time::UtcOffset::from_whole_seconds(self.utc_offset_minutes * 60).map_err(|_| invalid())?;
-        let today = time::OffsetDateTime::from_unix_timestamp(now).map_err(|_| invalid())?.to_offset(offset).date();
-        Ok((self.date()? - today).whole_days())
-    }
-    pub(crate) fn calendar(&self, now: i64, goal_revision: u32) -> Result<Value, ToolError> {
-        let offset = time::UtcOffset::from_whole_seconds(self.utc_offset_minutes * 60).map_err(|_| invalid())?;
-        let today = time::OffsetDateTime::from_unix_timestamp(now).map_err(|_| invalid())?.to_offset(offset).date();
-        Ok(json!({"exam_date":self.exam_date,"current_local_date":today.to_string(),
-            "utc_offset_minutes":self.utc_offset_minutes,"remaining_days":self.remaining_days(now)?,
-            "workspace_goal_revision":goal_revision,"as_of":now}))
-    }
-}
+pub use reader_service::run_input::SprintInput;
 
 pub(crate) fn settings(db: &Connection, owner: &str, workspace: &str) -> Result<Option<SprintInput>, ToolError> {
     let row: Option<String> = db.query_row("SELECT settings_json FROM workspace_exam_sprints WHERE owner_user_id=? AND learning_workspace_id=?",

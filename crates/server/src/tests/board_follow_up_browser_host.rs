@@ -251,9 +251,7 @@ pub(super) fn seed_with_presentation(
         book_id: local.workspace.book.base.book_id.clone(),
         session_id: local_metadata["session_id"].as_str().unwrap().into(),
     };
-    let mut content = crate::presentation_store::PresentationStore::for_user(&local.user)
-        .unwrap()
-        .read_version(&local_owner, &local_reference)
+    let mut content = reader_service::tests::host_calls::read_presentation_version(&local.user, &local_owner, &local_reference)
         .unwrap()
         .content;
     transform(&mut content);
@@ -317,7 +315,7 @@ pub(super) fn seed_with_presentation(
             turn_id: port.scope.turn_id.clone(),
             user_turn_ordinal: turn.user_turn_ordinal,
         };
-        crate::session_runtime::finish(&mut user, &turn_ref, &session, NOW).unwrap();
+        reader_service::tests::host_calls::session_runtime::finish(&mut user, &turn_ref, &session, NOW).unwrap();
 
         let mut learning = user
             .learning_store_for_source(Some(&learning_id), &publication.book_id)
@@ -333,7 +331,7 @@ pub(super) fn seed_with_presentation(
                 NOW,
             )
             .unwrap();
-        teaching::start_request(&port.scope.private_user(&user), NOW).unwrap();
+        reader_service::tests::host_calls::teaching::start_request(&port.scope.private_user(&user), NOW).unwrap();
         let state = learning.state().unwrap();
         let tutor = state
             .sessions

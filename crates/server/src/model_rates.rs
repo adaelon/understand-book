@@ -19,6 +19,12 @@ pub struct RateSource {
 #[serde(rename_all = "snake_case")]
 pub enum UsageContract {
     DeepSeek,
+    /// All input tokens have the same price; cache subdivision is not required.
+    InputOutput,
+    /// Total input includes the separately priced read/write cache buckets.
+    CachedInputOutput,
+    /// Cohere's billed token units, independent of its context token counts.
+    CohereBilledUnits,
 }
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -38,6 +44,8 @@ pub struct ModelRateSnapshot {
     pub expires_at: i64,
     pub input_micro_cny_per_million: u64,
     pub cached_input_micro_cny_per_million: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cache_creation_input_micro_cny_per_million: Option<u64>,
     pub output_micro_cny_per_million: u64,
     pub usage_contract: UsageContract,
     pub image_meter: ImageMeter,
@@ -54,8 +62,11 @@ impl ModelRates {
     }
     pub(crate) fn load_diagnostic(path: &std::path::Path) -> Result<Self, &'static str> {
         let bytes = std::fs::read(path).map_err(|_| "MODEL_RATE_FILE_UNREADABLE")?;
-        let rates: Self = serde_json::from_slice(&bytes).map_err(|_| "MODEL_RATE_FILE_INVALID_JSON")?;
-        rates.validate().map_err(|_| "MODEL_RATE_CONFIGURATION_INVALID")?;
+        let rates: Self =
+            serde_json::from_slice(&bytes).map_err(|_| "MODEL_RATE_FILE_INVALID_JSON")?;
+        rates
+            .validate()
+            .map_err(|_| "MODEL_RATE_CONFIGURATION_INVALID")?;
         Ok(rates)
     }
     pub fn validate(&self) -> Result<(), SpendStop> {
@@ -76,6 +87,13 @@ impl ModelRates {
                 ]
                 .iter()
                 .any(|s| s.trim().is_empty())
+            {
+                return Err(SpendStop::RateUnavailable);
+            }
+            if r.usage_contract == UsageContract::InputOutput
+                && (r.cached_input_micro_cny_per_million != r.input_micro_cny_per_million
+                    || r.cache_creation_input_micro_cny_per_million
+                        .is_some_and(|price| price != r.input_micro_cny_per_million))
             {
                 return Err(SpendStop::RateUnavailable);
             }
@@ -114,6 +132,8 @@ impl ModelRates {
 pub struct BillableUsage {
     pub uncached_input_tokens: u64,
     pub cached_input_tokens: u64,
+    #[serde(default)]
+    pub cache_creation_input_tokens: u64,
     pub output_tokens: u64,
 }
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -122,31 +142,83 @@ pub enum UnknownUsage {
     MissingInput,
     MissingOutput,
     MissingCache,
+    MissingCacheCreation,
+    MissingBilledInput,
+    MissingBilledOutput,
     UnsupportedCacheCreation,
     InconsistentBreakdown,
     CostOverflow,
 }
 impl ModelRateSnapshot {
     pub fn normalize(&self, usage: &ModelUsage) -> Result<BillableUsage, UnknownUsage> {
+        if self.usage_contract == UsageContract::CohereBilledUnits {
+            return Ok(BillableUsage {
+                uncached_input_tokens: u64::from(
+                    usage
+                        .billed_input_tokens
+                        .ok_or(UnknownUsage::MissingBilledInput)?,
+                ),
+                cached_input_tokens: 0,
+                cache_creation_input_tokens: 0,
+                output_tokens: u64::from(
+                    usage
+                        .billed_output_tokens
+                        .ok_or(UnknownUsage::MissingBilledOutput)?,
+                ),
+            });
+        }
         let input = usage.input_tokens.ok_or(UnknownUsage::MissingInput)?;
         let output = usage.output_tokens.ok_or(UnknownUsage::MissingOutput)?;
-        let cached = usage
-            .cached_input_tokens
-            .ok_or(UnknownUsage::MissingCache)?;
-        if usage.cache_creation_input_tokens.is_some_and(|v| v > 0) {
-            return Err(UnknownUsage::UnsupportedCacheCreation);
-        }
-        if cached > input
-            || usage.reasoning_output_tokens.is_some_and(|v| v > output)
+        if usage.reasoning_output_tokens.is_some_and(|v| v > output)
             || usage
                 .total_tokens
                 .is_some_and(|v| u64::from(v) != u64::from(input) + u64::from(output))
         {
             return Err(UnknownUsage::InconsistentBreakdown);
         }
+        if self.usage_contract == UsageContract::InputOutput {
+            if usage.cached_input_tokens.is_some_and(|v| v > input)
+                || usage.cache_creation_input_tokens.is_some_and(|v| v > input)
+                || usage
+                    .cached_input_tokens
+                    .zip(usage.cache_creation_input_tokens)
+                    .is_some_and(|(read, write)| {
+                        u64::from(read) + u64::from(write) > u64::from(input)
+                    })
+            {
+                return Err(UnknownUsage::InconsistentBreakdown);
+            }
+            // This is a price bucket, not an invented cache-usage observation.
+            // The chosen contract charges every input token at the same rate.
+            return Ok(BillableUsage {
+                uncached_input_tokens: u64::from(input),
+                cached_input_tokens: 0,
+                cache_creation_input_tokens: 0,
+                output_tokens: u64::from(output),
+            });
+        }
+        let cached = usage
+            .cached_input_tokens
+            .ok_or(UnknownUsage::MissingCache)?;
+        let created = if self.usage_contract == UsageContract::CachedInputOutput
+            && self.cache_creation_input_micro_cny_per_million.is_some()
+        {
+            usage
+                .cache_creation_input_tokens
+                .ok_or(UnknownUsage::MissingCacheCreation)?
+        } else {
+            if usage.cache_creation_input_tokens.is_some_and(|v| v > 0) {
+                return Err(UnknownUsage::UnsupportedCacheCreation);
+            }
+            0
+        };
+        if u64::from(cached) + u64::from(created) > u64::from(input) {
+            return Err(UnknownUsage::InconsistentBreakdown);
+        }
         Ok(BillableUsage {
-            uncached_input_tokens: u64::from(input - cached),
+            uncached_input_tokens: u64::from(input - cached - created),
             cached_input_tokens: u64::from(cached),
+            cache_creation_input_tokens: u64::from(created),
             output_tokens: u64::from(output),
         })
     }
@@ -163,6 +235,11 @@ impl ModelRateSnapshot {
                 usage.cached_input_tokens,
                 self.cached_input_micro_cny_per_million,
             ),
+            (
+                usage.cache_creation_input_tokens,
+                self.cache_creation_input_micro_cny_per_million
+                    .unwrap_or(self.input_micro_cny_per_million),
+            ),
             (usage.output_tokens, self.output_micro_cny_per_million),
         ]
         .into_iter()
@@ -176,43 +253,111 @@ impl ModelRateSnapshot {
             .map_err(|_| UnknownUsage::CostOverflow)
     }
     pub fn estimate(&self, request: &Value) -> Result<ReservationEstimate, SpendStop> {
-        if request["model"].as_str() != Some(self.model.as_str()) {
+        let model = request["model"]
+            .as_str()
+            .ok_or(SpendStop::RateUnavailable)?;
+        self.estimate_for_model(model, request)
+    }
+
+    /// Models carried by a route (Gemini/Bedrock) use the frozen send identity.
+    /// A body model, when present, must still agree with that same identity.
+    pub fn estimate_for_model(
+        &self,
+        model: &str,
+        request: &Value,
+    ) -> Result<ReservationEstimate, SpendStop> {
+        if model != self.model
+            || request
+                .get("model")
+                .is_some_and(|value| value.as_str() != Some(model))
+        {
             return Err(SpendStop::RateUnavailable);
         }
-        let output = request
-            .get("max_tokens")
-            .or_else(|| request.get("max_completion_tokens"))
-            .and_then(Value::as_u64)
+        let (output, mut payload, legacy_messages) = if request.get("max_tokens").is_some()
+            || request.get("max_completion_tokens").is_some()
+        {
+            if !request["messages"].is_array() {
+                return Err(SpendStop::RateUnavailable);
+            }
+            (
+                request
+                    .get("max_tokens")
+                    .or_else(|| request.get("max_completion_tokens"))
+                    .unwrap(),
+                json!({"system":request.get("system"),"messages":request["messages"],"tools":request.get("tools"),"response_format":request.get("response_format")}),
+                true,
+            )
+        } else if request.get("max_output_tokens").is_some() {
+            if !(request["input"].is_array() || request["input"].is_string()) {
+                return Err(SpendStop::RateUnavailable);
+            }
+            (
+                &request["max_output_tokens"],
+                json!({"instructions":request.get("instructions"),"input":request["input"],"tools":request.get("tools"),"text":request.get("text")}),
+                false,
+            )
+        } else if request.get("generationConfig").is_some() {
+            if !request["contents"].is_array() {
+                return Err(SpendStop::RateUnavailable);
+            }
+            (
+                &request["generationConfig"]["maxOutputTokens"],
+                json!({"systemInstruction":request.get("systemInstruction"),"contents":request["contents"],"tools":request.get("tools"),"generationConfig":request["generationConfig"]}),
+                false,
+            )
+        } else if request.get("generation_config").is_some() {
+            if !(request["input"].is_array() || request["input"].is_string()) {
+                return Err(SpendStop::RateUnavailable);
+            }
+            (
+                &request["generation_config"]["max_output_tokens"],
+                json!({"system_instruction":request.get("system_instruction"),"input":request["input"],"tools":request.get("tools"),"generation_config":request["generation_config"],"response_format":request.get("response_format")}),
+                false,
+            )
+        } else if request.get("inferenceConfig").is_some() {
+            if !request["messages"].is_array() {
+                return Err(SpendStop::RateUnavailable);
+            }
+            (
+                &request["inferenceConfig"]["maxTokens"],
+                json!({"system":request.get("system"),"messages":request["messages"],"toolConfig":request.get("toolConfig"),"outputConfig":request.get("outputConfig")}),
+                false,
+            )
+        } else if request.get("options").is_some() {
+            if !request["messages"].is_array() {
+                return Err(SpendStop::RateUnavailable);
+            }
+            (
+                &request["options"]["num_predict"],
+                json!({"messages":request["messages"],"tools":request.get("tools"),"format":request.get("format")}),
+                false,
+            )
+        } else {
+            return Err(SpendStop::RateUnavailable);
+        };
+        let output = output
+            .as_u64()
             .filter(|v| *v > 0)
             .ok_or(SpendStop::RateUnavailable)?;
-        let mut messages = request["messages"]
-            .as_array()
-            .cloned()
-            .ok_or(SpendStop::RateUnavailable)?;
         let mut images = 0u64;
-        for message in &mut messages {
-            if let Some(parts) = message["content"].as_array_mut() {
-                for part in parts {
-                    match part["type"].as_str() {
-                        Some("image_url" | "image") => {
-                            if self.image_meter != ImageMeter::DeepSeek1024 {
-                                return Err(SpendStop::RateUnavailable);
-                            }
-                            images = images.checked_add(1).ok_or(SpendStop::RateUnavailable)?;
-                            *part = json!({"type":part["type"]});
-                        }
-                        Some(
-                            "text" | "thinking" | "redacted_thinking" | "tool_use"
-                            | "tool_result" | "tool_addition" | "tool_removal",
-                        ) => (),
-                        _ => return Err(SpendStop::RateUnavailable),
-                    }
-                }
+        let image_meter = legacy_messages
+            && self.usage_contract == UsageContract::DeepSeek
+            && self.image_meter == ImageMeter::DeepSeek1024;
+        // Inspect actual content roots, not tools' arbitrary JSON Schema fields.
+        for root in [
+            "messages",
+            "contents",
+            "input",
+            "system",
+            "systemInstruction",
+        ] {
+            if let Some(value) = payload.get_mut(root) {
+                scrub_content_media(value, image_meter, &mut images)?;
             }
         }
         // Same character heuristic as Runtime, expressed in quarter-token integer
         // units. Include the final tool schemas, protocol and reasoning context.
-        let payload=json!({"system":request.get("system"),"messages":messages,"tools":request.get("tools"),"response_format":request.get("response_format")}).to_string();
+        let payload = payload.to_string();
         let quarters = payload
             .chars()
             .try_fold(0u64, |n, c| {
@@ -224,23 +369,100 @@ impl ModelRateSnapshot {
         let input = text_tokens
             .checked_add(image_tokens)
             .ok_or(SpendStop::RateUnavailable)?;
+        let mut estimated_usage = BillableUsage {
+            uncached_input_tokens: input,
+            cached_input_tokens: 0,
+            cache_creation_input_tokens: 0,
+            output_tokens: output,
+        };
+        // Cache creation can be more expensive than ordinary input. Reserve at
+        // the highest configured input bucket; settle only the reported split.
+        if self.usage_contract == UsageContract::CachedInputOutput {
+            let created_rate = self.cache_creation_input_micro_cny_per_million.unwrap_or(0);
+            if created_rate > self.input_micro_cny_per_million
+                && created_rate >= self.cached_input_micro_cny_per_million
+            {
+                estimated_usage.uncached_input_tokens = 0;
+                estimated_usage.cache_creation_input_tokens = input;
+            } else if self.cached_input_micro_cny_per_million > self.input_micro_cny_per_million {
+                estimated_usage.uncached_input_tokens = 0;
+                estimated_usage.cached_input_tokens = input;
+            }
+        }
         let amount = self
-            .price(&BillableUsage {
-                uncached_input_tokens: input,
-                cached_input_tokens: 0,
-                output_tokens: output,
-            })
+            .price(&estimated_usage)
             .map_err(|_| SpendStop::RateUnavailable)?;
         Ok(ReservationEstimate {
             reserved_micro_cny: amount,
             text_tokens,
             image_tokens,
             output_tokens: output,
-            source: "final_request_character_estimate_uncached_v1".into(),
+            source: if self.usage_contract == UsageContract::CachedInputOutput {
+                "final_request_character_estimate_max_input_rate_v1"
+            } else {
+                "final_request_character_estimate_uncached_v1"
+            }
+            .into(),
             image_meter: self.image_meter,
         })
     }
 }
+
+/// Strip only a declared, priced image format. Other media lacks a tariff
+/// contract and is rejected before sending; base64 is never priced as text.
+fn scrub_content_media(
+    value: &mut Value,
+    deepseek_images: bool,
+    images: &mut u64,
+) -> Result<(), SpendStop> {
+    if let Some(values) = value.as_array_mut() {
+        for value in values {
+            scrub_content_media(value, deepseek_images, images)?;
+        }
+        return Ok(());
+    }
+    if !value.is_object() {
+        return Ok(());
+    }
+    match value["type"].as_str() {
+        Some("image_url" | "image" | "input_image") => {
+            if !deepseek_images || value["type"] == "input_image" {
+                return Err(SpendStop::RateUnavailable);
+            }
+            *images = images.checked_add(1).ok_or(SpendStop::RateUnavailable)?;
+            *value = json!({"type":value["type"]});
+            return Ok(());
+        }
+        Some("audio" | "video" | "input_audio" | "input_video" | "input_file") => {
+            return Err(SpendStop::RateUnavailable)
+        }
+        _ => (),
+    }
+    if value
+        .get("images")
+        .is_some_and(|images| images.as_array().is_some_and(|images| !images.is_empty()))
+        || [
+            "inlineData",
+            "fileData",
+            "inline_data",
+            "file_data",
+            "image",
+            "audio",
+            "video",
+        ]
+        .iter()
+        .any(|key| value.get(*key).is_some_and(|value| !value.is_null()))
+    {
+        return Err(SpendStop::RateUnavailable);
+    }
+    for field in ["content", "parts"] {
+        if let Some(content) = value.get_mut(field) {
+            scrub_content_media(content, deepseek_images, images)?;
+        }
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReservationEstimate {
     pub reserved_micro_cny: MicroCny,
@@ -263,6 +485,7 @@ mod tests {
             expires_at: 20,
             input_micro_cny_per_million: 200_000,
             cached_input_micro_cny_per_million: 20_000,
+            cache_creation_input_micro_cny_per_million: None,
             output_micro_cny_per_million: 400_000,
             usage_contract: UsageContract::DeepSeek,
             image_meter: ImageMeter::DeepSeek1024,
@@ -420,9 +643,194 @@ mod tests {
         let image = r.estimate(&request).unwrap();
         assert_eq!(image.image_tokens, 1024);
         request["messages"][0]["content"][1]["source"]["data"] = json!("a".repeat(10000));
-        assert_eq!(r.estimate(&request).unwrap().reserved_micro_cny, image.reserved_micro_cny);
+        assert_eq!(
+            r.estimate(&request).unwrap().reserved_micro_cny,
+            image.reserved_micro_cny
+        );
         let mut unsupported = r.clone();
         unsupported.image_meter = ImageMeter::Unsupported;
         assert!(unsupported.estimate(&request).is_err());
+    }
+
+    #[test]
+    fn provider_rates_uniform_input_does_not_require_cache_but_requires_complete_counts() {
+        let mut rate = rate();
+        rate.usage_contract = UsageContract::InputOutput;
+        rate.cached_input_micro_cny_per_million = rate.input_micro_cny_per_million;
+        let usage = ModelUsage {
+            input_tokens: Some(100),
+            output_tokens: Some(30),
+            reasoning_output_tokens: Some(10),
+            total_tokens: Some(130),
+            ..Default::default()
+        };
+        assert_eq!(rate.cost(&usage).unwrap().value(), 32);
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                input_tokens: None,
+                ..usage.clone()
+            }),
+            Err(UnknownUsage::MissingInput)
+        );
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                output_tokens: None,
+                ..usage.clone()
+            }),
+            Err(UnknownUsage::MissingOutput)
+        );
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                total_tokens: Some(140),
+                ..usage
+            }),
+            Err(UnknownUsage::InconsistentBreakdown)
+        );
+        assert!(ModelRates {
+            rates: vec![rate.clone()]
+        }
+        .validate()
+        .is_ok());
+        rate.cached_input_micro_cny_per_million = 1;
+        assert!(ModelRates { rates: vec![rate] }.validate().is_err());
+    }
+
+    #[test]
+    fn provider_rates_cache_creation_is_priced_once_and_unknown_stays_pending() {
+        let mut rate = rate();
+        rate.usage_contract = UsageContract::CachedInputOutput;
+        rate.cache_creation_input_micro_cny_per_million = Some(400_000);
+        let usage = ModelUsage {
+            input_tokens: Some(100),
+            cached_input_tokens: Some(50),
+            cache_creation_input_tokens: Some(20),
+            output_tokens: Some(10),
+            total_tokens: Some(110),
+            ..Default::default()
+        };
+        // 30 ordinary input + 50 cache reads + 20 cache writes + 10 output.
+        assert_eq!(rate.cost(&usage).unwrap().value(), 19);
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                cache_creation_input_tokens: None,
+                ..usage.clone()
+            }),
+            Err(UnknownUsage::MissingCacheCreation)
+        );
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                cache_creation_input_tokens: Some(51),
+                ..usage
+            }),
+            Err(UnknownUsage::InconsistentBreakdown)
+        );
+        let reservation = rate.estimate(&json!({"model":"fixture","max_tokens":10,"messages":[{"role":"user","content":"hello"}]})).unwrap();
+        let expected = (reservation.text_tokens * 400_000 + 10 * 400_000).div_ceil(1_000_000);
+        assert_eq!(reservation.reserved_micro_cny.value(), expected as i64);
+    }
+
+    #[test]
+    fn provider_rates_cohere_billed_units_do_not_use_context_tokens() {
+        let mut rate = rate();
+        rate.usage_contract = UsageContract::CohereBilledUnits;
+        let usage = ModelUsage {
+            input_tokens: Some(100),
+            output_tokens: Some(30),
+            total_tokens: Some(130),
+            billed_input_tokens: Some(50),
+            billed_output_tokens: Some(20),
+            ..Default::default()
+        };
+        assert_eq!(rate.cost(&usage).unwrap().value(), 18);
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                billed_input_tokens: None,
+                ..usage.clone()
+            }),
+            Err(UnknownUsage::MissingBilledInput)
+        );
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                billed_output_tokens: None,
+                ..usage.clone()
+            }),
+            Err(UnknownUsage::MissingBilledOutput)
+        );
+        assert_eq!(
+            rate.cost(&ModelUsage {
+                input_tokens: None,
+                output_tokens: None,
+                total_tokens: None,
+                ..usage
+            })
+            .unwrap()
+            .value(),
+            18
+        );
+    }
+
+    #[test]
+    fn provider_rates_all_wire_budgets_use_the_frozen_model_and_include_tools() {
+        let rate = rate();
+        let requests = [
+            json!({"model":"fixture","max_tokens":80,"messages":[{"role":"user","content":"hello"}]}),
+            json!({"model":"fixture","max_output_tokens":80,"input":[{"role":"user","content":[{"type":"input_text","text":"hello"}]}]}),
+            json!({"generationConfig":{"maxOutputTokens":80},"contents":[{"role":"user","parts":[{"text":"hello"}]}]}),
+            json!({"model":"fixture","generation_config":{"max_output_tokens":80},"input":[{"role":"user","content":[{"type":"text","text":"hello"}]}]}),
+            json!({"model":"fixture","options":{"num_predict":80},"messages":[{"role":"user","content":"hello"}]}),
+            json!({"inferenceConfig":{"maxTokens":80},"messages":[{"role":"user","content":[{"text":"hello"}]}]}),
+        ];
+        for mut request in requests {
+            let estimate = rate.estimate_for_model("fixture", &request).unwrap();
+            assert_eq!(estimate.output_tokens, 80);
+            assert!(estimate.text_tokens > 0);
+            let tools_key = if request.get("inferenceConfig").is_some() {
+                "toolConfig"
+            } else {
+                "tools"
+            };
+            request[tools_key] = json!([{"description":"long tool schema ".repeat(100)}]);
+            assert!(
+                rate.estimate_for_model("fixture", &request)
+                    .unwrap()
+                    .text_tokens
+                    > estimate.text_tokens
+            );
+            assert_eq!(
+                rate.estimate_for_model("other", &request).unwrap_err(),
+                SpendStop::RateUnavailable
+            );
+            request["model"] = json!("wrong-body-model");
+            assert_eq!(
+                rate.estimate_for_model("fixture", &request).unwrap_err(),
+                SpendStop::RateUnavailable
+            );
+        }
+    }
+
+    #[test]
+    fn provider_rates_new_protocol_media_is_not_estimated_as_base64_text() {
+        let rate = rate();
+        for request in [
+            json!({"max_output_tokens":80,"input":[{"role":"user","content":[{"type":"input_image","image_url":"data:image/png;base64,YQ=="}]}]}),
+            json!({"generationConfig":{"maxOutputTokens":80},"contents":[{"parts":[{"inlineData":{"mimeType":"image/png","data":"YQ=="}}]}]}),
+            json!({"generation_config":{"max_output_tokens":80},"input":[{"type":"image","data":"YQ==","mime_type":"image/png"}]}),
+            json!({"options":{"num_predict":80},"messages":[{"role":"user","content":"image","images":["YQ=="]}]}),
+            json!({"inferenceConfig":{"maxTokens":80},"messages":[{"role":"user","content":[{"image":{"format":"png","source":{"bytes":"YQ=="}}}]}]}),
+        ] {
+            assert_eq!(
+                rate.estimate_for_model("fixture", &request).unwrap_err(),
+                SpendStop::RateUnavailable
+            );
+        }
+        let mut new_contract = rate;
+        new_contract.usage_contract = UsageContract::InputOutput;
+        let chat_image = json!({"max_tokens":80,"messages":[{"role":"user","content":[{"type":"image_url","image_url":{"url":"data:image/png;base64,YQ=="}}]}]});
+        assert_eq!(
+            new_contract
+                .estimate_for_model("fixture", &chat_image)
+                .unwrap_err(),
+            SpendStop::RateUnavailable
+        );
     }
 }

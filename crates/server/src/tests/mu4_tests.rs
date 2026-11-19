@@ -552,7 +552,7 @@ fn mu4_mu0_inventory_has_no_anonymous_or_legacy_bypass() {
     let server = f.start();
     let token = f.login("A");
     for line in
-        include_str!("../../../../docs/performance/linux-multi-reader-mu0-20260930/routes.csv")
+        include_str!("../../tests/fixtures/legacy-http-routes.csv")
             .lines()
             .skip(1)
     {
@@ -1072,7 +1072,7 @@ fn mu4_same_legacy_ids_and_delivered_presentation_stay_in_user_root() {
             },
         };
         let path = user
-            .presentation_root()
+            .test_presentation_root()
             .unwrap()
             .join("versions/presentation-same/1.json");
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
