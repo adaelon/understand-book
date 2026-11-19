@@ -1014,7 +1014,15 @@ const readingAnchorLid = computed(() => currentReadingLid.value ?? viewport.valu
 const outlineAnchorLid = computed(() => outlineNavigationLid.value ?? readingAnchorLid.value);
 const outlineAnchorOffset = computed(() => sourceManifestTree.value?.tree.find(node => node.lid === outlineAnchorLid.value)?.span.start);
 const activeOutlineItem = computed(() => activeOutline(outlineItems.value, outlineAnchorLid.value, outlineAnchorOffset.value));
-const activeChapterTitle = computed(() => activeOutlineItem.value?.title ?? chapterTitle.value);
+const activeChapterTitle = computed(() => {
+  if (activeOutlineItem.value) return activeOutlineItem.value.title;
+  const top = outlineAnchorLid.value?.split('.')[0];
+  if (activeReaderSurface.value === 'markdown' && top) {
+    const cached = cachedChapterTitle(top);
+    if (cached !== undefined) return cached;
+  }
+  return chapterTitle.value;
+});
 const readerBookTitle = computed(() => {
   const title = recapProps.materialTitle?.trim() || buildWorkbenchSnapshot.value?.input?.manifest?.display_title?.trim();
   if (title) return title;
@@ -2287,18 +2295,28 @@ async function syncViewport(forcePaperProjection = false, preferReaderSelection 
   await loadPaperProjectionData(forcePaperProjection);
 }
 
-// 章节标题:取 anchor 顶层段(LID 首段)原文首行作标签(读位感「第N章…」)。
+function chapterTextTitle(top: string, text: string): string {
+  const fallback = kindOf(top) === 'image' && leafOrder.value[0] === top ? uiText('封面') : uiText('正文');
+  return outlineTitle(text, fallback).slice(0, 40);
+}
+
+function cachedChapterTitle(top: string): string | undefined {
+  const title = titleByLid.value.get(top);
+  if (title !== undefined) return title.slice(0, 40);
+  const segment = segmentByLid.value.get(top);
+  return segment && chapterTextTitle(top, segment.text);
+}
+
 async function loadChapter(anchorLid: string) {
   const top = anchorLid.split(".")[0];
-  const title = titleByLid.value.get(top);
+  const title = cachedChapterTitle(top);
   if (title !== undefined) {
-    chapterTitle.value = title.slice(0, 40);
+    chapterTitle.value = title;
     return;
   }
   try {
     const t = await api.text(top);
-    const fallback = kindOf(top) === 'image' && leafOrder.value[0] === top ? uiText('封面') : uiText('正文');
-    chapterTitle.value = outlineTitle(t.text, fallback).slice(0, 40);
+    chapterTitle.value = chapterTextTitle(top, t.text);
   } catch {
     chapterTitle.value = top;
   }

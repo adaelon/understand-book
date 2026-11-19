@@ -37,6 +37,32 @@ async function tool(page: Page, name: string) {
   await page.getByRole('navigation', { name: '专注阅读工具' }).getByRole('button', { name, exact: true }).click();
 }
 const longSources = Array.from({ length: 36 }, (_, i) => ({ lid: `1.${i + 1}`, kind: 'paragraph', text: `Paragraph ${i + 1}. ` + '原文范围必须准确，阅读位置始终保持。'.repeat(200) }));
+test('reading position follows the cover and body within an already loaded window', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('understand-book.product-tour.v1.local.reader', 'done'));
+  const coverUrl = '/reading-position-cover.svg';
+  await page.route('**' + coverUrl, route => route.fulfill({
+    contentType: 'image/svg+xml',
+    body: '<svg xmlns="http://www.w3.org/2000/svg" width="420" height="850"><rect width="420" height="850" fill="navy"/></svg>',
+  }));
+  await backend(page, 'front-matter', undefined, [
+    { lid: '1', kind: 'image', text: '![](cover.jpg)', imageAsset: { lid: '1', status: 'available', url_path: coverUrl } },
+    { lid: '2', kind: 'paragraph', text: '图书在版编目数据\n' + '这一段保留正文读位。'.repeat(700) },
+  ]);
+  await page.goto(process.env.FOCUS_ENTRY_URL ?? '/playwright/fixtures/focus-turn.html');
+  const title = page.locator('.reading-titles strong:visible');
+  const cover = page.locator('.prose .asset-image[data-lid="1"]');
+  const paragraph = page.locator('.prose [data-lid="2"]').first();
+  await expect(cover.locator('img')).toBeVisible();
+  await expect(title).toHaveText('封面');
+  await paragraph.evaluate(el => el.scrollIntoView({ block: 'start' }));
+  await expect(title).toHaveText('图书在版编目数据');
+  await cover.evaluate(el => el.scrollIntoView({ block: 'start' }));
+  await expect(title).toHaveText('封面');
+  await cover.getByRole('button', { name: '定位' }).click();
+  await expect(cover).toHaveClass(/selected/);
+  await expect(title).toHaveAttribute('title', '封面');
+});
+
 test('image cover has a readable title and focus annotations leave the first glyph accessible', async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem('understand-book.product-tour.v1.local.reader', 'done'));
   const server = await backend(page, 'cover-with-note', undefined, [

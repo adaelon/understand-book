@@ -1,6 +1,6 @@
 # 本地应用公共源码
 
-这是双发行工作树的独立源码快照，基线提交为 `bd0d5057b2358a299e6c0159c4e3eb3dc0edc6d8`，源状态为 `working-tree`。准确状态见 `edition-source.json`；工作树快照不是已经发布的公共版本。
+Windows 本地版 `v0.3.14` 基于已发布的 `v0.3.13`（提交 `5b3d4ebf26d38d46f0940eaf293ceec800348cc7`），修复阅读页顶栏和 EPUB 书名显示。源码基线与装配信息见 [edition-source.json](edition-source.json)。
 
 从本目录安装依赖并启动原创阅读样本：
 
