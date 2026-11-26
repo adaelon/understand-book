@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { applicationOverlayTarget } from "../application-overlay";
+import FocusReadingControls from './FocusReadingControls.vue';
 import { t as uiText } from '../i18n';
 
 import { inject } from 'vue';
@@ -1267,6 +1268,7 @@ function capturePdfSelection() {
 
 function onSelectionKeydown(event: KeyboardEvent) {
   if (event.key !== "Escape") return;
+  if (annotationSurface.value) event.preventDefault();
   closeAnnotationSurface();
   emit("selection-cancel");
 }
@@ -1507,16 +1509,14 @@ onBeforeUnmount(() => {
     <template v-if="props.focusReading">
       <button class="focus-page-prev" :aria-label="uiText('上一屏')" :disabled="focusState.atStart" @click="focusTurn?.turn(-1)">‹</button>
       <button class="focus-page-next" :aria-label="uiText('下一屏')" :disabled="focusState.atEnd" @click="focusTurn?.turn(1)">›</button>
-      <button class="focus-tools-toggle" :aria-label="uiText('阅读工具')" :aria-expanded="focusTools" @click="focusTools = !focusTools">···</button>
       <button v-if="props.focusReturnLabel" class="focus-reading-return" @click="emit('focus-tool', 'return')">{{ props.focusReturnLabel }}</button>
-      <nav v-if="focusTools" class="focus-tools" :aria-label="uiText('专注阅读工具')">
+      <FocusReadingControls v-model:open="focusTools" :active="props.readerActive" :placement-active="props.notePlacementActive" @exit="focusTools = false; emit('focus-tool', 'exit')">
         <button @click="focusTools = false; emit('focus-tool', 'outline')">{{ uiText('目录') }}</button>
         <button :aria-pressed="focusSingle" @click="focusSingle = !focusSingle">{{ focusSingle ? uiText('自动双页') : uiText('单页阅读') }}</button>
         <button @click="focusTools = false; emit('focus-tool', 'surface')">{{ uiText('重排正文') }}</button>
         <button @click="focusTools = false; emit('focus-tool', 'agent')">{{ uiText('问答') }}</button>
         <button @click="focusTools = false; emit('focus-tool', 'notes')">{{ uiText('笔记') }}</button>
-        <button @click="focusTools = false; emit('focus-tool', 'exit')">{{ uiText('退出专注') }}</button>
-      </nav>
+      </FocusReadingControls>
       <div v-if="focusState?.waiting || focusState?.error || pdfError" class="focus-ready-status" role="status">
         {{ focusState?.error || pdfError || uiText('正在准备书页…') }}
         <button v-if="focusState?.error" @click="focusLastGeometry = ''; resizeFocus()">{{ uiText('重试') }}</button>

@@ -59,6 +59,8 @@ export async function backend(page: Page, material = 'complex', chunk?: string, 
     }
     const first = tree[0].lid;
     const data: Record<string, unknown> = {
+      '/book/video_playback': null, '/book/music_context': null,
+      '/tutor/closed-book': null,
       '/desktop/status': { desktop_host: false, reader_only: true, active_book: true },
       '/book/build_workbench': { book_id: material, readiness: { route: 'reader', reasons: [], stages: {} }, input: { manifest: null }, source_review: { unresolved: [] } },
       '/book/manifest': { tree: manifest, stats_by_lid: {} },

@@ -58,11 +58,18 @@ pub(super) fn expressions(user: &crate::user_runtime::UserRuntime, learning_work
             .or_else(||fact.payload.get("text").and_then(Value::as_str))
             .or_else(||fact.payload["move"].get("prompt").and_then(Value::as_str))
             .map(str::to_owned)
+            .or_else(|| (fact.kind == TeachingFact::TeachBackDelivered).then(||
+                fact.payload["comparison"]["rows"].as_array().into_iter().flatten()
+                    .filter_map(|row| row["summary"].as_str()).collect::<Vec<_>>().join("\n")))
             .or_else(||feedback.map(|assessment|assessment.items.into_iter().map(|item|item.reason).collect::<Vec<_>>().join("\n")))
             .filter(|text|!text.trim().is_empty());
         if text.is_none() { continue; }
-        assistance.push(json!({"fact_ref":id,"kind":fact.kind,"occurred_at":time_key(&fact.occurred_at).map(|_|&fact.occurred_at),
-            "fact_sequence":store.teaching_event_sequence(&id)?,"text":text}));
+        let receipt = if fact.kind == TeachingFact::TeachBackDelivered {
+            Some(store.teaching_event(&format!("display:{id}"))?)
+        } else { None };
+        let seen = receipt.as_ref().unwrap_or(&fact);
+        assistance.push(json!({"fact_ref":id,"kind":fact.kind,"occurred_at":time_key(&seen.occurred_at).map(|_|&seen.occurred_at),
+            "fact_sequence":store.teaching_event_sequence(&seen.event_id)?,"text":text}));
     }
     assistance.sort_by_key(|item|(item["occurred_at"].as_str().and_then(time_key),item["fact_sequence"].as_u64()));
     view["expressions"]=json!(expressions);

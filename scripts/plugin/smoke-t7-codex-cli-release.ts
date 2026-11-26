@@ -926,7 +926,7 @@ async function main(): Promise<void> {
     assert.equal(rootMcpGet.name, executorServerName);
     assert.equal(rootMcpGet.enabled, true);
     assert.deepEqual(rootMcpGet.enabled_tools, executorToolNames);
-    assert.equal(rootMcpGet.startup_timeout_sec, 10);
+    assert.equal(rootMcpGet.startup_timeout_sec, 30);
     assert.equal(rootMcpGet.tool_timeout_sec, 120);
 
     const installedSharedMcp = validateBuildExecutorSharedMcpConfigV3(

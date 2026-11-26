@@ -15,6 +15,7 @@ import { parseAutomaticBuildRecoveryEnvelope, type AutomaticBuildRecoveryPhase,
 import { readDshBuildConfirmation, type DshBuildConfirmationV1 } from "../../packages/core/src/build-harness-confirmation";
 import { configuredBuildRetrievalRuntime, buildRetrievalReview, configureBuildRetrieval, reviseBuildRetrieval, buildRetrievalScope } from "../../packages/core/src/build-retrieval-config";
 import { transitionBuildPlan } from "../../packages/core/src/build-intent";
+import { readAcceptedCourseRoute } from "../../packages/core/src/accepted-course-route";
 import type { BuildRetrievalRuntime } from "../../packages/core/src/automatic-build-retrieval";
 import { readDshExecutorObservation } from "../../packages/core/src/dsh-executor-observation";
 import { DSH_BUILD_CONTROL_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
@@ -68,6 +69,8 @@ import {
   inspectAutomaticBuildDispatch,
   AutomaticBuildDispatchSettledError,
   readAutomaticBuildDispatch,
+  readAutomaticBuildDispatchStartupReleases,
+  type AutomaticBuildDispatchOpenDiagnostic,
   type AutomaticBuildRecoveryGenerationIdentity,
 } from "../../packages/core/src/automatic-build-dispatch-runtime";
 import { validateBuildIntentAny } from "../../packages/core/src/build-intent-v2";
@@ -237,6 +240,11 @@ export interface AutomaticBuildUserDecisionProjectionV1 {
   confidence?: "high" | "medium" | "low";
   gate_status?: string;
   os_error?: { code?: string; syscall?: string };
+  events?: Array<
+    | { kind: "bootstrap_failure" | "opened_session_ended" | "unopened_session_ended" }
+    | { kind: "open_rejected"; diagnostic_code: AutomaticBuildDispatchOpenDiagnostic }
+    | { kind: "open_call_correction"; diagnostic_code: AutomaticBuildOpenCallCorrectionV1["reported_diagnostic"]["diagnostic_code"] }
+  >;
 }
 
 export interface AutomaticBuildCompletionSummaryV1 {
@@ -291,7 +299,7 @@ export interface AutomaticBuildStepRequestV1 {
   open_call_correction?: AutomaticBuildOpenCallCorrectionV1;
   executor_open_failure?: {
     opaque_handoff_ref: string;
-    diagnostic_code: "connection_terminal" | "handoff_ref_mismatch";
+    diagnostic_code: AutomaticBuildDispatchOpenDiagnostic;
     phase: "open";
   };
 }
@@ -998,7 +1006,7 @@ function loadDriverState(
   if (invocationExecutionProfile(input).harness_kind === "deepseek_harness" && (plan.private_artifacts.length || plan.intent_id)) throw new Error("DSH private plans are unsupported");
   const routed = routeIncrementalAutomaticBuildSnapshot(target, {
     quality_profile: input.quality_profile, execution_profile: invocationExecutionProfile(input),
-    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, reuse: plan.reuse, retrieval: plan.retrieval?.selection,
+    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, course_route: plan.course_route, reuse: plan.reuse, retrieval: plan.retrieval?.selection,
   }, undefined, invocation.invocation_ref);
   const planResult = automaticBuildPlan(input.target_input, input.root_dir, {
     execution_profile: invocationExecutionProfile(input),
@@ -1116,7 +1124,7 @@ function userMessage(reason: AutomaticBuildUserDecisionReasonV1): string {
     case "low_confidence_wall_budget": return "The wall-clock forecast exceeds its limit with low confidence.";
     case "wall_budget_exceeded": return "The current wall-clock forecast exceeds the confirmed limit.";
     case "executor_unavailable": return "No dedicated executor slot is currently available.";
-    case "executor_bootstrap_failed": return "The executor failed to start three times. Repair its tool availability, then retry the current build.";
+    case "executor_bootstrap_failed": return "The dispatch reached three executor recovery events. Check the executor startup or session failure, then retry the current build.";
     case "foundation_required": return "The deterministic build foundation requires attention before continuing.";
     case "legacy_migration_required": return "Legacy build state requires an explicit migration choice.";
     case "quality_gate_failed": return "The stage quality gate failed and publication remains closed.";
@@ -2020,15 +2028,36 @@ function bootstrapBoundaryForLaunches(
   executors: Array<{ opaque_handoff_ref: string }>,
 ): AutomaticBuildStepResponseV1 | undefined {
   for (const launch of executors) {
-    const identity = invocationDispatchProjection(invocation, launch.opaque_handoff_ref)?.recovery_identity;
-    if (!identity || identity.version !== "automatic_build_recovery_generation_identity.v2"
+    const dispatch = invocationDispatchProjection(invocation, launch.opaque_handoff_ref);
+    const identity = dispatch?.recovery_identity;
+    if (!dispatch || !identity || identity.version !== "automatic_build_recovery_generation_identity.v2"
       || identity.bootstrap_epoch < 3) continue;
     const boundary = syntheticBoundary("executor_bootstrap_failed",
       `bootstrap_unavailable:${launch.opaque_handoff_ref}`, current);
     boundary.projection = { category: "executor_bootstrap_failed", code: "bootstrap_unavailable" };
     const receipt = readDecisionReceipt(invocation,
       requestIdFor(invocation, boundary, choicesFor(boundary.reason)));
-    if (receipt?.choice_id !== "retry_bootstrap") return issueBoundary(invocation, boundary);
+    if (receipt?.choice_id === "retry_bootstrap") continue;
+    const events = readAutomaticBuildDispatchStartupReleases(
+      current.plan_result.snapshot.target, dispatch.dispatch_identity.stage, identity,
+    ).map<NonNullable<AutomaticBuildUserDecisionProjectionV1["events"]>[number]>(release => {
+      const correction = recordFile("executor-open-corrections", release.opaque_handoff_ref);
+      if (existsSync(correction)) {
+        const observed = validateAutomaticBuildOpenCallCorrection(readJsonRecord(correction));
+        return { kind: "open_call_correction", diagnostic_code: observed.reported_diagnostic.diagnostic_code };
+      }
+      if (release.diagnostic_code) return { kind: "open_rejected", diagnostic_code: release.diagnostic_code };
+      if (release.version === "automatic_build_bootstrap_failure.v1") return { kind: "bootstrap_failure" };
+      return existsSync(recordFile("executor-opens", release.opaque_handoff_ref))
+        ? { kind: "opened_session_ended" } : { kind: "unopened_session_ended" };
+    });
+    const response = issueBoundary(invocation, boundary);
+    // Diagnostics can arrive after the release. Keep the existing request and
+    // any recorded retry decision bound to the same dispatch generation.
+    if (response.action.kind === "NEEDS_USER" && events.some(event => event.kind !== "bootstrap_failure")) {
+      response.action.projection = { category: "executor_bootstrap_failed", code: "executor_recovery_exhausted", events };
+    }
+    return response;
   }
   return undefined;
 }
@@ -2471,7 +2500,8 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     if (input.open_call_correction) {
       recordAutomaticBuildExecutorOpenCallCorrection(input.open_call_correction, invocation.initial_target_ref, now);
     } else {
-      recordAutomaticBuildExecutorBootstrapFailure(ref, invocation.initial_target_ref, now);
+      recordAutomaticBuildExecutorBootstrapFailure(ref, invocation.initial_target_ref, now,
+        input.executor_open_failure?.diagnostic_code);
     }
   }
 
@@ -2504,7 +2534,7 @@ function* automaticBuildStepTransitions(inputValue: AutomaticBuildStepRequestV1,
     if (preparation?.policy_set) {
       const preparationOptions = { quality_profile: invocation.input.quality_profile,
         execution_profile: invocationExecutionProfile(invocation.input),
-        public_stage_closure: current.plan.public_stage_closure, course_goal: current.plan.course_goal, reuse: current.plan.reuse,
+        public_stage_closure: current.plan.public_stage_closure, course_goal: current.plan.course_goal, course_route: current.plan.course_route, reuse: current.plan.reuse,
         retrieval: current.plan.retrieval?.selection };
       const prepared = preparation.policy_set.stage === "profile_sidecar"
         ? routeIncrementalAutomaticBuildSnapshot(current.plan_result.snapshot.target, preparationOptions, "profile_sidecar", invocation.invocation_ref)
@@ -2740,10 +2770,12 @@ function dshControllerCommand(value: Record<string, unknown>, step: DriverStep =
     writeCreateOnly(recordFile(path.join("dsh-observations", ref), observation.launch_id), observation);
     // A failed connection preparation has an instrumented zero-call proof. Unknown host
     // failures do not acquire this authorization; durable opens still win in the Engine.
-    if ((observation.outcome === "bootstrap" && observation.calls === 0)
-      || (observation.outcome === "open" && observation.last_operation === "executor.open"
-      && (observation.code === "connection_terminal" || observation.code === "handoff_ref_mismatch"))) {
-      recordAutomaticBuildExecutorBootstrapFailure(observation.opaque_handoff_ref, invocation.initial_target_ref, new Date().toISOString());
+    const openDiagnostic = observation.outcome === "open" && observation.last_operation === "executor.open"
+      && (observation.code === "connection_terminal" || observation.code === "handoff_ref_mismatch")
+      ? observation.code : undefined;
+    if (openDiagnostic || (observation.outcome === "bootstrap" && observation.calls === 0)) {
+      recordAutomaticBuildExecutorBootstrapFailure(observation.opaque_handoff_ref, invocation.initial_target_ref,
+        new Date().toISOString(), openDiagnostic);
     }
     return { recorded: true };
   }
@@ -2827,10 +2859,10 @@ export async function automaticBuildWorkerStep(input: AutomaticBuildStepRequestV
 
 /** Called only after a committed raw assignment, or to poll its dependency wait. */
 export async function claimNextAutomaticBuildWorkerAssignment(rootRef: string, completedRawRef?: string,
-  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal } = {}): Promise<AutomaticBuildWorkerClaim> {
+  options: { runtime?: BuildRetrievalRuntime; signal?: AbortSignal; try_scheduler_lock?: boolean } = {}): Promise<AutomaticBuildWorkerClaim> {
   const initial = readAutomaticBuildWorker(rootRef);
   if (!initial) throw new Error("automatic build worker is not registered");
-  return withAutomaticBuildWorkerSchedulerLock(initial.invocation_ref, async () => {
+  return withAutomaticBuildWorkerSchedulerLock<AutomaticBuildWorkerClaim>(initial.invocation_ref, async () => {
     const worker = readAutomaticBuildWorker(rootRef)!;
     if (worker.status === "done") return { kind: "DONE", reason: worker.terminal_reason! };
     if (completedRawRef && !worker.assignments.includes(completedRawRef)) throw new Error("worker assignment mismatch");
@@ -2889,12 +2921,16 @@ export async function claimNextAutomaticBuildWorkerAssignment(rootRef: string, c
       }
     }
     return { kind: "WAIT", retry_after_ms: response.action.kind === "WAIT" ? response.action.retry_after_ms : 1_000 };
-  }, options.signal);
+  }, options.signal, options.try_scheduler_lock ? () => ({ kind: "WAIT", retry_after_ms: 5_000 }) : undefined);
 }
 
 function validateDshPreparation(value: Record<string, unknown>): { workers: number; pass2: "enabled" | "disabled"; target: string; root: string } {
-  exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor", "build_course", "course_goal"]);
+  exactKeys(value, ["version", "target_input", "root_dir", ...(value.version === "dsh_build_prepare.v2" ? ["max_parallel"] : [])], ["pass2", "budget", "retrieval", "build_tutor", "build_course", "course_goal", "course_route_path"]);
   if (value.course_goal !== undefined && (typeof value.course_goal !== "string" || !value.course_goal.trim() || value.build_course !== true)) throw new Error("course_goal requires course construction");
+  if (value.course_route_path !== undefined) {
+    boundedString(value.course_route_path, "course_route_path");
+    if (value.build_course !== true || value.course_goal !== undefined) throw new Error("course_route_path requires build_course and supplies the course goal");
+  }
   if (value.build_course !== undefined && typeof value.build_course !== "boolean") throw new Error("build_course must be boolean");
   if (value.build_tutor !== undefined && typeof value.build_tutor !== "boolean") throw new Error("build_tutor must be boolean");
   const workers = value.version === "dsh_build_prepare.v2" ? nonNegativeSafeInteger(value.max_parallel, "max_parallel") : 1;
@@ -2905,6 +2941,13 @@ function validateDshPreparation(value: Record<string, unknown>): { workers: numb
 }
 
 export async function runAutomaticBuildDriverCommandWithPreparation(value: unknown, signal?: AbortSignal): Promise<unknown> {
+  if (isRecord(value) && value.version === "automatic_build_worker_claim_request.v1") {
+    exactKeys(value, ["version", "root_handoff_ref", "completed_handoff_ref"]);
+    const rootRef = boundedString(value.root_handoff_ref, "root_handoff_ref", 75);
+    const completedRef = boundedString(value.completed_handoff_ref, "completed_handoff_ref", 75);
+    const claim = await claimNextAutomaticBuildWorkerAssignment(rootRef, completedRef, { signal, try_scheduler_lock: true });
+    return claim.kind === "WAIT" ? { ...claim, retry_after_ms: Math.max(claim.retry_after_ms, 1_000) } : claim;
+  }
   if (isRecord(value) && (value.version === "dsh_build_prepare.v1" || value.version === "dsh_build_prepare.v2")) {
     const input = validateDshPreparation(value);
     const { prepareDocumentInput } = await import("../../packages/core/src/document-import");
@@ -2989,6 +3032,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     const { workers, pass2 } = validateDshPreparation(value);
     let prepared = prepareExplicitLegacyBuildPlan(boundedString(value.target_input, "target_input"),
       boundedString(value.root_dir, "root_dir"), { pass2, build_tutor:value.build_tutor === true, build_course:value.build_course === true, course_goal:value.course_goal as string | undefined,
+        course_route: typeof value.course_route_path === "string" ? readAcceptedCourseRoute(value.course_route_path) : undefined,
         budget: value.budget as BuildPlanV1["budget"], execution_profile: DSH_BUILD_EXECUTION_PROFILE_V1 });
     if (value.retrieval !== undefined) {
       if (!isRecord(value.retrieval)) throw new Error("invalid retrieval configuration");
@@ -3007,6 +3051,7 @@ export function runAutomaticBuildDriverCommand(value: unknown, step: DriverStep 
     const stageLabel = (stage: string) => stageNames[stage.replace(/^public\./u, "")] ?? stage;
     const review = ["# 本次构建计划", `Pass2：${value.pass2 === "enabled" ? "启用" : "关闭"}`,
       `构建课程：${value.build_course === true ? '编排、逐课制作、独立解题与来源核验' : '不构建；阅读时仍可提问'}`,
+      ...(plan.course_route ? [`课程路线：${plan.course_route.question}；章节：${plan.course_route.unit_lids.join("、")}`] : []),
       ...(plan.course_goal ? [`课程目标与范围：${plan.course_goal}`] : []),
       `构建目标：${path.resolve(value.target_input as string)}`,
       `工作根目录：${path.resolve(value.root_dir as string)}`,

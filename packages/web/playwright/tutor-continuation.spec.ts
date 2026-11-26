@@ -1,6 +1,32 @@
 import { expect, test } from '@playwright/test';
 import { scenario, setup, selectSource } from './fixtures/tutor-continuation';
 
+test('submitting a choice with a question in 我的思路 opens feedback on that submission', async ({ page }) => {
+  const reader = await setup(page, 'markdown', true, true, true);
+  const note = '停车时没有前进，为什么这段时间也要放在分母里？';
+  const action = { delivery_ref: 'trip-time', status: 'active', attempted: false, help_seen: [], move: {
+    move_id: 'time', prompt: '计算整段行程的平均速度时，分母用什么？', actions: ['submit', 'revise'],
+    answer_input: { kind: 'single_choice', options: [{ id: 'A', text: '总用时' }, { id: 'B', text: '移动用时' }] },
+  } };
+  await page.route('**/api/tutor/activities', route => route.fulfill({
+    json: { activities: route.request().postDataJSON().turn_id === 'tc0-answer' ? [action] : [] },
+  }));
+  await page.route('**/api/tutor/action', route => route.fulfill({
+    json: { event_id: 'action:trip-time', assessment: 'correct', help: null },
+  }));
+  await page.reload();
+  const card = page.locator('[data-delivery-ref="trip-time"]');
+  await card.getByRole('radio', { name: /总用时/ }).check();
+  await card.getByRole('textbox', { name: '我的思路' }).fill(note);
+  expect(reader.requests).toHaveLength(0);
+  const submitted = page.waitForRequest(req => req.url().endsWith('/tutor/action'));
+  await card.getByRole('button', { name: '提交选项' }).click();
+  expect((await submitted).postDataJSON()).toMatchObject({ action: 'submit', response: 'A', reasoning: note });
+  await expect.poll(() => reader.requests.length).toBe(1);
+  expect(reader.requests[0]).toMatchObject({ message: note, teaching_ref: 'action:trip-time' });
+  await expect(page.locator('.u-msg').filter({ hasText: note })).toBeVisible();
+});
+
 for (const surface of ['markdown','pdf'] as const) for (const ready of [true,false]) {
   test(`continuation_baseline_${surface}_${ready ? 'ready' : 'missing_foundation'}_manual_prompt`, async ({page}, testInfo) => {
     const f = await setup(page,surface,ready);

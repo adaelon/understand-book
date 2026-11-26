@@ -191,7 +191,7 @@ export function answerDisplayParts(parts: AgentAnswerPart[], sources: NonNullabl
       markdownParts.push(part.example.label);
       sourcePartIndices.push(null);
       inlineSources.set(index, part);
-    } else {
+    } else if (part.kind === 'presentation') {
       flush();
       display.push(part);
     }

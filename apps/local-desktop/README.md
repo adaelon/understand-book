@@ -28,17 +28,20 @@ Windows 安装包为 `dist/UnderstandBookLocalSetup.exe`。从开始菜单或桌
 
 正式包带有本地 Node、PDF 读取、Canvas 和中英文 OCR 运行资源，基础材料准备不依赖开发机器的 Node/Bun。完整语义预构建沿独立插件和外部 Harness 执行。应用升级不会安装或卸载 Harness。
 
-语音、视频解码、科学绘图与动画沿对应工具配置启用。需要这些能力时，把原有 `UNDERSTAND_BOOK_VOICE_PYTHON`、`UNDERSTAND_BOOK_VOICE_MODEL_DIR`、`FFMPEG`、`FFPROBE`、`UNDERSTAND_BOOK_PLOT_PYTHON` 等设置写入当前数据目录 `.env`；基础阅读不要求这些工具。插件 CLI 可通过 `UNDERSTAND_BOOK_CODEX` 明确指定。模型设置在 Reader 界面保存，优先于环境配置。
+Windows 本地版随包内置离线语音运行环境，461 MB 的中英文 Whisper 模型改为**按需下载**，以减小安装包体积并避免占用系统盘。首次点击输入框麦克风，或在「桌面设置 → 书库与工具 → 离线语音识别模型」中，可自选模型存放目录（支持放到其他盘符）与下载源（HuggingFace 官方源或 HF-Mirror 国内镜像）一键下载，或直接指定本机已有的模型目录；下载完成后转写全程离线运行。若已有有效的 `UNDERSTAND_BOOK_VOICE_PYTHON` 和 `UNDERSTAND_BOOK_VOICE_MODEL_DIR` 配置，Reader 会优先使用它们。macOS 可以在当前数据目录的 `.env` 中配置这两个路径。
+
+视频解码、科学绘图与动画沿对应工具配置启用。需要这些能力时，把 `FFMPEG`、`FFPROBE`、`UNDERSTAND_BOOK_PLOT_PYTHON` 等设置写入当前数据目录 `.env`。插件 CLI 可通过 `UNDERSTAND_BOOK_CODEX` 明确指定。聊天模型设置在 Reader 界面保存，优先于环境配置。
 
 ## 构建
 
-在仓库根目录安装工作区依赖后执行：
+在仓库根目录安装工作区依赖后，先准备 Windows x64 的离线语音资源，再构建安装包。准备命令用构建机的 Python 和 pip 获取固定版本的运行环境、依赖及中英文模型。缓存可供后续构建复用。
 
 ```powershell
+node scripts/desktop/build-voice-runtime.mjs --prepare
 pnpm --filter @understand-book/local-desktop package:windows
 ```
 
-构建入口调用 `scripts/prepare-resources.mjs`，分别生成公共 Reader 前端、Quick Start 副本和平台原生格式工具，再由 Tauri 生成 currentUser NSIS 安装包。`scripts/assert-release-config.mjs --resources` 验证本地产品身份与运行资源闭包。
+构建入口调用 `scripts/prepare-resources.mjs`，准备公共 Reader 前端、Quick Start、平台原生格式工具和 Windows 离线语音资源，再由 Tauri 生成 currentUser NSIS 安装包。`scripts/assert-release-config.mjs --resources` 检查这些运行资源是否齐全。
 
 macOS 在对应架构的 macOS 环境安装原生 Node 和依赖后执行 `pnpm --filter @understand-book/local-desktop package:macos`。arm64 和 x86_64 分别原生构建，不能把 Windows Node/Canvas 复制到 macOS 包。签名、公证和原生安装验收沿[双发行方案](../../docs/切片方案-开源本地应用与云端服务双发行.md)。
 
@@ -60,6 +63,7 @@ python scripts/verify-personal-connection.py --cli apps/local-desktop/src-tauri/
 
 ```powershell
 node apps/local-debug/smoke.mjs --edition local --executable <已安装的UnderstandBookLocal.exe> --out <窗口验证目录>
+node apps/local-debug/smoke-voice.mjs --executable <已安装的UnderstandBookLocal.exe> --out <语音验证目录>
 node apps/local-debug/migration-smoke.mjs --executable <已安装的UnderstandBookLocal.exe> --source <已关闭的Debug数据目录> --expected-note <原笔记文字> --expected-answer <原回答文字> --out <导入验证目录>
 ```
 

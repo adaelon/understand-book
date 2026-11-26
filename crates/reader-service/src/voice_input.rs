@@ -4,7 +4,7 @@ use read_tools::ToolError;
 use runtime::run_context::CancellationToken;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
-use std::{fs, path::PathBuf, process::Command, sync::Mutex, time::{Duration, Instant}};
+use std::{fs, path::{Path, PathBuf}, process::Command, sync::Mutex, time::{Duration, Instant}};
 
 const MAX_AUDIO_BYTES: usize = 2 * 1024 * 1024;
 pub const REQUEST_BYTES: usize = 3 * 1024 * 1024;
@@ -19,17 +19,36 @@ fn unavailable() -> ToolError {
 
 struct Config { python: PathBuf, model: PathBuf }
 impl Config {
+    fn new(python: PathBuf, model: PathBuf) -> Result<Self, ToolError> {
+        if (python.is_absolute() && !python.is_file())
+            || !["model.bin", "config.json", "tokenizer.json"].iter().all(|file| model.join(file).is_file())
+        {
+            return Err(unavailable());
+        }
+        Ok(Self { python, model })
+    }
+
     fn from_env() -> Result<Self, ToolError> {
         let model = std::env::var_os("UNDERSTAND_BOOK_VOICE_MODEL_DIR").map(PathBuf::from).ok_or_else(unavailable)?;
-        if !["model.bin","config.json","tokenizer.json"].iter().all(|f| model.join(f).is_file()) { return Err(unavailable()); }
         let python = std::env::var_os("UNDERSTAND_BOOK_VOICE_PYTHON")
             .or_else(|| std::env::var_os("VIDEO_WHISPER_PYTHON")).map(PathBuf::from).unwrap_or_else(|| "python".into());
-        Ok(Self { python, model })
+        Self::new(python, model)
+    }
+
+    fn resolve(runtime: Option<&Path>) -> Result<Self, ToolError> {
+        Self::from_env().or_else(|error| {
+            let runtime = runtime.ok_or(error)?;
+            Self::new(runtime.join("python").join("python.exe"), runtime.join("model"))
+        })
     }
 }
 
 pub fn status() -> Value {
-    json!({"available":Config::from_env().is_ok(),"max_seconds":90})
+    status_with_runtime(None)
+}
+
+pub(crate) fn status_with_runtime(runtime: Option<&Path>) -> Value {
+    json!({"available": Config::resolve(runtime).is_ok(), "max_seconds": 90})
 }
 
 #[derive(Deserialize)]
@@ -43,23 +62,48 @@ struct Input {
 struct Transcript { text: String, duration_ms: u64 }
 
 pub struct Work { config: Config, audio: Vec<u8>, language: &'static str }
+
+fn parse_and_validate(input: &Value) -> Result<(Vec<u8>, &'static str), ToolError> {
+    let input: Input = serde_json::from_value(input.clone())
+        .map_err(|_| error("VOICE_INVALID","validation","录音内容不完整，请重新录制。"))?;
+    if !matches!(input.mime_type.split(';').next(),Some("audio/webm"|"audio/ogg"|"audio/mp4"|"audio/wav"|"audio/x-m4a"))
+        || input.audio.len() > MAX_AUDIO_BYTES.div_ceil(3) * 4 {
+        return Err(error("VOICE_INVALID","validation","请录制 90 秒以内的语音。"));
+    }
+    let audio = STANDARD.decode(input.audio).map_err(|_| error("VOICE_INVALID","validation","录音读取失败，请重新录制。"))?;
+    if audio.is_empty() || audio.len() > MAX_AUDIO_BYTES {
+        return Err(error("VOICE_INVALID","validation","录音为空或过长，请重新录制。"));
+    }
+    let language = match input.locale {
+        runtime::response_language::ResponseLanguage::English => "en",
+        runtime::response_language::ResponseLanguage::SimplifiedChinese => "zh",
+    };
+    Ok((audio, language))
+}
 impl Work {
     pub fn prepare(input: &Value) -> Result<Self, ToolError> {
-        let input: Input = serde_json::from_value(input.clone())
-            .map_err(|_| error("VOICE_INVALID","validation","录音内容不完整，请重新录制。"))?;
-        if !matches!(input.mime_type.split(';').next(),Some("audio/webm"|"audio/ogg"|"audio/mp4"|"audio/wav"|"audio/x-m4a"))
-            || input.audio.len() > MAX_AUDIO_BYTES.div_ceil(3) * 4 {
-            return Err(error("VOICE_INVALID","validation","请录制 90 秒以内的语音。"));
-        }
-        let audio = STANDARD.decode(input.audio).map_err(|_| error("VOICE_INVALID","validation","录音读取失败，请重新录制。"))?;
-        if audio.is_empty() || audio.len() > MAX_AUDIO_BYTES {
-            return Err(error("VOICE_INVALID","validation","录音为空或过长，请重新录制。"));
-        }
-        let language = match input.locale {
-            runtime::response_language::ResponseLanguage::English => "en",
-            runtime::response_language::ResponseLanguage::SimplifiedChinese => "zh",
-        };
-        Ok(Self { config:Config::from_env()?, audio, language })
+        Self::prepare_with_runtime(input, None)
+    }
+
+    pub(crate) fn prepare_with_runtime(input: &Value, runtime: Option<&Path>) -> Result<Self, ToolError> {
+        let (audio, language) = parse_and_validate(input)?;
+        Ok(Self { config: Config::resolve(runtime)?, audio, language })
+    }
+
+    pub(crate) fn prepare_with_manager(
+        input: &Value,
+        manager: &crate::voice_model::VoiceModelManager,
+    ) -> Result<Self, ToolError> {
+        let (audio, language) = parse_and_validate(input)?;
+        let resolved = manager.resolve().ok_or_else(unavailable)?;
+        Ok(Self {
+            config: Config {
+                python: resolved.python,
+                model: resolved.model_dir,
+            },
+            audio,
+            language,
+        })
     }
 
     pub fn execute(self, cancel: &CancellationToken) -> Result<Value, ToolError> {
@@ -75,7 +119,7 @@ impl Work {
         };
         save().map_err(|e| error("VOICE_FAILED","unavailable",e.to_string()))?;
         let mut command = Command::new(self.config.python);
-        command.arg(&script).arg(&audio).arg(&self.config.model).arg(self.language).arg(&output)
+        command.arg("-B").arg(&script).arg(&audio).arg(&self.config.model).arg(self.language).arg(&output)
             .env("HF_HUB_OFFLINE","1").env("PYTHONUTF8","1");
         crate::video_audio::execute(command,staging.path(),"Voice recognition",cancel,Instant::now()+Duration::from_secs(120),None)
             .map_err(|e| error("VOICE_FAILED","unavailable",e.message))?;

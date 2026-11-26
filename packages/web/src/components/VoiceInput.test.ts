@@ -117,6 +117,16 @@ it('explains an unconfigured recognizer before requesting microphone permission'
   expect(wrapper.emitted('active')?.at(-1)).toEqual([false]);
 });
 
+it('offers a direct shortcut to settings when the optional voice model can be downloaded', async () => {
+  vi.mocked(api.voiceStatus).mockResolvedValue({ available: false, max_seconds: 90, runtime_available: true, can_download: true });
+  const wrapper = mount(VoiceInput, { props: { scope: 'question-1' } });
+  await wrapper.get('.voice-start').trigger('click'); await flushPromises();
+  expect(wrapper.text()).toContain('离线语音模型尚未下载');
+  expect(getUserMedia).not.toHaveBeenCalled();
+  await wrapper.get('.voice-actions .voice-primary').trigger('click');
+  expect(wrapper.emitted('open-settings')).toHaveLength(1);
+});
+
 it('stops recording when the containing input is hidden or disabled', async () => {
   const wrapper = mount(VoiceInput, { props: { scope: 'question-1' } });
   await wrapper.get('.voice-start').trigger('click'); await flushPromises();

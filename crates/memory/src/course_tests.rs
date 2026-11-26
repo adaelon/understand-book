@@ -9,7 +9,7 @@ fn closed_book_result(store: &mut LearningStore, view: &CourseLessonView, id: &s
     let mut practice=ClosedBookPractice { id:id.into(),owner_id:view.progress.run_id.clone(),course:true,
         chat_session_id:format!("chat:{id}"),source_id:run.lesson.summary.source.publication.book_id.clone(),
         source_revision:run.lesson.summary.source.source_revision.clone(),goal_revision:Some(run.progress.goal_revision),
-        course_origin:Some(origin.clone()),answer_origin:None,result_ref:None,revision:0,status:"active".into(),can_resume:true,
+        course_origin:Some(origin.clone()),answer_origin:None,support_delivery_refs:None,transfer_condition:None,result_ref:None,revision:0,status:"active".into(),can_resume:true,
         target:origin.question.clone(),criteria:"解释原任务要求的关系与条件".into(),attempt:1,
         assisted:false,needs_retry:false,visible_turn_ids:vec![],draft:String::new(),completion_reason:String::new(),learner_quote:String::new() };
     practice=store.save_closed_book(practice,&format!("start:{id}"),"now").unwrap();

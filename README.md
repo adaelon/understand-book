@@ -34,6 +34,7 @@ Agent 让我们可以尝试为一个具体的理解困难，制作一件专门�
 
 | 示例 | 可以怎样学习 | 体验方式 |
 | --- | --- | --- |
+| [Markdown 源码导读](examples/source-walkthrough/README.md) | 点击流程图，跟着标题和正文两条路径，查看原始 TypeScript 代码与对应讲解 | 直接用浏览器打开示例 HTML，可离线阅读 |
 | [齿轮的约定](examples/gear-transmission/README.md) | 改变齿数、拖动齿轮，从三维模型与二维图解观察转速、扭矩和啮合关系 | 独立网页，按示例说明在本地启动 |
 | [最优化期末练习](examples/optimization-practice/README.md) | 写出思路、就某一步求助、提交答案，再根据具体反馈改答 | 使用阅读器，需要对应的已构建教材与模型配置 |
 | [原创阅读演示](examples/quickstart/book.md) | 阅读原文、添加笔记与高亮，配置模型后围绕选区提问 | 按下方 Quick Start 启动；基础阅读无需模型 |
@@ -84,7 +85,7 @@ cargo run -p reader-service --bin reader -- .understand-book/quickstart-demo
 - **制作交互工具。** 让学习者可以改变条件、观察结果、验证预测。可以从现有齿轮示例出发，也可以带来自己领域的新实验。
 - **改进反馈与学习体验。** 分享实际试学中的发现，改进练习、复盘、文档、翻译、界面或代码。
 
-想把自己的作品、项目或教材做成一门课，可以把[课程制作流程与交付标准](skills/build/course-methods/authoring-standard.md)交给自己的 Agent。里面说明怎样约定学成目标、设计先猜后验的活动，以及一门课达到什么条件可以交付试学和发布。
+想把自己的作品、项目或教材做成一门课，可以把[课程制作流程与交付标准](skills/build/course-methods/authoring-standard.md)交给自己的 Agent。只有一本书和初步想法时，可以从[一节代表课](docs/切片方案-试课与课程预构建.md)开始，亲自试过，再决定适合谁学、要解决什么问题和接下来制作哪些章节。
 
 可以先在 [Issues](https://github.com/adaelon/understand-book/issues) 描述问题或教学想法；已有内容和实现可以通过 [Pull Request](https://github.com/adaelon/understand-book/pulls) 提交。教学内容请注明来源与使用许可，并写清运行或使用方法。学习者的困惑、一个有效的例子、一处讲解修正，都可以帮助后来的人更容易迈出下一步。
 
@@ -150,6 +151,7 @@ flowchart LR
 
 ## 深入项目
 
+- 普通文本书中，可在讲解下点「我来解释一下」，或直接在课内提交自己的解释。反馈并列展示书中推理、本次表达和关系对照，可以逐行核对、澄清并回看。看过反馈后点「练到会」，可用同一目标的新变式独立作答。[普通阅读](docs/实施记录-学习主线与课程入口.md#讲后三图对照--普通阅读) · [课内反馈与本机 ACP](docs/实施记录-学习主线与课程入口.md#切片-3--课内解释本机-acp-与闭卷变式)
 - 本地版可在「我的 Agent」连接 OpenCode、Codex 或自定义 ACP 命令，划词查证并保存学习记录。外部客户端可通过读者授权的个人连接接续任务。[个人学习 CLI 与 MCP](docs/个人学习CLI与MCP.md) · [实现与验收记录](docs/切片方案-本机Agent接入与跨入口学习.md) · [ADR-0189](docs/adr/0189-local-agent-learning-with-acp-and-mcp.md)
 - [从回答原句另开追问对话](docs/adr/0188-follow-up-conversations-and-path-preview.md) · [阅读页设计、实际界面与验证入口](docs/切片方案-追问对话与路径预览.md)
 - [书籍与成套课程的学习层级](docs/adr/0185-book-and-course-collection-learning-hierarchy.md) · [实施记录](docs/实施记录-书籍与成套课程入口.md)（以书籍／整套课程组织入口、单元目录与原任务归属）

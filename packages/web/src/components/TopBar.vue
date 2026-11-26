@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, useId, watch } from 'vue';
-import { Ellipsis, Focus, FolderOpen, Globe2, LayoutDashboard, ListChecks, MessageSquarePlus, NotebookPen, PanelLeft, PanelTopClose, PanelTopOpen, Settings, SlidersHorizontal, Wrench, X } from '@lucide/vue';
+import { BookOpen, Ellipsis, Focus, FolderOpen, Globe2, GraduationCap, LayoutDashboard, ListChecks, MessageSquarePlus, NotebookPen, PanelLeft, PanelTopClose, PanelTopOpen, Settings, SlidersHorizontal, Wrench, X } from '@lucide/vue';
 import { t as uiText } from '../i18n';
 import LanguageSwitcher from './LanguageSwitcher.vue';
 import brandLogo from '../assets/brand/understand-book-logo.svg';
@@ -13,6 +13,8 @@ const props = defineProps<{
   focusReading?: boolean;
   chatUnavailable?: boolean;
   boardAvailable?: boolean;
+  bookHomeAvailable?: boolean;
+  bookCourseAvailable?: boolean;
   notesAvailable?: boolean;
   materialTitle?: string;
   chapterTitle: string;
@@ -33,6 +35,8 @@ const emit = defineEmits<{
   (e: "toggle-focus"): void;
   (e: "new-chat"): void;
   (e: "open-book"): void;
+  (e: "open-book-home"): void;
+  (e: "open-book-course"): void;
   (e: "toggle-left-rail"): void;
   (e: "toggle-debug"): void;
   (e: "open-build-intent"): void;
@@ -122,6 +126,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside));
         <section v-show="toolsOpen" :id="panelId" ref="panel" class="tools-popover topbar-menu" :aria-label="uiText('阅读工具')">
           <div class="tool-group">
             <h2>{{ uiText('阅读工具') }}</h2>
+            <button v-if="bookHomeAvailable" type="button" @click="emit('open-book-home')"><BookOpen />{{ uiText('书籍学习首页') }}</button>
+            <button v-if="bookCourseAvailable" type="button" @click="emit('open-book-course')"><GraduationCap />{{ uiText('本书课程 →') }}</button>
             <button v-if="typographyAvailable" type="button" data-typography-trigger @click="emit('open-typography')"><SlidersHorizontal />{{ uiText('阅读设置') }}</button>
             <button type="button" :disabled="chatUnavailable" @click="emit('new-chat')"><MessageSquarePlus />{{ uiText('新对话') }}</button>
             <button v-if="boardAvailable" type="button" @click="emit('open-board')"><LayoutDashboard />{{ uiText('当前资料的画板') }}</button>

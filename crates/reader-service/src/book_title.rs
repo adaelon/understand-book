@@ -50,7 +50,10 @@ pub fn read(directory: &Path, display_title: Option<&str>) -> Option<String> {
                 let manifest: Value = serde_json::from_slice(&std::fs::read(directory.join("source_manifest.json")).ok()?).ok()?;
                 let source = &manifest["canonical_source"];
                 if source["kind"] != "epub" { return None; }
-                let file = source["path"].as_str()?.rsplit(['/', '\\']).next()?;
+                let path = source["path"].as_str()?;
+                // Sealed publications point to their generated text instead of the imported EPUB.
+                if path == "source.txt" { return None; }
+                let file = path.rsplit(['/', '\\']).next()?;
                 let stem = Path::new(file).file_stem()?.to_str()?.trim();
                 let opening = text.trim_start_matches('\u{feff}').lines().map(str::trim).find(|line| !line.is_empty());
                 let title = opening.filter(|line| stem.strip_prefix(*line)
@@ -106,6 +109,20 @@ mod tests {
         assert_eq!(read(dir, None).as_deref(), Some("财富自由革命之路"));
         std::fs::write(dir.join("source.txt"), "目录\n\n第一章").unwrap();
         assert_eq!(read(dir, None).as_deref(), Some("财富自由革命之路 (孙宇晨)"));
+    }
+
+    #[test]
+    fn published_epub_truth_filename_leaves_the_existing_catalog_name_available() {
+        let root = tempfile::tempdir().unwrap();
+        let dir = root.path();
+        std::fs::write(dir.join("source_manifest.json"), serde_json::json!({
+            "canonical_source": {"kind":"epub", "path":"source.txt", "truth_file":"source.txt"}
+        }).to_string()).unwrap();
+        std::fs::write(dir.join("source.txt"), "目录\n\n第一章").unwrap();
+        assert_eq!(read(dir, None), None);
+        assert_eq!(read(dir, Some("庄子")).as_deref(), Some("庄子"));
+        std::fs::write(dir.join("source.txt"), "# Mastering Rust\n").unwrap();
+        assert_eq!(read(dir, None).as_deref(), Some("Mastering Rust"));
     }
 
     #[test]

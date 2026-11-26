@@ -22,6 +22,10 @@ pub fn control(state: &mut AppState, action: &str, extra: Value) -> Value {
 }
 
 pub fn exercise(state: &mut AppState, message: &str, decision: Value) -> Value {
+    exercise_with_review(state, message, decision, None)
+}
+
+fn exercise_with_review(state: &mut AppState, message: &str, decision: Value, review: Option<Value>) -> Value {
     let run = prepare_agent_chat(state, &json!({"message":message}).to_string(), "now")
         .unwrap_or_else(|e| panic!("{}", e.body));
     if decision["action"] != "start" {
@@ -30,10 +34,16 @@ pub fn exercise(state: &mut AppState, message: &str, decision: Value) -> Value {
             "active"
         );
     }
-    let adapter = ChatStubAdapter::scripted(vec![call(
+    let mut samples = vec![call(
         "tutor.step",
         json!({"operation":"closed_book","closed_book":decision}),
-    )]);
+    )];
+    if let Some(v) = review {
+        for step in v.as_array().map(Vec::as_slice).unwrap_or(std::slice::from_ref(&v)) {
+            samples.push(answer(&step.to_string()));
+        }
+    }
+    let adapter = ChatStubAdapter::scripted(samples);
     let result = agent_run::execute_prepared(
         &agent_run::BorrowedAppPort(RefCell::new(state)),
         &adapter,
@@ -106,6 +116,180 @@ fn closed_book_controls_replay_committed_operations_before_revision_checks() {
     let rejected = post(&mut state, "/tutor/closed-book", &other_chat.to_string());
     assert_eq!(rejected.status, 400, "{}", rejected.body);
     assert!(control(&mut state, "state", json!({})).is_null());
+}
+
+#[test]
+fn closed_book_overview_without_authored_text_starts_and_requires_a_new_application() {
+    use crate::tests::teaching_design_tests::{chapter_fixture, purpose_input};
+    let (_root, mut state) = chapter_fixture();
+    let owner = state.user.learning_store().unwrap().state().unwrap().control;
+    let end = json!({"operation_id":"end-before-overview","expected_revision":owner.revision,
+        "action":{"kind":"end","session_id":owner.current_tutor_session_id.unwrap()}});
+    assert_eq!(post(&mut state, "/tutor/mutate", &end.to_string()).status, 200);
+    post(&mut state, "/agent/new", "{}");
+    let input = purpose_input(&state, "discover", "1", "overview");
+    let run = prepare_agent_chat(&mut state, &input.to_string(), "now").unwrap_or_else(|e| panic!("{}", e.body));
+    let turn = run.turn_ref.clone();
+    let prior_answer = "列子得靠风，风不吹就飞不了。";
+    let adapter = ChatStubAdapter::scripted(vec![answer(prior_answer)]);
+    let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, run, Default::default());
+    assert_eq!(result.reply.status, 200, "{}", result.reply.body);
+    let saved = state.user.agent_history.sessions.iter().find(|s| s.id == turn.session_id).unwrap().turns.last().unwrap();
+    assert_eq!(saved.user_authored_text(), "");
+    let requested = saved.domain.interaction.as_ref().unwrap().accepted_request.clone();
+    let started = control(&mut state, "start", json!({"answer_turn_id":turn.turn_id}));
+    assert_eq!(started["status"], "active");
+    assert_eq!(started["target"], requested);
+    assert_eq!(started["answer_origin"]["answer"], prior_answer);
+
+    let propose = |state: &AppState, turn: &AgentTurnRef, decision: Value| {
+        teaching::step(&state.private_context(), turn, json!({"operation":"closed_book","closed_book":decision}), &[], &[])
+    };
+    let deliver = |state: &mut AppState, turn: &AgentTurnRef, text: &str| {
+        let mut delivered = outcome(None);
+        delivered.answer = Some(text.into());
+        delivered.answer_view.as_mut().unwrap().parts = vec![AgentAnswerPart::Markdown { text: text.into() }];
+        finish(state, turn, &delivered);
+    };
+    let ask = prepare_agent_chat(&mut state, r#"{"message":"我来解释一下"}"#, "now").unwrap_or_else(|e| panic!("{}", e.body));
+    let mut question = json!({"action":"question","target":"判断对外部条件的依赖","criteria":"用情境中的依赖关系说明判断",
+        "new_case":"列子得靠风","text":"风不吹会怎样？","provides_help":false,"reason":"检验依赖关系"});
+    assert!(propose(&state, &ask.turn_ref, question.clone()).is_err());
+    let changed = "船在无风时改用双桨。";
+    let transfer_question = format!("{changed}\n\n它还依赖什么条件？");
+    question["new_case"] = json!(changed);
+    question["text"] = json!("它还依赖什么条件？");
+    question["criteria"] = json!("须说列子靠风");
+    let offered = propose(&state, &ask.turn_ref, question).unwrap();
+    assert_eq!(offered["delivery_draft"]["text"], transfer_question);
+    deliver(&mut state, &ask.turn_ref, &transfer_question);
+    let active = control(&mut state, "state", json!({}));
+    assert_eq!(active["transfer_condition"], changed);
+    assert_eq!(active["criteria"], "它还依赖什么条件？");
+
+    let echo = prepare_agent_chat(&mut state, &json!({"message":prior_answer,"response_language":"en"}).to_string(), "now").unwrap_or_else(|e| panic!("{}", e.body));
+    let mut completion = json!({"action":"complete","text":"已完成","learner_quote":prior_answer,
+        "provides_help":false,"reason":"答对了"});
+    assert!(propose(&state, &echo.turn_ref, completion.clone()).is_err());
+    {
+        let port = agent_run::BorrowedAppPort(RefCell::new(&mut state));
+        let acp_prompt = crate::acp_teaching::prompt(&port, &echo).unwrap();
+        assert!(acp_prompt.contains(&format!("transfer_condition=\"{changed}\"")));
+        assert!(acp_prompt.contains(prior_answer));
+        assert!(crate::acp_teaching::answer(&port, &echo, &completion.to_string()).is_err());
+    }
+    let neutral = propose(&state, &echo.turn_ref, json!({"action":"followup","text":"要靠人力划船。","followup_focus":"apply_case",
+        "provides_help":false,"reason":"还只讲了列子"})).unwrap();
+    let prompt = neutral["delivery_draft"]["text"].as_str().unwrap();
+    assert!(prompt.starts_with("What do you conclude"));
+    assert!(!prompt.contains("人力"));
+    deliver(&mut state, &echo.turn_ref, prompt);
+    assert_eq!(control(&mut state, "state", json!({}))["assisted"], false);
+    let still_old = "没有气流，人就无法飞行。";
+    let blind = json!({"uses_original_relationship":true,"prior_answer_suffices":false,"prior_quote":"列子得靠风","case_quote":"改用双桨",
+        "reason":"新交通工具由双桨提供动力，需要说明划桨人的作用。"});
+    completion["learner_quote"] = json!(still_old);
+    let needs_application = exercise_with_review(&mut state, still_old, completion.clone(), Some(json!([blind, {
+        "verdict":"missing_application","case_quote":"无风时改用双桨","learner_quote":"没有气流",
+        "reason":"这仍在说明旧例飞行的条件，尚未解释划船。"
+    }])));
+    assert_eq!(needs_application["status"], "active");
+    assert_eq!(needs_application["assisted"], false);
+    assert!(needs_application["result_ref"].is_null());
+    let independent = "不用风了，但要有人划船才会前进。";
+    completion["learner_quote"] = json!(independent);
+    completion["reason"] = json!("指出新的依赖由风变成了人的划动。");
+    let pending = exercise_with_review(&mut state, independent, completion.clone(), Some(json!([blind, {
+        "verdict":"independent","case_quote":"引文不存在","learner_quote":independent,"reason":"推理充分"
+    }])));
+    assert_eq!(pending["status"], "active");
+    assert_eq!(pending["assisted"], false);
+    assert!(pending["result_ref"].is_null());
+    let latest = state.user.agent_history.sessions.iter().find(|s| Some(&s.id) == state.workspace.selected_chat.as_ref())
+        .and_then(|s| s.turns.last()).and_then(|t| t.outcome.as_ref()).and_then(|o| o.answer.as_deref());
+    assert!(latest.is_some_and(|text| text.contains("还没能确认独立完成")));
+    let done = exercise_with_review(&mut state, independent, completion, Some(json!([blind, {
+        "verdict":"independent","case_quote":"改用双桨","learner_quote":independent,
+        "reason":"学习者由双桨推导出人的划动，而非复述旧题中的借风。"
+    }])));
+    assert_eq!(done["status"], "complete");
+    assert_eq!(done["learner_quote"], independent);
+}
+
+#[test]
+fn closed_book_transfer_review_keeps_the_rewrapped_original_passage_assisted() {
+    let (_root, mut state) = fixture_with_assets(false);
+    post(&mut state, "/agent/new", "{}");
+    let source = prepare_agent_chat(&mut state, r#"{"message":"我跳过了这个活动，请调整接下来的讲法。"}"#, "now")
+        .unwrap_or_else(|e| panic!("{}", e.body));
+    let origin = source.turn_ref.turn_id.clone();
+    let adapter = ChatStubAdapter::scripted(vec![answer("他飞起来靠的是风（御风而行），风在他身体外面，风不吹就飞不了。所以省掉走路不等于不用依靠。")]);
+    let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, source, Default::default());
+    assert_eq!(result.reply.status, 200);
+    control(&mut state, "start", json!({"answer_turn_id":origin}));
+    let case = "《庄子·逍遥游》里有这样一句：夫列子御风而行，泠然善也，旬有五日而后反。彼于致福者，未数数然也。此虽免乎行，犹有所待者也。（大意：列子驾着风飞行，轻妙美好，过了十五天才返回。他对求福的事，并不急切追求。这样做虽然免去了步行，却还是有所依靠。）";
+    let question = "列子这样算不算真正无所待？给结论，并用他自己和风的关系说明理由。";
+    exercise(&mut state, "出题", json!({"action":"question","new_case":case,"text":question,"provides_help":false,"reason":"检查理解"}));
+    let learner = "他不用走路了，但还得靠风，风不来他就飞不了。句子里说御风而行，所以还是有所待。";
+    let decision = json!({"action":"complete","learner_quote":"风不来他就飞不了","text":"你可以独立完成。","reason":"说出了依赖","provides_help":false});
+    let review = json!({"uses_original_relationship":true,"prior_answer_suffices":true,"prior_quote":"他飞起来靠的是风","case_quote":"用他自己和风的关系说明理由",
+        "reason":"原讲解与题面同问列子免于步行后是否仍依赖风。"});
+    let saved = exercise_with_review(&mut state, learner, decision, Some(review));
+    assert_eq!(saved["status"], "active");
+    assert_eq!(saved["assisted"], true);
+    assert!(saved["result_ref"].is_null());
+    let fresh = exercise(&mut state, "再来一题", json!({"action":"retry","new_case":"另一段写道「汤之问棘也是已」。假设它是寓言性叙述。","text":"商汤是否真的问过棘？请说明判断依据。","provides_help":false,"reason":"换新材料"}));
+    assert_eq!(fresh["attempt"], 2);
+    assert_eq!(fresh["assisted"], false);
+    assert!(fresh["result_ref"].is_null());
+    let reply = "从寓言的写法无法考证商汤的历史行迹。";
+    let unrelated = exercise_with_review(&mut state, reply, json!({"action":"complete","learner_quote":reply,
+        "text":"这点已经能够独立完成。","reason":"解释了历史考据","provides_help":false}), Some(json!({
+        "uses_original_relationship":false,"prior_answer_suffices":false,"prior_quote":"他飞起来靠的是风","case_quote":"假设它是寓言性叙述",
+        "reason":"判断叙述的史料价值无法证明读者理解飞行的依赖条件。"
+    })));
+    assert_eq!(unrelated["status"], "active");
+    assert_eq!(unrelated["needs_retry"], true);
+    assert_eq!(unrelated["assisted"], false);
+    assert!(unrelated["result_ref"].is_null());
+}
+
+#[test]
+fn closed_book_echoing_an_authored_balloon_correction_cannot_complete() {
+    let (_root, mut state) = fixture_with_assets(false);
+    post(&mut state, "/agent/new", "{}");
+    let source = prepare_agent_chat(&mut state, r#"{"message":"列子为什么仍是有所待？"}"#, "now").unwrap_or_else(|e| panic!("{}", e.body));
+    let source_turn = source.turn_ref.clone();
+    let adapter = ChatStubAdapter::scripted(vec![answer("列子御风而行，不用走路但仍然要靠风。")]);
+    let result = agent_run::execute_prepared(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &adapter, source, Default::default());
+    assert_eq!(result.reply.status, 200, "{}", result.reply.body);
+    control(&mut state, "start", json!({"answer_turn_id":source_turn.turn_id}));
+
+    let situation = "有人造了一艘飞艇，出门不用走路，全靠艇身外的气囊浮力带着走；气囊一旦漏气，就哪也去不了。";
+    let task = "能不能因此说他“无所待”？请用这个例子说说你的判断和理由。";
+    let first = exercise(&mut state, "请出题", json!({"action":"question","new_case":situation,"text":task,
+        "criteria":"列子仍需依靠风","target":"判断对外部条件的依赖","provides_help":false,"reason":"换情境"}));
+    assert_eq!(first["transfer_condition"], situation);
+    assert_eq!(first["criteria"], task);
+    let previous_answer = "他不用走路了，但还得靠风，风不来他就飞不了。";
+    let correction = "不过这次的例子里，飞艇靠的是艇身外的气囊浮力，并不是风。换成这个例子再看：气囊一旦漏气，飞艇就动不了，这算不算“有所待”？";
+    let corrected = exercise(&mut state, previous_answer, json!({"action":"followup","text":correction,
+        "provides_help":false,"reason":"请把回答应用到飞艇"}));
+    assert_eq!(corrected["assisted"], true);
+    let repeated = "这还是有所待。飞艇靠的是艇身外的气囊浮力，气囊一旦漏气，飞艇就动不了。";
+    let echo = prepare_agent_chat(&mut state, &json!({"message":repeated}).to_string(), "now").unwrap_or_else(|e| panic!("{}", e.body));
+    let text = crate::acp_teaching::answer(&agent_run::BorrowedAppPort(RefCell::new(&mut state)), &echo,
+        &json!({"action":"complete","learner_quote":repeated,"text":"你能独立完成。","provides_help":false,"reason":"正确指出新的依赖"}).to_string()).unwrap();
+    assert!(text.contains("刚才获得的帮助"));
+    assert!(!text.contains("你能独立完成"));
+    let mut acknowledged = outcome(None);
+    acknowledged.answer = Some(text.clone());
+    acknowledged.answer_view.as_mut().unwrap().parts = vec![AgentAnswerPart::Markdown { text }];
+    finish(&mut state, &echo.turn_ref, &acknowledged);
+    let saved = control(&mut state, "state", json!({}));
+    assert_eq!(saved["status"], "active");
+    assert_eq!(saved["assisted"], true);
+    assert!(saved["result_ref"].is_null());
 }
 
 #[test]

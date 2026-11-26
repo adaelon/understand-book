@@ -22,6 +22,7 @@ const pluginSnapshotRoot = installedPluginRoot
   : path.join(repoRoot, "plugins", "understand-book");
 const source = path.join(root, "parity.md");
 const extractorPromptNames = [
+  "course-builder.md",
   "formal-objects-extractor.md",
   "cognitive-materials-extractor.md",
   "teaching-source-reviewer.md",
@@ -38,6 +39,10 @@ const extractorPromptNames = [
   "book-structure-chapter.md",
   "book-structure-chapter-selection.md",
   "book-structure-themes.md",
+  "book-structure-outline-chapters.md",
+  "book-structure-outline-themes.md",
+  "book-structure-outline-theme-page.md",
+  "book-structure-theme-plan-page.md",
   "book-structure-extractor.md",
   "book-structure-v2-extractor.md",
   "book-structure-fragment-extractor.md",
@@ -322,7 +327,7 @@ try {
 
   const nodeDoctor = runNode("protocol-doctor", common, "Node protocol doctor");
   const sidecarDoctor = runSidecar("protocol-doctor", common, "sidecar protocol doctor");
-  assertBytesEqual(nodeDoctor, sidecarDoctor, "automatic_build_protocol_doctor.v2");
+  assertBytesEqual(nodeDoctor, sidecarDoctor, "automatic_build_protocol_doctor.v3");
   if (nodeDoctor.value.status !== "compatible" || nodeDoctor.value.target_state?.dry_run_mutates_state !== false) {
     throw new Error(`protocol doctor did not report read-only compatibility: ${nodeDoctor.stdout}`);
   }

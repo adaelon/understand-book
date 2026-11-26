@@ -38,6 +38,22 @@ describe("TopBar", () => {
     expect(wrapper.emitted('close-mobile')).toHaveLength(1);
     wrapper.unmount();
   });
+  it('offers book home and book course inside reading tools only when available', async () => {
+    const wrapper = mount(TopBar, { attachTo: document.body, props });
+    try {
+      expect(wrapper.findAll('button').some(button => button.text().includes('书籍学习首页'))).toBe(false);
+      expect(wrapper.findAll('button').some(button => button.text().includes('本书课程'))).toBe(false);
+      await wrapper.setProps({ bookHomeAvailable: true, bookCourseAvailable: true });
+      await wrapper.get('.tools-toggle').trigger('click');
+      await wrapper.findAll('.topbar-menu button').find(button => button.text() === '书籍学习首页')!.trigger('click');
+      expect(wrapper.emitted('open-book-home')).toHaveLength(1);
+      expect(wrapper.get('.topbar-menu').isVisible()).toBe(false);
+      await wrapper.get('.tools-toggle').trigger('click');
+      await wrapper.findAll('.topbar-menu button').find(button => button.text() === '本书课程 →')!.trigger('click');
+      expect(wrapper.emitted('open-book-course')).toHaveLength(1);
+      expect(wrapper.get('.topbar-menu').isVisible()).toBe(false);
+    } finally { wrapper.unmount(); }
+  });
   it('uses the current chapter to open the outline and keeps guided learning off the toolbar', async () => {
     const wrapper = mount(TopBar, { props: { ...props, materialTitle: '一本书的完整标题' } });
     const position = wrapper.get('.chapter-position');

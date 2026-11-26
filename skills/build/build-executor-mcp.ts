@@ -1,6 +1,14 @@
 import { StructureThemeRetrievalRequired, prepareStructureThemeRetrieval } from "../../packages/core/src/book-structure-theme-session";
 import { DSH_BUILD_EXECUTOR_CONTRACT_V1 } from "../../packages/core/src/dsh-build-executor-contract";
+import { execFile } from "node:child_process";
 import type { Readable, Writable } from "node:stream";
+import { clearTimeout, setTimeout } from "node:timers";
+import {
+  AUTOMATIC_BUILD_WORKER_REOPEN_DELAY_MS,
+  AUTOMATIC_BUILD_WORKER_WAIT_WINDOW_MS,
+  recordAutomaticBuildWorkerUsage,
+  type AutomaticBuildWorkerClaim,
+} from "../../packages/core/src/automatic-build-worker";
 import { CODEX_BUILD_EXECUTION_PROFILE_V1, DSH_BUILD_EXECUTION_PROFILE_V1 } from "../../packages/core/src/build-execution-profile";
 import { createBuildExecutorConnectionStateV4 } from "../../packages/core/src/build-executor-connection-state";
 import {
@@ -24,6 +32,7 @@ import {
   type AutomaticBuildExecutorServerTimingObserverV1,
   type AutomaticBuildExecutorMcpErrorPhaseV2,
   type AutomaticBuildExecutorSessionResponse,
+  type AutomaticBuildWorkerExecutorOptions,
 } from "../../packages/core/src/automatic-build-executor-session";
 import { canonicalAutomaticBuildJson } from "../../packages/core/src/automatic-build-protocol";
 import {
@@ -91,6 +100,7 @@ interface BuildExecutorMcpSessionOptions {
   bootstrap_version: string;
   protocol_generation: string;
   session_private_root: string;
+  claim_worker_assignment?: AutomaticBuildWorkerExecutorOptions["claim_worker_assignment"];
   execute_request?: (
     request: unknown,
     timing: AutomaticBuildExecutorServerTimingObserverV1,
@@ -174,7 +184,9 @@ export function createBuildExecutorMcpSession(options: BuildExecutorMcpSessionOp
       const execute = (): AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse> => {
         try {
           const response = options.execute_request ? options.execute_request(request, observer)
-            : runAutomaticBuildWorkerExecutorSessionCommand(request, { timing: observer, execution_profile: profile }) as AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse>;
+            : runAutomaticBuildWorkerExecutorSessionCommand(request, {
+              timing: observer, execution_profile: profile, claim_worker_assignment: options.claim_worker_assignment,
+            }) as AutomaticBuildExecutorSessionResponse | Promise<AutomaticBuildExecutorSessionResponse>;
           return response instanceof Promise ? response.catch(failed) : response;
         } catch (error) { return failed(error); }
       };
@@ -365,21 +377,88 @@ function argumentValue(argv: string[], name: string): string | undefined {
   return argv[index + 1];
 }
 
-export function runBuildExecutorMcpServer(argv: string[]): void {
-  const bootstrapVersion = argumentValue(argv, "--bootstrap-version");
-  const protocolGeneration = argumentValue(argv, "--protocol-generation");
-  if (argv.length !== 4 || !bootstrapVersion || !protocolGeneration) {
-    throw new Error("Build Executor MCP bootstrap arguments are invalid");
+type ClaimOutcome = { claim: AutomaticBuildWorkerClaim } | { error: unknown };
+type PendingWorkerClaim = { root: string; completed: string; waits: number; result: Promise<ClaimOutcome> };
+
+/** The packaged driver can spend minutes on route reconstruction. Keep its
+ * filesystem work outside the MCP process and reuse a single job per connection. */
+function packagedWorkerScheduler(driverArgs: string[]): NonNullable<AutomaticBuildWorkerExecutorOptions["claim_worker_assignment"]> {
+  const pendingWaitBytes = Buffer.byteLength(canonicalAutomaticBuildJson({
+    version: CODEX_BUILD_EXECUTION_PROFILE_V1.session_protocol,
+    action: { kind: "WAIT", retry_after_ms: AUTOMATIC_BUILD_WORKER_REOPEN_DELAY_MS },
+  }), "utf8");
+  let pending: PendingWorkerClaim | undefined;
+
+  function schedule(root: string, completed: string) {
+    const request = { version: "automatic_build_worker_claim_request.v1", root_handoff_ref: root, completed_handoff_ref: completed };
+    const job: PendingWorkerClaim = {
+      root, completed, waits: 0,
+      result: new Promise<AutomaticBuildWorkerClaim>((resolve, reject) => {
+        const child = execFile(process.execPath, driverArgs, { windowsHide: true, maxBuffer: 16_384 }, (error, stdout) => {
+          if (error) { reject(error); return; }
+          try {
+            const claim = JSON.parse(stdout) as AutomaticBuildWorkerClaim;
+            if (claim.kind !== "WAIT" && claim.kind !== "DONE" && claim.kind !== "ASSIGNMENT") {
+              throw new Error("packaged driver returned an invalid worker claim");
+            }
+            resolve(claim);
+          } catch (cause) { reject(cause); }
+        });
+        // The exec callback reports child failure after the process has exited.
+        child.stdin?.on("error", () => {});
+        child.stdin?.end(JSON.stringify(request));
+      }).finally(() => {
+        if (job.waits) recordAutomaticBuildWorkerUsage(root, {
+          wait_response_bytes: job.waits * pendingWaitBytes, wait_response_count: job.waits,
+        });
+      }).then((claim): ClaimOutcome => ({ claim }), (error): ClaimOutcome => ({ error })),
+    };
+    return job;
   }
-  const session = createBuildExecutorMcpSession({
-    bootstrap_version: bootstrapVersion,
-    protocol_generation: protocolGeneration,
-    session_private_root: resolveAutomaticBuildExecutorRegistryRoot(),
-    timing_sample_sink: (sample) => {
-      process.stderr.write(`${JSON.stringify(sample)}\n`);
-    },
-  });
-  serveBuildExecutorMcpSession(session, process.stdin, process.stdout);
+
+  return async (root, completed) => {
+    for (;;) {
+      const job = pending ??= schedule(root, completed);
+      let cancelDeadline: (() => void) | undefined;
+      const deadline = new Promise<undefined>(resolve => {
+        const timer = setTimeout(resolve, AUTOMATIC_BUILD_WORKER_WAIT_WINDOW_MS);
+        cancelDeadline = () => clearTimeout(timer);
+      });
+      const result = await Promise.race([job.result, deadline]).finally(() => cancelDeadline?.());
+      if (!result) {
+        job.waits++;
+        return undefined;
+      }
+      pending = undefined;
+      if (job.root !== root || job.completed !== completed) continue;
+      if ("error" in result) throw result.error;
+      return result.claim;
+    }
+  };
+}
+
+export function runBuildExecutorMcpServer(argv: string[], workerDriverArgs?: string[]): void {
+  try {
+    const bootstrapVersion = argumentValue(argv, "--bootstrap-version");
+    const protocolGeneration = argumentValue(argv, "--protocol-generation");
+    if (argv.length !== 4 || !bootstrapVersion || !protocolGeneration) {
+      throw new Error("Build Executor MCP bootstrap arguments are invalid");
+    }
+    const session = createBuildExecutorMcpSession({
+      bootstrap_version: bootstrapVersion,
+      protocol_generation: protocolGeneration,
+      session_private_root: resolveAutomaticBuildExecutorRegistryRoot(),
+      ...(workerDriverArgs && bootstrapVersion === BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3.version
+        ? { claim_worker_assignment: packagedWorkerScheduler(workerDriverArgs) } : {}),
+      timing_sample_sink: (sample) => {
+        process.stderr.write(`${JSON.stringify(sample)}\n`);
+      },
+    });
+    serveBuildExecutorMcpSession(session, process.stdin, process.stdout);
+  } catch {
+    process.stderr.write("Build Executor MCP bootstrap is incompatible\n");
+    process.exitCode = 2;
+  }
 }
 
 export function serveBuildExecutorMcpSession(
@@ -418,12 +497,7 @@ export function serveBuildExecutorMcpSession(
 }
 
 if (process.argv[1]?.endsWith("build-executor-mcp.ts")) {
-  try {
-    runBuildExecutorMcpServer(process.argv.slice(2));
-  } catch {
-    process.stderr.write("Build Executor MCP bootstrap is incompatible\n");
-    process.exitCode = 2;
-  }
+  runBuildExecutorMcpServer(process.argv.slice(2));
 }
 
 export { BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3 };

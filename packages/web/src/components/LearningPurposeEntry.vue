@@ -83,13 +83,15 @@ async function choose(purpose: LearningPurpose) {
   await nextTick(); input.value?.focus();
 }
 function submit() {
+  if (composing.value) return;
   const format = selectedPurpose.value === 'practice' ? formatPrompts[practiceFormat.value] : '';
   const message = [draft.value.trim(), format].filter(Boolean).join('\n');
   if (selectedPurpose.value && message) start(selectedPurpose.value, message);
 }
 function fallback() {
-  if (!selectedPurpose.value || !setup.value) return;
+  if (!selectedPurpose.value || !setup.value || composing.value) return;
   if (selectedPurpose.value === 'practice') { void choose('understand'); return; }
+  if (draft.value.trim()) return;
   start(selectedPurpose.value, setup.value.fallbackMessage);
 }
 async function back() {
@@ -126,8 +128,8 @@ onMounted(() => { if (selectedPurpose.value) input.value?.focus(); });
           <option value="single_choice">{{ uiText('单选题') }}</option><option value="multiple_choice">{{ uiText('多选题') }}</option>
           <option value="worked_solution">{{ uiText('计算题') }}</option></select>
       </label>
-      <button type="button" class="purpose-submit" :disabled="busy || !available || !ready || (!draft.trim() && !(selectedPurpose === 'practice' && practiceFormat))" @click="submit">{{ setup.submit }} <span aria-hidden="true">→</span></button>
-      <button type="button" class="purpose-fallback" :disabled="busy || !available || !ready" @click="fallback">{{ setup.fallback }}</button>
+      <button type="button" class="purpose-submit" :disabled="busy || !available || !ready || composing || (!draft.trim() && !(selectedPurpose === 'practice' && practiceFormat))" @click="submit">{{ setup.submit }} <span aria-hidden="true">→</span></button>
+      <button type="button" class="purpose-fallback" :disabled="busy || !available || !ready || composing || (selectedPurpose !== 'practice' && !!draft.trim())" @click="fallback">{{ setup.fallback }}</button>
     </div>
     <p v-if="notice" class="purpose-notice" role="status">{{ notice }}</p>
     <div v-if="!setup" class="purpose-other">

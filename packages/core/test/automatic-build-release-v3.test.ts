@@ -286,11 +286,11 @@ describe("BR10 automatic build release contract", () => {
 
   it("R5 keeps both release smoke evidence shapes shared, exact-four, and digest-free", () => {
     const compiledSmoke = readFileSync(
-      path.join(REPO_ROOT, "apps", "desktop", "scripts", "smoke-t7-executor-release.ts"),
+      path.join(REPO_ROOT, "scripts", "plugin", "smoke-t7-executor-release.ts"),
       "utf8",
     );
     const codexCliSmoke = readFileSync(
-      path.join(REPO_ROOT, "apps", "desktop", "scripts", "smoke-t7-codex-cli-release.ts"),
+      path.join(REPO_ROOT, "scripts", "plugin", "smoke-t7-codex-cli-release.ts"),
       "utf8",
     );
     expect(compiledSmoke).toContain('"--bootstrap-version"');

@@ -23,6 +23,8 @@ mod w6_learning_records_tests;
 mod e1_workspace_integration_tests;
 #[path = "interactive_teaching_om6_network_tests.rs"]
 mod om6;
+#[path = "course_teach_back_network_tests.rs"]
+mod course_teach_back;
 
 #[derive(Clone, Default)]
 struct Probe {
@@ -136,6 +138,122 @@ fn setup() -> (Fixture, Value, Value, Probe) {
     input["client_request_id"] = json!("key");
     input["message"] = json!("你好");
     (f, w, input, probe)
+}
+
+#[test]
+fn explain_back_network_retry_recovers_same_expression_and_operation() {
+    let (f, w, input, probe) = setup();
+    let quote = f.access.library.lock().unwrap().load("A", &f.x).unwrap().book.text("1.1", None).unwrap();
+    configure(&f, &Probe { primary_quote: Some(quote), ..Default::default() });
+    let (status, origin) = admit(&f, &w, &input);
+    assert_eq!(status, 202, "{origin}");
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    let w = f.get(&f.a, &w);
+    let mut expression = Fixture::stamp(&w, "page");
+    for (key, value) in [
+        ("entry_action", json!("explain_back")), ("message", json!("I think that is because the condition changes.")),
+        ("operation_id", json!("attempt-one")), ("expression_id", json!("expression")), ("client_request_id", json!("expression")),
+        ("session_id", input["session_id"].clone()), ("expected_chat_head", origin["turn_id"].clone()),
+        ("answer_ref", json!({"turn_id":origin["turn_id"]})),
+    ] { expression[key] = value; }
+    let (status, accepted) = admit(&f, &w, &expression);
+    assert_eq!(status, 202, "{accepted}");
+    *f.access.runs.fail_after.lock().unwrap() = Some("claimed");
+    assert_eq!(f.access.runs.run_one(&f.access).unwrap_err().error_code, "INJECTED_CRASH");
+    let f = reopen(f, &probe);
+    let w = f.action(&f.a, &w, "retry-page", "attach", json!({}));
+    let mut retry = expression.clone();
+    for (key, value) in Fixture::stamp(&w, "retry-page").as_object().unwrap() { retry[key] = value.clone(); }
+    retry["expected_chat_head"] = accepted["turn_id"].clone();
+    retry["retry_of"] = accepted["turn_id"].clone();
+    retry["operation_id"] = json!("attempt-two");
+    let lookup = "/api/agent/runs?client_request_id=expression&operation_id=attempt-two";
+    assert_eq!(f.call(&f.a, "GET", lookup, Value::Null).0, 404);
+    *f.access.runs.fail_after.lock().unwrap() = Some("prepared");
+    let (status, value) = admit(&f, &w, &retry);
+    assert_eq!(status, 503, "{value}");
+    let f = reopen(f, &probe);
+    assert_eq!(f.call(&f.a, "GET", lookup, Value::Null).1["turn_id"], accepted["turn_id"]);
+    assert_eq!(admit(&f, &w, &retry).1["turn_id"], accepted["turn_id"]);
+    assert_eq!(admit(&f, &w, &expression).1["turn_id"], accepted["turn_id"]);
+    let row = row(&f, "expression");
+    assert_eq!(row["stage"], "queued");
+    assert_eq!(row["attempt"], 1, "the retry remains queued until dispatched");
+    let handle = f.access.users.lock().unwrap().get("A", "now").unwrap();
+    let user = handle.lock().unwrap();
+    let chat = &user.agent_history.sessions[0];
+    assert_eq!(chat.turns.len(), 2);
+    assert_eq!(chat.turns[1].user, expression["message"]);
+    assert_eq!(chat.turns[1].domain.teach_back_attempts.len(), 2);
+    let receipt = user.learning_store_for_workspace(None).unwrap().teaching_event(&format!("binding:{}",chat.turns[1].turn_id)).unwrap();
+    assert_eq!(receipt.binding.turn_id, chat.turns[1].turn_id);
+    drop(user);
+
+    let learner = json!({"kind":"explanation","student_graph":{"nodes":[{"id":"s1","label":"A condition changes","quotes":[expression["message"]]}],"edges":[]}});
+    let book = f.access.library.lock().unwrap().load("A", &f.x).unwrap();
+    let quote = book.book.text("1.1", None).unwrap();
+    let comparison = json!({"source":{"source_id":book.book.base.book_id,"source_revision":book.book.source_fingerprint()},
+        "book_graph":{"nodes":[{"id":"p","label":"Observed interval"},{"id":"q","label":"Condition change"}],
+            "edges":[{"id":"b1","from":"p","to":"q","relation_type":"supports","evidence":[{"lid":"1.1","quote":quote}]}]},
+        "rows":[{"row_id":"r1","book_edge_ids":["b1"],"book_node_ids":[],"student_edge_ids":[],"student_node_ids":["s1"],
+            "status":"unverified_against_passage","summary":"This passage does not establish the stated condition."}],
+        "side_notes":[]});
+    f.access.runs.configure_fake(move || Box::new(ChatStubAdapter::scripted(vec![
+        reader_service::tests::tutor_loop_tests::answer(&learner.to_string()),
+        reader_service::tests::tutor_loop_tests::answer(&comparison.to_string()),
+    ])));
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    let turn_id = accepted["turn_id"].as_str().unwrap();
+    let saved = f.ok(&f.a, "GET", &format!("/api/agent/runs/{turn_id}"), json!({}));
+    assert_eq!(saved["turn"]["status"], "completed", "{saved}");
+    let card = &saved["turn"]["outcome"]["answer_view"]["parts"][0]["comparison"];
+    assert_eq!(card["student_graph"]["nodes"][0]["quotes"][0]["turn_id"], turn_id);
+    assert_eq!(card["book_graph"]["edges"][0]["evidence"][0]["quote"], quote);
+    let user = handle.lock().unwrap();
+    let delivery = user.learning_store_for_workspace(None).unwrap().teaching_event(card["round_id"].as_str().unwrap()).unwrap();
+    assert_eq!(delivery.payload["comparison"], *card);
+    drop(user);
+    drop(handle);
+
+    let w = f.action(&f.a, &f.get(&f.a, &w), "revision-page", "attach", json!({}));
+    let w = f.action(&f.a, &w, "revision-page", "tutor/display", json!({
+        "chat_session_id": input["session_id"], "turn_id": turn_id, "round_id": card["round_id"],
+    }));
+    let mut revision = Fixture::stamp(&w, "revision-page");
+    let revised_text = "I now count all the time, including the stop.";
+    for (key, value) in [
+        ("entry_action", json!("explain_back")), ("message", json!(revised_text)),
+        ("operation_id", json!("revise-one")), ("expression_id", json!("revision")), ("client_request_id", json!("revision")),
+        ("session_id", input["session_id"].clone()), ("expected_chat_head", json!(turn_id)),
+        ("answer_ref", expression["answer_ref"].clone()),
+        ("teach_back_reply", json!({"kind":"revise_understanding","round_id":card["round_id"],"row_id":"r1"})),
+    ] { revision[key] = value; }
+    let (status, revised) = admit(&f, &w, &revision);
+    assert_eq!(status, 202, "{revised}");
+    let mut changed_action = revision.clone();
+    changed_action["teach_back_reply"]["kind"] = json!("dispute_interpretation");
+    assert_eq!(admit(&f, &w, &changed_action).1["error_code"], "REQUEST_KEY_CONFLICT");
+
+    // Recovery must dispatch the accepted correction against its original row.
+    let f = reopen(f, &probe);
+    let updated = json!({"kind":"explanation","student_graph":{"nodes":[{"id":"s1","label":"Include stopped time","quotes":[revised_text]}],"edges":[]}});
+    let proposal = json!({"source":card["source"],"book_graph":card["book_graph"],
+        "rows":card["rows"],"side_notes":[]});
+    f.access.runs.configure_fake(move || Box::new(ChatStubAdapter::scripted(vec![
+        reader_service::tests::tutor_loop_tests::answer(&updated.to_string()),
+        reader_service::tests::tutor_loop_tests::answer(&proposal.to_string()),
+    ])));
+    assert!(f.access.runs.run_one(&f.access).unwrap());
+    let w = f.action(&f.a, &f.get(&f.a, &w), "history-page", "attach", json!({}));
+    let history = f.action(&f.a, &w, "history-page", "chat/history", json!({}));
+    let turns = history["result"]["current"]["turns"].as_array().unwrap();
+    assert_eq!(turns.len(), 3);
+    assert_eq!(turns[1]["outcome"]["answer_view"]["parts"][0]["comparison"], *card);
+    let new_card = &turns[2]["outcome"]["answer_view"]["parts"][0]["comparison"];
+    assert_eq!(new_card["continuation"]["parent_round_id"], card["round_id"], "{}", turns[2]);
+    assert_eq!(new_card["continuation"]["row_id"], "r1");
+    assert!(new_card["support_delivery_refs"].as_array().unwrap().contains(&card["round_id"]));
+    assert_eq!(new_card["student_graph"]["nodes"][0]["quotes"][0]["turn_id"], revised["turn_id"]);
 }
 
 #[test]

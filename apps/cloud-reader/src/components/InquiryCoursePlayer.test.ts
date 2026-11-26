@@ -504,8 +504,99 @@ it('offers explained closed-book practice and an ordinary application at the del
   const w=await player();
   const practice=w.get('.contextual-practice');
   expect(practice.text()).toContain('闭卷表达会收起资料，按回答追问或补讲，可随时暂停。');
-  await click(practice,'我来解释一下');await click(practice,'给我一道应用题');
+  expect(practice.text()).not.toContain('我来解释一下');
+  await click(practice,'练到会');await click(practice,'给我一道应用题');
   expect(w.emitted('closedBook')).toEqual([[]]);expect(w.emitted('practice')).toEqual([[]]);
+  expect(inquiryCourse.mutate).not.toHaveBeenCalled();
+});
+
+it('submits one explanation through the Reader and uses its displayed card for a course follow-up', async () => {
+  view.progress.stage = 'explanation';
+  view.reflection_prompt = '把观察变成自己的解释。';
+  const submit = vi.fn().mockResolvedValue(true);
+  const w = await player(false, { submitTeachBack: submit, currentSourceRevision: authored.summary.source.source_revision, chatSessionId: 'chat' });
+  await w.get('#course-reflection').setValue('容量越大，读得越快。');
+  await w.get('.reflection-form').trigger('submit');
+  await flushPromises();
+  expect(submit.mock.calls).toEqual([[{ text:'容量越大，读得越快。' }]]);
+  expect(vi.mocked(inquiryCourse.mutate).mock.calls.map(([, req]) => req.action.kind)).toEqual(['explore']);
+
+  const origin = { session_id: 'chat', turn_id: 'turn', round_id: 'tb:turn' };
+  const expression = { activity:'reflection', job_ref:origin.round_id, fact_ref:'claim', response:'容量越大，读得越快。', round_index:0, teach_back:origin };
+  const comparison = { round_id:origin.round_id, source:{source_id:publication.book_id, source_revision:authored.summary.source.source_revision},
+    book_graph:{nodes:[],edges:[]}, student_graph:{nodes:[],edges:[]}, side_notes:[], rows:[], follow_up:{row_id:'speed',question:'只换容量还会变快吗？'} };
+  view.expressions = [expression];
+  view.reviews = [{ expression, status:'ready', displayed:false, feedback:null, understanding:[], error:null, comparison }];
+  await w.setProps({ teachBackState:{ expressionId:'expression', text:expression.response, pending:false, canRetry:false, roundId:origin.round_id } });
+  await flushPromises();
+  const tutor = w.getComponent(CourseActivityTutor);
+  expect(tutor.find('.teach-back-comparison').exists()).toBe(true);
+  expect(w.find('#course-reflection').exists()).toBe(false);
+  expect(tutor.find('.guidance').exists()).toBe(false);
+  expect(w.get('.activity-next button').attributes('disabled')).toBeDefined();
+  view.reviews[0]!.displayed = true;
+  tutor.vm.$emit('displayed');
+  await flushPromises();
+  expect(w.get('.activity-next button').attributes('disabled')).toBeUndefined();
+  expect(w.emitted('closedBook')).toBeUndefined();
+  await w.get('#activity-reply').setValue('读取量相同时，要比较带宽。');
+  await tutor.get('form').trigger('submit'); await flushPromises();
+  expect(submit).toHaveBeenLastCalledWith({text:'读取量相同时，要比较带宽。', sessionId:'chat',
+    reply:{kind:'follow_up', round_id:origin.round_id, row_id:'speed'}});
+  expect(vi.mocked(inquiryCourse.mutate).mock.calls.map(([, req]) => req.action.kind)).toEqual(['explore']);
+  await w.setProps({ presented:false });
+  expect(tutor.find('.teach-back-comparison').exists()).toBe(false);
+  await w.setProps({ presented:true, chatSessionId:'another-chat' });
+  expect(tutor.find('.teach-back-comparison').exists()).toBe(false);
+  await click(tutor,'回原对话查看这次解释');
+  expect(w.emitted('restoreChat')).toEqual([['chat']]);
+});
+
+it('reopens each original comparison after closed-book evidence becomes the current review', async () => {
+  view.progress.stage = 'explanation';
+  const source = { source_id: publication.book_id, source_revision: authored.summary.source.source_revision };
+  for (const [index, response] of ['容量大，读取快。','带宽决定读取时间。'].entries()) {
+    const turn = 'turn-' + index, job = 'tb:' + turn;
+    const expression = { activity:'reflection', job_ref:job, fact_ref:'claim-' + index, response, round_index:0,
+      teach_back:{ session_id:'chat', turn_id:turn, round_id:job } };
+    view.expressions.push(expression);
+    view.reviews.push({ expression, status:'ready', displayed:true, feedback:null, understanding:[], error:null, comparison:{
+      round_id:job, source, support_delivery_refs:index ? ['course:explanation','tb:turn-0'] : ['course:explanation'],
+      book_graph:{ nodes:[{id:'size',label:'读取量相同',evidence:[]},{id:'bandwidth',label:'要比较带宽',evidence:[]}],
+        edges:[{id:'book',from:'size',to:'bandwidth',relation_type:'supports',evidence:[{lid:'p4',quote:'带宽约束了最短读取时间。'}]}] },
+      student_graph:{ nodes:[{id:'student',label:response,quotes:[{turn_id:turn,text:response}]}],edges:[] },
+      rows:[{ row_id:'speed',book_edge_ids:['book'],book_node_ids:[],student_edge_ids:[],student_node_ids:['student'],status:index ? 'clarified' : 'divergent',summary:response }], side_notes:[],
+    } });
+  }
+  const result = { activity:'reflection', job_ref:'practice-result', fact_ref:'practice-fact', response:'不看原文时，我仍能区分两者。', round_index:0, closed_book_result_ref:'closed-result' };
+  view.expressions.push(result);
+  view.reviews.push({ expression:result, status:'ready', displayed:true, understanding:[], error:null, feedback:null });
+  const submit = vi.fn();
+  const w = await player(false, { chatSessionId:'chat', currentSourceRevision:source.source_revision, submitTeachBack:submit });
+  const history = w.get<HTMLDetailsElement>('.feedback-history');
+  expect(w.find('.teach-back-comparison').exists()).toBe(false);
+  history.element.open = true; await history.trigger('toggle');
+  const [first, second] = w.findAll<HTMLDetailsElement>('.feedback-history .review > details');
+  expect(first!.find('.teach-back-comparison').exists()).toBe(false);
+  expect(second!.get('.comparison-status').text()).toBe('原因已澄清');
+  expect(second!.get('.teach-back-support').text()).toContain('1 轮三图对照');
+  expect(second!.get('.teach-back-evidence').text()).toContain('带宽决定读取时间。');
+  first!.element.open = true; await first!.trigger('toggle');
+  expect(first!.get('.comparison-status').text()).toBe('有分歧');
+  expect(first!.get('.teach-back-support').text()).toBe('表达前已看过原讲解。');
+  expect(first!.get('.teach-back-evidence').text()).toContain('带宽约束了最短读取时间。');
+  await click(first!, '回到原段 p4');
+  expect(w.emitted('source')).toEqual([[view.summary.source,'p4']]);
+  await click(first!, '回到我的表达');
+  expect(document.activeElement?.textContent).toBe('容量大，读取快。');
+  expect(history.find('textarea, [data-action]').exists()).toBe(false);
+  await w.setProps({ chatSessionId:'another-chat' });
+  expect(history.find('.teach-back-comparison').exists()).toBe(false);
+  await click(second!, '回原对话查看这次解释');
+  expect(w.emitted('restoreChat')).toEqual([['chat']]);
+  await w.setProps({ presented:false });
+  expect(w.find('.feedback-history').exists()).toBe(false);
+  expect(submit).not.toHaveBeenCalled();
   expect(inquiryCourse.mutate).not.toHaveBeenCalled();
 });
 
@@ -526,6 +617,18 @@ it('retains the ordinary revision form when there is no activity feedback to ans
   const w=await player();expect(w.find('#course-revision').exists()).toBe(true);expect(w.find('#activity-reply').exists()).toBe(false);
   await w.get('#course-revision').setValue('还需要说明读取耗时。');await w.get('.reflection-form').trigger('submit');await flushPromises();
   expect(inquiryCourse.mutate).toHaveBeenCalledWith('course-space',expect.objectContaining({action:{kind:'reflect',response:'还需要说明读取耗时。'}}));
+});
+
+it.each(['explanation', 'feedback'] as const)('continues a trial at %s with the response saved and no model feedback',async stage=>{
+  view.progress.release_id='local-course-trial:sample:pilot-1';
+  view.progress.stage=stage;
+  const expression={fact_ref:'sample-fact',job_ref:'sample-job',activity:stage==='explanation'?'reflection':'task',response:'我需要再核对当事人的理由。',round_index:0};
+  view.expressions=[expression];
+  view.reviews=[{expression,status:'failed',displayed:false,understanding:[],error:'MODEL_UNAVAILABLE',feedback:null}];
+  const w=await player();
+  const tutor=w.getComponent(CourseActivityTutor);
+  await click(tutor,stage==='explanation'?'进入综合应用 →':'完成试课');
+  expect(inquiryCourse.mutate).toHaveBeenCalledWith('course-space',expect.objectContaining({action:{kind:'advance'}}));
 });
 
 it('emits engagement for committed learning actions but not reads or automatic feedback delivery',async()=>{

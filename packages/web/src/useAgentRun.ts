@@ -7,7 +7,7 @@ import { presentationDispatcher } from "./presentation-interaction";
 import { musicDispatcher } from "./music-interaction";
 import { mergeBoardDeliveries } from './board-workspace';
 
-const events = ["board.committed", "music.command", "presentation.command", "run.resource", "reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "commentary.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
+const events = ["board.committed", "music.command", "presentation.command", "run.resource", "reader.changed", "effect.created","answer.patch","run.snapshot", "run.started", "model.started", "model.finished", "tool.started", "tool.finished", "commentary.finished", "teach_back.started", "teach_back.finished", "run.cancelling", "run.finalizing", "run.completed", "run.failed", "run.cancelled", "run.persistence_failed"];
 export function useAgentRun(onTerminal: (snapshot: RunSnapshot) => void) {
   const presentations = presentationDispatcher();
   const music = musicDispatcher();

@@ -1187,6 +1187,7 @@ export interface PendingBoardEdit {
 }
 export interface BoardCandidateRequest { board_id: string; session_id: string; turn_id: string; candidate_id: string; candidate_revision: number }
 export interface AgentChatTurn {
+  can_explain_back?: boolean;
   board_commits?: BoardDelivery[];
   board_follow_up?: BoardFollowUp | null;
   board_delivery?: BoardDelivery | null;
@@ -1195,6 +1196,8 @@ export interface AgentChatTurn {
   video_question?: import("../../core/src/generated/VideoQuestionContext").VideoQuestionContext | null;
   published_book_ref?: import('./reader-context').PublishedBookRef | null;
   domain?: {
+    course_retry_context?: AgentChatMeta['course_context'];
+    teach_back_attempts?: { operation_id: string; expression_id: string }[];
     local_agent?: { id: string; name: string };
     personal_notes?: { references: import("./generated/NoteRef").NoteRef[]; adopted_references?: import("./generated/NoteRef").NoteRef[] } | null; workspace_goal_update?: import('./reader-context').WorkspaceGoal | null; teaching?: { session_id: string; revision: number; receipt_ids: string[] }[]; interaction?: import("./generated/ResolvedInteraction").ResolvedInteraction; effects: { effect_id: string; effect: { kind: "reader"; effect: AgentEffect } | { kind: "presentation"; reference: { presentation_id: string; revision: number } }; disposition: import("./effect-disposition").EffectDisposition | null }[];
   };
@@ -1308,6 +1311,8 @@ export interface UnderstandingRow {
 }
 export interface UnderstandingView { rows: UnderstandingRow[]; current_understanding?: import('./note-thinking').UnderstandingSummary[]; interpretations?: LearningEvidenceView[]; imported_records?: import('./learning-records').ImportedLearningRecord[]; next: number | null; stale: boolean; evidence_watermark: number; projection_watermark: number | null }
 export interface LearningEvidenceView {
+  activity_turn_request?: string | null;
+  choice_answer?: import('./note-thinking').UnderstandingChoiceAnswer | null;
   evidence_id: string; label: string; capability: string; prompt: string; learner_quote: string; interpretation: string;
   correction: string | null; status: string; assistance_count: number; attempt: number; feedback_hidden: boolean;
   assessment_ref?: string | null;
@@ -1329,6 +1334,10 @@ export interface LearningEvidenceView {
 }
 export interface UnderstandingTimeline { entries: LearningEvidenceView[]; next: number | null; order: 'oldest_first' }
 export interface AgentChatMeta {
+  teach_back_reply?: import("./generated/TeachBackReply").TeachBackReply;
+  expression_id?: string;
+  operation_id?: string;
+  retry_of?: string;
   local_agent_id?: string;
   course_context?: { run_id: string; revision: number; surface: 'course' | 'source' | 'experiment'; exploration?: import('./generated/CourseResourceState').CourseResourceState };
   knowledge_focus?: {reference:import('./generated/KnowledgeReference').KnowledgeReference;node_id:string};
@@ -1589,7 +1598,15 @@ export const api = {
     http<SelectionTranslationResponse>("POST", "/reader/selection.translate", body),
   readingGuidance: (body: import('./reading-guidance').ReadingGuidanceRequest) =>
     http<import('./reading-guidance').ReadingGuidance | null>("POST", "/reader/guidance", body),
-  voiceStatus: () => http<{available:boolean;max_seconds:number}>('GET','/reader/voice-status'),
+  voiceStatus: () => http<{available:boolean;max_seconds:number;runtime_available?:boolean;can_download?:boolean}>('GET','/reader/voice-status'),
+  voiceModelStatus: () => http<VoiceModelStatus>('GET', '/reader/voice-model'),
+  voiceModelDownload: (body?: {target_dir?: string; source?: string; base_url?: string}) =>
+    http<VoiceModelStatus>('POST', '/reader/voice-model/download', body ?? {}),
+  voiceModelSelect: (dir: string) =>
+    http<VoiceModelStatus>('POST', '/reader/voice-model/select', { dir }),
+  voiceModelCancel: () => http<VoiceModelStatus>('POST', '/reader/voice-model/cancel', {}),
+  voiceModelRemove: (deleteFiles = true) =>
+    http<VoiceModelStatus>('POST', '/reader/voice-model/remove', { delete_files: deleteFiles }),
   voiceTranscribe: (body: {audio:string; mime_type:string; locale:string}, signal?:AbortSignal) =>
     http<{text:string;duration_ms:number}>('POST','/reader/voice-transcribe',body,signal),
   pdfRangesProject: (ranges: Array<{ lid: string; range: TextRange }>) =>
@@ -1686,6 +1703,8 @@ export const api = {
   tutorActivities: (session_id: string, turn_id: string, reference?: import("./generated/PresentationRef").PresentationRef) => http<{ activities: TutorActivity[] }>("POST", "/tutor/activities", { session_id, turn_id, reference }),
   tutorContinuationDisplayed: (input: import('./generated/ContinuationDisplayed').ContinuationDisplayed) => http<{ event_id: string }>('POST', '/tutor/continuation-displayed', input),
   tutorDisplay: (delivery_ref: string, scene?: import("./generated/PresentationFollowUp").PresentationFollowUp) => http("POST", "/tutor/display", { delivery_ref, scene }),
+  teachBackDisplayed: (chat_session_id: string, turn_id: string, round_id: string) =>
+    http<{ event_id: string; support_delivery_refs?: string[] }>('POST', '/tutor/display', { chat_session_id, turn_id, round_id }),
   tutorAction: (request: { operation_id: string; delivery_ref: string; action: string; response?: string | null; reasoning?: string; response_origin?: TeachingResponseOrigin; scene?: import("./generated/PresentationFollowUp").PresentationFollowUp }) => http<{ event_id: string; assessment: string; help: TutorHelp | null }>("POST", "/tutor/action", request),
   tutorAskStep: (request: { operation_id: string; delivery_ref: string; text: string; selected: string[]; locale: string }) => http<{ help_ref: string; text: string }>("POST", "/tutor/ask-step", request),
   tutorGrade: (action_ref: string, locale: string) => http<{ assessment: string }>("POST", "/tutor/grade", { action_ref, locale }),
@@ -1754,3 +1773,26 @@ export const api = {
   agentSourceOpen: (turn_id: string, source_ref_id: string, note_mem_id?: string) =>
     http<SourceOpenView>("POST", "/agent/source.open", { turn_id, source_ref_id, note_mem_id }),
 };
+
+export interface VoiceModelDownloadProgress {
+  state: 'idle' | 'downloading' | 'verifying' | 'cancelling' | 'completed' | 'failed' | 'cancelled' | string;
+  current_file: string | null;
+  downloaded_bytes: number;
+  total_bytes: number;
+  target_dir: string | null;
+  source: string | null;
+  error: string | null;
+}
+
+export interface VoiceModelStatus {
+  runtime_available: boolean;
+  available: boolean;
+  can_download: boolean;
+  source: 'none' | 'env' | 'configured' | 'default' | 'bundled' | string;
+  model_dir: string | null;
+  default_model_dir: string | null;
+  configured_model_dir: string | null;
+  model_name: string;
+  model_size_bytes: number;
+  download: VoiceModelDownloadProgress;
+}

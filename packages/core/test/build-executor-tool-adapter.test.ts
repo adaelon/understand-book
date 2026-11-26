@@ -52,7 +52,7 @@ function validSharedMcpConfig() {
         required: false,
         enabled_tools: [...BUILD_EXECUTOR_MCP_CONTRACT_V3.tools.map((tool) => tool.name)],
         default_tools_approval_mode: "approve",
-        startup_timeout_sec: 10,
+        startup_timeout_sec: 30,
         tool_timeout_sec: 120,
         env_vars: [
           "UNDERSTAND_BOOK_BUILD_EXE",

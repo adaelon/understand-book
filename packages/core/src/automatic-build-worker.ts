@@ -36,6 +36,7 @@ export type AutomaticBuildWorkerClaim =
 export const AUTOMATIC_BUILD_WORKER_CONTEXT_BYTE_LIMIT = 196_608;
 export const AUTOMATIC_BUILD_WORKER_NEXT_ASSIGNMENT_RESERVE = 65_536;
 export const AUTOMATIC_BUILD_WORKER_WAIT_WINDOW_MS = 20_000;
+export const AUTOMATIC_BUILD_WORKER_REOPEN_DELAY_MS = 1_000;
 const WORKER_PROGRESS_POLL_MS = 1_000;
 
 function registryFile(directory: string, ref: string): string {
@@ -108,6 +109,7 @@ export function finishAutomaticBuildWorker(worker: AutomaticBuildWorkerRecord, r
 export function recordAutomaticBuildWorkerUsage(rootRef: string, usage: {
   delivery_ref?: string; input_bytes?: number; submission_ref?: string; output_bytes?: number;
   wait_response_bytes?: number;
+  wait_response_count?: number;
 }): void {
   const worker = readAutomaticBuildWorker(rootRef);
   if (!worker) return;
@@ -127,9 +129,12 @@ export function recordAutomaticBuildWorkerUsage(rootRef: string, usage: {
   // repeats the same open request. Internal progress checks never call this.
   if (usage.wait_response_bytes !== undefined) {
     const bytes = usage.wait_response_bytes;
-    if (!Number.isSafeInteger(bytes) || bytes < 0) throw new Error("invalid worker wait usage");
+    const count = usage.wait_response_count ?? 1;
+    if (!Number.isSafeInteger(bytes) || bytes < 0 || !Number.isSafeInteger(count) || count < 1) {
+      throw new Error("invalid worker wait usage");
+    }
     worker.wait_response_bytes = (worker.wait_response_bytes ?? 0) + bytes;
-    worker.wait_responses = (worker.wait_responses ?? 0) + 1;
+    worker.wait_responses = (worker.wait_responses ?? 0) + count;
   }
   saveAutomaticBuildWorker(worker);
 }
@@ -188,7 +193,8 @@ export async function waitForAutomaticBuildWorkerAssignment(
 }
 
 /** Serialize only route/selection/ownership publication; generation never holds it. */
-export async function withAutomaticBuildWorkerSchedulerLock<T>(invocationRef: string, run: () => T | Promise<T>, signal?: AbortSignal): Promise<T> {
+export async function withAutomaticBuildWorkerSchedulerLock<T>(invocationRef: string,
+  run: () => T | Promise<T>, signal?: AbortSignal, onContention?: () => T): Promise<T> {
   const lock = `${registryFile("worker-scheduler", invocationRef)}.lock`;
   mkdirSync(path.dirname(lock), { recursive: true });
   for (;;) {
@@ -214,6 +220,7 @@ export async function withAutomaticBuildWorkerSchedulerLock<T>(invocationRef: st
         const code = (error as NodeJS.ErrnoException).code;
         if (code !== "ENOENT" && code !== "EPERM" && code !== "EACCES") throw error;
       }
+      if (onContention) return onContention();
       await new Promise(resolve => setTimeout(resolve, 25));
     }
   }

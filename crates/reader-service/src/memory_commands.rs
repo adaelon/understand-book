@@ -15,13 +15,14 @@ pub fn read(user: &user_runtime::UserRuntime, workspace: &reader_workspace::Read
         "profile/manifest" => reply(route_profile_manifest(&workspace.book, &HashMap::new())),
         "chat/history" => {
             if let Some(selected) = &workspace.selected_chat {
-                agent_history_response(&user.agent_history, &workspace.book, Some(selected)).map(|v| json!(v))
+                reader_history_response(user, &user.agent_history, &workspace.book, Some(selected)).map(|v| json!(v))
             } else {
                 let mut sessions: Vec<_> = user.agent_history.sessions.iter()
                     .filter(|s|s.matches_scope(workspace.learning_workspace_id.as_deref(), &workspace.book.base.book_id))
                     .map(|s|session_summary(s, &workspace.book)).collect();
                 sessions.sort_by(|a,b|b.updated_at.cmp(&a.updated_at).then_with(||b.id.cmp(&a.id)));
-                Ok(json!({"active_session_id":"", "sessions":sessions, "current":{"id":"", "book_id":workspace.book.base.book_id,"learning_workspace_id":workspace.learning_workspace_id,"title":"", "turns":[],"goals":[]}}))
+                cover_practice_history(user, &workspace.book.base.book_id, workspace.learning_workspace_id.as_deref(), &mut sessions, None)
+                    .map(|()| json!({"active_session_id":"", "sessions":sessions, "current":{"id":"", "book_id":workspace.book.base.book_id,"learning_workspace_id":workspace.learning_workspace_id,"title":"", "turns":[],"goals":[]}}))
             }
         }
         "memory/presentation.read" | "memory/presentation.observe" => note_api::presentation(user, workspace, input, action.ends_with("observe")),

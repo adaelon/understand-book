@@ -52,6 +52,9 @@ import type { PdfAnnotationLocation } from "../pdf-annotation-projection";
 import { answerNoteExcerpt } from "../answer-note-selection";
 import AgentActivities from "./AgentActivities.vue";
 import TutorActivities from "./TutorActivities.vue";
+import TeachBackComparisonCard from "./TeachBackComparisonCard.vue";
+import { comparisonPart, type ComparisonResponse, type TeachBackAttempt } from '../teach-back-chat';
+import type { TeachBackComparison } from '../generated/TeachBackComparison';
 import TutorContinuation from './TutorContinuation.vue';
 import InputSuggestionHint from './InputSuggestionHint.vue';
 import { suggestionTab, useReadingGuidance } from '../reading-guidance';
@@ -82,6 +85,8 @@ type ContextTab = "agent" | "artifacts" | "profile" | "formula" | "notes";
 type AskDraft = AskQuote;
 type DisplayQuestionQuote = AskDraft | AgentQuestionQuoteView;
 interface ChatTurn {
+  canExplainBack?: boolean;
+  teachBack?: TeachBackAttempt;
   localAgentName?: string;
   localAgentId?: string;
   localAgentUnavailable?: boolean;
@@ -150,6 +155,7 @@ const props = withDefaults(defineProps<{
   waitingTurnId?: string | null;
   learningTitle?: string;
   courseActive?: boolean;
+  courseHostedRound?: string;
   learningAttention?: string;
   learningScopeOptions?: LearningScopeOption[];
   learningPurposeAvailable?: boolean;
@@ -157,6 +163,10 @@ const props = withDefaults(defineProps<{
   learningPurposeReady?: boolean;
   learningPurposeBusy?: boolean;
   closedBookReady?: boolean;
+  explainAnswerId?: string | null;
+  explainBackAvailable?: boolean;
+  currentSourceId?: string;
+  closedCover?: boolean;
   agentInput: string;
   personalNoteReference?: import('../generated/NoteRef').NoteRef;
   sending: boolean;
@@ -209,6 +219,7 @@ const props = withDefaults(defineProps<{
   requestedTab?: ContextTab | null;
   requestedTabRevision?: number;
   workspaceNotesAvailable?: boolean;
+  workspaceNoteQuestionActive?: boolean;
   workspaceNoteImporting?: boolean;
 }>(), { companionVisible: true });
 const emit = defineEmits<{
@@ -237,6 +248,11 @@ const emit = defineEmits<{
   (e: 'continue-personal-note', turnId: string, reference: import('../generated/NoteRef').NoteRef): void;
   (e: 'continue-answer', turnId: string): void;
   (e: 'explain-answer', turnId: string): void;
+  (e: 'cancel-explain-answer'): void;
+  (e: 'closed-book-answer', turnId: string): void;
+  (e: 'retry-explain-answer', turn: ChatTurn): void;
+  (e: 'comparison-response', response: ComparisonResponse): void;
+  (e: 'comparison-passage', lid: string, turnId: string): void;
   (e: 'practice-answer', turnId: string): void;
   (e: 'clarify-answer', turnId: string, excerpt?: string, receipt?: PresentationFollowUp): void;
   (e: 'choose-continuation', view: TutorContinuationView, optionId: string, receipt?: PresentationFollowUp): void;
@@ -247,6 +263,7 @@ const emit = defineEmits<{
   (e: "retry-history"): void;
   (e: "stop-agent"): void;
   (e: "toggle-fullscreen"): void;
+  (e: "open-voice-settings"): void;
   (e: "continue-goal", goalId: string): void;
   (e: "show-allowance"): void;
   (e: "cancel-goal", goalId: string): void;
@@ -384,6 +401,13 @@ function activityGuidanceAvailable(turnId: string, available: boolean) {
 }
 function responseAvailable(turnId: string, available: boolean, host = 'plain') {
   const key = `${turnId}:${host}`;
+  if (available && host === 'plain' && !responseHosts.value.has(key) && props.fullscreen && followTranscript.value) {
+    void nextTick(() => {
+      if (latestAnswerTurn.value?.turnId === turnId && props.fullscreen && followTranscript.value) {
+        activityInstances.get(turnId)?.revealPractice();
+      }
+    });
+  }
   if (available) responseHosts.value.set(key, turnId); else responseHosts.value.delete(key);
 }
 const learningResponseLabel = computed(() => {
@@ -439,7 +463,7 @@ watch(() => props.activeChatSessionId, () => { suggestionHosts.value.clear(); re
 function editQuestion() {
   closeResponseEditor();
   discussionOpen.value = true;
-  void nextTick(() => document.querySelector<HTMLTextAreaElement>('.agent-input textarea')?.focus());
+  void nextTick(() => agentInputRef.value?.focus());
 }
 function locateAccepted(turnId: string) { workspace.value = null; discussionOpen.value = true; void nextTick(() => scrollToTurn(turnId)); }
 function returnReading() { workspace.value = null; emit('return-reading'); }
@@ -520,11 +544,15 @@ function hostedTeachingPresentations(turn: ChatTurn): PresentationRef[] {
 }
 function submitMessage() {
   if (voiceActive.value || imageLoading.value || props.questionSendBlocked || props.sending || props.canStop || props.stopping || props.historyLoading || props.historyError || (!props.agentInput.trim() && !questionImage.value)) return;
+  if (explainOrigin.value) followTranscript.value = true;
   if (workspaceVisible.value && sceneBound.value) {
     discussionOpen.value = true;
     followTranscript.value = true;
     if (retainedNote.value) void retainedPresentation.value?.followUp();
     else void presentationInstances.get(workspaceKey.value)?.followUp();
+  } else if (comparisonFollowUp.value) {
+    followTranscript.value = true;
+    emit('comparison-response', { ...comparisonFollowUp.value, action: 'follow_up', text: props.agentInput });
   } else emit('send-agent');
 }
 const imageInput = ref<InstanceType<typeof QuestionImageInput>>(), imageLoading = ref(false);
@@ -714,6 +742,7 @@ watch(() => [props.activeChatSessionId, openGoals.value.length] as const, ([sess
 function goalStopLabel(reason: string | null | undefined): string {
   if (!reason) return uiText('任务尚未完成');
   if (reason === "TURN_LIMIT_EXCEEDED") return uiText('本次达到运行上限');
+  if (reason === "MODEL_OUTPUT_LIMIT") return uiText('本次生成达到单次输出上限。');
   if (reason === "AGENT_RUN_CANCELLED") return uiText('本次生成已停止');
   if (reason === "AGENT_NO_PROGRESS") return uiText('本次未能继续推进');
   return uiText('本次运行未完成');
@@ -744,17 +773,85 @@ function startCurrentLearning() {
 }
 const showAnswerPractice = computed(() => {
   const turn = guidanceTurn.value;
-  if (!turn?.turnId || !props.learningPurposeAvailable || props.courseActive || inSocraticDialogue.value
+  if (!turn?.turnId || !props.learningPurposeAvailable || props.courseActive
+    || (inSocraticDialogue.value && !(turn.canExplainBack && turn.outcome?.answer_view?.parts.some(part => part.kind === 'markdown' && part.text.trim())))
     || responseTurns.value.has(turn.turnId) || hasSuggestion(turn.turnId)) return false;
   // Teaching activities load separately. Wait for their actual response state before offering a new task.
   return !(turn.hasTeaching || turn.teachingRef || turn.outcome?.trace.some(step => step.tool === 'tutor.step'))
     || guidanceActivityReady.value.has(turn.turnId);
 });
-function practiceFromAnswer(kind: 'explain' | 'apply') {
-  const turnId = guidanceTurn.value?.turnId;
-  if (!showAnswerPractice.value || !turnId || learningActionBlocked.value || (kind === 'explain' && !props.closedBookReady)) return;
-  if (kind === 'explain') emit('explain-answer', turnId);
-  else emit('practice-answer', turnId);
+function practiceFromAnswer() {
+  const turn = guidanceTurn.value;
+  if (!showAnswerPractice.value || !turn?.turnId || learningActionBlocked.value) return;
+  followTranscript.value = true;
+  void scrollTranscriptToLatest();
+  emit('practice-answer', turn.turnId);
+}
+function explainFromAnswer(turn: ChatTurn) {
+  if (!turn.turnId || !turn.canExplainBack || !props.explainBackAvailable || explainBackBlocked.value) return;
+  emit('explain-answer', turn.turnId);
+  editQuestion();
+}
+const canExplainBack = computed(() => !!props.explainBackAvailable && !!guidanceTurn.value?.canExplainBack);
+const explainBackBlocked = computed(() => !!props.learningPurposeBusy || !!props.questionInputBlocked || !!props.questionSendBlocked
+  || !!props.historyLoading || !!props.historyError || runActive.value);
+const explainOrigin = computed(() => props.explainAnswerId ? props.chat.find(turn => turn.turnId === props.explainAnswerId) : null);
+const comparisonGroups = computed(() => {
+  const groups = new Map<string, { turnId: string; comparison: TeachBackComparison }[]>();
+  for (const turn of props.chat) {
+    const card = comparisonPart(turn)?.comparison;
+    if (!card || !turn.turnId || turn.pending || turn.outcome?.incomplete) continue;
+    const first = card.continuation?.first_round_id ?? card.round_id;
+    let group = groups.get(first);
+    if (!group) { group = []; groups.set(first, group); }
+    group.push({ turnId: turn.turnId, comparison: card });
+  }
+  return groups;
+});
+function comparisonGroup(card: TeachBackComparison) {
+  return comparisonGroups.value.get(card.continuation?.first_round_id ?? card.round_id) ?? [];
+}
+function roundsThrough(turnId: string, card: TeachBackComparison) {
+  const group = comparisonGroup(card);
+  return group.slice(0, group.findIndex(round => round.turnId === turnId) + 1);
+}
+function correctionEnabled(turn: ChatTurn) {
+  return !!props.explainBackAvailable && !explainBackBlocked.value && props.continuationEnabled !== false
+    && props.chat.some(answer => answer.canExplainBack && answer.turnId === turn.teachBack?.answerTurnId);
+}
+
+// A reply from the main composer belongs only to the displayed question on the chat head.
+const displayedHeadRound = ref('');
+const comparisonPracticeReady = ref(false);
+watch([() => props.activeChatSessionId, () => props.chat.at(-1)?.turnId], () => { displayedHeadRound.value = ''; comparisonPracticeReady.value = false; });
+function cardDisplayed(host: string, turnId: string, roundId: string) {
+  if (host === props.chat.at(-1)?.turnId) {
+    displayedHeadRound.value = turnId === host ? roundId : '';
+    comparisonPracticeReady.value = true;
+  }
+}
+const comparisonPracticeOrigin = computed(() => {
+  const head = props.chat.at(-1);
+  const card = head && comparisonPart(head)?.comparison;
+  const original = head?.teachBack?.answerTurnId;
+  if (!original || !card || head?.pending || head?.outcome?.incomplete || head?.error || props.closedCover || props.courseActive
+    || !props.learningPurposeAvailable || workspaceVisible.value || card.source.source_id !== props.currentSourceId
+    || card.source.source_revision !== props.noteSourceFingerprint) return;
+  return props.chat.some(turn => turn.turnId === original && turn.canExplainBack) ? original : undefined;
+});
+const comparisonFollowUp = computed(() => {
+  const head = props.chat.at(-1);
+  if (!head?.turnId || !head.teachBack || !props.explainBackAvailable || explainOrigin.value
+    || props.askDraft || props.personalNoteReference || props.workspaceNoteQuestionActive
+    || props.targetGoalId || presentationRequested.value || workspaceVisible.value) return null;
+  const card = comparisonPart(head)?.comparison;
+  if (!card?.follow_up || !correctionEnabled(head) || card.round_id !== displayedHeadRound.value
+    || card.source.source_id !== props.currentSourceId || card.source.source_revision !== props.noteSourceFingerprint) return null;
+  return { turnId: head.turnId, roundId: card.round_id, rowId: card.follow_up.row_id };
+});
+function submitCorrection(response: ComparisonResponse) {
+  followTranscript.value = true;
+  emit('comparison-response', response);
 }
 const composerGuidancePurpose = computed(() => {
   if (props.askDraft) return props.askDraft.status !== 'partial' && props.askDraft.quote.trim() ? 'selection' as const : null;
@@ -762,7 +859,7 @@ const composerGuidancePurpose = computed(() => {
   return guidanceTurn.value ? 'followup' as const : null;
 });
 const composerGuidanceActive = computed(() => {
-  if (inSocraticDialogue.value || !composerGuidancePurpose.value || activeTab.value !== 'agent'
+  if (explainOrigin.value || comparisonFollowUp.value || inSocraticDialogue.value || !composerGuidancePurpose.value || activeTab.value !== 'agent'
     || !props.learningPurposeAvailable || props.questionInputBlocked || props.questionSendBlocked
     || props.historyLoading || props.historyError || runActive.value || workspaceVisible.value
     || mobileResponseTurn.value || targetGoal.value || questionImage.value || imageLoading.value) return false;
@@ -869,6 +966,11 @@ async function scrollTranscriptToLatest() {
   await nextTick();
   const el = transcriptRef.value;
   if (!el || !followTranscript.value) return;
+  const latest = props.chat.at(-1);
+  if (latest?.turnId && comparisonPart(latest)) {
+    const card = el.querySelector<HTMLElement>(`[data-turn-id="${CSS.escape(latest.turnId)}"] .teach-back-comparison`);
+    if (card) { el.scrollTop += card.getBoundingClientRect().top - el.getBoundingClientRect().top; return; }
+  }
   el.scrollTop = el.scrollHeight;
 }
 watch(() => props.activeChatSessionId, () => {
@@ -938,10 +1040,16 @@ function answerParts(outcome: OuterOutcome): AgentAnswerPart[] {
       ? [{ kind: "markdown", text: outcome.answer }]
       : [];
 }
+function teachBackInProgress(turn: ChatTurn) {
+  return turn.pending && turn.activities?.some(step => step.kind === 'teach_back' && step.status === 'running');
+}
 
 function incompleteNotice(outcome: OuterOutcome): string | null {
   if (!outcome.incomplete || !outcome.warning) return null;
   switch (outcome.warning) {
+    case "MODEL_OUTPUT_LIMIT":
+      // The runtime supplies the stop reason and confirmed delivery state in the answer.
+      return outcome.answer?.trim() ? null : uiText('本次生成达到单次输出上限。');
     case "CONTEXT_BUDGET_EXCEEDED":
     case "ACTIVE_CONTEXT_EXHAUSTED":
       return uiText('这次内容较长，先提供当前可用的回答；其余部分可以继续补充。');
@@ -1502,12 +1610,6 @@ function canUndoMemoryUpdate(update: ProfileMemoryUpdate): boolean {
   return update.kind === "remembered" || update.kind === "corrected";
 }
 
-function hasProfileUsage(usage: ProfileUsageTrace): boolean {
-  return usage.injected_fact_ids.length > 0
-    || usage.claimed_used_fact_ids.length > 0
-    || usage.influences.length > 0;
-}
-
 function influenceLabel(influence: ProfileUsageTrace["influences"][number]): string {
   return {
     retrieval_plan: uiText('检索计划'),
@@ -1688,7 +1790,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <p v-if="turn.videoQuestion" class="turn-video-context">{{ uiText('视频问题 ·') }} {{ videoTime(turn.videoQuestion.frame.actual_pts_ms) }}{{ turn.videoQuestion.region ? uiText(' · 已选区域') : '' }}<span v-if="turn.videoQuestion.range"> {{ uiText('· 时间范围') }} {{ videoTime(turn.videoQuestion.range.start_ms) }}–{{ videoTime(turn.videoQuestion.range.end_ms) }}</span></p>
           <details v-if="turn.musicQuestion?.image || turn.videoQuestion?.image" class="turn-question-image"><summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" :alt="uiText('本次提问图片')" />{{ uiText('查看提问图片') }}</summary><img :src="questionImageUrl((turn.musicQuestion?.image || turn.videoQuestion?.image)!)" :alt="uiText('本次提问图片放大预览')" /></details>
           <MessageThoughts v-if="turn.turnId && !turn.pending" :session-id="props.activeChatSessionId" :turn-id="turn.turnId" role="user" :text="turn.user"><p class="u-msg">{{ turn.user }}</p></MessageThoughts><p v-else class="u-msg">{{ turn.user }}</p>
-          <button v-if="turn.turnId && !turn.pending && turn.user.trim()" class="quiet" @click="rememberUserThought(turn.turnId)">留为我的想法</button>
+          <button v-if="turn.turnId && !turn.pending && turn.user.trim()" class="quiet" @click="rememberUserThought(turn.turnId)">{{ uiText('留为我的想法') }}</button>
           <div v-if="turn.noteReferences?.length && !turn.pending" class="turn-note-links"><span>这次用到的想法</span><button v-for="(reference,index) in turn.noteReferences" :key="`${reference.note_id}:${reference.revision}`" @click="openPersonalNotes(reference)">想法 {{index+1}} · 第 {{reference.revision}} 版</button><button v-if="turn.turnId" @click="emit('continue-personal-note',turn.turnId,turn.noteReferences[0]!)">围绕这些想法补充</button></div>
           <p v-if="thoughtCaptureError" role="alert">{{ thoughtCaptureError }}</p>
           <button v-if="turn.boardFollowUp" type="button" class="board-location board-question-link"
@@ -1697,13 +1799,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           </button>
           <PresentationSceneCard v-if="turn.presentationFollowUp" :receipt="turn.presentationFollowUp" :mem-id="props.contextNotes.find(n => n.note?.association.kind === 'presentation' && n.note.association.receipt.saved_state_ref === turn.presentationFollowUp?.saved_state_ref)?.mem_id" @locate="locateScene(turn.presentationFollowUp)" @restore="locateScene(turn.presentationFollowUp, true)" />
           <p v-if="turn.localAgentName" class="turn-agent-name">{{ uiText('本轮 Agent') }} · {{ turn.localAgentName }}</p>
-          <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" :active="turn.pending" />
+          <AgentActivities v-if="turn.activities?.length" :activities="turn.activities" :active="turn.pending"
+            :status-text="teachBackInProgress(turn) ? turn.runStatus : undefined" />
           <template v-if="!network.enabled && turn.pending && turn.turnId">
             <AgentPermission v-for="step in turn.activities?.filter(activity => activity.name === 'acp.permission' && activity.status === 'running')"
               :key="step.step_id" :turn-id="turn.turnId" />
           </template>
-          <div v-if="turn.runStatus || (turn.pending && stopAvailable)" class="run-progress-footer">
-            <p v-if="turn.runStatus && (turn.runStatus !== uiText('正在运行') || !turn.activities?.length)" class="run-status" role="status">{{ turn.runStatus }}</p>
+          <div v-if="(turn.runStatus && !teachBackInProgress(turn) && !(turn.runStatus === uiText('运行已结束') && comparisonPart(turn))) || (turn.pending && stopAvailable)" class="run-progress-footer">
+            <p v-if="turn.runStatus && !teachBackInProgress(turn) && (turn.runStatus !== uiText('正在运行') || !turn.activities?.length)" class="run-status" role="status">{{ turn.runStatus }}</p>
             <button v-if="turn.pending && stopAvailable" type="button" class="stop-work-button" :disabled="stopping" @click="stopAgent"><Square :size="12" fill="currentColor" aria-hidden="true" />{{ stopping ? uiText('正在停止') : uiText('停止') }}</button>
           </div>
           <p v-if="turn.pending && !turn.runStatus && !turn.activities?.length" class="pending">{{ uiText('正在接收运行...') }}</p>
@@ -1727,7 +1830,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             <p class="incomplete">{{ turn.error }}</p>
             <button v-if="turn.localAgentUnavailable && $slots['agent-picker']" type="button" class="retry-question"
               :disabled="runActive" @click="emit('failed-agent-settings', turn.localAgentId)">{{ turn.localAgentId ? uiText('检查本轮 Agent 连接') : uiText('管理我的 Agent…') }}</button>
-            <button v-if="!turn.submissionUnknown && !turn.boardFollowUp && !turn.presentationFollowUp && turn.user.trim()" type="button" class="retry-question"
+            <button v-if="turn.teachBack?.answerTurnId && turn === chat.at(-1) && !turn.submissionUnknown && explainBackAvailable" type="button" class="retry-question"
+              :disabled="runActive || historyLoading || !!historyError" @click="emit('retry-explain-answer', turn)">{{ uiText('重试这次解释') }}</button>
+            <button v-else-if="!turn.teachBack && !turn.submissionUnknown && !turn.boardFollowUp && !turn.presentationFollowUp && turn.user.trim()" type="button" class="retry-question"
               :disabled="sending || historyLoading || !!historyError || questionInputBlocked" @click="emit('edit-failed-question', turn)">{{ uiText('编辑后重试') }}</button>
           </div>
           <div v-if="turn.boardCommits?.length" class="board-committed-parts" :aria-label="uiText('已保存的讲解')">
@@ -1738,7 +1843,7 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           <p v-if="!turn.pending && turn.boardDeliveryError" class="board-delivery-error incomplete" role="status">{{ uiText('内容没有加入画板：{0}', [turn.boardDeliveryError]) }}</p>
 
           <div v-if="turn.outcome && (!turn.error || turn.spendStop)" class="a-msg">
-            <MessageThoughts :session-id="props.activeChatSessionId" :turn-id="turn.turnId ?? ''" role="assistant" :text="deliveredAnswerText(turn)">
+            <MessageThoughts v-if="!comparisonPart(turn) || turnDisplayParts(turn).length" :session-id="props.activeChatSessionId" :turn-id="turn.turnId ?? ''" role="assistant" :text="deliveredAnswerText(turn)">
             <div v-if="answerParts(turn.outcome).length" :ref="el => { if (turn.turnId) { if (el) answerRoots.set(turn.turnId, el as HTMLElement); else answerRoots.delete(turn.turnId); } }" class="ans-text md" @pointerdown="startAnswerSelection" @click="onAnswerSourceClick(turn, answerParts(turn.outcome), $event)">
               <template v-for="(part, pi) in turnDisplayParts(turn)" :key="pi">
                 <div v-if="part.kind === 'html' && part.socratic && !turn.outcome.incomplete" class="socratic-question">
@@ -1783,6 +1888,14 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </div>
             <p v-else class="ans-text">{{ uiText('暂无回答。') }}</p>
             </MessageThoughts>
+            <TeachBackComparisonCard v-if="comparisonPart(turn) && comparisonPart(turn)!.comparison.round_id !== courseHostedRound && turn.turnId && !turn.pending && !turn.outcome.incomplete && !closedCover && companionVisible && activeTab === 'agent'"
+              :comparison="comparisonPart(turn)!.comparison" :session-id="activeChatSessionId" :turn-id="turn.turnId"
+              :rounds="roundsThrough(turn.turnId, comparisonPart(turn)!.comparison)"
+              :correction-enabled="correctionEnabled(turn)"
+              :current-source-id="currentSourceId" :current-source-revision="noteSourceFingerprint"
+              @correct="submitCorrection" @displayed="(turnId, roundId) => cardDisplayed(turn.turnId!, turnId, roundId)"
+              @view-round="() => { if (turn === chat.at(-1)) displayedHeadRound = '' }"
+              @jump="(lid, turnId) => emit('comparison-passage', lid, turnId)" @locate="scrollToTurn" />
             <div v-if="workspaceVisible && workspace?.turnId === turn.turnId" :ref="element => { workspaceTeachingTarget = element as HTMLElement | null; }" class="workspace-teaching" />
             <TutorActivities v-if="turn.turnId && !turn.pending && (turn.hasTeaching || turn.teachingRef || turn.outcome.trace.some(t => t.tool === 'tutor.step'))"
               :socratic-target="prompt => socraticTarget(turn, prompt)"
@@ -1807,6 +1920,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
             </button>
             <details v-if="deliveredAnswerText(turn)" class="answer-actions">
               <summary>{{ uiText('回答操作') }}</summary>
+              <button v-if="turn !== latestAnswerTurn && turn.canExplainBack && explainBackAvailable && !workspaceVisible"
+                type="button" class="history-explain" :disabled="explainBackBlocked" @click="explainFromAnswer(turn)">{{ uiText('我来解释一下') }}</button>
               <button type="button" class="answer-add-board" @click="emit('add-to-board', { kind: 'answer', session_id: activeChatSessionId, turn_id: turn.turnId! })">{{ uiText('完整回答加入画板') }}</button>
               <button v-if="workspaceNotesAvailable" :disabled="workspaceNoteImporting" @click="emit('save-workspace-note', { kind: 'answer', session_id: activeChatSessionId, turn_id: turn.turnId! })">{{ uiText('保存到空间笔记') }}</button>
               <button @click="emit('share-answer', turn)">{{ uiText('生成理解卡') }}</button>
@@ -1862,9 +1977,9 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
               </div>
             </div>
 
-            <details v-if="hasProfileUsage(turn.outcome.profile_usage)" class="profile-usage">
-              <summary>{{ uiText('学习偏好与背景 ·') }} {{ turn.outcome.profile_usage.injected_fact_ids.length }} {{ uiText('条') }}</summary>
-              <p v-if="turn.outcome.profile_usage.influences.length">
+            <details v-if="turn.outcome.profile_usage.influences.length" class="profile-usage">
+              <summary>{{ uiText('学习背景对本次回答的影响') }}</summary>
+              <p>
                 {{ turn.outcome.profile_usage.influences.map(influenceLabel).join(" · ") }}
               </p>
             </details>
@@ -1907,18 +2022,33 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <slot v-if="useLearningSheet" name="practice-offer" />
         <div v-show="mobileConversation && !!mobileResponseTurn" class="mobile-response-toolbar"><div ref="responseEditingHost" /><button type="button" class="mobile-editor-close" :aria-label="uiText('收起作答')" @click="closeResponseEditor"><X :size="18" aria-hidden="true" /></button></div>
         <Teleport :to="learningDockTarget || 'body'" :disabled="!learningDockTarget">
-        <div v-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" v-show="!mobileConversation || !mobileResponseTurn" class="learning-dock" :class="{ 'has-practice-actions': showAnswerPractice }" role="group" :aria-label="uiText('当前回答的学习操作')">
+        <div v-if="comparisonPracticeOrigin" class="learning-dock has-practice-actions" role="group" :aria-label="uiText('当前回答的学习操作')">
+          <div class="answer-practice-actions">
+            <button type="button" class="learning-closed-book" :disabled="learningActionBlocked || !closedBookReady || !comparisonPracticeReady"
+              aria-describedby="answer-practice-explanation" @click="emit('closed-book-answer', comparisonPracticeOrigin)">{{ uiText('练到会') }}</button>
+            <button type="button" class="learning-apply" :disabled="learningActionBlocked" @click="emit('practice-answer', comparisonPracticeOrigin)">{{ uiText('给我一道应用题') }}</button>
+            <p id="answer-practice-explanation" class="learning-practice-note">{{ uiText('「练到会」会收起资料，按你的回答追问或补讲，可随时暂停。') }}</p>
+          </div>
+        </div>
+        <div v-else-if="latestAnswerTurn && !workspaceVisible && !historyLoading && !historyError" v-show="!mobileConversation || !mobileResponseTurn" class="learning-dock" :class="{ 'has-practice-actions': showAnswerPractice }" role="group" :aria-label="uiText('当前回答的学习操作')">
           <div class="learning-dock-copy"><span>{{ musicMode ? uiText('听到这里') : uiText('读到这里') }}</span><p>{{ responseTurns.has(latestAnswerTurn.turnId!) ? uiText('试着把理解变成自己的话') : uiText('有疑问，随时停下来聊一聊') }}</p></div>
           <div v-if="showAnswerPractice" class="answer-practice-actions">
-            <button type="button" class="learning-explain" :disabled="learningActionBlocked || !closedBookReady" aria-describedby="answer-practice-explanation" @click="practiceFromAnswer('explain')">{{ uiText('我来解释一下') }}</button>
-            <button type="button" class="learning-apply" :disabled="learningActionBlocked" @click="practiceFromAnswer('apply')">{{ uiText('给我一道应用题') }}</button>
-            <p id="answer-practice-explanation" class="learning-practice-note">{{ uiText('解释练习会收起资料，按你的回答追问或补讲，可随时暂停。') }}</p>
+            <button v-if="canExplainBack" type="button" class="learning-explain" :disabled="explainBackBlocked" @click="explainFromAnswer(latestAnswerTurn)">{{ uiText('我来解释一下') }}</button>
+            <button type="button" class="learning-closed-book" :disabled="learningActionBlocked || !closedBookReady" aria-describedby="answer-practice-explanation" @click="emit('closed-book-answer', latestAnswerTurn.turnId!)">{{ uiText('练到会') }}</button>
+            <button type="button" class="learning-apply" :disabled="learningActionBlocked" @click="practiceFromAnswer">{{ uiText('给我一道应用题') }}</button>
+            <p id="answer-practice-explanation" class="learning-practice-note">{{ uiText('「练到会」会收起资料，按你的回答追问或补讲，可随时暂停。') }}</p>
           </div>
           <button type="button" class="learning-help" :aria-label="uiText('这一步没跟上')" :disabled="sending" @click="emit('clarify-answer', latestAnswerTurn.turnId!)"><CircleHelp :size="17" aria-hidden="true" />{{ mobileConversation ? uiText('没跟上') : uiText('这一步没跟上') }}</button>
           <button v-if="!showAnswerPractice && !courseActive" v-show="!mobileConversation || structuredResponseAvailable || inSocraticDialogue" type="button" class="learning-respond" :disabled="sending" @click="focusLearningResponse">{{ learningResponseLabel }}<ArrowRight :size="16" aria-hidden="true" /></button>
         </div>
         </Teleport>
-        <div v-if="props.runConnection === 'reconnecting' || targetGoal || props.askDraft || props.personalNoteReference || (useLearningSheet && (videoQuestion || $slots['note-question']))" v-show="!mobileConversation || mobileComposerVisible || props.runConnection === 'reconnecting'" class="agent-input-context">
+        <div v-if="explainOrigin" class="teach-back-binding">
+          <button type="button" class="teach-back-origin" @click="scrollToTurn(explainOrigin.turnId!)">
+            <Link2 :size="14" aria-hidden="true" /><span>{{ uiText('正在解释这条回答') }} · {{ explainOrigin.user }}</span>
+          </button>
+          <button type="button" class="teach-back-cancel" :aria-label="uiText('取消绑定')" @click="emit('cancel-explain-answer'); editQuestion()"><X :size="16" /></button>
+        </div>
+        <div v-else-if="props.runConnection === 'reconnecting' || targetGoal || props.askDraft || props.personalNoteReference || (useLearningSheet && (videoQuestion || $slots['note-question']))" v-show="!mobileConversation || mobileComposerVisible || props.runConnection === 'reconnecting'" class="agent-input-context">
         <slot v-if="useLearningSheet" name="note-question" />
         <div v-if="useLearningSheet && videoQuestion" ref="videoContextHost" />
         <p v-if="props.runConnection === 'reconnecting'" role="status">{{ uiText('连接中断，正在重新连接；运行仍可继续。') }}</p>
@@ -1950,8 +2080,8 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
           :disabled="props.questionInputBlocked || (network.enabled && (props.historyLoading || !!props.historyError))"
           :value="props.agentInput"
           rows="1"
-          :aria-label="musicMode ? uiText('围绕当前音乐提问') : uiText('围绕当前阅读内容提问')"
-          :placeholder="inputComposing ? '' : inSocraticDialogue ? uiText('说说你的想法…') : composerSuggestionVisible ? composerGuidance!.draft : props.askDraft ? uiText('围绕引用来源提问...') : workspaceVisible && sceneBound ? uiText('围绕这页演示提问…') : props.videoImagesEnabled ? uiText('这里为什么这样？问问伴读…') : props.musicMode ? uiText('看不懂的谱线、音符，截图问问…') : !props.chat.length ? uiText('输入问题或学习目标…') : uiText('说说你的想法，或继续提问…')"
+          :aria-label="explainOrigin ? uiText('我来解释一下') : musicMode ? uiText('围绕当前音乐提问') : uiText('围绕当前阅读内容提问')"
+          :placeholder="inputComposing ? '' : explainOrigin ? uiText('用自己的话解释…') : comparisonFollowUp ? uiText('回应追问，或问新问题…') : inSocraticDialogue ? uiText('说说你的想法…') : composerSuggestionVisible ? composerGuidance!.draft : props.askDraft ? uiText('围绕引用来源提问...') : workspaceVisible && sceneBound ? uiText('围绕这页演示提问…') : props.videoImagesEnabled ? uiText('这里为什么这样？问问伴读…') : props.musicMode ? uiText('看不懂的谱线、音符，截图问问…') : !props.chat.length ? uiText('输入问题或学习目标…') : uiText('说说你的想法，或继续提问…')"
           :aria-describedby="composerSuggestionVisible ? (composerGuidancePurpose === 'welcome' ? 'reading-input-suggestion' : 'reading-input-invitation reading-input-suggestion') : undefined"
           @input="emit('update:agentInput', ($event.target as HTMLTextAreaElement).value)"
           @focus="composeExpanded = true"
@@ -1962,20 +2092,20 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
         <InputSuggestionHint v-if="composerSuggestionVisible" id="reading-input-suggestion" class="reading-input-suggestion" @accept="acceptComposerSuggestion" />
         <div class="composer-controls">
         <slot name="agent-picker" />
-        <VoiceInput class="composer-voice" :scope="props.activeChatSessionId ?? ''" :disabled="activeTab !== 'agent' || props.companionVisible === false || (mobileConversation && !mobileComposerVisible) || props.questionInputBlocked || sending || canStop || stopping || historyLoading || !!historyError" @insert="insertVoice" @active="voiceActive = $event" />
+        <VoiceInput class="composer-voice" :scope="props.activeChatSessionId ?? ''" :disabled="activeTab !== 'agent' || props.companionVisible === false || (mobileConversation && !mobileComposerVisible) || props.questionInputBlocked || sending || canStop || stopping || historyLoading || !!historyError" @insert="insertVoice" @active="voiceActive = $event" @open-settings="emit('open-voice-settings')" />
         <div v-if="useLearningSheet && workspaceVisible" class="workspace-compose-actions">
           <button v-if="workspaceVisible" type="button" class="workspace-binding" :aria-pressed="sceneBound" :aria-label="noteFollowUp ? uiText('附上记录时的演示状态') : uiText('附上当前演示状态')" :title="sceneBound ? uiText('不附演示状态') : uiText('附上当前演示')" @click="sceneBound = !sceneBound">
             <component :is="sceneBound ? Link2 : Link2Off" :size="14" aria-hidden="true" /><span>{{ sceneBound ? uiText('{0} · {1}', [noteFollowUp ? uiText('记录时的演示') : uiText('当前演示'), 'v' + workspace?.reference.revision]) : uiText('普通聊天') }}</span>
           </button>
         </div>
-          <button type="button" class="presentation-request" data-tour="presentation" role="switch" :aria-checked="presentationRequested" :aria-label="uiText('演示页')"
+          <button v-if="!explainOrigin" type="button" class="presentation-request" data-tour="presentation" role="switch" :aria-checked="presentationRequested" :aria-label="uiText('演示页')"
             :title="presentationUnavailable ? uiText('演示制作暂不可用') : uiText('将本次问题制作成可交互的演示页')"
             :disabled="presentationUnavailable || sending || canStop || stopping || historyLoading || !!historyError || questionInputBlocked"
             @click="presentationRequested = !presentationRequested">
             <Presentation :size="16" aria-hidden="true" /><span>{{ uiText('演示页') }}</span><span class="presentation-switch-track" aria-hidden="true"><span /></span>
           </button>
-          <span v-if="presentationRequested" class="presentation-request-hint" role="status">{{ uiText('本次回答制作演示页') }}</span>
-          <span v-else-if="presentationUnavailable" class="presentation-request-hint">{{ uiText('演示制作暂不可用') }}</span>
+          <span v-if="!explainOrigin && presentationRequested" class="presentation-request-hint" role="status">{{ uiText('本次回答制作演示页') }}</span>
+          <span v-else-if="!explainOrigin && presentationUnavailable" class="presentation-request-hint">{{ uiText('演示制作暂不可用') }}</span>
           <button v-if="imagesEnabled" type="button" class="attach-image" :aria-label="questionImage ? uiText('替换图片') : uiText('添加图片')" :title="uiText('添加图片，也可直接粘贴')" :disabled="imageLoading || sending || questionInputBlocked" @click="imageInput?.chooseFile()"><Plus :size="20" aria-hidden="true" /></button>
           <Teleport :to="videoContextHost || 'body'" :disabled="!videoContextHost">
           <div v-if="videoQuestion" class="video-binding" :aria-label="uiText('问题绑定位置')" :title="uiText('问题绑定 {0}{1}', [videoTime(videoQuestion.frame.actual_pts_ms), videoQuestion.region ? uiText(' · 已选区域') : ''])">
@@ -3335,13 +3465,13 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .highlight-card {
   background: #fffdf0;
 }
-.mobile-conversation-header { display: flex; align-items: center; width: 100%; min-width: 0; gap: 4px; }
+.mobile-conversation-header { display: flex; flex-wrap: wrap; align-items: center; width: 100%; min-width: 0; gap: 0 4px; }
 .mobile-back, .mobile-editor-close { display: grid; place-items: center; flex: 0 0 44px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: transparent; color: var(--steel); }
-.mobile-learning-title { display: flex; flex: 1; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; min-height: 52px; padding: 4px 0; border: 0; background: transparent; color: var(--ink); text-align: left; }
+.mobile-learning-title { display: flex; flex: 1 0 9rem; flex-direction: column; justify-content: center; gap: 3px; min-width: 0; min-height: 52px; padding: 4px 0; border: 0; background: transparent; color: var(--ink); text-align: left; }
 .mobile-learning-title > span { display: flex; align-items: center; gap: 7px; font-size: .92rem; font-weight: 600; }
 .mobile-learning-title small { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--steel); font-size: .68rem; font-weight: 400; }
 .mobile-learning-title small.attention { color: var(--brand-green-deep); }
-.mobile-records { flex: 0 0 auto; }
+.mobile-records { flex: 0 0 auto; max-width: 100%; margin-inline-start: auto; }
 .mobile-records :deep(button) { min-height: 44px; padding: 6px 10px; border: 0; background: transparent; color: var(--brand-green-deep); font-size: .74rem; white-space: nowrap; }
 .mobile-tool-section { padding: 16px 0; border-top: 1px solid var(--line); }
 .mobile-tool-section > p { margin: 0 0 10px; color: var(--steel); font-size: .73rem; }
@@ -3375,12 +3505,17 @@ function influenceLabel(influence: ProfileUsageTrace["influences"][number]): str
 .welcome-learning-actions .start-current-learning:disabled { opacity: .5; cursor: default; }
 .welcome-learning-actions small { color: var(--steel); font-size: .76rem; line-height: 1.6; overflow-wrap: anywhere; }
 .learning-dock.has-practice-actions { flex-wrap: wrap; justify-content: flex-start; gap: 8px; }
-.answer-practice-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: 100%; }
-.learning-dock .answer-practice-actions button { min-width: 0; min-height: 42px; padding: 9px 10px; white-space: normal; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--ink); font-size: .8rem; line-height: 1.5; }
+.answer-practice-actions { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.learning-dock .answer-practice-actions button { flex: 1 1 78px; min-width: min-content; min-height: 42px; padding: 9px 10px; white-space: normal; border: 1px solid var(--line); border-radius: 9px; background: var(--surface-soft); color: var(--ink); font-size: .8rem; line-height: 1.5; }
 .learning-dock .answer-practice-actions .learning-explain { border-color: var(--brand-green-deep); background: var(--brand-green-deep); color: #fff; }
 .learning-dock .answer-practice-actions button:hover:not(:disabled) { filter: brightness(.97); }
-.learning-practice-note { grid-column: 1 / -1; margin: 0; color: var(--steel); font-size: .72rem; line-height: 1.65; overflow-wrap: anywhere; }
-.conversation-response .answer-practice-actions { grid-template-columns: minmax(0, 1fr); }
+.learning-practice-note { flex-basis: 100%; margin: 0; color: var(--steel); font-size: .72rem; line-height: 1.65; overflow-wrap: anywhere; }
+.conversation-response .answer-practice-actions button { flex-basis: 100%; }
+.teach-back-binding { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 0 4px 0 10px; border-inline-start: 2px solid var(--brand-green-deep); background: var(--surface-soft); border-radius: 4px; }
+.teach-back-binding button { display: flex; align-items: center; gap: 6px; min-height: 34px; border: 0; background: transparent; color: var(--brand-green-deep); font: inherit; font-size: .8rem; cursor: pointer; }
+.teach-back-origin { min-width: 0; text-align: start; }
+.teach-back-origin span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.teach-back-binding svg, .teach-back-cancel { flex: 0 0 auto; }
 .follow-up-tray {
   flex:0 1 auto; min-height:0; max-height:68%; overflow:auto; overscroll-behavior:contain;
   border-top:1px solid var(--line); border-radius:12px 12px 0 0; padding:8px 16px 14px; background:var(--canvas);

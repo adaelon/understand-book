@@ -2,6 +2,26 @@
 
 使用生产 `POST /agent/chat` 测量 Resident Agent。问题不附带金标准、参考 LID 或检索种子；Agent 自己决定调用哪些工具、如何追问工具结果、何时交付答案。
 
+## 长对话短长配对
+
+从七轮隔离历史接第八轮“按之前的约定整理”。种子包含同源讨论、Reader 回读及纠正。以下为 PowerShell，从仓库根目录执行。每次挑选新的种子和结果目录。Windows 的活动存储使用短路径，Reader 停止后由运行器归档回样本目录。[实验判据和状态](../../docs/切片方案-长对话状态保持与规则遵循.md)
+
+```powershell
+$seed = 'docs/evidence/long-seeds-new'
+python evals/semantic/long-conversation-seeds.py --out $seed
+$pairArgs = @('--book', "$seed/book", '--short-memory', "$seed/short-memory", '--long-memory', "$seed/long-memory", '--scratch', 'E:/ub-pair')
+node evals/semantic/long-conversation-pair.mjs @pairArgs --out docs/evidence/long-preflight-new
+node --test evals/semantic/long-conversation-pair.test.mjs evals/semantic/provider-recorder.test.mjs
+```
+
+预检捕获实际出站请求并在本机拦截，供应商用量为空。真实批次在相同参数后加 `--live --max-cny <本批剩余额度> --max-requests 12 --timeout-seconds 240`，以 `node --env-file=.env` 启动并选新 `--out`。所用公开 DeepSeek 端点、两款模型、人民币费率和共同输出上限见[配对运行器](long-conversation-pair.mjs)。线上发送按时间段全冷预留，回执缺失时保留整次预留。一次调用的输入长度包含缓存命中，任务累计费用另计。
+
+用 `node evals/semantic/long-conversation-report.mjs <批次目录>` 从原始回执重算 `observations.json`。每个样本保留实际请求、门禁结果、笔记变化、最终页面和可用的 320px 截图。检查首次候选和最终讲义是否按用户原话排版、是否算出 0.04，还需读实际正文与页面。
+
+要单独检查输出额度对同一任务的影响，可在新目录添加 `--only long-deepseek-flash --output-limit 16384`，按先前各批扣除已报用量与所有缺失回执预留后的余额设置 `--max-cny`。每条记录分别写出上游确认采样、本地拒绝、上游拒绝或送达未知；后续请求成功采样后，相应工具回执才计入模型已收到的诊断。
+
+样本停服后可执行 `node evals/semantic/long-conversation-reopen.mjs <重开结果.json> <短路径临时目录> <批次目录...>`。程序复制归档的私人库，在新进程回读活动聊天、完整第八轮和笔记。模型请求仅能进入本机拦截器。
+
 ## 运行
 
 ```powershell

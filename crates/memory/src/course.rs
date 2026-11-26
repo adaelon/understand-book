@@ -312,7 +312,28 @@ pub struct CourseSupportVisit {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct CourseTeachBackRef {
+    pub session_id: String,
+    pub turn_id: String,
+    pub round_id: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
+pub struct CourseExplanationOrigin {
+    pub run_id: String,
+    pub lesson_id: String,
+    pub round_index: u32,
+    pub stage: CourseStage,
+    pub delivery_ref: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
+#[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct CourseExpression {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub teach_back: Option<CourseTeachBackRef>,
     pub fact_ref: String, pub job_ref: String, pub activity: String, pub response: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
@@ -346,6 +367,9 @@ pub struct CourseUnderstanding {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, ts_rs::TS)]
 #[ts(export, export_to = "../../../packages/web/src/generated/")]
 pub struct CourseReview {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "import('./TeachBackComparison').TeachBackComparison")]
+    pub comparison: Option<Value>,
     pub expression: CourseExpression, pub status: String, pub displayed: bool,
     pub feedback: Option<CourseFeedback>, pub understanding: Vec<CourseUnderstanding>,
     pub error: Option<String>,
@@ -823,7 +847,7 @@ fn enqueue_response(db: &Connection, scope: &str, run: &mut CourseRun, event: &T
         help.push(json!({"event_id":saved.event_id,"binding":saved.binding,"kind":saved.kind,"text":saved.payload.get("text").or_else(||saved.payload.get("answer")),"occurred_at":saved.occurred_at}));
     }
     let response_round=event.payload["round_index"].as_u64().map(|index|index as u32).unwrap_or(run.round_index);
-    let expression = CourseExpression { fact_ref:event.event_id.clone(),job_ref:format!("course-review:{}",event.event_id),
+    let expression = CourseExpression { teach_back:None, fact_ref:event.event_id.clone(),job_ref:format!("course-review:{}",event.event_id),
         activity:event.payload["course_activity"].as_str().unwrap_or("reflection").into(),response:event.learner_expression().unwrap().into(),
         closed_book_result_ref:event.payload["closed_book_result_ref"].as_str().map(str::to_owned),
         intent:serde_json::from_value(event.payload["intent"].clone()).map_err(storage)?,
@@ -892,11 +916,86 @@ fn feedback_reply_context(db: &Connection, scope: &str, job_ref: &str, previous:
         "next_step":job.guidance.as_ref().and_then(|g|g.get("next_step"))}))
 }
 
+/// Chat answers count when delivered for this course. Comparisons count from actual display.
+fn conversation_support(db: &Connection, scope: &str, run_id: &str, chat: Option<&str>) -> Result<Vec<String>, ToolError> {
+    let mut query = db.prepare("SELECT d.event_id, d.seq AS delivered FROM teaching_trace b JOIN teaching_trace d
+        ON d.learning_workspace_id=b.learning_workspace_id
+        AND d.event_id='usage:' || b.session_id || ':assistant:' || json_extract(b.event,'$.binding.turn_id')
+        WHERE b.learning_workspace_id=?1 AND json_extract(b.event,'$.payload.inquiry_course.lesson.progress.run_id')=?2
+        AND json_extract(d.event,'$.payload.usage.kind')='assistant_delivery'
+        AND (?3 IS NULL OR json_extract(d.event,'$.binding.chat_session_id')=?3)
+        UNION ALL
+        SELECT d.event_id, r.seq FROM teaching_trace d JOIN teaching_trace r
+        ON r.learning_workspace_id=d.learning_workspace_id AND r.event_id='display:'||d.event_id
+        WHERE d.learning_workspace_id=?1 AND d.session_id=?2 AND json_extract(d.event,'$.kind')='teach_back_delivered'
+        AND ?3 IS NULL
+        ORDER BY delivered").map_err(storage)?;
+    let rows = query.query_map(params![scope,run_id,chat], |row|row.get::<_,String>(0)).map_err(storage)?;
+    rows.map(|row|row.map_err(storage)).collect()
+}
+
 impl LearningStore {
+    pub fn course_chat_support(&self, run_id: &str, chat: &str) -> Result<Vec<String>, ToolError> {
+        conversation_support(&self.connection,&self.workspace_scope,run_id,Some(chat))
+    }
+
+    /// Locate the exact explanation delivered when this round entered its explanation stage.
+    pub fn course_explanation_delivery(&self, run: &CourseRun) -> Result<TeachingEvent, ToolError> {
+        let raw: Option<String> = self.connection.query_row("SELECT event FROM teaching_trace
+            WHERE learning_workspace_id=? AND session_id=? AND json_extract(event,'$.payload.round_index')=?
+            AND json_type(event,'$.payload.course_content.explanation')='text' ORDER BY seq DESC LIMIT 1",
+            params![self.workspace_scope,run.progress.run_id,run.round_index], |r| r.get(0)).optional().map_err(storage)?;
+        serde_json::from_str(&raw.ok_or_else(|| invalid("当前轮次还没有交付课程讲解"))?).map_err(storage)
+    }
+
+    /// Link a verified chat delivery to the original activity without scheduling a second coach.
+    pub fn accept_course_comparison(&mut self, origin: &CourseExplanationOrigin, delivery: &TeachingEvent,
+        expression: &TeachingEvent, reinterpretation: bool) -> Result<(), ToolError> {
+        let scope = &self.workspace_scope;
+        let tx = self.connection.transaction_with_behavior(TransactionBehavior::Immediate).map_err(storage)?;
+        let mut run = read_run(&tx, scope, &origin.run_id)?;
+        if run.expressions.iter().any(|e| e.job_ref == delivery.event_id) { return Ok(()); }
+        if run.progress.lesson_id != origin.lesson_id || origin.stage != CourseStage::Explanation
+            || delivery.binding.tutor_session_id != origin.run_id || origin.round_index > run.round_index {
+            return Err(invalid("对照与提交时的课程轮次不一致"));
+        }
+        let response = expression.payload["response"].as_str().ok_or_else(||invalid("找不到课程解释原话"))?;
+        if !reinterpretation {
+            if let Some(previous) = run.round_history.get_mut(origin.round_index as usize) {
+                previous.reflection = Some(response.into());
+            } else if run.progress.stage == CourseStage::Explanation && run.round_index == origin.round_index {
+                run.reflection = Some(response.into());
+            }
+        }
+        run.expressions.push(CourseExpression {
+            teach_back:Some(CourseTeachBackRef { session_id:delivery.binding.chat_session_id.clone(),
+                turn_id:delivery.binding.turn_id.clone(), round_id:delivery.event_id.clone() }),
+            job_ref:delivery.event_id.clone(), fact_ref:expression.event_id.clone(), activity:"reflection".into(),
+            intent:Some(CourseReplyIntent::Answer), response:response.into(), closed_book_result_ref:None,
+            reply_to:delivery.payload["comparison"]["continuation"]["parent_round_id"].as_str().map(str::to_owned),
+            round_index:Some(origin.round_index),round_title:run.lesson.round_titles().get(origin.round_index as usize).cloned(),
+        });
+        run.progress.revision += 1;
+        tx.execute("UPDATE course_runs SET state=? WHERE learning_workspace_id=? AND run_id=?",
+            params![serde_json::to_string(&run).map_err(storage)?,scope,origin.run_id]).map_err(storage)?;
+        tx.commit().map_err(storage)
+    }
+
     pub fn course_view(&self, id: &str) -> Result<CourseLessonView, ToolError> {
         let run = self.course_run(id)?;
         let mut view = run.view();
         for expression in &run.expressions {
+            if let Some(reference) = &expression.teach_back {
+                let covered = self.closed_book(&reference.session_id, &run.lesson.summary.source.publication.book_id)?
+                    .is_some_and(|practice| matches!(practice.status.as_str(), "active" | "paused"));
+                let comparison = if covered { None } else {
+                    Some(self.teaching_event(&reference.round_id)?.payload["comparison"].clone())
+                };
+                let displayed = self.teaching_event_sequence(&format!("display:{}", reference.round_id))?.is_some();
+                view.reviews.push(CourseReview { expression:expression.clone(), status:"ready".into(),
+                    displayed, comparison, feedback:None, understanding:vec![], error:None });
+                continue;
+            }
             let Some(job) = self.coach_job(&expression.job_ref)? else { continue; };
             let displayed = run.displayed_feedback.contains(&expression.job_ref);
             let guidance = job.guidance.as_ref();
@@ -908,7 +1007,7 @@ impl LearningStore {
                     assistance:Some(if e.assistance_refs.is_empty() && e.support_delivery_refs.is_empty(){"本次未记录提示或先前讲解"}else{"在已提供帮助下"}.into()),
                     demonstrated:e.understanding.demonstrated, difficulties:e.understanding.difficulties,
                     unconfirmed:e.understanding.unconfirmed }).collect();
-            view.reviews.push(CourseReview { expression:expression.clone(),
+            view.reviews.push(CourseReview { comparison:None, expression:expression.clone(),
                 status:serde_json::to_value(job.status).unwrap().as_str().unwrap().into(), displayed,
                 feedback:if displayed { feedback } else { None }, understanding:if displayed { understanding } else { vec![] },
                 error:job.error.as_ref().and_then(|e| e["message"].as_str()).map(str::to_owned) });
@@ -1057,15 +1156,7 @@ impl LearningStore {
         if matches!(request.action, CourseAction::Predict { .. } | CourseAction::Investigate { .. } | CourseAction::Reflect { .. } | CourseAction::Answer { .. } | CourseAction::AskQuestion { .. } | CourseAction::DecisionReply { .. } | CourseAction::FeedbackReply { .. }) {
             // Only completed answers from turns admitted for this exact course
             // precede the new expression. Reuse the original delivery facts.
-            let mut q = tx.prepare("SELECT d.event_id FROM teaching_trace b JOIN teaching_trace d
-                ON d.learning_workspace_id=b.learning_workspace_id
-                AND d.event_id='usage:' || b.session_id || ':assistant:' || json_extract(b.event,'$.binding.turn_id')
-                WHERE b.learning_workspace_id=?
-                AND json_extract(b.event,'$.payload.inquiry_course.lesson.progress.run_id')=?
-                AND json_extract(d.event,'$.payload.usage.kind')='assistant_delivery'
-                ORDER BY d.seq").map_err(storage)?;
-            let refs = q.query_map(params![scope,run.progress.run_id],|r|r.get::<_,String>(0)).map_err(storage)?
-                .collect::<Result<Vec<_>,_>>().map_err(storage)?;
+            let refs = conversation_support(&tx,scope,&run.progress.run_id,None)?;
             for id in refs { if !response_support.contains(&id) { response_support.push(id); } }
         }
         let binding = TeachingBinding {

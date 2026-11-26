@@ -401,7 +401,7 @@ pub(crate) fn route_select(state: &mut AppState, book: &str, id: &str) -> Reply 
         return err_reply(&e);
     }
     state.workspace.select_chat(id.into(), messages);
-    match agent_history_response(&state.user.agent_history, &state.workspace.book, Some(id)) {
+    match reader_history_response(&state.user, &state.user.agent_history, &state.workspace.book, Some(id)) {
         Ok(response) => ok_json(&response),
         Err(e) => err_reply(&e),
     }

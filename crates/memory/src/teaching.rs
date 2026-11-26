@@ -141,6 +141,8 @@ pub enum TeachingFact {
     DesignRevised,
     MoveSelected,
     MessageDelivered,
+    /// Verified teach-back comparison. A separate Displayed receipt records exposure.
+    TeachBackDelivered,
     Displayed,
     LearnerAction,
     HelpDelivered,
@@ -197,6 +199,9 @@ impl TeachingEvent {
     /// Actual learner expression; UI labels and assistant quotations remain context.
     pub fn learner_expression(&self) -> Option<&str> {
         let text = match self.kind {
+            // The entry also accepts requests for help. Only a verified teach-back
+            // creates the corresponding confirmed LearnerAction.
+            TeachingFact::UsageObserved if self.payload["interaction"]["action"]["entry_action"] == "explain_back" => None,
             TeachingFact::UsageObserved if self.payload["usage"]["kind"] == "reading_action" =>
                 self.payload.get("interaction").filter(|v|v.is_object())
                     .map(|v| &v["user_supplement"]).unwrap_or(&self.payload["response"]).as_str(),
@@ -358,6 +363,20 @@ impl LearningStore {
         let rows=query.query_map(params![delivery,self.workspace_scope],|row|row.get::<_,String>(0)).map_err(storage)?;
         let events=rows.map(|row|serde_json::from_str::<TeachingEvent>(&row.map_err(storage)?).map_err(storage)).collect::<Result<Vec<_>,_>>()?;
         Ok(events.into_iter().filter(|event|event.learner_expression().is_some()).collect())
+    }
+
+    /// The same answer may be revisited after other conversations or a failed
+    /// attempt. Only comparisons actually displayed for this answer count.
+    pub fn displayed_teach_backs(&self, binding: &TeachingBinding, original_turn: &str) -> Result<Vec<String>, ToolError> {
+        let mut query = self.connection.prepare("SELECT d.event_id FROM teaching_trace d
+            JOIN teaching_trace r ON r.learning_workspace_id=d.learning_workspace_id AND r.event_id='display:'||d.event_id
+            WHERE d.learning_workspace_id=?1 AND json_extract(d.event,'$.kind')='teach_back_delivered'
+            AND json_extract(d.event,'$.binding.chat_session_id')=?2 AND json_extract(d.event,'$.binding.source_id')=?3
+            AND json_extract(d.event,'$.binding.source_revision')=?4 AND json_extract(d.event,'$.payload.origin_turn_id')=?5
+            ORDER BY r.seq").map_err(storage)?;
+        let rows = query.query_map(params![self.workspace_scope,binding.chat_session_id,binding.source_id,
+            binding.source_revision,original_turn], |row| row.get(0)).map_err(storage)?;
+        rows.map(|row| row.map_err(storage)).collect()
     }
 
     pub fn teaching_expression_interpretations(&self, fact: &str) -> Result<Vec<crate::learning_evidence::LearningEvidence>, ToolError> {

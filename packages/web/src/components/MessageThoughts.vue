@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
+import { t as uiText } from '../i18n';
 import { activeNoteMessage, registerNoteDestinations, startThoughtHere, thoughtSurfaceVisible, useNoteAttachments, type NoteDestination } from '../note-placements';
 import type { NoteMessageRole } from '../generated/NoteMessageRole';
 import AttachedThought from './AttachedThought.vue';
@@ -64,7 +65,7 @@ onBeforeUnmount(() => { unregister(); unregisterContext(); clearMounts(); if (ac
 <template>
   <div class="message-thoughts" :data-note-message="key">
     <div ref="content" class="message-content" @pointerup="select" @keyup="select"><slot /></div>
-    <div v-if="sessionId && turnId" class="message-thought-tools"><button type="button" @click="here">{{ quote ? '在这句话下记想法' : '在这里记想法' }}</button><button v-if="quote" aria-label="取消选中的原句" @click="quote=null;occurrence=0">×</button></div>
+    <div v-if="sessionId && turnId" class="message-thought-tools"><button type="button" @click="here">{{ uiText(quote ? '在这句话下记想法' : '在这里记想法') }}</button><button v-if="quote" :aria-label="uiText('取消选中的原句')" @click="quote=null;occurrence=0">×</button></div>
     <template v-for="item in attached" :key="item.attachment.attachment_id"><Teleport v-if="mounts[item.attachment.attachment_id]" :to="mounts[item.attachment.attachment_id]!"><AttachedThought :item="item" /></Teleport><AttachedThought v-else :item="item" :missing-quote="item.attachment.target.kind === 'message' && !!item.attachment.target.quote" /></template>
     <p v-if="error" class="attachment-error">想法位置暂未读取。<button @click="retry">重试</button></p>
   </div>

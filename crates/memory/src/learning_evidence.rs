@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
-pub const ESTIMATOR_VERSION: &str = "learner.conditions.v5";
+pub const ESTIMATOR_VERSION: &str = "learner.conditions.v6";
 
 // Interpretations may be written by a later background job. Their position in
 // learning history comes from the last actual expression they interpret, never
@@ -36,6 +36,52 @@ const ORIGIN_ORDER: &str = "CASE
 fn origin_join() -> String {
     ORIGIN_JOIN_TEMPLATE.replace("EXPRESSION_TIME", &ORIGIN_ORDER.replace("origin.event","t.event"))
 }
+
+// Current interpretations of a source, before paging or filtering by focus. A card
+// may forward its submit/revise event into chat. Both observations survive in the
+// evidence log, but the same submitted expression has one current judgment.
+// The explicit reference distinguishes two attempts with identical answers.
+const CURRENT_INTERPRETATIONS: &str = "
+    active AS (
+        SELECT e.* FROM learning_evidence e
+        WHERE e.learning_workspace_id=?1 AND e.source_id=?2 AND (?3 IS NULL OR json_extract(e.evidence,'$.source_revision')=?3)
+        AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=?1
+            AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
+    ), grades AS (
+        SELECT e.*, json_extract(e.evidence,'$.action_ref') AS action_id,
+            count(*) OVER (PARTITION BY json_extract(e.evidence,'$.action_ref')) AS grade_count
+        FROM active e WHERE coalesce(json_extract(e.evidence,'$.nature'),'performance')='performance'
+    ), echoes AS (
+        SELECT h.evidence_id AS echo_id, min(g.evidence_id) AS grade_id
+        FROM active h
+        JOIN teaching_trace f ON f.learning_workspace_id=?1 AND f.event_id=json_extract(h.evidence,'$.action_ref')
+        JOIN teaching_trace r ON r.learning_workspace_id=?1 AND r.event_id='response:'||json_extract(f.event,'$.binding.turn_id')
+        JOIN teaching_trace a ON a.learning_workspace_id=?1 AND a.event_id=json_extract(r.event,'$.payload.reference')
+        JOIN grades g ON g.action_id=a.event_id
+        WHERE json_extract(h.evidence,'$.nature')='hypothesis'
+            AND json_extract(r.event,'$.payload.action')='chat_response'
+            AND json_extract(a.event,'$.payload.action') IN ('submit','revise')
+            AND json_extract(r.event,'$.payload.delivery_ref')=json_extract(a.event,'$.payload.delivery_ref')
+            AND json_extract(r.event,'$.payload.response')=json_extract(a.event,'$.payload.response')
+            AND instr(json_extract(a.event,'$.payload.response'),json_extract(h.evidence,'$.learner_quote'))>0
+            AND (g.grade_count=1 OR json_extract(h.evidence,'$.target.focus_ref')=json_extract(g.evidence,'$.target.focus_ref'))
+            AND NOT EXISTS (SELECT 1 FROM json_each(h.evidence,'$.fact_refs') refs
+                JOIN teaching_trace other ON other.learning_workspace_id=?1 AND other.event_id=refs.value
+                WHERE json_extract(other.event,'$.binding.turn_id')!=json_extract(r.event,'$.binding.turn_id'))
+        GROUP BY h.evidence_id HAVING count(*)=1
+    ), members AS (
+        SELECT grade_id, grade_id AS member_id FROM echoes UNION SELECT grade_id, echo_id FROM echoes
+    ), ranked AS (
+        SELECT member_id, first_value(member_id) OVER (PARTITION BY grade_id ORDER BY
+            (json_extract(e.evidence,'$.correction') IS NOT NULL) DESC,
+            CASE WHEN json_extract(e.evidence,'$.correction') IS NOT NULL THEN e.seq END DESC,
+            (member_id=grade_id) DESC) AS current_id
+        FROM members JOIN active e ON e.evidence_id=member_id
+    ), duplicate_views AS (
+        SELECT member_id AS hidden_id,current_id FROM ranked WHERE member_id!=current_id
+    ), visible AS (
+        SELECT e.* FROM active e WHERE e.evidence_id NOT IN (SELECT hidden_id FROM duplicate_views)
+    )";
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -128,6 +174,23 @@ impl LearningStore {
     pub fn evidence_is_superseded(&self, id: &str) -> Result<bool, ToolError> {
         self.connection.query_row("SELECT EXISTS(SELECT 1 FROM learning_evidence WHERE learning_workspace_id=? AND json_extract(evidence,'$.supersedes')=?)", params![self.workspace_scope,id], |r|r.get(0)).map_err(storage)
     }
+    /// Supersede the current interpretation when the reread completes. A reader
+    /// can edit their understanding record while the model is running.
+    pub fn latest_replacement_id(&self, first: &str) -> Result<String, ToolError> {
+        self.connection.query_row("WITH RECURSIVE versions(id,seq) AS (
+            SELECT evidence_id,seq FROM learning_evidence WHERE learning_workspace_id=?1 AND evidence_id=?2
+            UNION ALL SELECT e.evidence_id,e.seq FROM learning_evidence e JOIN versions v
+                ON json_extract(e.evidence,'$.supersedes')=v.id WHERE e.learning_workspace_id=?1
+            ) SELECT id FROM versions ORDER BY seq DESC LIMIT 1",
+            params![self.workspace_scope,first], |row| row.get(0)).map_err(storage)
+    }
+    /// Historic clients could correct either receipt for the same submitted answer.
+    pub fn attempt_has_replacing_correction(&self, evidence: &LearningEvidence) -> Result<bool, ToolError> {
+        self.connection.query_row(&format!("WITH {CURRENT_INTERPRETATIONS}
+            SELECT EXISTS(SELECT 1 FROM duplicate_views d JOIN active e ON e.evidence_id=d.current_id
+                WHERE d.hidden_id=?4 AND json_extract(e.evidence,'$.correction') IS NOT NULL)"),
+            params![self.workspace_scope,evidence.source_id,evidence.source_revision,evidence.evidence_id],|r|r.get(0)).map_err(storage)
+    }
     pub fn evidence(&self, id: &str) -> Result<LearningEvidence, ToolError> {
         let row: Option<String> = self
             .connection
@@ -152,7 +215,8 @@ impl LearningStore {
         let evidence = self.evidence(evidence_id)?;
         if evidence.source_id != binding.source_id
             || evidence.source_revision != binding.source_revision
-            || self.evidence_is_superseded(evidence_id)?
+            || self.evidence_is_superseded(evidence_id)? || self.attempt_has_replacing_correction(&evidence)?
+            || self.evidence_is_questionable(&evidence)?
         {
             return Err(invalid("理解记录不属于当前来源版本或已被更新"));
         }
@@ -226,8 +290,29 @@ impl LearningStore {
             if evidence.fact_refs.is_empty() || !evidence.fact_refs.contains(&evidence.action_ref)
                 || evidence.interpretation.trim().is_empty() || evidence.teaching_implication.trim().is_empty()
                 || evidence.assessment_ref.is_some() || evidence.status != AssessmentStatus::Unassessed
-                || evidence.delivery_ref.is_some() || evidence.object_id.is_some() || evidence.object_revision.is_some()
+                || evidence.object_id.is_some() || evidence.object_revision.is_some()
             { return Err(invalid("理解假设需要事实与教学影响，不附加评分或对象能力")); }
+            if let Some(id) = &evidence.delivery_ref {
+                let comparison = self.teaching_event(id)?;
+                let same_expression = if comparison.binding == action.binding {
+                    true
+                } else if comparison.payload["comparison"]["continuation"]["kind"] == "dispute_interpretation" {
+                    let first = comparison.payload["comparison"]["continuation"]["first_round_id"].as_str()
+                        .ok_or_else(|| invalid("重核解读缺少首次对照"))?;
+                    let first = self.evidence(&format!("interpretation:{first}"))?;
+                    let prior = evidence.supersedes.as_deref().ok_or_else(|| invalid("重核解读缺少前一版本"))?;
+                    action.binding.chat_session_id == comparison.binding.chat_session_id
+                        && action.binding.tutor_session_id == comparison.binding.tutor_session_id
+                        && action.binding.source_id == comparison.binding.source_id
+                        && action.binding.source_revision == comparison.binding.source_revision
+                        && first.action_ref == action.event_id && self.latest_replacement_id(&first.evidence_id)? == prior
+                        && first.support_delivery_refs == evidence.support_delivery_refs
+                } else { false };
+                if comparison.kind != TeachingFact::TeachBackDelivered || !same_expression
+                    || !comparison.causal_refs.contains(&action.event_id) {
+                    return Err(invalid("讲后理解假设只能引用这次表达的结构化对照"));
+                }
+            }
             let mut origin = action.binding.clone();
             origin.tutor_session_id = evidence.session_id.clone();
             origin.source_id = evidence.source_id.clone();
@@ -456,19 +541,37 @@ impl LearningStore {
         self.append_evidence(&next)
     }
 
+    // A later problem review can invalidate either a grade or a conversational
+    // interpretation of that problem. Offset and limit count usable evidence.
+    fn current_interpretation_page(&self, mut rows: rusqlite::Rows<'_>, mut after: u64, limit: u32) -> Result<Vec<(u64,LearningEvidence)>, ToolError> {
+        let mut page = Vec::new();
+        while page.len() < limit.min(20) as usize {
+            let Some(row) = rows.next().map_err(storage)? else { break };
+            let text: String = row.get(1).map_err(storage)?;
+            let evidence = serde_json::from_str(&text).map_err(storage)?;
+            if self.evidence_is_questionable(&evidence)? { continue; }
+            if after > 0 { after -= 1; continue; }
+            page.push((row.get(0).map_err(storage)?,evidence));
+        }
+        Ok(page)
+    }
+
     /// Current source-bound interpretations, including source-only performances.
-    /// Replacement is resolved before the page limit, so superseded claims never reappear.
     pub fn current_interpretations(&self, source: &str, revision: &str, after: u64, limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
         let origin_join=origin_join();
-        let mut q = self.connection.prepare(&format!("SELECT e.seq,e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=? AND e.source_id=? AND json_extract(e.evidence,'$.source_revision')=? AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC LIMIT ? OFFSET ?")).map_err(storage)?;
-        let rows = q.query_map(params![self.workspace_scope,source, revision, limit.min(20), after], |r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
-        rows.map(|r| { let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?)) }).collect()
+        let mut q = self.connection.prepare(&format!("WITH {CURRENT_INTERPRETATIONS}
+            SELECT e.seq,e.evidence FROM visible e {origin_join}
+            ORDER BY {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC")).map_err(storage)?;
+        let rows = q.query(params![self.workspace_scope,source,revision]).map_err(storage)?;
+        self.current_interpretation_page(rows,after,limit)
     }
 
     pub(crate) fn understanding_evidence(&self, source:&str, revision:&str, focuses:&[String])->Result<Vec<LearningEvidence>,ToolError> {
         let origin_join=origin_join();
         let relation="CASE WHEN json_extract(e.evidence,'$.object_id') IS NOT NULL THEN 'object:'||json_extract(e.evidence,'$.object_id')||':'||json_extract(e.evidence,'$.object_revision') WHEN json_array_length(e.evidence,'$.target.object_refs')=1 THEN 'object:'||json_extract(e.evidence,'$.target.object_refs[0].object_id')||':'||json_extract(e.evidence,'$.target.object_refs[0].object_revision') ELSE coalesce(json_extract(e.evidence,'$.target.focus_ref'),json_extract(e.evidence,'$.supersedes'),e.evidence_id) END";
-        let mut q=self.connection.prepare(&format!("SELECT e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=?1 AND e.source_id=?2 AND json_extract(e.evidence,'$.source_revision')=?3 AND (json_array_length(?4)=0 OR ({relation}) IN (SELECT value FROM json_each(?4))) AND NOT EXISTS(SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id) ORDER BY {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC")).map_err(storage)?;
+        let mut q=self.connection.prepare(&format!("WITH {CURRENT_INTERPRETATIONS}
+            SELECT e.evidence FROM visible e {origin_join} WHERE json_array_length(?4)=0 OR ({relation}) IN (SELECT value FROM json_each(?4))
+            ORDER BY {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC")).map_err(storage)?;
         let rows=q.query_map(params![self.workspace_scope,source,revision,serde_json::to_string(focuses).map_err(storage)?],|r|r.get::<_,String>(0)).map_err(storage)?;
         rows.map(|r|serde_json::from_str(&r.map_err(storage)?).map_err(storage)).collect()
     }
@@ -477,17 +580,16 @@ impl LearningStore {
     /// Relevant older understanding is fetched before the recency limit is applied.
     pub fn current_design_interpretations(&self, session: &str, source: &str, revision: &str, design_ref: Option<&str>, blocks: &[String], limit: u32) -> Result<Vec<(u64, LearningEvidence)>, ToolError> {
         let origin_join=origin_join();
-        let mut q=self.connection.prepare(&format!("WITH RECURSIVE lineage(id) AS (
-            SELECT ?1 WHERE ?1 IS NOT NULL UNION ALL
-            SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t JOIN lineage l ON t.event_id=l.id WHERE t.learning_workspace_id=?7 AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL)
-            SELECT e.seq,e.evidence FROM learning_evidence e {origin_join} WHERE e.learning_workspace_id=?7 AND e.source_id=?2 AND json_extract(e.evidence,'$.source_revision')=?3
-            AND NOT EXISTS (SELECT 1 FROM learning_evidence n WHERE n.learning_workspace_id=e.learning_workspace_id AND json_extract(n.evidence,'$.supersedes')=e.evidence_id)
-            ORDER BY CASE WHEN json_extract(e.evidence,'$.session_id')=?4
+        let mut q=self.connection.prepare(&format!("WITH RECURSIVE {CURRENT_INTERPRETATIONS}, lineage(id) AS (
+            SELECT ?4 WHERE ?4 IS NOT NULL UNION ALL
+            SELECT json_extract(t.event,'$.payload.design.previous_ref') FROM teaching_trace t JOIN lineage l ON t.event_id=l.id WHERE t.learning_workspace_id=?1 AND json_extract(t.event,'$.payload.design.previous_ref') IS NOT NULL)
+            SELECT e.seq,e.evidence FROM visible e {origin_join}
+            ORDER BY CASE WHEN json_extract(e.evidence,'$.session_id')=?6
               AND json_extract(e.evidence,'$.design_ref') IN (SELECT id FROM lineage)
               AND EXISTS (SELECT 1 FROM json_each(e.evidence,'$.block_refs') b JOIN json_each(?5) f ON b.value=f.value)
-              THEN 0 ELSE 1 END, {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC LIMIT ?6")).map_err(storage)?;
-        let rows=q.query_map(params![design_ref,source,revision,session,serde_json::to_string(blocks).map_err(storage)?,limit.min(20),self.workspace_scope],|r|Ok((r.get::<_,u64>(0)?,r.get::<_,String>(1)?))).map_err(storage)?;
-        rows.map(|r| {let (seq,text)=r.map_err(storage)?; Ok((seq,serde_json::from_str(&text).map_err(storage)?))}).collect()
+              THEN 0 ELSE 1 END, {ORIGIN_ORDER} DESC,origin.seq DESC,e.seq DESC")).map_err(storage)?;
+        let rows=q.query(params![self.workspace_scope,source,revision,design_ref,serde_json::to_string(blocks).map_err(storage)?,session]).map_err(storage)?;
+        self.current_interpretation_page(rows,0,limit)
     }
 
     /// Presentation metadata only: absent or invalid legacy timestamps stay unknown.
@@ -627,6 +729,17 @@ impl LearningStore {
         ))
     }
 
+    /// Upgrade a cached estimator when a reader reopens an existing workspace.
+    pub fn current_learner_projection(&mut self, source: &str) -> Result<(Option<LearnerProjection>, u64), ToolError> {
+        let (cached, watermark) = self.learner_projection(source)?;
+        if cached.is_none() && watermark > 0 {
+            let rebuilt = self.rebuild_learner_projection(source)?;
+            let watermark = rebuilt.evidence_watermark;
+            return Ok((Some(rebuilt),watermark));
+        }
+        Ok((cached,watermark))
+    }
+
     pub fn rebuild_learner_projection(
         &mut self,
         source: &str,
@@ -658,6 +771,15 @@ impl LearningStore {
             .iter()
             .filter_map(|(_, e)| e.supersedes.as_ref())
             .collect();
+        // An old correction can point to the conversation echo of an assessed
+        // attempt. Its rubric score remains stored, but it no longer establishes
+        // the learner's capability. Keep the original object and attempt boundary.
+        let corrected_grades: BTreeMap<String,String> = {
+            let mut q=tx.prepare(&format!("WITH {CURRENT_INTERPRETATIONS}
+                SELECT hidden_id,current_id FROM duplicate_views JOIN grades g ON g.evidence_id=hidden_id")).map_err(storage)?;
+            let rows=q.query_map(params![self.workspace_scope,source,None::<String>],|r|Ok((r.get(0)?,r.get(1)?))).map_err(storage)?;
+            rows.collect::<Result<_,_>>().map_err(storage)?
+        };
         // A practice problem found unsound after delivery graded against a
         // possibly wrong key; its results stay in history but not in the view.
         let questionable: BTreeSet<String> = {
@@ -702,7 +824,10 @@ impl LearningStore {
                     state: "unknown".into(),
                     evidence_refs: vec![],
                 });
-            match e.status {
+            let corrected = corrected_grades.get(&e.evidence_id);
+            let status = if corrected.is_some() { &AssessmentStatus::Uncertain } else { &e.status };
+            let evidence_ref = corrected.unwrap_or(&e.evidence_id);
+            match status {
                 AssessmentStatus::Correct if !e.assistance_refs.is_empty() || !e.support_delivery_refs.is_empty() => {
                     row.assisted_support += 1
                 }
@@ -724,7 +849,7 @@ impl LearningStore {
                 "unknown"
             }
             .into();
-            row.evidence_refs.push(e.evidence_id.clone());
+            row.evidence_refs.push(evidence_ref.clone());
             let key = format!(
                 "{}:{}:{}:{}",
                 e.session_id, object_id, object_revision, e.capability
@@ -736,7 +861,7 @@ impl LearningStore {
                     |r| r.get(0),
                 )
                 .map_err(storage)?;
-            paths.insert(key,json!({"session_id":e.session_id,"object_id":e.object_id,"object_revision":e.object_revision,"source_revision":e.source_revision,"capability":e.capability,"last_status":e.status,"assistance_refs":e.assistance_refs,"support_delivery_refs":e.support_delivery_refs,"attempt":e.attempt,"evidence_ref":e.evidence_id,"action_sequence":action_sequence}));
+            paths.insert(key,json!({"session_id":e.session_id,"object_id":e.object_id,"object_revision":e.object_revision,"source_revision":e.source_revision,"capability":e.capability,"last_status":status,"assistance_refs":e.assistance_refs,"support_delivery_refs":e.support_delivery_refs,"attempt":e.attempt,"evidence_ref":evidence_ref,"action_sequence":action_sequence}));
         }
         let projection = LearnerProjection {
             estimator_version: ESTIMATOR_VERSION.into(),

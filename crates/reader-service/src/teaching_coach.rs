@@ -404,13 +404,18 @@ pub fn recover_user(user: &user_runtime::UserRuntime) -> Result<(), ToolError> {
         let candidates:Vec<_>=session.turns.iter().rev().filter(|t|t.status==AgentAssistantStatus::Completed
             && t.outcome.as_ref().is_some_and(|o|!crate::observability::lifecycle::delivery_failed(o))).collect();
         let mut observed=false;
-        for turn in candidates {
+        for (index,turn) in candidates.into_iter().enumerate() {
             let Some(context)=binding_context(user,session.learning_workspace_id.as_deref(),&turn.turn_id)? else {continue;};
             let (Some(stage),Some(source))=(context["binding"]["tutor_session_id"].as_str(),
                 context["binding"]["source_id"].as_str()) else {continue;};
             let current=user.learning_store_for_source(session.learning_workspace_id.as_deref(),source)?.state()?;
-            if !matches!(context["status"].as_str(), Some("observing" | "practice" | "course"))
-                || context["workspace_goal_revision"] != json!(current.workspace_goal_revision) {
+            // Local courses can exist without a workspace goal. A chat commit interrupted
+            // before its course projection still needs the final reflection linked on reopen.
+            let latest_course_card = index == 0 && turn.domain.interaction.as_ref().is_some_and(|a|a.course.is_some())
+                && turn.outcome.as_ref().and_then(|o|o.answer_view.as_ref()).is_some_and(|v|
+                    v.parts.iter().any(|p|matches!(p,AgentAnswerPart::TeachBackComparison { .. })));
+            if !latest_course_card && (!matches!(context["status"].as_str(), Some("observing" | "practice" | "course"))
+                || context["workspace_goal_revision"] != json!(current.workspace_goal_revision)) {
                 continue;
             }
             let complete_active=context["status"]=="practice" && !turn.outcome.as_ref().unwrap().incomplete;

@@ -56,7 +56,21 @@ pub struct LearnerUnderstandingSummary {
 pub struct PreviousUnderstanding {
     pub evidence_ref: String,
     pub learner_quote: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub choice_answer: Option<UnderstandingChoiceAnswer>,
     pub assistance: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UnderstandingChoiceAnswer {
+    pub options: Vec<UnderstandingChoiceOption>,
+    pub reasoning: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UnderstandingChoiceOption {
+    pub id: String,
+    pub text: Option<String>,
 }
 
 fn assistance_label(e: &LearningEvidence) -> String {
@@ -393,6 +407,8 @@ pub struct UnderstandingSummary {
     pub assistance: String,
     pub nature: EvidenceNature,
     pub learner_quote: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub choice_answer: Option<UnderstandingChoiceAnswer>,
     pub correction: Option<String>,
     pub interpreter_version: String,
 }
@@ -563,6 +579,36 @@ pub(crate) fn assessed_groups(
 }
 
 impl LearningStore {
+    /// Resolve the exact submission against the options shown in its original delivery.
+    pub fn evidence_choice_answer(&self, evidence: &LearningEvidence) -> Result<Option<UnderstandingChoiceAnswer>, ToolError> {
+        let Some(delivery_ref) = &evidence.delivery_ref else { return Ok(None) };
+        let record: Option<(String, String, Option<String>)> = self.connection.query_row(
+            "SELECT CASE WHEN json_array_length(d.event,'$.payload.move.practice.cards')>0
+                        THEN json_extract(d.event,'$.payload.move.practice.cards')
+                        ELSE json_extract(d.event,'$.payload.move.answer_input.options') END,
+                    json_extract(a.event,'$.payload.response'), json_extract(a.event,'$.payload.reasoning')
+             FROM teaching_trace d JOIN teaching_trace a ON a.learning_workspace_id=d.learning_workspace_id
+             WHERE d.learning_workspace_id=? AND d.event_id=? AND a.event_id=?
+               AND (json_array_length(d.event,'$.payload.move.practice.cards')>0
+                    OR (json_extract(d.event,'$.payload.move.answer_input.kind') IN ('single_choice','multiple_choice')
+                        AND json_type(d.event,'$.payload.move.answer_input.options')='array'))
+               AND json_type(a.event,'$.payload.response')='text'",
+            params![self.workspace_scope, delivery_ref, evidence.action_ref],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        ).optional().map_err(storage)?;
+        let Some((options, response, reasoning)) = record else { return Ok(None) };
+        let original: Vec<Value> = serde_json::from_str(&options).map_err(storage)?;
+        let ids = serde_json::from_str::<Vec<String>>(&response).unwrap_or_else(|_| vec![response]);
+        let options = ids.into_iter().map(|id| {
+            let normalized = crate::assessment::normalize(&id);
+            let text = original.iter().find(|option| option["id"].as_str()
+                .is_some_and(|original_id| crate::assessment::normalize(original_id) == normalized))
+                .and_then(|option| option["text"].as_str()).map(str::to_owned);
+            UnderstandingChoiceOption { id, text }
+        }).collect();
+        Ok(Some(UnderstandingChoiceAnswer { options, reasoning }))
+    }
+
     pub fn note_evidence(
         &self,
         note_id: &str,
@@ -772,12 +818,14 @@ impl LearningStore {
             let group_key=(key.clone(),e.capability.clone(),json!(references).to_string());
             if let Some(current) = groups.get_mut(&group_key) {
                 if current.previous.is_none() && current.correction.is_none()
-                    && e.correction.is_none() && !e.learner_quote.is_empty()
-                    && current.learner_quote != e.learner_quote {
-                    current.previous = Some(PreviousUnderstanding {
-                        evidence_ref: e.evidence_id.clone(), learner_quote: e.learner_quote.clone(),
-                        assistance: assistance_label(&e),
-                    });
+                    && e.correction.is_none() && !e.learner_quote.is_empty() {
+                    let choice_answer = self.evidence_choice_answer(&e)?;
+                    if current.learner_quote != e.learner_quote || current.choice_answer != choice_answer {
+                        current.previous = Some(PreviousUnderstanding {
+                            evidence_ref: e.evidence_id.clone(), learner_quote: e.learner_quote.clone(),
+                            assistance: assistance_label(&e), choice_answer,
+                        });
+                    }
                 }
                 // All original versions remain navigable even when later evidence
                 // about the same relationship was produced from another note.
@@ -789,6 +837,7 @@ impl LearningStore {
                 continue;
             }
             let metadata = self.evidence_chronology(&e.evidence_id)?;
+            let choice_answer = self.evidence_choice_answer(&e)?;
             let assisted = !e.assistance_refs.is_empty() || !e.support_delivery_refs.is_empty();
             let assistance = assistance_label(&e);
             let mut observation = e.understanding.clone();
@@ -853,6 +902,7 @@ impl LearningStore {
                     assistance,
                     nature: e.nature,
                     learner_quote: e.learner_quote,
+                    choice_answer,
                     correction: e.correction,
                     interpreter_version: e.interpreter_version,
                 },

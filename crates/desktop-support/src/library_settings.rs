@@ -29,6 +29,8 @@ struct DesktopSettings {
     /// Kept as JSON here so filesystem support does not depend on the model runtime.
     #[serde(default, skip_serializing_if = "Option::is_none", deserialize_with = "explicit_model_settings")]
     model_settings: Option<serde_json::Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    voice_model_dir: Option<PathBuf>,
 }
 
 fn explicit_model_settings<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<serde_json::Value>, D::Error> {
@@ -66,6 +68,7 @@ impl LibrarySettingsStore {
             library_root: root.clone(),
             provider: None,
             model_settings: None,
+            voice_model_dir: None,
         });
         settings.library_root = root.clone();
         self.write(&settings)?;
@@ -80,13 +83,35 @@ impl LibrarySettingsStore {
         Ok(self.load_settings()?.and_then(|settings| settings.model_settings))
     }
 
+    pub fn voice_model_dir(&self) -> Result<Option<PathBuf>, String> {
+        Ok(self.load_settings()?.and_then(|settings| settings.voice_model_dir))
+    }
+
+    pub fn apply_voice_model_dir(&self, library_root: &Path, dir: Option<PathBuf>) -> Result<(), String> {
+        if let Some(ref path) = dir {
+            if !path.is_absolute() {
+                return Err("voice model directory must be an absolute path".into());
+            }
+        }
+        let mut settings = self.load_settings()?.unwrap_or_else(|| DesktopSettings {
+            schema: SETTINGS_SCHEMA.into(),
+            library_root: library_root.to_path_buf(),
+            provider: None,
+            model_settings: None,
+            voice_model_dir: None,
+        });
+        settings.library_root = library_root.to_path_buf();
+        settings.voice_model_dir = dir;
+        self.write(&settings)
+    }
+
     /// Persist the validated catalog before the caller changes any active adapters.
     /// The legacy value remains available for inspecting an upgrade but is not authoritative.
     pub fn apply_model_settings(&self, library_root: &Path, value: serde_json::Value) -> Result<(), String> {
         if !value.is_object() { return Err("Model settings must be an object".into()); }
         let mut settings = self.load_settings()?.unwrap_or_else(|| DesktopSettings {
             schema: SETTINGS_SCHEMA.into(), library_root: library_root.to_path_buf(),
-            provider: None, model_settings: None,
+            provider: None, model_settings: None, voice_model_dir: None,
         });
         settings.library_root = library_root.to_path_buf();
         settings.model_settings = Some(value);
@@ -103,6 +128,7 @@ impl LibrarySettingsStore {
             library_root: library_root.to_path_buf(),
             provider: None,
             model_settings: None,
+            voice_model_dir: None,
         });
         settings.library_root = library_root.to_path_buf();
         settings.provider = Some(provider);
@@ -117,7 +143,7 @@ impl LibrarySettingsStore {
     pub fn save_root(&self, root: &Path) -> Result<(), String> {
         if !root.is_absolute() { return Err("library directory must be an absolute path".into()); }
         let mut settings = self.load_settings()?.unwrap_or_else(|| DesktopSettings {
-            schema: SETTINGS_SCHEMA.into(), library_root: root.to_path_buf(), provider: None, model_settings: None,
+            schema: SETTINGS_SCHEMA.into(), library_root: root.to_path_buf(), provider: None, model_settings: None, voice_model_dir: None,
         });
         settings.library_root = root.to_path_buf();
         self.write(&settings)
@@ -416,6 +442,27 @@ mod tests {
         saved["model_settings"] = serde_json::Value::Null;
         fs::write(parent.join("settings.json"), serde_json::to_vec(&saved).unwrap()).unwrap();
         assert_eq!(store.model_settings().unwrap(), Some(serde_json::Value::Null));
+        fs::remove_dir_all(parent).unwrap();
+    }
+
+    #[test]
+    fn voice_model_dir_round_trips_and_survives_other_settings_updates() {
+        let parent = temp_dir("voice-model-dir");
+        let store = LibrarySettingsStore::new(parent.join("settings.json"));
+        let root = store.apply_selection(&parent).unwrap();
+        let model_dir = parent.join("models/faster-whisper-small");
+
+        assert_eq!(store.voice_model_dir().unwrap(), None);
+        assert!(store.apply_voice_model_dir(&root, Some(PathBuf::from("relative/path"))).is_err());
+
+        store.apply_voice_model_dir(&root, Some(model_dir.clone())).unwrap();
+        assert_eq!(store.voice_model_dir().unwrap(), Some(model_dir.clone()));
+
+        store.save_root(&root).unwrap();
+        assert_eq!(store.voice_model_dir().unwrap(), Some(model_dir.clone()));
+
+        store.apply_voice_model_dir(&root, None).unwrap();
+        assert_eq!(store.voice_model_dir().unwrap(), None);
         fs::remove_dir_all(parent).unwrap();
     }
 }

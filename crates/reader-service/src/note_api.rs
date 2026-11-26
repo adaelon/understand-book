@@ -57,7 +57,9 @@ pub(crate) fn answer_text_blocks(outcome: &OuterOutcome) -> Vec<String> {
             AgentAnswerPart::Markdown { text } => current.push_str(text),
             AgentAnswerPart::MusicExample { example } => current.push_str(&example.label),
             AgentAnswerPart::Sources { .. } => {},
-            AgentAnswerPart::Presentation { .. } | AgentAnswerPart::SocraticQuestion { .. } => {
+            AgentAnswerPart::Presentation { .. }
+            | AgentAnswerPart::TeachBackComparison { .. }
+            | AgentAnswerPart::SocraticQuestion { .. } => {
                 if !current.is_empty() { texts.push(std::mem::take(&mut current)); }
                 if let AgentAnswerPart::SocraticQuestion { text, .. } = part { texts.push(text.clone()); }
             }

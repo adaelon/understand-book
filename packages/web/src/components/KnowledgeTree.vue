@@ -86,8 +86,8 @@ async function locate() {
   query.value = ''; searchOpen.value = false;
   if (await load({})) { await nextTick(); heading.value?.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
 }
-async function resume(item: UnderstandingSummary, mode: 'discuss' | 'practice') {
-  try { await continueUnderstanding(item, undefined, mode); } catch (failure) { error.value = (failure as Error).message; }
+async function resume(item: UnderstandingSummary, mode: 'discuss' | 'practice', message?: string) {
+  try { await continueUnderstanding(item, undefined, mode, message); } catch (failure) { error.value = (failure as Error).message; }
 }
 function refresh() { if (!controller) void load(lastRequest, true); }
 async function retryObservation(id: string) {
@@ -186,7 +186,7 @@ onBeforeUnmount(() => { disposed = true; controller?.abort(); clearTimeout(timer
         <section v-if="!viewQuery" ref="fruitArea" tabindex="-1" class="tree-fruits" aria-label="这处内容的理解果实">
           <h4><i class="fruit-dot"/>这里的理解果实 <span>{{view.node.fruit_count}}</span></h4>
           <p v-if="!view.fruits.length" class="fruit-empty">{{view.node.fruit_count?'理解记录在更细的枝条上，点橙色果实继续寻找。':'这里还没有你的理解记录。聊聊你怎么看，新的表达会留在对应枝条上。'}}</p>
-          <UnderstandingSummaryCard v-for="fruit in view.fruits" :key="fruit.evidence_ref" :item="fruit" show-quote @discuss="resume(fruit,'discuss')" @practice="resume(fruit,'practice')" @evidence="evidence=fruit.evidence_ref" @correct="evidence=fruit.evidence_ref" @note="openPersonalNotes"/>
+          <UnderstandingSummaryCard v-for="fruit in view.fruits" :key="fruit.evidence_ref" :item="fruit" show-quote @discuss="resume(fruit,'discuss',$event)" @practice="resume(fruit,'practice')" @evidence="evidence=fruit.evidence_ref" @correct="evidence=fruit.evidence_ref" @note="openPersonalNotes"/>
           <div v-if="view.next_fruit!=null || lastRequest.fruit_after" class="tree-pagination"><button :disabled="!lastRequest.fruit_after" @click="load({...lastRequest,fruit_after:Math.max(0,(lastRequest.fruit_after??0)-12)})">前一组理解</button><button :disabled="view.next_fruit==null" @click="load({...lastRequest,fruit_after:view.next_fruit??0})">更多理解</button></div>
         </section>
         <p v-for="update in view.updates" :key="update.job_ref" class="tree-update" role="status">{{['failed','interrupted'].includes(update.status)?'有一条表达尚未整理完成，原话和已有理解都已保留。':'新的表达正在整理，已有果实仍可查看。'}} <button v-if="['failed','interrupted'].includes(update.status)" @click="retryObservation(update.job_ref)">重试整理</button></p>

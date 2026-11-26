@@ -153,6 +153,11 @@ pub fn normalize(workspace: &str, input: &Value) -> Result<Value, ToolError> {
         .as_str()
         .ok_or_else(invalid)?;
     let mut v = json!({"workspace_id":workspace,"message":message,"display_user":input["display_user"].as_str().unwrap_or(message)});
+    if input["entry_action"] == "explain_back" {
+        for key in ["client_request_id", "operation_id", "expression_id"] { v[key] = input[key].clone(); }
+        if !input["teach_back_reply"].is_null() { v["teach_back_reply"] = input["teach_back_reply"].clone(); }
+        if input["course_context"].is_object() { v["course_context"] = input["course_context"].clone(); }
+    }
     for key in [
         "session_id",
         "generation",

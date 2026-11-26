@@ -5,19 +5,50 @@ import { renderMarkdown } from '../md';
 import type { CourseExpression } from '../generated/CourseExpression';
 import type { CourseReview } from '../generated/CourseReview';
 import type { CourseReplyIntent } from '../generated/CourseReplyIntent';
+import type { ComparisonResponse } from '../teach-back-chat';
+import TeachBackComparisonCard from './TeachBackComparisonCard.vue';
 import CourseFeedbackOptions from './CourseFeedbackOptions.vue';
 import CourseUnderstandingNote from './CourseUnderstandingNote.vue';
 
-const props = defineProps<{ expression: CourseExpression; review?: CourseReview; draft: string; disabled: boolean; presented: boolean; readonly?: boolean; continuation?: { label: string; detail: string; disabled?: boolean } }>();
-const emit = defineEmits<{ 'update:draft':[value:string]; read:[job:string]; retry:[job:string]; reply:[intent:CourseReplyIntent,response:string]; continue:[]; understanding:[]; support:[job:string] }>();
+const props = defineProps<{ expression: CourseExpression; review?: CourseReview; draft: string; disabled: boolean; presented: boolean; readonly?: boolean; reviews?: CourseReview[]; historicalComparison?: boolean; chatSessionId?: string; presentedSourceId?: string; presentedSourceRevision?: string | null; continuation?: { label: string; detail: string; disabled?: boolean } }>();
+const emit = defineEmits<{ 'update:draft':[value:string]; read:[job:string]; retry:[job:string]; reply:[intent:CourseReplyIntent,response:string]; continue:[]; understanding:[]; support:[job:string]; correct:[response:ComparisonResponse]; displayed:[]; jump:[lid:string]; restoreChat:[sessionId:string] }>();
 const card = ref<HTMLElement>(), responseCard = ref<HTMLElement>();
+const statement = ref<HTMLElement>();
+const selectedRoundId = ref('');
+const comparison = computed(() => props.review?.comparison);
+const rounds = computed(() => {
+  const current = comparison.value;
+  if (!current) return [];
+  const first = current.continuation?.first_round_id ?? current.round_id;
+  const group = (props.reviews ?? []).flatMap(review => {
+    const card = review.comparison, origin = review.expression.teach_back;
+    if (!origin || origin.session_id !== props.expression.teach_back?.session_id || !card || (card.continuation?.first_round_id ?? card.round_id) !== first) return [];
+    return [{ turnId: origin.turn_id, comparison: card, expression: review.expression, displayed: review.displayed }];
+  });
+  const index = group.findIndex(item => item.comparison.round_id === current.round_id);
+  return index >= 0 ? group.slice(0, index + 1) : [];
+});
+watch(() => props.expression.job_ref, () => { selectedRoundId.value = ''; });
+const visibleExpression = computed(() => rounds.value.find(item => item.comparison.round_id === selectedRoundId.value)?.expression ?? props.expression);
+const locatedText = ref('');
+watch(() => [props.expression.job_ref, selectedRoundId.value], () => { locatedText.value = ''; });
+async function locateStatement(turnId: string) {
+  const expression = rounds.value.find(item => item.turnId === turnId)?.expression;
+  locatedText.value = expression?.response ?? visibleExpression.value.response;
+  await nextTick();
+  statement.value?.focus();
+}
 const visible = ref(false);
 const waiting = computed(() => !props.review || ['pending','running'].includes(props.review.status));
 const readyToReply = computed(() => !props.disabled && !!props.review?.displayed && props.review.status === 'ready');
 // No follow-up means no answer is being requested, not that the whole lesson is mastered.
-const settled = computed(() => props.review?.status === 'ready' && props.review.displayed && !!props.review.feedback && !props.review.feedback.follow_up?.trim()
+const settled = computed(() => comparison.value
+  ? !!props.review?.displayed && !comparison.value.follow_up
+  : props.review?.status === 'ready' && props.review.displayed && !!props.review.feedback && !props.review.feedback.follow_up?.trim()
   && (!props.expression.closed_book_result_ref || !!props.review.feedback.course_reuse?.accepted));
 const questionOpen = ref(false),adoptedQuestion=ref(false);
+const canDiscuss = computed(() => !props.readonly && (!props.expression.teach_back ||
+  (!!comparison.value && !props.historicalComparison && props.expression.teach_back.session_id === props.chatSessionId)));
 const showReply = computed(() => !settled.value || questionOpen.value || !!props.draft.trim());
 watch(() => props.expression.job_ref, () => { questionOpen.value = false; adoptedQuestion.value=false; });
 async function openQuestion() {
@@ -28,7 +59,7 @@ async function openQuestion() {
 let observer: IntersectionObserver | undefined, reading: string | undefined;
 function readVisible() {
   const review=props.review;
-  if (!props.presented || !visible.value || document.visibilityState==='hidden' || props.disabled || !review || review.status!=='ready' || review.displayed || reading===review.expression.job_ref) return;
+  if (props.expression.teach_back || !props.presented || !visible.value || document.visibilityState==='hidden' || props.disabled || !review || review.status!=='ready' || review.displayed || reading===review.expression.job_ref) return;
   reading=review.expression.job_ref;emit('read',reading);
 }
 watch([()=>props.review,()=>props.disabled,()=>props.presented,visible],(_value,previous)=>{
@@ -48,12 +79,19 @@ defineExpose({focus});
 <template>
   <section ref="card" class="activity-tutor" :aria-label="uiText('当前活动反馈')">
     <header><strong>{{ expression.activity==='prediction' ? uiText('带着这个猜想做实验') : uiText('接着你的思路，一起弄明白') }}</strong><small v-if="expression.round_title">{{ uiText('第 {0} 轮 · {1}', [(expression.round_index ?? 0)+1,expression.round_title]) }}</small></header>
-    <blockquote>{{ expression.response }}</blockquote>
+    <blockquote ref="statement" tabindex="-1">{{ locatedText || visibleExpression.response }}</blockquote>
     <div ref="responseCard" class="activity-response" aria-live="polite">
-      <div v-if="waiting" class="teaching-status" role="status"><strong>{{ uiText('正在接住你的思路…') }}</strong><p>{{ uiText('回应会直接出现在这里，你可以对照实验继续想一想。') }}</p></div>
+      <button v-if="expression.teach_back && expression.teach_back.session_id !== chatSessionId"
+        type="button" :disabled="disabled" @click="emit('restoreChat', expression.teach_back.session_id)">{{ uiText('回原对话查看这次解释') }}</button>
+      <TeachBackComparisonCard v-else-if="comparison && expression.teach_back && presented"
+        :comparison="comparison" :rounds="rounds" :already-displayed="review?.displayed" :session-id="expression.teach_back.session_id" :turn-id="expression.teach_back.turn_id"
+        :current-source-id="presentedSourceId" :current-source-revision="presentedSourceRevision" :correction-enabled="!disabled && !readonly && !historicalComparison"
+        @correct="request => emit('correct', request)" @displayed="(_turn, round) => { if (!rounds.find(item => item.comparison.round_id === round)?.displayed) emit('displayed') }" @jump="lid => emit('jump',lid)"
+        @view-round="id => selectedRoundId = id" @locate="locateStatement" />
+      <div v-else-if="waiting" class="teaching-status" role="status"><strong>{{ uiText('正在接住你的思路…') }}</strong><p>{{ uiText('回应会直接出现在这里，你可以对照实验继续想一想。') }}</p></div>
       <div v-else-if="review && ['failed','interrupted'].includes(review.status)" class="teaching-status"><p>{{ uiText('原话已保存，这次教学回应暂未完成。') }}</p><button :disabled="disabled" @click="emit('retry',expression.job_ref)">{{ uiText('重试这次回应') }}</button></div>
-      <button v-else-if="review?.status==='ready' && !review.displayed" :disabled="disabled" @click="emit('read',expression.job_ref)">{{ uiText('展开这次教学回应') }}</button>
-      <template v-if="review?.feedback">
+      <button v-else-if="!expression.teach_back && review?.status==='ready' && !review.displayed" :disabled="disabled" @click="emit('read',expression.job_ref)">{{ uiText('展开这次教学回应') }}</button>
+      <template v-if="review?.feedback && !comparison">
         <p v-if="expression.intent!=='question' && review.feedback.acknowledgement" class="acknowledgement">{{ review.feedback.acknowledgement }}</p>
         <div class="guidance course-prose" v-html="renderMarkdown(review.feedback.guidance)" />
         <section v-if="review.feedback.task_assessment?.length" class="task-evidence" :aria-label="uiText('本次解题能力检验')">
@@ -76,9 +114,9 @@ defineExpose({focus});
     <div v-if="settled || continuation" class="activity-next" :class="{ settled }">
       <strong v-if="settled">{{ uiText('这一步不用再回答了') }}</strong>
       <template v-if="continuation && !readonly"><p>{{ continuation.detail }}</p><button :class="{ primary:settled }" :disabled="disabled || continuation.disabled" @click="emit('continue')">{{ continuation.label }}</button></template>
-      <button v-if="settled && !readonly && !showReply" class="optional-question" :disabled="disabled" @click="openQuestion">{{ uiText('我还有疑问') }}</button>
+      <button v-if="settled && canDiscuss && !showReply" class="optional-question" :disabled="disabled" @click="openQuestion">{{ uiText('我还有疑问') }}</button>
     </div>
-    <form v-if="!readonly && showReply" @submit.prevent="emit('reply',settled || adoptedQuestion ? 'question' : 'answer',draft)">
+    <form v-if="canDiscuss && showReply && (!comparison || !selectedRoundId || selectedRoundId === comparison.round_id)" @submit.prevent="emit('reply',settled || adoptedQuestion ? 'question' : 'answer',draft)">
       <label for="activity-reply">{{ settled || adoptedQuestion ? uiText('还有哪里没明白？可以在这里问。') : uiText('接着回答，也可以说哪里没懂') }}</label>
       <textarea id="activity-reply" :value="draft" @input="emit('update:draft',($event.target as HTMLTextAreaElement).value)" :disabled="disabled" rows="3" :placeholder="uiText('对照眼前的图，说说你的判断或疑问。')" />
       <div class="reply-actions"><button class="primary" :disabled="!readyToReply || !draft.trim()">{{ settled || adoptedQuestion ? uiText('提出我的疑问') : uiText('回应当前问题') }}</button><button v-if="!settled" type="button" :disabled="!readyToReply || !draft.trim()" @click="emit('reply','question',draft)">{{ uiText('这是我的疑问') }}</button><button type="button" :disabled="!readyToReply" @click="emit('reply','explain',uiText('我还没明白，请先把当前这一步讲清楚。'))">{{ uiText('先讲给我听') }}</button><button v-if="settled && !draft.trim()" type="button" @click="questionOpen=false">{{ uiText('收起疑问') }}</button></div>

@@ -17,5 +17,16 @@ it('keeps an earlier branch expression readable without calling its difficulty c
   expect(wrapper.get('blockquote').text()).toBe(item.learner_quote);
   expect(wrapper.get('.summary-next').text()).toContain('当时的建议');
   expect(wrapper.text()).toContain('最新判断见“我的理解”');
+  await wrapper.setProps({ item: { ...item, nature: 'performance', learner_quote: 'A',
+    choice_answer: { options: [{ id: 'A', text: '算上停留时间' }], reasoning: '全程计时没有停。' },
+    previous: { evidence_ref: 'earlier', learner_quote: 'C', assistance: '修改回答前',
+      choice_answer: { options: [{ id: 'C', text: '只用骑行时间' }], reasoning: null } } } });
+  const [before, after] = wrapper.findAll('blockquote');
+  expect(before.get('strong').text()).toBe('C');
+  expect(before.text()).toContain('只用骑行时间');
+  expect(before.text()).not.toContain('我的思路');
+  expect(after.get('strong').text()).toBe('A');
+  expect(after.text()).toContain('算上停留时间');
+  expect(after.text()).toContain('全程计时没有停。');
   wrapper.unmount();
 });

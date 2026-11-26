@@ -138,9 +138,15 @@ pub fn serve_profile(args: Vec<PathBuf>) -> Result<(), String> {
     }
     let web = std::env::var_os("UNDERSTAND_BOOK_WEB_DIST")
         .map(PathBuf::from)
-        .or_else(|| packaged_resources.map(|p| p.join("web-dist")))
+        .or_else(|| packaged_resources.as_ref().map(|p| p.join("web-dist")))
         .unwrap_or_else(|| crate::workspace_root().join("packages/web/dist"));
     let mut config = ServerHostConfig::desktop(root.clone(), web);
+    #[cfg(windows)]
+    {
+        config.bundled_voice_runtime = packaged_resources.map(|p| p.join("voice-runtime"));
+    }
+    config.voice_model_dir = settings.voice_model_dir()?;
+    config.voice_model_default_dir = Some(data_dir.join("voice-model"));
     if let Ok(value) = std::env::var("UNDERSTAND_BOOK_ADDR") {
         let addr: std::net::SocketAddr = value.parse().map_err(|_| {
             "UNDERSTAND_BOOK_ADDR must be a loopback IP address and port for a local profile"
@@ -155,6 +161,13 @@ pub fn serve_profile(args: Vec<PathBuf>) -> Result<(), String> {
     if settings.load()?.is_none() {
         settings.save_root(&root)?;
     }
+    let voice_settings = settings.clone();
+    server.configure_voice_model_persistence(std::sync::Arc::new(move |dir| {
+        let root = voice_settings
+            .load()?
+            .ok_or("Local library is unavailable")?;
+        voice_settings.apply_voice_model_dir(&root, dir)
+    }));
     server.configure_model_settings(
         None,
         "settings",

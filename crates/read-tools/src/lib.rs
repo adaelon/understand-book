@@ -24,6 +24,7 @@ pub mod video_graph;
 pub mod math_structure;
 mod ranked_search;
 pub mod reading_support;
+pub mod teach_back;
 pub use ranked_search::{LexicalTextIndex, RankedSearchHit, RankedSearchResult};
 
 /// Versioned normalized-search semantics. Dependency or Unicode-data upgrades must change this

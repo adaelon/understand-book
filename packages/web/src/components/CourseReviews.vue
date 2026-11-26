@@ -1,21 +1,45 @@
 <script setup lang="ts">
+import { nextTick, ref } from 'vue';
 import { t as uiText } from '../i18n';
 import type { CourseReview } from '../generated/CourseReview';
 import type { CourseExpression } from '../generated/CourseExpression';
-defineProps<{ reviews: CourseReview[]; expressions: CourseExpression[]; disabled: boolean }>();
-const emit = defineEmits<{ retry: [job: string]; read: [job: string]; understanding: []; continue: [job: string] }>();
+import TeachBackComparisonCard from './TeachBackComparisonCard.vue';
+const props = defineProps<{ reviews: CourseReview[]; expressions: CourseExpression[]; disabled: boolean; chatSessionId?: string; sourceId?: string; sourceRevision?: string | null }>();
+const emit = defineEmits<{ retry: [job: string]; read: [job: string]; understanding: []; continue: [job: string]; restoreChat: [sessionId: string]; displayed: []; jump: [lid: string] }>();
 const activity = (value: string) => uiText(({prediction:'我的预测',reflection:'实验后的解释',task:'升级方案',revision:'后来的修正'} as Record<string,string>)[value] ?? '我的表达');
+const latest = props.reviews.at(-1);
+const expanded = ref(new Set(latest ? [latest.expression.job_ref] : []));
+const located = ref<Record<string, string>>({});
+function toggle(job: string, event: Event) {
+  if ((event.currentTarget as HTMLDetailsElement).open) expanded.value.add(job);
+  else { expanded.value.delete(job); delete located.value[job]; }
+}
+async function locate(review: CourseReview, turn: string) {
+  const original = props.expressions.find(item => item.teach_back?.turn_id === turn);
+  if (original) located.value[review.expression.job_ref] = original.response;
+  await nextTick();
+  document.getElementById('course-review-' + review.expression.job_ref)?.focus();
+}
 </script>
 <template>
   <section class="reviews" :aria-label="uiText('针对我的反馈')">
     <header><div><span>{{ uiText('从原话到理解') }}</span><h4>{{ uiText('针对我的反馈') }}</h4></div><button v-if="reviews.some(r => r.understanding.length)" :disabled="disabled" @click="emit('understanding')">{{ uiText('打开我的理解 →') }}</button></header>
     <p v-if="!reviews.length" class="muted" role="status">{{ uiText('思路已保存，正在生成针对性反馈…') }}</p>
-    <article v-for="(review,i) in reviews" :key="review.expression.job_ref" class="review">
-      <details :open="i === reviews.length - 1"><summary><small v-if="review.expression.round_title && ['prediction','reflection'].includes(review.expression.activity)" class="round-label">{{ uiText('第 {0} 轮 · {1}', [(review.expression.round_index ?? 0) + 1, review.expression.round_title]) }}</small>{{ activity(review.expression.activity) }} <span>{{ ['pending','running'].includes(review.status) ? uiText('正在分析…') : review.status === 'ready' ? (review.displayed ? uiText('已反馈') : uiText('反馈已就绪')) : uiText('需要重试') }}</span></summary>
-        <blockquote>{{ review.expression.response }}</blockquote>
-        <button v-if="['prediction','reflection'].includes(review.expression.activity)" :disabled="disabled" @click="emit('continue',review.expression.job_ref)">{{ uiText('在课程中接着讨论 →') }}</button>
+    <article v-for="review in reviews" :key="review.expression.job_ref" class="review">
+      <details :open="expanded.has(review.expression.job_ref)" @toggle="toggle(review.expression.job_ref, $event)"><summary><small v-if="review.expression.round_title && ['prediction','reflection'].includes(review.expression.activity)" class="round-label">{{ uiText('第 {0} 轮 · {1}', [(review.expression.round_index ?? 0) + 1, review.expression.round_title]) }}</small>{{ activity(review.expression.activity) }} <span>{{ ['pending','running'].includes(review.status) ? uiText('正在分析…') : review.status === 'ready' ? (review.displayed ? uiText('已反馈') : uiText('反馈已就绪')) : uiText('需要重试') }}</span></summary>
+        <blockquote :id="'course-review-' + review.expression.job_ref" tabindex="-1">{{ located[review.expression.job_ref] ?? review.expression.response }}</blockquote>
+        <template v-if="review.expression.teach_back">
+          <button v-if="review.expression.teach_back.session_id !== chatSessionId" type="button" :disabled="disabled"
+            @click="emit('restoreChat',review.expression.teach_back.session_id)">{{ uiText('回原对话查看这次解释') }}</button>
+          <TeachBackComparisonCard v-else-if="expanded.has(review.expression.job_ref) && review.comparison"
+            :comparison="review.comparison" :session-id="review.expression.teach_back.session_id" :turn-id="review.expression.teach_back.turn_id"
+            :current-source-id="sourceId" :current-source-revision="sourceRevision" :already-displayed="review.displayed"
+            @displayed="!review.displayed && emit('displayed')" @jump="lid => emit('jump',lid)"
+            @locate="turn => locate(review,turn)" />
+        </template>
+        <button v-else-if="['prediction','reflection'].includes(review.expression.activity)" :disabled="disabled" @click="emit('continue',review.expression.job_ref)">{{ uiText('在课程中接着讨论 →') }}</button>
         <p v-if="['pending','running'].includes(review.status)" class="muted" role="status">{{ uiText('正在结合原文、你的理由和此前看到的帮助分析。可以先继续学习。') }}</p>
-        <button v-else-if="review.status === 'ready' && !review.displayed" :disabled="disabled" @click="emit('read',review.expression.job_ref)">{{ uiText('查看针对我的反馈') }}</button>
+        <button v-else-if="review.status === 'ready' && !review.displayed && !review.expression.teach_back" :disabled="disabled" @click="emit('read',review.expression.job_ref)">{{ uiText('查看针对我的反馈') }}</button>
         <div v-else-if="review.feedback" class="personal-feedback"><p>{{ review.feedback.acknowledgement }}</p><p>{{ review.feedback.guidance }}</p><p v-if="review.feedback.follow_up" class="follow-up">{{ review.feedback.follow_up }}</p></div>
         <div v-else-if="review.status !== 'ready'" class="feedback-error"><p>{{ uiText('你的原话已保存，这次反馈尚未完成。') }}</p><button :disabled="disabled" @click="emit('retry',review.expression.job_ref)">{{ uiText('重新分析这段思路') }}</button></div>
         <details v-if="review.displayed && review.understanding.length" class="understanding"><summary>{{ uiText('已进入我的理解 · 查看保留了什么') }}</summary><div v-for="record in review.understanding" :key="record.evidence_ref"><p>{{ record.interpretation }}</p><div v-for="section in [{ title:'表达中已体现', items:record.demonstrated }, { title:'需要澄清', items:record.difficulties }, { title:'仍待确认', items:record.unconfirmed }]" :key="section.title"><template v-if="section.items.length"><strong>{{ uiText(section.title) }}</strong><ul><li v-for="item in section.items" :key="item">{{ item }}</li></ul></template></div></div><p class="muted">{{ uiText('保留原话、当时的来源和已获得的帮助；后来的修正追加记录，不覆盖最初的想法。') }}</p></details>

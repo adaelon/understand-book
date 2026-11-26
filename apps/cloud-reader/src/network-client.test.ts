@@ -258,6 +258,33 @@ describe('MU8 authorized browser context', () => {
     await expect(api.agentRunCreate('',{session_id:'old-chat',client_request_id:'tc5-old',entry_action:'clarify_answer',answer_ref:{turn_id:'old-answer'},expected_chat_head:'old-answer'})).rejects.toMatchObject({errorCode:'CHAT_SELECTION_CHANGED'});
     expect(fetch).toHaveBeenCalledTimes(1); expect(pendingSubmissions()).toEqual([]);
   });
+
+  it('checks the exact comparison attempt on a lost response before retrying the same expression', async () => {
+    const input = { entry_action: 'explain_back' as const, session_id: 'chat', answer_ref: { turn_id: 'explanation' },
+      teach_back_reply: {kind:'dispute_interpretation' as const, round_id:'tb:earlier', row_id:'reason'},
+      expression_id: 'expression', client_request_id: 'expression', operation_id: 'second-attempt', retry_of: 'original-turn' };
+    let accepted = false;
+    const posts: Record<string, unknown>[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('client_request_id=')) {
+        expect(url).toContain('client_request_id=expression&operation_id=second-attempt');
+        return accepted ? json({ turn_id: 'original-turn', session_id: 'chat', book_id: 'b' }) : json({ error_code: 'OBJECT_NOT_FOUND' }, 404);
+      }
+      if (url.endsWith('/agent/runs')) {
+        posts.push(JSON.parse(String(init?.body)));
+        accepted = posts.length === 2;
+        throw new Error('response lost');
+      }
+      return json(scene);
+    }));
+    await expect(api.agentRunCreate('我的原话', input)).rejects.toThrow('response lost');
+    expect(pendingSubmissions().map(item => item.key)).toEqual(['expression']);
+    await retrySubmission('expression');
+    expect(posts).toHaveLength(2);
+    expect(posts[0].teach_back_reply).toEqual(input.teach_back_reply);
+    expect(posts[0]).toEqual(posts[1]);
+    expect(pendingSubmissions()).toEqual([]);
+  });
   it('keeps the follow-up first question bound to its captured child across the workspace refresh', async () => {
     const fetch = vi.fn(async () => json({ ...scene, selected_chat:'parent-chat' }));
     vi.stubGlobal('fetch',fetch);

@@ -1,0 +1,481 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>源码导读</title>
+  <style>:root {
+  color-scheme: light;
+  --paper: #f6f5f0;
+  --ink: #252d2b;
+  --muted: #58635f;
+  --line: #d4d8ce;
+  --accent: #9e4b25;
+  --code: #1c2828;
+  --mono: "Cascadia Code", Consolas, "SFMono-Regular", monospace;
+  --sans: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-family: var(--sans);
+}
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--ink); background: var(--paper); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:disabled { cursor: default; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid #db8b50; outline-offset: -3px; }
+.masthead, main { width: min(1576px, 100%); margin-inline: auto; padding-inline: clamp(18px, 3.7vw, 68px); }
+.masthead { min-height: 60px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--line); }
+.brand, .project, .panel-heading h2, .code-footer span { display: inline-flex; align-items: center; }
+.brand { gap: 11px; flex-shrink: 0; font-weight: 700; font-size: 15px; letter-spacing: .04em; }
+.book-mark { position: relative; width: 24px; height: 25px; border-radius: 5px; background: #283f37; }
+.book-mark::before, .book-mark::after { content: ""; position: absolute; top: 6px; width: 6px; height: 13px; border: 1.6px solid #f2ac72; }
+.book-mark::before { left: 5px; border-right: 0; transform: skewY(12deg); }
+.book-mark::after { right: 5px; border-left: 0; transform: skewY(-12deg); }
+.project { gap: 8px; font: 12px var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.project::before { content: ""; flex: 0 0 7px; height: 7px; border-radius: 50%; background: #5a7766; }
+.intro { padding-block: clamp(18px, 3vh, 36px) clamp(16px, 2.7vh, 28px); }
+h1, h2, p { margin: 0; }
+h1 { font-size: clamp(25px, 2.35vw, 40px); line-height: 1.28; letter-spacing: -.035em; font-weight: 680; text-wrap: balance; }
+.intro p { margin-top: 8px; color: var(--muted); font-size: 14px; line-height: 1.65; }
+.workspace { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(338px, .8fr); grid-template-rows: minmax(235px, 1fr) auto; gap: 12px 16px; height: clamp(520px, calc(100dvh - 205px), 880px); margin-bottom: 22px; }
+.source-panel, .flow-panel, .detail-panel { min-width: 0; overflow: hidden; border-radius: 10px; }
+.source-panel { grid-row: 1 / 3; display: flex; flex-direction: column; background: var(--code); color: #e2ebe3; border: 1px solid #283736; }
+.panel-heading { height: 46px; flex: 0 0 auto; display: flex; align-items: center; justify-content: space-between; padding: 0 17px; gap: 10px; border-bottom: 1px solid var(--line); }
+.panel-heading h2 { gap: 9px; font-size: 14px; line-height: 1; font-weight: 670; }
+.panel-meta, .file-stat { font-size: 12px; color: var(--muted); }
+.file-stat { color: #afc0b9; }
+.code-heading { border-color: #354442; }
+.code-mark { color: #f0ab73; font: 700 14px var(--mono); }
+.route-mark { font: 700 22px/1 var(--mono); color: var(--accent); }
+.file-tabs { min-height: 38px; flex: 0 0 auto; display: flex; overflow-x: auto; background: #182423; border-bottom: 1px solid #384743; scrollbar-width: thin; }
+.file-tab { border: 0; border-right: 1px solid #33433f; padding: 9px 14px; background: transparent; color: #aebdb6; font: 12px/1.4 var(--mono); white-space: nowrap; }
+.file-tab:hover { background: #253633; }
+.file-tab[aria-pressed=true] { background: #293a36; color: #f4d7ba; box-shadow: inset 0 -2px #e4a36d; }
+.source-path, .code-footer { color: #b4c5bc; font: 11px/1.45 var(--mono); }
+.source-path { padding: 9px 17px; border-bottom: 1px solid #32423f; overflow-wrap: anywhere; }
+.code-viewport { position: relative; flex: 1; min-height: 0; overflow: auto; scrollbar-color: #53645c var(--code); }
+.code-lines { min-width: 100%; width: max-content; padding: 12px 0 25px; }
+.code-line { display: flex; width: 100%; color: #e5ece4; white-space: pre; font: 13px/24px var(--mono); tab-size: 4; }
+.line-number { width: 4.3em; padding-right: .95em; margin-right: 1.05em; text-align: right; flex: 0 0 auto; color: #81958b; border-left: 3px solid transparent; user-select: none; }
+.line-text { padding-right: 28px; font: inherit; font-variant-ligatures: none; }
+.code-line.linked { cursor: pointer; }
+.code-line.linked:hover { background: #2d3d38; }
+.code-line.selected { background: #3c4030; }
+.code-line.selected .line-number { border-color: #f3ab64; color: #ffd7a8; }
+.token-comment { color: #a1b9a4; }
+.token-keyword { color: #e9b485; }
+.token-string { color: #a7d2b2; }
+.token-number { color: #94cbd0; }
+.code-footer { display: flex; justify-content: space-between; gap: 10px; padding: 9px 16px; border-top: 1px solid #364843; }
+.code-footer span { gap: 7px; }
+.code-footer i { width: 6px; height: 11px; background: #eeb377; border-radius: 1px; }
+.flow-panel { display: flex; flex-direction: column; border: 1px solid var(--line); background: #fcfcf8; }
+.flow-viewport { flex: 1; min-height: 0; overflow: auto; scrollbar-width: thin; scrollbar-color: #b6c0b4 transparent; background-image: radial-gradient(#ccd3c6 .78px, transparent .9px); background-size: 15px 15px; }
+.flow-map { width: 100%; min-height: 100%; position: relative; display: grid; align-content: center; }
+#edges { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.flow-rows { position: relative; padding: 15px 24px; display: grid; gap: 18px; }
+.flow-row { display: flex; justify-content: center; gap: 16px; }
+.node { width: clamp(110px, 16vw, 204px); min-width: 0; flex-shrink: 1; display: grid; place-content: center; justify-items: center; gap: 3px; padding: 6px 9px; min-height: 46px; border: 1px solid #a8b8aa; border-radius: 6px; background: #fdfdf8; box-shadow: 0 2px 0 #425b4610; }
+.node:hover { border-color: #59785e; background: #f4f7ed; }
+.node[aria-pressed=true] { border-color: #aa5b36; background: #f9e9d8; box-shadow: 0 0 0 1px #aa5b36; }
+.node-title { max-width: 100%; overflow-wrap: anywhere; font-weight: 650; font-size: 13px; line-height: 1.27; }
+.node-symbol { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 10px/1.2 var(--mono); color: #5c6a60; }
+.node[aria-pressed=true] .node-symbol { color: #884a2b; }
+.detail-panel { border: 1px solid var(--line); background: #fffef9; padding: 14px 18px 15px; }
+.detail-controls, .pager { display: flex; align-items: center; }
+.detail-controls { justify-content: space-between; gap: 8px; }
+.detail-progress { color: var(--accent); font: 650 12px var(--mono); }
+.pager { gap: 4px; }
+.pager button { width: 33px; height: 27px; line-height: 1; font-size: 18px; border: 1px solid #cbd1c5; background: transparent; border-radius: 5px; }
+.pager button:hover:enabled { background: #f3f4eb; }
+.pager button:disabled { color: #b7beb3; border-color: #e0e4da; }
+.detail-panel h2 { margin: 6px 0; font-size: clamp(17px, 1.3vw, 22px); letter-spacing: -.015em; }
+.detail-panel p { color: #404c44; font-size: 14px; line-height: 1.65; overflow-wrap: anywhere; white-space: pre-line; }
+.source-jump { max-width: 100%; margin-top: 8px; padding: 2px 0; border: 0; background: none; color: #85451f; text-align: left; font: 12px/1.45 var(--mono); overflow-wrap: anywhere; }
+.source-jump:hover { text-decoration: underline; }
+.mobile-switch { display: none; }
+@media (max-width: 760px) {
+  .masthead { min-height: 47px; }
+  .intro { padding-block: 17px 14px; }
+  .intro p { font-size: 13px; line-height: 1.55; margin-top: 6px; }
+  .mobile-switch { display: flex; margin: 0 0 9px; gap: 4px; }
+  .mobile-switch button { border: 1px solid transparent; border-radius: 5px; padding: 8px 13px; font-size: 13px; background: transparent; }
+  .mobile-switch button[aria-pressed=true] { background: #e7eadf; border-color: #bfc8b7; font-weight: 650; }
+  .workspace { height: auto; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto; gap: 9px; }
+  .source-panel, .flow-panel { grid-column: 1; grid-row: 1; }
+  .workspace[data-view=flow] .source-panel, .workspace[data-view=code] .flow-panel { display: none; }
+  .flow-panel, .source-panel { height: clamp(275px, 48svh, 450px); }
+  .detail-panel { grid-row: 2; padding: 11px 14px 13px; }
+  .panel-heading { height: 38px; padding-inline: 13px; }
+  .node { width: min(165px, 44%); }
+  .flow-rows { gap: 17px; padding-inline: 18px; }
+  .flow-row { gap: 10px; }
+  .pager button { height: 34px; width: 40px; }
+  .code-lines { width: 100%; }
+  .code-line { font-size: 12px; line-height: 22px; }
+  .line-text { flex: 1; min-width: 0; padding-right: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .line-number { width: 3.5em; margin-right: .8em; }
+  .source-path { padding: 6px 12px; }
+}
+@media (min-width: 761px) and (max-height: 740px) {
+  .masthead { min-height: 44px; }
+  .intro { padding-block: 12px; }
+  .workspace { height: max(470px, calc(100dvh - 157px)); }
+}
+</style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="brand"><span class="book-mark" aria-hidden="true"></span>源码导读</div>
+    <span class="project" id="project"></span>
+  </header>
+  <main>
+    <header class="intro">
+      <h1 id="lesson-title"></h1>
+      <p id="summary"></p>
+    </header>
+    <nav class="mobile-switch" aria-label="切换阅读视图">
+      <button type="button" data-view="flow" aria-pressed="true">流程图</button>
+      <button type="button" data-view="code" aria-pressed="false">对应源码</button>
+    </nav>
+    <div class="workspace" data-view="flow">
+      <section class="source-panel" aria-labelledby="source-heading">
+        <header class="panel-heading code-heading">
+          <h2 id="source-heading"><span class="code-mark" aria-hidden="true">&lt;/&gt;</span>源代码</h2>
+          <span class="file-stat" id="file-stat"></span>
+        </header>
+        <nav class="file-tabs" id="file-tabs" aria-label="源码文件"></nav>
+        <div class="source-path" id="source-path"></div>
+        <div class="code-viewport" id="code-viewport" tabindex="0" aria-label="可滚动的真实源码">
+          <div class="code-lines" id="code-lines"></div>
+        </div>
+        <div class="code-footer"><span><i aria-hidden="true"></i>当前步骤</span><span id="line-range"></span></div>
+      </section>
+      <section class="flow-panel" aria-labelledby="flow-heading">
+        <header class="panel-heading">
+          <h2 id="flow-heading"><span class="route-mark" aria-hidden="true">⑂</span>执行流程</h2>
+          <span class="panel-meta" id="node-count"></span>
+        </header>
+        <div class="flow-viewport" id="flow-viewport">
+          <div class="flow-map" id="flow-map">
+            <canvas id="edges" aria-hidden="true"></canvas>
+            <div class="flow-rows" id="flow-rows"></div>
+          </div>
+        </div>
+      </section>
+      <section class="detail-panel" aria-label="当前步骤详解">
+        <div class="detail-controls">
+          <span class="detail-progress" id="progress"></span>
+          <div class="pager">
+            <button type="button" id="previous" aria-label="上一步" title="上一步">←</button>
+            <button type="button" id="next" aria-label="下一步" title="下一步">→</button>
+          </div>
+        </div>
+        <div aria-live="polite" aria-atomic="true">
+          <h2 id="step-title"></h2>
+          <p id="explanation"></p>
+        </div>
+        <button type="button" class="source-jump" id="source-jump"></button>
+      </section>
+    </div>
+  </main>
+  <script id="tour-data" type="application/json">{"project":"Understand Book","title":"Markdown 怎样变成可引用的段落？","summary":"假设一篇短文只有标题「光」和一句「光会反射。」。跟着这两块文字，看程序怎样为整章和每一段分别留下原文位置。","steps":[{"id":"read-markdown","title":"读取原文","symbol":"loadBookSource","file":"packages/core/src/book-source.ts","start":28,"end":30,"explanation":"导入从同一份文本开始。markdownToBlocks 读出一串带位置的内容块，segment 再用这些块建树。下面沿「# 光」和「光会反射。」两条路径看它们怎样入树。","next":["read-heading","read-paragraph"]},{"id":"read-heading","title":"识别标题","symbol":"projectRootNode","file":"packages/core/src/md-adapter.ts","start":201,"end":204,"explanation":"语法树把「# 光」认作一级标题。这里把标题级别和用来显示的「光」记入内容块，同时保留它在原文中的完整范围，井号也在这个范围里。","next":["attach-blocks"]},{"id":"read-paragraph","title":"识别正文","symbol":"projectRootNode","file":"packages/core/src/md-adapter.ts","start":221,"end":226,"explanation":"轮到「光会反射。」时，语法树给出的类型是 paragraph。这里先检查整段是否为图片，再交给行内公式处理函数。这句话是纯文本，整句保留为一个正文块。","next":["attach-blocks"]},{"id":"attach-blocks","title":"建立章节层级","symbol":"segment","file":"packages/core/src/segment.ts","start":79,"end":87,"explanation":"遇到标题，先创建一个章节容器，再把标题文字作为它的第一个子段。随后读到正文时，栈顶仍是刚建好的章节，「光会反射。」就成为同一章的第二个子段。","next":["assign-lid"]},{"id":"assign-lid","title":"分配段落编号","symbol":"make","file":"packages/core/src/segment.ts","start":56,"end":67,"explanation":"每次创建节点，make 都把它在父节点下的序号追加到路径，并保存原文起止位置。本例的章编号是 1，标题「光」是 1.1，正文「光会反射。」是 1.2。","next":["cover-chapter"]},{"id":"cover-chapter","title":"合并章节范围","symbol":"segment","file":"packages/core/src/segment.ts","start":91,"end":103,"explanation":"最后从树的深处往上走，用子节点最早的起点和最晚的终点扩展父节点的原文范围。这样用 1 可以取回整章，用 1.2 则能单独取回「光会反射。」。","next":[]}],"files":[{"path":"packages/core/src/book-source.ts","lines":["import { existsSync, readFileSync } from \"node:fs\";","import path from \"node:path\";","import { epubToSource } from \"./epub-adapter\";","import { markdownToBlocks } from \"./md-adapter\";","import { segment, type SourceBlock } from \"./segment\";","import { ReadOnlyBaseZ } from \"./zod\";","","/** Resume an imported EPUB from its canonical text and published citation anchors."," * Re-running the current parser would silently apply import changes to an existing build. */","export function loadBookSource(file: string) {","  const directory = path.dirname(file);","  const manifestPath = path.join(directory, \"source_manifest.json\");","  if ((path.basename(file) === \"source.txt\" || /\\.epub$/i.test(file)) && existsSync(manifestPath)) {","    const manifest = JSON.parse(readFileSync(manifestPath, \"utf8\"));","    const snapshotPath = path.resolve(directory, manifest.canonical_source?.snapshot_path ?? \"source.epub\");","    if (manifest.canonical_source?.kind === \"epub\"","      && (path.basename(file) === \"source.txt\" || path.resolve(file) === snapshotPath)) {","      const source = readFileSync(path.join(directory, \"source.txt\"), \"utf8\");","      const base = ReadOnlyBaseZ.parse(JSON.parse(readFileSync(path.join(directory, \"base.json\"), \"utf8\")));","      if (base.book_id !== manifest.book_id) throw new Error(\"EPUB snapshot base identity mismatch\");","      return { source, blocks: [] as SourceBlock[], lidNodes: base.lid_nodes };","    }","  }","  if (/\\.epub$/i.test(file)) {","    const loaded = epubToSource(new Uint8Array(readFileSync(file)));","    return { ...loaded, lidNodes: segment(loaded.blocks) };","  }","  const source = readFileSync(file, \"utf8\");","  const blocks = markdownToBlocks(source);","  return { source, blocks, lidNodes: segment(blocks) };","}"]},{"path":"packages/core/src/md-adapter.ts","lines":["// Markdown -> faithful SourceBlock[] mapping `[ADR-0008/0029]`.","// CommonMark/GFM/math parsing comes from micromark/mdast; all spans are parser","// offsets in JavaScript UTF-16 units, which is the source/LID coordinate space.","import type { Nodes, Parents, RootContent } from \"mdast\";","import { fromMarkdown } from \"mdast-util-from-markdown\";","import { gfmFromMarkdown } from \"mdast-util-gfm\";","import { mathFromMarkdown } from \"mdast-util-math\";","import { gfm } from \"micromark-extension-gfm\";","import { math } from \"micromark-extension-math\";","import { parse } from \"node-html-parser\";","import type { AssetKind, SourceBlock, SourceImageRef, Span } from \"./segment\";","","export interface MarkdownSourceReviewProposal {","  kind: \"malformed_inline_math\" | \"unfenced_code\";","  source_span: Span;","  reason: string;","}","","export interface MarkdownSourceBlockParseResult {","  blocks: SourceBlock[];","  review_proposals: MarkdownSourceReviewProposal[];","  alignment_contexts: MarkdownAlignmentContext[];","  display_segments: MarkdownDisplaySegment[];","}","","export interface MarkdownAlignmentContext {","  kind: \"paragraph\" | \"list_item\";","  source_span: Span;","}","","export type MarkdownDisplayRole = \"prose\" | \"heading\" | \"list_item\" | \"code\";","","export interface MarkdownDisplaySegment {","  role: MarkdownDisplayRole;","  source_span: Span;","  display_text: string;","}","","interface SourceLine {","  text: string;","  start: number;","  end: number;","}","","function splitLines(source: string): SourceLine[] {","  const lines: SourceLine[] = [];","  let start = 0;","  for (const raw of source.split(/(?\u003c=\\n)/u)) {","    lines.push({ text: raw, start, end: start + raw.length });","    start += raw.length;","  }","  return lines;","}","","function nodeSpan(node: Nodes): Span {","  const start = node.position?.start.offset;","  const end = node.position?.end.offset;","  if (start === undefined || end === undefined || end \u003c start) {","    throw new Error(`Markdown parser node lacks a valid source position: ${node.type}`);","  }","  return { start, end };","}","","function blockSpan(node: RootContent, source: string): Span {","  const span = nodeSpan(node);","  if (node.type !== \"code\" || node.lang) return span;","  const lineStart = source.lastIndexOf(\"\\n\", Math.max(0, span.start - 1)) + 1;","  return source.slice(lineStart, span.start).trim().length === 0 ? { ...span, start: lineStart } : span;","}","","function sourceBlock(","  source: string,","  span: Span,","  options: { kind?: \"heading\"; level?: number; text?: string; assetKind?: AssetKind; image?: SourceImageRef } = {},","): SourceBlock {","  return {","    kind: options.kind ?? \"leaf\",","    ...(options.level ? { level: options.level } : {}),","    ...(options.assetKind ? { assetKind: options.assetKind } : {}),","    ...(options.image ? { image: options.image } : {}),","    text: options.text ?? source.slice(span.start, span.end),","    span,","  };","}","","function parseImageSource(raw: string): SourceImageRef | null {","  const markdown = /^!\\[([^\\]]*)\\]\\(([^)]+)\\)$/u.exec(raw.trim());","  if (markdown) return { alt: markdown[1], src: markdown[2].trim() };","  if (!/\u003cimg[\\s>]/iu.test(raw)) return null;","  const root = parse(raw);","  const image = root.querySelector(\"img\");","  const src = image?.getAttribute(\"src\")?.trim();","  if (!image || !src || root.text.trim()) return null;","  return { alt: image.getAttribute(\"alt\") ?? \"\", src };","}","","function isSingleRawHtmlTable(raw: string): boolean {","  const trimmed = raw.trim();","  if (!/^\u003ctable(?:\\s|>)/iu.test(trimmed) || !/\u003c\\/table>$/iu.test(trimmed)) return false;","  const root = parse(trimmed);","  const tables = root.querySelectorAll(\"table\");","  return tables.length === 1 && tables[0].outerHTML.trim() === trimmed;","}","","function plainText(node: Nodes): string {","  if (\"value\" in node && typeof node.value === \"string\") return node.value;","  if (node.type === \"image\") return node.alt ?? \"\";","  if (\"children\" in node) return (node as Parents).children.map((child) => plainText(child)).join(\"\");","  return \"\";","}","","function collectInlineMath(node: Nodes, result: Nodes[] = []): Nodes[] {","  if (node.type === \"inlineMath\") result.push(node);","  if (\"children\" in node) {","    for (const child of (node as Parents).children) collectInlineMath(child, result);","  }","  return result;","}","","function collectDisplaySegments(","  node: Nodes,","  source: string,","  role: MarkdownDisplayRole,","): MarkdownDisplaySegment[] {","  if (node.type === \"inlineMath\" || node.type === \"math\" || node.type === \"image\") return [];","  if (node.type === \"text\") {","    return [{ role, source_span: nodeSpan(node), display_text: node.value }];","  }","  if (node.type === \"inlineCode\" || node.type === \"code\") {","    const outer = nodeSpan(node);","    const raw = source.slice(outer.start, outer.end);","    const offset = raw.indexOf(node.value);","    if (offset \u003c 0 || raw.indexOf(node.value, offset + 1) >= 0) return [];","    return [{","      role: \"code\",","      source_span: { start: outer.start + offset, end: outer.start + offset + node.value.length },","      display_text: node.value,","    }];","  }","  if (!(\"children\" in node)) return [];","  return (node as Parents).children.flatMap((child) => collectDisplaySegments(child, source, role));","}","","function formulaMarkupIsBalanced(raw: string): boolean {","  const open = /^(\\${1,2})/u.exec(raw)?.[1];","  if (!open || !raw.endsWith(open) || raw.length \u003c= open.length * 2) return false;","  const content = raw.slice(open.length, -open.length);","  let braceDepth = 0;","  for (let index = 0; index \u003c content.length; index += 1) {","    const escaped = index > 0 && content[index - 1] === \"\\\\\";","    if (!escaped && content[index] === \"$\") return false;","    if (!escaped && content[index] === \"{\") braceDepth += 1;","    if (!escaped && content[index] === \"}\") {","      braceDepth -= 1;","      if (braceDepth \u003c 0) return false;","    }","  }","  return braceDepth === 0;","}","","function projectInlineMathContainer(","  node: RootContent,","  source: string,","  proposals: MarkdownSourceReviewProposal[],","): SourceBlock[] {","  const span = nodeSpan(node);","  const formulas = collectInlineMath(node)","    .map((formula) => nodeSpan(formula))","    .sort((left, right) => left.start - right.start);","  if (!formulas.length) return [sourceBlock(source, span)];","  if (formulas.some((formula) => !formulaMarkupIsBalanced(source.slice(formula.start, formula.end)))) {","    proposals.push({","      kind: \"malformed_inline_math\",","      source_span: span,","      reason: \"parser math nodes contain unbalanced braces or nested dollar delimiters\",","    });","    return [sourceBlock(source, span)];","  }","","  const blocks: SourceBlock[] = [];","  let cursor = span.start;","  for (const formula of formulas) {","    if (formula.start \u003c cursor || formula.end > span.end) {","      throw new Error(`Markdown parser produced overlapping inline math at ${formula.start}:${formula.end}`);","    }","    if (source.slice(cursor, formula.start).trim()) {","      blocks.push(sourceBlock(source, { start: cursor, end: formula.start }));","    }","    blocks.push(sourceBlock(source, formula, { assetKind: \"formula\" }));","    cursor = formula.end;","  }","  if (source.slice(cursor, span.end).trim()) blocks.push(sourceBlock(source, { start: cursor, end: span.end }));","  return blocks;","}","","function projectRootNode(","  node: RootContent,","  source: string,","  proposals: MarkdownSourceReviewProposal[],","): SourceBlock[] {","  const span = blockSpan(node, source);","  if (node.type === \"heading\") {","    return [sourceBlock(source, span, { kind: \"heading\", level: node.depth, text: plainText(node) })];","  }","  if (node.type === \"code\") return [sourceBlock(source, span, { assetKind: \"code\" })];","  if (node.type === \"table\") return [sourceBlock(source, span, { assetKind: \"table\" })];","  if (node.type === \"math\") {","    if (!formulaMarkupIsBalanced(source.slice(span.start, span.end))) {","      proposals.push({","        kind: \"malformed_inline_math\",","        source_span: span,","        reason: \"display math contains unbalanced braces or nested dollar delimiters\",","      });","      return [sourceBlock(source, span)];","    }","    return [sourceBlock(source, span, { assetKind: \"formula\" })];","  }","  if (node.type === \"list\") {","    return node.children.flatMap((item) => projectInlineMathContainer(item, source, proposals));","  }","  if (node.type === \"paragraph\") {","    const raw = source.slice(span.start, span.end);","    const image = parseImageSource(raw);","    if (image) return [sourceBlock(source, span, { assetKind: \"image\", image })];","    return projectInlineMathContainer(node, source, proposals);","  }","  if (node.type === \"image\") {","    return [sourceBlock(source, span, { assetKind: \"image\", image: { alt: node.alt ?? \"\", src: node.url } })];","  }","  if (node.type === \"html\") {","    const raw = source.slice(span.start, span.end);","    if (isSingleRawHtmlTable(raw)) return [sourceBlock(source, span, { assetKind: \"table\" })];","    const image = parseImageSource(raw);","    if (image) return [sourceBlock(source, span, { assetKind: \"image\", image })];","  }","  return [sourceBlock(source, span)];","}","","function codeLikeLine(line: string): boolean {","  const value = line.replace(/[\\r\\n]+$/u, \"\");","  const trimmed = value.trim();","  if (!trimmed) return false;","  return /^(?:from|import)\\s+[A-Za-z_]/u.test(trimmed)","    || /^(?:async\\s+)?(?:def|class)\\s+[A-Za-z_]/u.test(trimmed)","    || /^(?:for|while|if|elif|else|return|yield|with|try|except|finally)\\b/u.test(trimmed)","    || /^[A-Za-z_][A-Za-z0-9_.\\[\\]]*\\s*=\\s*\\S/u.test(trimmed)","    || /^[A-Za-z_][A-Za-z0-9_.]*\\([^)]*\\)\\s*$/u.test(trimmed)","    || /^#\\s*(?:seed|project|compute|train|plot|load|save|initialize|\\[)/iu.test(trimmed)","    || /^\\s{2,}\\S/u.test(value);","}","","function unfencedCodeProposals(","  source: string,","  parsedNodes: RootContent[],","): MarkdownSourceReviewProposal[] {","  const codeSpans = parsedNodes.filter((node) => node.type === \"code\").map((node) => blockSpan(node, source));","  const candidates = splitLines(source)","    .map((line, index) => ({ line, index }))","    .filter(({ line }) => !codeSpans.some((span) => line.start >= span.start && line.start \u003c span.end))","    .filter(({ line }) => codeLikeLine(line.text));","  const groups: typeof candidates[] = [];","  for (const candidate of candidates) {","    const current = groups.at(-1);","    if (current && candidate.index - current.at(-1)!.index \u003c= 2) current.push(candidate);","    else groups.push([candidate]);","  }","  return groups.filter((group) => group.length >= 3).map((group) => ({","    kind: \"unfenced_code\" as const,","    source_span: { start: group[0].line.start, end: group.at(-1)!.line.end },","    reason: \"three or more nearby code-like lines occur outside a fenced or indented code node\",","  }));","}","","export function parseMarkdownSourceBlocks(source: string): MarkdownSourceBlockParseResult {","  const tree = fromMarkdown(source, {","    extensions: [gfm(), math()],","    // GFM's autolink post-transform replaces decoded text with positionless","    // nodes. Source mapping needs the original tokenizer positions; native","    // autolinks still parse normally without that display-only transform.","    mdastExtensions: [gfmFromMarkdown().map((extension) => ({ ...extension, transforms: [] })), mathFromMarkdown()],","  });","  const reviewProposals: MarkdownSourceReviewProposal[] = [];","  const blocks = tree.children","    .flatMap((node) => projectRootNode(node, source, reviewProposals))","    .sort((left, right) => left.span.start - right.span.start || left.span.end - right.span.end);","  for (let index = 1; index \u003c blocks.length; index += 1) {","    if (blocks[index].span.start \u003c blocks[index - 1].span.end) {","      throw new Error(`Markdown parser block spans overlap at ${blocks[index].span.start}`);","    }","  }","  reviewProposals.push(...unfencedCodeProposals(source, tree.children));","  reviewProposals.sort((left, right) => left.source_span.start - right.source_span.start","    || left.source_span.end - right.source_span.end","    || left.kind.localeCompare(right.kind));","  const alignmentContexts = tree.children.flatMap((node): MarkdownAlignmentContext[] => {","    if (node.type === \"paragraph\") {","      const span = nodeSpan(node);","      return parseImageSource(source.slice(span.start, span.end))","        ? []","        : [{ kind: \"paragraph\", source_span: span }];","    }","    if (node.type === \"list\") {","      return node.children.map((item) => ({ kind: \"list_item\", source_span: nodeSpan(item) }));","    }","    return [];","  });","  const displaySegments = tree.children.flatMap((node): MarkdownDisplaySegment[] => {","    if (node.type === \"heading\") return collectDisplaySegments(node, source, \"heading\");","    if (node.type === \"list\") {","      return node.children.flatMap((item) => collectDisplaySegments(item, source, \"list_item\"));","    }","    if (node.type === \"code\") return collectDisplaySegments(node, source, \"code\");","    if (node.type === \"paragraph\") return collectDisplaySegments(node, source, \"prose\");","    return [];","  }).sort((left, right) => left.source_span.start - right.source_span.start","    || left.source_span.end - right.source_span.end);","  return {","    blocks,","    review_proposals: reviewProposals,","    alignment_contexts: alignmentContexts,","    display_segments: displaySegments,","  };","}","","export function markdownToBlocks(source: string): SourceBlock[] {","  return parseMarkdownSourceBlocks(source).blocks;","}"]},{"path":"packages/core/src/segment.ts","lines":["// 段级 LID 切分器(Model A `[ADR-0008]`)。","// 输入 = 忠实块映射的源块序列(SourceBlock[]);输出 = LidNode[](物化路径树,深度可变)。","// Model A:章/节 = 纯结构容器(span=子并集、不独占内容);标题文字 = 容器的首个叶子段。","// 没有标题父节点的连续内容共用一个匿名 section;只分组,不补写标题或正文。","// ⇒ 叶子(标题段 + 正文段)构成对全文的划分;容器不进叶子覆盖。","import type { LidNode } from \"./generated/LidNode\";","import type { NodeKind } from \"./generated/NodeKind\";","","export type AssetKind = Extract\u003cNodeKind, \"code\" | \"table\" | \"image\" | \"formula\">;","","export interface Span {","  start: number;","  end: number;","}","","export interface SourceImageRef {","  alt: string;","  src: string;","  /** EPUB 内部 zip 路径;Markdown 图片没有该字段。 */","  epubPath?: string;","}","","/** 忠实块映射的一个源块。heading 定义层级;leaf = 段(段落/引用块/代码块/列表项/asset)。 */","export interface SourceBlock {","  kind: \"heading\" | \"leaf\";","  /** heading 层级:1=章,≥2=节;leaf 时 undefined */","  level?: number;","  /** code/table/image/formula asset 叶子类型。segment 会透传为对应 LidNode.kind。 */","  assetKind?: AssetKind;","  /** 规范化后的展示文本(标题已去 marker) */","  text: string;","  /** image asset 的原始引用元数据;source.txt 仍只保存 text。 */","  image?: SourceImageRef;","  /** 源区间(含 marker,保证无未分类非内容字节);切片0 用 JS 串下标(UTF-16),字节精确化留后 */","  span: Span;","}","","function headingKind(level: number): NodeKind {","  return level \u003c= 1 ? \"chapter\" : \"section\";","}","","interface Frame {","  lid: string;","  path: number[];","  level: number;","}","","export function segment(blocks: SourceBlock[]): LidNode[] {","  const out: LidNode[] = [];","  const byLid = new Map\u003cstring, LidNode>();","  const childCount = new Map\u003cstring, number>(); // parentLid -> count;\"\" = 根","  const stack: Frame[] = [];","  let anonymousRoot: LidNode | undefined;","  let rootCount = 0;","","  const make = (parentLid: string, parentPath: number[], kind: NodeKind, span: Span): LidNode => {","    const idx =","      parentLid === \"\"","        ? ++rootCount","        : (childCount.set(parentLid, (childCount.get(parentLid) ?? 0) + 1), childCount.get(parentLid)!);","    const path = [...parentPath, idx];","    const lid = path.join(\".\");","    const node: LidNode = { lid, path, kind, span: { ...span }, children: [] };","    out.push(node);","    byLid.set(lid, node);","    if (parentLid !== \"\") byLid.get(parentLid)!.children.push(lid);","    return node;","  };","","  for (const b of blocks) {","    if (b.kind === \"heading\") {","      // 匿名内容区不是标题层级;首个真实 heading 必须从自己的层级开始。","      anonymousRoot = undefined;","      const level = b.level ?? 1;","      while (stack.length && stack[stack.length - 1].level >= level) stack.pop();","      const parent = stack[stack.length - 1];","      const parentLid = parent ? parent.lid : \"\";","      const parentPath = parent ? parent.path : [];","      // 结构容器(初始 span = 标题 span,post-pass 扩成子并集)","      const container = make(parentLid, parentPath, headingKind(level), b.span);","      stack.push({ lid: container.lid, path: container.path, level });","      // 标题 = 容器首个叶子段","      make(container.lid, container.path, \"paragraph\", b.span);","    } else {","      const parent = stack[stack.length - 1] ?? (anonymousRoot ??= make(\"\", [], \"section\", b.span));","      make(parent.lid, parent.path, b.assetKind ?? \"paragraph\", b.span);","    }","  }","","  // post-pass:容器 span = 后代并集(保证 父 ⊇ 子)。深度大者先算。","  const deepFirst = [...out].sort((a, b) => b.path.length - a.path.length);","  for (const n of deepFirst) {","    if (n.children.length) {","      let { start, end } = n.span;","      for (const c of n.children) {","        const cn = byLid.get(c)!;","        if (cn.span.start \u003c start) start = cn.span.start;","        if (cn.span.end > end) end = cn.span.end;","      }","      n.span = { start, end };","    }","  }","  return out;","}"]}]}</script>
+  <script>(() => {
+  const tour = JSON.parse(document.getElementById('tour-data').textContent);
+  const byId = id => document.getElementById(id);
+  const sourceFiles = new Map(tour.files.map(file => [file.path, file]));
+  const stepsById = new Map(tour.steps.map(step => [step.id, step]));
+  const stepIndices = new Map(tour.steps.map((step, index) => [step.id, index]));
+  const mobile = window.matchMedia('(max-width: 760px)');
+  const workspace = document.querySelector('.workspace');
+  const codeViewport = byId('code-viewport');
+  const codeLines = byId('code-lines');
+  const flowViewport = byId('flow-viewport');
+  const flowMap = byId('flow-map');
+  const nodeButtons = new Map();
+  const fileTabs = new Map();
+  let active;
+  let visibleFile;
+  let markedLines = [];
+
+  function element(tag, className, text) {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text != null) node.textContent = text;
+    return node;
+  }
+
+  function fileName(path) { return path.split('/').pop(); }
+  function lineRange(step) { return step.start === step.end ? 'L' + step.start : 'L' + step.start + '–' + step.end; }
+  function stepInUrl() { return new URLSearchParams(location.hash.slice(1)).get('step'); }
+  function rememberStep(id) {
+    if (stepInUrl() !== id) history.replaceState(null, '', '#step=' + encodeURIComponent(id));
+  }
+
+  // Text nodes keep the original characters selectable and preserve HTML shown as source.
+  const tokens = /\/\/[^\n]*|\/\*.*?(?:\*\/|$)|"(?:\\.|[^"\\])*"?|'(?:\\.|[^'\\])*'?|\x60(?:\\.|[^\x60\\])*\x60?|\b(?:async|await|break|case|catch|class|const|continue|def|else|enum|export|false|fn|for|from|function|if|impl|import|in|interface|let|match|new|null|pub|return|self|static|struct|switch|throw|true|try|type|use|var|while|yield)\b|\b\d+(?:\.\d+)?\b/g;
+  function paintLine(container, line, path) {
+    if (/^\s*\*/.test(line) || (/\.py$|\.rb$|\.sh$/.test(path) && /^\s*#/.test(line))) {
+      container.append(element('span', 'token-comment', line));
+      return;
+    }
+    let offset = 0;
+    for (const match of line.matchAll(tokens)) {
+      if (match.index > offset) container.append(line.slice(offset, match.index));
+      const value = match[0];
+      let kind = 'keyword';
+      if (value[0] === '/') kind = 'comment';
+      else if (/^["'\x60]/.test(value)) kind = 'string';
+      else if (/^\d/.test(value)) kind = 'number';
+      container.append(element('span', 'token-' + kind, value));
+      offset = match.index + value.length;
+    }
+    if (offset < line.length) container.append(line.slice(offset));
+  }
+
+  function openFile(path) {
+    if (visibleFile === path) return;
+    visibleFile = path;
+    const file = sourceFiles.get(path);
+    const steps = tour.steps.filter(step => step.file === path);
+    const rows = document.createDocumentFragment();
+    file.lines.forEach((line, index) => {
+      const row = element('div', 'code-line');
+      const lineNumber = index + 1;
+      const step = steps.find(item => item.start <= lineNumber && lineNumber <= item.end);
+      if (step) {
+        row.classList.add('linked');
+        row.dataset.step = step.id;
+        row.title = '查看讲解 · ' + step.title;
+      }
+      const number = element('span', 'line-number', lineNumber);
+      number.setAttribute('aria-hidden', 'true');
+      const text = element('code', 'line-text');
+      paintLine(text, line, path);
+      row.append(number, text);
+      rows.append(row);
+    });
+    codeLines.replaceChildren(rows);
+    markedLines = [];
+    byId('source-path').textContent = path;
+    byId('file-stat').textContent = file.lines.length + ' 行';
+    for (const [filePath, tab] of fileTabs) tab.setAttribute('aria-pressed', String(filePath === path));
+    const tab = fileTabs.get(path);
+    const tabs = tab.parentElement;
+    tabs.scrollLeft += tab.getBoundingClientRect().left - tabs.getBoundingClientRect().left -
+      Math.max(0, (tabs.clientWidth - tab.offsetWidth) / 2);
+    codeViewport.scrollLeft = 0;
+  }
+
+  function markCode(step) {
+    for (const row of markedLines) row.classList.remove('selected');
+    markedLines = [];
+    for (let number = step.start; number <= step.end; number++) {
+      const row = codeLines.children[number - 1];
+      row.classList.add('selected');
+      markedLines.push(row);
+    }
+    byId('line-range').textContent = lineRange(step);
+  }
+
+  function revealCode() {
+    if (!codeViewport.clientHeight || !markedLines.length) return;
+    const first = markedLines[0];
+    const last = markedLines[markedLines.length - 1];
+    const height = last.offsetTop + last.offsetHeight - first.offsetTop;
+    // Leave context after a selection that falls on the final lines of a file.
+    codeLines.style.paddingBottom = Math.round(codeViewport.clientHeight * .33) + 'px';
+    const margin = Math.max(9, Math.min(codeViewport.clientHeight * .30, (codeViewport.clientHeight - height) / 2));
+    codeViewport.scrollTop = first.offsetTop - margin;
+  }
+
+  function keepNodeVisible() {
+    const button = nodeButtons.get(active.id);
+    const area = flowViewport.getBoundingClientRect();
+    const target = button.getBoundingClientRect();
+    if (!area.height) return;
+    if (target.bottom > area.bottom - 9) flowViewport.scrollTop += target.bottom - area.bottom + 9;
+    if (target.top < area.top + 9) flowViewport.scrollTop += target.top - area.top - 9;
+    if (target.right > area.right - 9) flowViewport.scrollLeft += target.right - area.right + 9;
+    if (target.left < area.left + 9) flowViewport.scrollLeft += target.left - area.left - 9;
+  }
+
+  function setView(view) {
+    workspace.dataset.view = view;
+    for (const button of document.querySelectorAll('.mobile-switch button')) {
+      button.setAttribute('aria-pressed', String(button.dataset.view === view));
+    }
+    if (view === 'code') revealCode();
+    else {
+      drawEdges();
+      keepNodeVisible();
+    }
+  }
+
+  function selectStep(id, origin) {
+    const step = stepsById.get(id);
+    if (!step) return;
+    const index = stepIndices.get(id);
+    if (active) nodeButtons.get(active.id).setAttribute('aria-pressed', 'false');
+    active = step;
+    nodeButtons.get(id).setAttribute('aria-pressed', 'true');
+    openFile(step.file);
+    markCode(step);
+    byId('progress').textContent = '步骤 ' + (index + 1) + ' / ' + tour.steps.length;
+    byId('step-title').textContent = step.title;
+    byId('explanation').textContent = step.explanation;
+    byId('source-jump').textContent = '↗ ' + fileName(step.file) + ' · ' + lineRange(step);
+    byId('previous').disabled = index === 0;
+    byId('next').disabled = index === tour.steps.length - 1;
+    if (origin !== 'initial') rememberStep(id);
+    if (mobile.matches && origin === 'node') {
+      setView('code');
+      byId('code-viewport').focus({ preventScroll: true });
+    }
+    revealCode();
+    drawEdges();
+    keepNodeVisible();
+  }
+
+  function makeGraph() {
+    const levels = tour.steps.map(() => 0);
+    tour.steps.forEach((step, index) => {
+      for (const id of step.next) {
+        const target = stepIndices.get(id);
+        if (target > index) levels[target] = Math.max(levels[target], levels[index] + 1);
+      }
+    });
+    const rows = [];
+    tour.steps.forEach((step, index) => {
+      const level = levels[index];
+      if (!rows[level]) rows[level] = element('div', 'flow-row');
+      const node = element('button', 'node');
+      node.type = 'button';
+      node.dataset.step = step.id;
+      node.setAttribute('aria-pressed', 'false');
+      node.title = step.file + ' · ' + lineRange(step);
+      node.append(element('span', 'node-title', step.title), element('span', 'node-symbol', step.symbol));
+      rows[level].append(node);
+      nodeButtons.set(step.id, node);
+    });
+    byId('flow-rows').append(...rows);
+    const widest = Math.max(...rows.map(row => row.childElementCount));
+    if (widest > 2) flowMap.style.minWidth = (widest * 136 + 50) + 'px';
+  }
+
+  function drawEdges() {
+    const bounds = flowMap.getBoundingClientRect();
+    if (!bounds.width || !bounds.height) return;
+    const canvas = byId('edges');
+    const scale = window.devicePixelRatio || 1;
+    canvas.width = Math.round(bounds.width * scale);
+    canvas.height = Math.round(bounds.height * scale);
+    const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
+    ctx.lineJoin = 'round';
+    const boxes = new Map();
+    for (const [id, button] of nodeButtons) {
+      const rect = button.getBoundingClientRect();
+      boxes.set(id, { x: rect.left - bounds.left + rect.width / 2, top: rect.top - bounds.top,
+        bottom: rect.bottom - bounds.top, right: rect.right - bounds.left, cy: rect.top - bounds.top + rect.height / 2 });
+    }
+    for (const step of tour.steps) {
+      for (const targetId of step.next) {
+        const a = boxes.get(step.id);
+        const b = boxes.get(targetId);
+        const selected = step.id === active?.id || targetId === active?.id;
+        ctx.strokeStyle = ctx.fillStyle = selected ? '#a45e35' : '#77917c';
+        ctx.lineWidth = selected ? 1.7 : 1.2;
+        const forward = b.top >= a.bottom;
+        ctx.beginPath();
+        if (forward) {
+          const midY = (a.bottom + b.top) / 2;
+          ctx.moveTo(a.x, a.bottom);
+          ctx.lineTo(a.x, midY);
+          ctx.lineTo(b.x, midY);
+          ctx.lineTo(b.x, b.top - 2);
+        } else {
+          const lane = bounds.width - 8;
+          ctx.moveTo(a.right, a.cy);
+          ctx.lineTo(lane, a.cy);
+          if (targetId === step.id) {
+            ctx.lineTo(lane, b.top - 8);
+            ctx.lineTo(b.x, b.top - 8);
+            ctx.lineTo(b.x, b.top - 2);
+          } else {
+            ctx.lineTo(lane, b.cy);
+            ctx.lineTo(b.right + 2, b.cy);
+          }
+        }
+        ctx.stroke();
+        ctx.beginPath();
+        if (forward || targetId === step.id) {
+          ctx.moveTo(b.x, b.top);
+          ctx.lineTo(b.x - 3.5, b.top - 6);
+          ctx.lineTo(b.x + 3.5, b.top - 6);
+        } else {
+          ctx.moveTo(b.right, b.cy);
+          ctx.lineTo(b.right + 6, b.cy - 3.5);
+          ctx.lineTo(b.right + 6, b.cy + 3.5);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+
+  byId('project').textContent = tour.project;
+  byId('lesson-title').textContent = tour.title;
+  byId('summary').textContent = tour.summary;
+  byId('node-count').textContent = tour.steps.length + ' 个节点';
+  document.title = tour.title + ' · ' + tour.project;
+  makeGraph();
+  const basenames = tour.files.map(file => fileName(file.path));
+  for (const file of tour.files) {
+    const name = fileName(file.path);
+    const label = basenames.indexOf(name) === basenames.lastIndexOf(name) ? name : file.path;
+    const tab = element('button', 'file-tab', label);
+    tab.type = 'button';
+    tab.title = file.path;
+    tab.addEventListener('click', () => {
+      if (active.file !== file.path) selectStep(tour.steps.find(step => step.file === file.path).id, 'file');
+    });
+    byId('file-tabs').append(tab);
+    fileTabs.set(file.path, tab);
+  }
+  byId('flow-rows').addEventListener('click', event => {
+    const node = event.target.closest('button[data-step]');
+    if (node) selectStep(node.dataset.step, 'node');
+  });
+  codeLines.addEventListener('click', event => {
+    const row = event.target.closest('[data-step]');
+    if (row && !window.getSelection()?.toString()) selectStep(row.dataset.step, 'source');
+  });
+  function advance(direction) {
+    const target = tour.steps[stepIndices.get(active.id) + direction];
+    if (target) selectStep(target.id, 'pager');
+  }
+  byId('previous').addEventListener('click', () => advance(-1));
+  byId('next').addEventListener('click', () => advance(1));
+  document.addEventListener('keydown', event => {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || codeViewport.contains(event.target)) return;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+      event.preventDefault();
+      advance(event.key === 'ArrowRight' ? 1 : -1);
+      if (event.target.closest('.node')) nodeButtons.get(active.id).focus({ preventScroll: true });
+    }
+  });
+  for (const button of document.querySelectorAll('.mobile-switch button')) {
+    button.addEventListener('click', () => setView(button.dataset.view));
+  }
+  byId('source-jump').addEventListener('click', () => {
+    if (mobile.matches) setView('code');
+    revealCode();
+    codeViewport.focus({ preventScroll: true });
+  });
+  window.addEventListener('hashchange', () => selectStep(stepInUrl() || tour.steps[0].id, 'initial'));
+  selectStep(stepsById.has(stepInUrl()) ? stepInUrl() : tour.steps[0].id, 'initial');
+  new ResizeObserver(() => { drawEdges(); keepNodeVisible(); }).observe(flowMap);
+  new ResizeObserver(revealCode).observe(codeViewport);
+})();
+</script>
+</body>
+</html>

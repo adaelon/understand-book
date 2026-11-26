@@ -466,8 +466,9 @@ impl RunAdmissions {
             .filter(|s| !s.is_empty() && s.len() <= 128)
             .ok_or_else(invalid)?;
         let normalized = normalize(workspace, input)?;
+        let retry_id = input["retry_of"].as_str().filter(|_| input["entry_action"] == "explain_back");
         if let Some(row) = self.by_key(context.user_id(), key)?
-            .filter(|r| !r.closed || r.state != "admission_failed")
+            .filter(|r| retry_id.is_none() && (!r.closed || r.state != "admission_failed"))
         {
             return self.repeat(access, context, &row, &normalized);
         }
@@ -475,7 +476,19 @@ impl RunAdmissions {
         // Another admission can have finished while this request waited for the private authority.
         #[cfg(test)]
         let _timing = crate::tests::mu10_tests::measure("user_lock");
-        let interrupted_start = if let Some(row) = self.by_key(context.user_id(), key)? {
+        let existing = self.by_key(context.user_id(), key)?;
+        let interrupted_start = if let Some(retry_id) = retry_id {
+            let row = existing.ok_or_else(missing)?;
+            if row.turn != retry_id || row.workspace != workspace || row.closed { return Err(closed()); }
+            authorize_source(access, &row.owner, row.publication.as_ref())?;
+            let saved = frozen_input(&user, &row)?.ok_or_else(missing)?;
+            let turn = find_turn(&user, &row).ok_or_else(missing)?;
+            if interaction_input::explanation::retry_replay(turn, &normalized, &saved.normalized)? {
+                return Ok(descriptor(&row));
+            }
+            if row.unsaved || !matches!(row.state.as_str(), "settled" | "admission_failed") { return Err(busy()); }
+            None
+        } else if let Some(row) = existing {
             // A branch already owns its first request key in session.created. Recovery can
             // close its preparing row before turn.accepted exists. Only that still-empty
             // child may finish the original admission, retaining its original turn ID.
@@ -540,7 +553,7 @@ impl RunAdmissions {
         // A failed preparation may keep a closed admission without appending a History turn.
         // Allocate here so a new request at that same chat ordinal cannot collide with its tombstone.
         let resume_first_question = interrupted_start.is_some();
-        let turn = interrupted_start.unwrap_or_else(|| format!("turn_{}", uuid::Uuid::now_v7()));
+        let turn = interrupted_start.or_else(|| retry_id.map(str::to_owned)).unwrap_or_else(|| format!("turn_{}", uuid::Uuid::now_v7()));
         let validated = match validate_agent_input(&mut user, &scene.workspace, &input.to_string()) {
             Ok(value) => value,
             Err(reply) if reply.status == 200 => return serde_json::from_str(&reply.body).map_err(|_|invalid()),
@@ -596,7 +609,12 @@ impl RunAdmissions {
                 return Err(fault("RUN_QUEUE_FULL", "rate_limit"));
             }
             let publication = row.publication.as_ref().expect("workspace has a publication");
-            if resume_first_question {
+            if retry_id.is_some() {
+                let changed = tx.execute("UPDATE run_admissions SET dispatch_state='preparing',cancel_requested=0
+                    WHERE owner_user_id=? AND turn_id=? AND dispatch_state IN ('settled','admission_failed') AND key_closed=0 AND unsaved=0",
+                    params![row.owner, row.turn]).map_err(|_| storage())?;
+                if changed != 1 { return Err(busy()); }
+            } else if resume_first_question {
                 let reopened = tx.execute(
                     "UPDATE run_admissions SET workspace_id=?,workspace_generation=?,book_id=?,publication_id=?,
                      dispatch_state='preparing',key_closed=0 WHERE owner_user_id=? AND turn_id=? AND
@@ -611,6 +629,10 @@ impl RunAdmissions {
         }
         self.point("preparing")?;
         let result: Result<(), ToolError> = (|| {
+            if retry_id.is_some() {
+                interaction_input::explanation::reopen(&mut user, input, now)?;
+                return self.complete_preparation(&mut user, &row, access);
+            }
             let ValidatedAgentInput {
                 first_follow_up: _,
                 personal_notes,
@@ -646,6 +668,10 @@ impl RunAdmissions {
             )?;
             session.turns.last_mut().unwrap().domain.choice_event = interaction_input::choice_event(&user, interaction.as_ref(), &turn_ref, now)?;
             session.turns.last_mut().unwrap().domain.interaction = interaction;
+            session.turns.last_mut().unwrap().domain.teach_back_attempts = interaction_input::explanation::attempt(input)?.into_iter().collect();
+            if input["entry_action"] == "explain_back" {
+                session.turns.last_mut().unwrap().domain.teach_back_history_len = Some(session.messages.len());
+            }
             session.turns.last_mut().unwrap().board_follow_up = board_context.as_ref().map(|context| context.follow_up.clone());
             session.turns.last_mut().unwrap().domain.board_context = board_context.clone();
             session.turns.last_mut().unwrap().domain.personal_notes = personal_notes;
@@ -657,10 +683,15 @@ impl RunAdmissions {
                 messages: &session.messages,
                 selected_chat: Some(chat),
             };
-            let teaching = if session.turns.last().unwrap().domain.interaction.is_some() {
+            let interaction = session.turns.last().unwrap().domain.interaction.as_ref();
+            let teaching = if interaction.is_some() && !request["course_context"].is_object() {
                 // Save acceptance before first-question preparation can create a session.
                 teaching::FrozenTeachingPreparation { learning_workspace_id:scene.workspace.learning_workspace_id.clone(), context:None, events:vec![] }
-            } else { teaching::freeze_prepare(&private, &turn_ref, &request, None, now)? };
+            } else {
+                // A course action is bound to the validated lesson and help available
+                // at submission. Recovery must replay that snapshot after a restart.
+                teaching::freeze_prepare(&private, &turn_ref, &request, interaction, now)?
+            };
             if let Some(text) = presentation_context {
                 agent_message.push_str(&text);
             }
@@ -1455,8 +1486,15 @@ impl RunAdmissions {
         &self,
         context: &AuthorizedContext,
         key: &str,
+        operation: Option<&str>,
     ) -> Result<Value, ToolError> {
         let row = self.by_key(context.user_id(), key)?.ok_or_else(missing)?;
+        if let Some(id) = operation {
+            let user = context.user.lock().unwrap();
+            if find_turn(&user, &row).is_none_or(|t| !t.domain.teach_back_attempts.iter().any(|a| a.operation_id == id)) {
+                return Err(missing());
+            }
+        }
         self.status(context, &row.turn)
     }
     pub(crate) fn status(

@@ -10,6 +10,12 @@ pub mod to14;
 #[path = "selection_intent_tests.rs"]
 pub mod selection_intent;
 
+#[path = "explain_back_admission_tests.rs"]
+pub(crate) mod explain_back_admission;
+
+#[path = "teach_back_receipt_tests.rs"]
+mod teach_back_receipts;
+
 pub const SOURCE: &str = include_str!("fixtures/tutor-continuation/source.md");
 pub fn scenario() -> Value {
     serde_json::from_str(include_str!("fixtures/tutor-continuation/scenario.json")).unwrap()

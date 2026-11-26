@@ -42,6 +42,7 @@ impl<'de> Deserialize<'de> for SessionEvent {
                 "session.created" => EventBody::SessionCreated(serde_json::from_value(w.payload)?),
                 "session.updated" => fields!(SessionUpdated { title: String }),
                 "turn.accepted" => EventBody::TurnAccepted(serde_json::from_value(w.payload)?),
+                "turn.explanation_retried" => EventBody::ExplanationRetried(serde_json::from_value(w.payload)?),
                 "turn.prepared" => fields!(TurnPrepared {
                     teaching: teaching::FrozenTeachingPreparation
                 }),
@@ -206,6 +207,15 @@ pub struct LocalAgentIdentity {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TurnDomain {
+    /// Original client course parameters needed to retry a failed explanation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub course_retry_context: Option<Value>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub teach_back_attempts: Vec<ExplanationAttempt>,
+    /// Committed transcript prefix before this expression. A failed attempt
+    /// may already have appended its user message when the reader retries.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub teach_back_history_len: Option<usize>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub local_agent: Option<LocalAgentIdentity>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -231,6 +241,12 @@ pub struct TurnDomain {
     pub scene: Option<ReadingScene>,
     pub teaching: Vec<TeachingLink>,
     pub effects: Vec<EffectRecord>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ExplanationAttempt {
+    pub expression_id: String,
+    pub operation_id: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -296,6 +312,8 @@ pub enum EventBody {
     SessionUpdated { title: String },
     #[serde(rename = "turn.accepted")]
     TurnAccepted(TurnAccepted),
+    #[serde(rename = "turn.explanation_retried")]
+    ExplanationRetried(ExplanationAttempt),
     #[serde(rename = "turn.prepared")]
     TurnPrepared {
         teaching: teaching::FrozenTeachingPreparation,

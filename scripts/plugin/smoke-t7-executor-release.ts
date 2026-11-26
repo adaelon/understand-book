@@ -200,7 +200,7 @@ export class JsonLineMcpClient {
     });
     this.child.once("error", (error) => this.rejectAll(error));
     this.exitPromise = new Promise((resolve) => {
-      this.child.once("exit", (code) => {
+      this.child.once("close", (code) => {
         if (this.pending.size > 0) {
           this.rejectAll(new Error(`compiled executor MCP exited before responding (${String(code)})`));
         }
@@ -232,19 +232,22 @@ export class JsonLineMcpClient {
     });
   }
 
-  async close(): Promise<ExecutorMcpServerTimingV2[]> {
-    this.child.stdin.end();
+  async waitForExit(): Promise<void> {
     let timeoutHandle: NodeJS.Timeout | undefined;
     const timeout = new Promise<never>((_, reject) => {
       timeoutHandle = setTimeout(() => {
         this.child.kill();
-        reject(new Error("compiled executor MCP did not exit after stdin closed"));
+        reject(new Error("compiled executor MCP did not exit"));
       }, 10_000);
     });
-    const code = await Promise.race([this.exitPromise, timeout]);
-    if (timeoutHandle) clearTimeout(timeoutHandle);
-    this.lines.close();
+    const code = await Promise.race([this.exitPromise, timeout]).finally(() => clearTimeout(timeoutHandle));
     assert.equal(code, 0, `compiled executor MCP exited ${String(code)}: ${this.stderrText}`);
+  }
+
+  async close(): Promise<ExecutorMcpServerTimingV2[]> {
+    this.child.stdin.end();
+    await this.waitForExit();
+    this.lines.close();
     const samples = readExecutorMcpServerTimingJsonl(this.stderrText, "compiled executor MCP stderr");
     assert(samples.every((sample, index) => sample.connection_call_ordinal === index + 1));
     assert(samples.length > 0, "compiled executor MCP emitted no server timing samples");
@@ -877,16 +880,26 @@ async function main(): Promise<void> {
     assert(!JSON.stringify(tools).match(/candidate_path|session_private_root|child_connection_capability|"now"/u));
 
     const trace: TraceEvent[] = [];
-    assertMcpError(await callTool(client, trace, "executor.open", {
-      version: "automatic_build_executor_open_request.v99",
-      opaque_handoff_ref: primary.envelope.opaque_handoff_ref,
-    }), "open");
-    assert.equal(attemptCount(primary), 0);
-    assertMcpError(await callTool(client, trace, "executor.open", {
+    const openRequest = {
       version: "automatic_build_executor_open_request.v3",
       opaque_handoff_ref: primary.envelope.opaque_handoff_ref,
-      path: primary.envelope.executor_handoff.path,
-    }), "open", "invalid_arguments", "arguments");
+    };
+    const openPrimary = (connection: JsonLineMcpClient) => callTool(connection, trace, "executor.open", openRequest);
+    const testTerminalCall = (action: (connection: JsonLineMcpClient) => Promise<void>) =>
+      withJsonLineMcpClient(mcpInvocation, registryRoot, sidecar, async connection => {
+        await action(connection);
+        await connection.waitForExit();
+      });
+    await testTerminalCall(async connection => {
+      assertMcpError(await callTool(connection, trace, "executor.open", {
+        ...openRequest, version: "automatic_build_executor_open_request.v99",
+      }), "open");
+    });
+    await testTerminalCall(async connection => {
+      assertMcpError(await callTool(connection, trace, "executor.open", {
+        ...openRequest, path: primary.envelope.executor_handoff.path,
+      }), "open", "invalid_arguments", "arguments");
+    });
     assert.equal(attemptCount(primary), 0);
 
     assertMcpError(await callTool(client, trace, "executor.open", {
@@ -895,17 +908,16 @@ async function main(): Promise<void> {
     }), "open", "invalid_arguments", "opaque_handoff_ref");
     assert.equal(attemptCount(primary), 0);
 
-    let current = await callTool(client, trace, "executor.open", {
-      version: "automatic_build_executor_open_request.v3",
-      opaque_handoff_ref: primary.envelope.opaque_handoff_ref,
-    });
+    let current = await openPrimary(client);
     assert.equal(current.isError, false, current.text);
     assert.equal((current.response as AutomaticBuildExecutorSessionResponseV3).action.kind, "DELIVER_INPUT");
 
-    assertMcpError(await callTool(client, trace, "executor.open", {
-      version: "automatic_build_executor_open_request.v3",
-      opaque_handoff_ref: secondary.envelope.opaque_handoff_ref,
-    }), "open", "handoff_ref_mismatch");
+    await testTerminalCall(async connection => {
+      assert.equal((await openPrimary(connection)).isError, false);
+      assertMcpError(await callTool(connection, trace, "executor.open", {
+        ...openRequest, opaque_handoff_ref: secondary.envelope.opaque_handoff_ref,
+      }), "open", "handoff_ref_mismatch");
+    });
     assert.equal(attemptCount(secondary), 0);
 
     let chunkCount = 0;
@@ -930,12 +942,15 @@ async function main(): Promise<void> {
       let finalBatch: Extract<AutomaticBuildExecutorSessionResponseV3["action"], { kind: "INPUT_BATCH" }>["batch"] | undefined;
       let expectedChunkOrdinal = 0;
       if (!testedPrematureStart) {
-        assertMcpError(await callTool(client, trace, "executor.generation.start", {
-          version: "automatic_build_executor_generation_start_request.v3",
-          opaque_session_ref: delivery.input_manifest.opaque_session_ref,
-          generation_input_ref: delivery.input_manifest.generation_input_ref,
-          confirmed_through_ordinal: delivery.input_manifest.total_chunk_count - 1,
-        }), "generation_start");
+        await testTerminalCall(async connection => {
+          assert.equal((await openPrimary(connection)).isError, false);
+          assertMcpError(await callTool(connection, trace, "executor.generation.start", {
+            version: "automatic_build_executor_generation_start_request.v3",
+            opaque_session_ref: delivery.input_manifest.opaque_session_ref,
+            generation_input_ref: delivery.input_manifest.generation_input_ref,
+            confirmed_through_ordinal: delivery.input_manifest.total_chunk_count - 1,
+          }), "generation_start");
+        });
         assert.equal(attemptCount(primary), generationCount);
         testedPrematureStart = true;
       }
@@ -974,12 +989,16 @@ async function main(): Promise<void> {
         }
 
         if (!testedOrdinalFailure) {
-          assertMcpError(await callTool(client, trace, "executor.input.next", {
-            version: "automatic_build_executor_input_next_request.v4",
-            opaque_session_ref: delivery.input_manifest.opaque_session_ref,
-            generation_input_ref: delivery.input_manifest.generation_input_ref,
-            ack_through_ordinal: batch.last_ordinal + 1,
-          }), "input_delivery");
+          await testTerminalCall(async connection => {
+            assert.equal((await openPrimary(connection)).isError, false);
+            assert.equal((await callTool(connection, trace, "executor.input.next", request as unknown as JsonObject)).isError, false);
+            assertMcpError(await callTool(connection, trace, "executor.input.next", {
+              version: "automatic_build_executor_input_next_request.v4",
+              opaque_session_ref: delivery.input_manifest.opaque_session_ref,
+              generation_input_ref: delivery.input_manifest.generation_input_ref,
+              ack_through_ordinal: batch.last_ordinal + 1,
+            }), "input_delivery");
+          });
           assert.equal(attemptCount(primary), generationCount);
           testedOrdinalFailure = true;
         }
@@ -1052,16 +1071,15 @@ async function main(): Promise<void> {
       );
       const submitted = await callTool(client, trace, "executor.submit_candidate", candidateRequest);
       assert(!submitted.text.includes(candidateMarker), "candidate body leaked into the submit response");
-      const submitReplay = await callTool(client, trace, "executor.submit_candidate", candidateRequest);
-      assert.equal(submitReplay.text, submitted.text, "candidate submit replay must be byte-identical");
+      if ((submitted.response as AutomaticBuildExecutorSessionResponseV3).action.kind !== "DONE") {
+        const submitReplay = await callTool(client, trace, "executor.submit_candidate", candidateRequest);
+        assert.equal(submitReplay.text, submitted.text, "candidate submit replay must be byte-identical");
+      }
       current = submitted;
     }
     const finalResponse = current.response as AutomaticBuildExecutorSessionResponseV3;
     assert.equal(finalResponse.action.kind, "DONE", "compiled executor dispatch did not terminate");
-    assertMcpError(await callTool(client, trace, "executor.open", {
-      version: "automatic_build_executor_open_request.v3",
-      opaque_handoff_ref: secondary.envelope.opaque_handoff_ref,
-    }), "open", "connection_terminal");
+    await client.waitForExit();
     assert.equal(generationCount, attemptCount(primary));
     assert.equal(attemptCount(secondary), 0);
     assert(testedPrematureStart && testedOrdinalFailure);
@@ -1121,7 +1139,7 @@ async function main(): Promise<void> {
         truncated_handoff_ref: "invalid_arguments",
         unbound_connection_correction: "same_connection_opened",
         cross_handoff_connection: "handoff_ref_mismatch",
-        terminal_connection: "connection_terminal",
+        terminal_connection: "transport_closed_after_done",
         premature_generation_start: "protocol_incompatible",
         ack_through_ordinal_mismatch: "protocol_incompatible",
       },

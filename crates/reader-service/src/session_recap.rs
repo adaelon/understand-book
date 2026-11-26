@@ -77,6 +77,24 @@ pub fn request(query: &HashMap<String, String>) -> Result<(&str, Option<u64>), T
     Ok((id, through))
 }
 
+/// Reader-facing history uses the current visibility of the original chat,
+/// including when an older position is opened from the learning-record library.
+pub fn reader_snapshot(
+    user: &user_runtime::UserRuntime,
+    id: &str,
+    through: Option<u64>,
+) -> Result<SessionProjection, ToolError> {
+    let chat = user.agent_history.sessions.iter().find(|s| s.id == id)
+        .ok_or_else(service_error::missing)?;
+    let scope = chat.learning_workspace_id.as_deref();
+    if user.learning_store_for_workspace(scope)?
+        .covered_follow_up_chats(scope.is_none().then_some(chat.book_id.as_str()))?.contains(id) {
+        return Err(user_storage_paths::error("CLOSED_BOOK_HISTORY_COVERED", "conflict",
+            "请先离开闭卷练习，再查看原对话记录。"));
+    }
+    snapshot(user, id, through)
+}
+
 pub fn snapshot(
     user: &user_runtime::UserRuntime,
     id: &str,
@@ -387,7 +405,7 @@ pub(crate) fn local(
     now: &str,
 ) -> Result<Recap, ToolError> {
     let (id, through) = request(query)?;
-    let projection = snapshot(&state.user, id, through)?;
+    let projection = reader_snapshot(&state.user, id, through)?;
     let mut recap = project(&projection, now);
     resolve(&mut recap, &projection, &state.user, |_, reference| {
         (projection.session.as_ref().unwrap().book_id == state.workspace.book.base.book_id

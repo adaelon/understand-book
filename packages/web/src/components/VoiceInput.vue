@@ -7,11 +7,12 @@ import { getLocale, t } from '../i18n';
 import { voiceOwner } from '../voice-input';
 
 const props = defineProps<{ scope: string; disabled?: boolean }>();
-const emit = defineEmits<{ insert: [text: string]; active: [busy: boolean] }>();
+const emit = defineEmits<{ insert: [text: string]; active: [busy: boolean]; 'open-settings': [] }>();
 let api = bindSceneApi(sharedApi, readerKey);
 const owner = Symbol('voice-input');
 const phase = ref<'idle' | 'requesting' | 'recording' | 'transcribing' | 'review' | 'error'>('idle');
 const transcript = ref(''), error = ref(''), elapsed = ref(0);
+const canDownloadModel = ref(false);
 const occupied = computed(() => voiceOwner.value !== null && voiceOwner.value !== owner);
 const clock = computed(() => `${Math.floor(elapsed.value / 60)}:${String(elapsed.value % 60).padStart(2, '0')}`);
 let generation = 0, recorder: MediaRecorder | undefined, stream: MediaStream | undefined;
@@ -29,7 +30,7 @@ function cancel() {
   request?.abort(); request = undefined;
   if (recorder?.state === 'recording') recorder.stop();
   recorder = undefined; releaseMicrophone(); audio = undefined;
-  retryable.value = false; transcript.value = ''; error.value = ''; phase.value = 'idle';
+  retryable.value = false; canDownloadModel.value = false; transcript.value = ''; error.value = ''; phase.value = 'idle';
   if (voiceOwner.value === owner) voiceOwner.value = null;
   if (wasActive) emit('active', false);
 }
@@ -77,7 +78,14 @@ async function start() {
     }
     const status = await api.voiceStatus();
     if (token !== generation) return;
-    if (!status.available) throw new Error(t('语音输入暂未启用，请先配置本地语音识别。'));
+    if (!status.available) {
+      canDownloadModel.value = Boolean(status.can_download);
+      throw new Error(
+        status.can_download
+          ? t('离线语音模型尚未下载（约 461 MB），可在桌面设置中按需下载。')
+          : t('语音输入暂未启用，请先配置本地语音识别。')
+      );
+    }
     const input = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true }, video: false });
     if (token !== generation) { input.getTracks().forEach(track => track.stop()); return; }
     stream = input;
@@ -129,8 +137,9 @@ onBeforeUnmount(cancel);
       <div class="voice-actions">
         <button v-if="phase === 'recording'" type="button" class="voice-primary" @click="stop"><Square :size="13" fill="currentColor" aria-hidden="true" />{{ t('停止并转文字') }}</button>
         <button v-if="phase === 'review'" type="button" class="voice-primary" :disabled="!transcript.trim()" @click="insert">{{ t('加入输入框') }}</button>
+        <button v-if="phase === 'error' && canDownloadModel" type="button" class="voice-primary" @click="cancel(); emit('open-settings')">{{ t('去下载语音模型') }}</button>
         <button v-if="phase === 'error' && retryable" type="button" class="voice-primary" @click="transcribe()">{{ t('重试转写') }}</button>
-        <button v-if="phase === 'review' || phase === 'error'" type="button" @click="start">{{ t('重新录音') }}</button>
+        <button v-if="phase === 'review' || (phase === 'error' && !canDownloadModel)" type="button" @click="start">{{ t('重新录音') }}</button>
       </div>
     </template>
   </div>

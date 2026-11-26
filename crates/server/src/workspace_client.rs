@@ -16,9 +16,12 @@ pub(crate) fn history_with_library(user: &user_runtime::UserRuntime, workspace: 
         if let Some(reference) = &saved.published_book_ref {
             if let Ok(publication) = library.lock().unwrap().load(owner, reference) {
                 *view = turn_view(&publication.book, saved);
+                view.can_explain_back &= workspace.publication.as_ref().is_some_and(|current| &current.reference == reference);
             }
         }
     }
+    reader_service::cover_practice_history(user, &workspace.book.base.book_id, workspace.learning_workspace_id.as_deref(),
+        &mut response.sessions, Some(&mut response.current))?;
     Ok(json!(response))
 }
 

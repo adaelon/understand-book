@@ -165,22 +165,15 @@ impl Selection {
                 scope.check_owner(state)?;
                 let chat = state.user.agent_history.sessions.iter().find(|s| s.id == scope.chat_session_id)
                     .ok_or_else(|| invalid("聊天记录已不可用"))?;
-                let mut prior = chat.turns.iter().filter(|turn| turn.user_turn_ordinal < prepared.turn_ref.user_turn_ordinal)
-                    .rev().take(6).map(|turn| json!({
-                        "question":turn.user.chars().take(1200).collect::<String>(),
-                        "answer":turn.outcome.as_ref().and_then(|out| out.answer.as_ref()).map(|t|t.chars().take(1800).collect::<String>())
-                    })).collect::<Vec<_>>();
-                prior.reverse();
-                Ok::<_, ToolError>(prior)
+                Ok::<_, ToolError>(crate::acp_history::prompt(chat, prepared.turn_ref.user_turn_ordinal))
             })?;
-            if !history.is_empty() {
-                parts.push(format!(
-                    "Earlier conversation in this material, for context:\n{}",
-                    json!(history)
-                ));
+            if let Some(history) = history {
+                parts.push(history);
             }
         }
-        parts.push(acp_teaching::prompt(port, prepared)?);
+        if !crate::teach_back::requested(prepared) {
+            parts.push(acp_teaching::prompt(port, prepared)?);
+        }
         parts.push(prepared.agent_message.clone());
         Ok(parts.join("\n\n"))
     }
@@ -191,6 +184,34 @@ impl Selection {
         prepared: &PreparedAgentChat,
         context: &mut RunContext,
     ) -> Result<OuterOutcome, ToolError> {
+        let (classification_calls, classification_tokens) = if crate::teach_back::requested(prepared) {
+            let cancel = context.cancellation.clone();
+            let (card, calls, tokens) = crate::teach_back::execute_with(
+                prepared, port, context, |stage, instructions, packet| {
+                    // Every draft and repair starts in a fresh empty workspace.
+                    // Phase two can ask Reader for the same bounded read_lids as Resident.
+                    let directory = tempfile::tempdir().map_err(invalid)?;
+                    let wire_notes = match stage {
+                        runtime::teach_back::TeachBackStage::OrganizeExpression =>
+                            "Copy the reader's own words into quotes. A directed edge needs its own id and words expressing the actual link between its two endpoints. A stated background condition can stay in condition. Give separate assertions separate nodes.",
+                        runtime::teach_back::TeachBackStage::ComparePassages =>
+                            "Use short verbatim passage quotes. Keep authoring notes out of the JSON. Start each focus from what the reader actually asserted: match an independent fact to the book's statement of that fact, then compare a separate inference in its own focus. Mark agreement on a fact even when the reader's next inference diverges. Assign each unused edge once; an isolated claim is alone on its side, while connected nodes are represented by edge IDs. If repairing ownership, rebuild the affected groups from their claims and unused IDs. Check that each group's status matches its summary.",
+                    };
+                    let prompt = format!("{instructions}\n{wire_notes}\nReturn the JSON object as plain text without code fences. Use only the supplied packet.\n\n{packet}");
+                    let mut usage = 0;
+                    let text = local_acp::run(&self.agent, directory.path(), &[], &prompt, &cancel, |update| {
+                        if update["sessionUpdate"] == "reader_prompt_usage" {
+                            usage = update["usage"]["totalTokens"].as_u64()
+                                .and_then(|tokens| u32::try_from(tokens).ok()).unwrap_or(0);
+                        }
+                    }).map_err(invalid)?;
+                    Ok((text, usage))
+                },
+            )?;
+            if let Some(outcome) = card { return Ok(outcome); }
+            context.tutor = None;
+            (calls, tokens)
+        } else { (0, 0) };
         let book = prepared
             .scope
             .book
@@ -234,12 +255,11 @@ impl Selection {
             .events
             .begin("model", &self.agent.id, &self.agent.name, true);
         let mut tools: HashMap<String, RunActivity> = HashMap::new();
-        let mut reported_tokens = None;
-        let response = local_acp::run_interactive(
+        let mut sample = |prompt: &str, activity: &mut RunActivity, review: bool| local_acp::run_interactive(
             &self.agent,
             &cwd,
-            &[mcp],
-            &prompt,
+            if review { &[] } else { std::slice::from_ref(&mcp) },
+            prompt,
             &context.cancellation,
             |update| {
                 if update["sessionUpdate"] == "reader_prompt_usage" {
@@ -248,7 +268,7 @@ impl Selection {
                             .as_u64()
                             .and_then(|n| u32::try_from(n).ok())
                     };
-                    reported_tokens = count("totalTokens").filter(|n| *n > 0);
+                    let reported_tokens = count("totalTokens").filter(|n| *n > 0);
                     if reported_tokens.is_some() {
                         activity.usage = Some(runtime::provider_stream::ModelUsage {
                             input_tokens: count("inputTokens"),
@@ -300,12 +320,51 @@ impl Selection {
             if closed { "" } else { &prepared.scope.turn_id },
             &context.events,
         );
-        context.effects.extend(evidence.action_effects());
-        let result = response.map_err(invalid).and_then(|raw| {
+        let mut previous_tokens = Some(0u32);
+        let mut samples = 1;
+        let mut next_activity = |activity: &mut RunActivity, status, code| {
+            let previous = std::mem::replace(activity,
+                context.events.begin("model", &self.agent.id, &self.agent.name, true));
+            let tokens = previous.usage.as_ref().and_then(|usage| usage.total_tokens);
+            previous_tokens = previous_tokens.zip(tokens).map(|(a,b)| a.saturating_add(b));
+            context.events.finish(previous, status, tokens, code, None);
+        };
+        let accepted = sample(&prompt, &mut activity, false).map_err(invalid).and_then(|mut raw| {
             context.cancellation.check()?;
-            let accepted = acp_teaching::answer(port, prepared, &raw)?;
-            evidence.finish(&accepted)
+            let mut result = acp_teaching::answer(port, prepared, &raw);
+            if let Err(error) = &result {
+                if closed && error.error_code == crate::teaching::CLOSED_BOOK_DECISION_INVALID
+                    && context.config.max_turns.is_none_or(|limit| limit > samples) {
+                    context.cancellation.check()?;
+                    let correction = acp_teaching::revision_prompt(&prompt, &raw, error);
+                    next_activity(&mut activity, ActivityStatus::NoResult, Some(error.error_code.clone()));
+                    samples += 1;
+                    raw = sample(&correction, &mut activity, false).map_err(invalid)?;
+                    context.cancellation.check()?;
+                    result = acp_teaching::answer(port, prepared, &raw);
+                }
+            }
+            if result.as_ref().is_err_and(|error| error.error_code == runtime::closed_book_review::REQUIRED) {
+                context.cancellation.check()?;
+                let practice = &prepared.tutor.as_ref().unwrap()["closed_book"];
+                let review = runtime::closed_book_review::assess(practice, &prepared.message, |instructions, packet| {
+                    context.cancellation.check()?;
+                    if context.config.max_turns.is_some_and(|limit| samples >= limit) { return Ok(Value::Null); }
+                    samples += 1;
+                    let review_prompt = format!("{instructions}\n\n{packet}");
+                    next_activity(&mut activity, ActivityStatus::Succeeded, None);
+                    let response = sample(&review_prompt, &mut activity, true);
+                    context.cancellation.check()?;
+                    Ok(response.ok().and_then(|text| serde_json::from_str(&text).ok()).unwrap_or(Value::Null))
+                })?;
+                context.cancellation.check()?;
+                result = acp_teaching::reviewed_answer(port, prepared, &raw, Some(review));
+            }
+            result
         });
+        context.effects.extend(evidence.action_effects());
+        let result = accepted.and_then(|text| evidence.finish(&text));
+        let reported_tokens = activity.usage.as_ref().and_then(|usage| usage.total_tokens);
         let status = if context.cancellation.is_cancelled() {
             ActivityStatus::Cancelled
         } else if result.is_err() {
@@ -334,9 +393,12 @@ impl Selection {
             None,
         );
         let mut outcome = result?;
-        if let Some(tokens) = reported_tokens {
+        let total = previous_tokens.zip(reported_tokens).map(|(a,b)| a.saturating_add(b));
+        if let Some(tokens) = total {
             outcome.tokens_spent = tokens;
         }
+        outcome.turns += classification_calls;
+        outcome.tokens_spent = outcome.tokens_spent.saturating_add(classification_tokens);
         context.messages.push(Message {
             role: Role::Assistant,
             content: outcome.answer.clone(),

@@ -2,7 +2,7 @@ import { CODEX_BUILD_EXECUTION_PROFILE_V1, type BuildExecutionProfileV1 } from "
 import { readBuildRetrievalState } from "../../packages/core/src/automatic-build-retrieval";
 import { configuredBuildRetrievalRuntime } from "../../packages/core/src/build-retrieval-config";
 import { summarizeRetrievalUsage } from "../../packages/core/src/automatic-build-budget";
-import { acceptCourseCandidate, closeCourseBuild, freezeCourseTask, readCourseTask, courseTaskPath } from "../../packages/core/src/course-build";
+import { acceptCourseCandidate, closeCourseBuild, freezeCourseTask, readCourseTask, courseTaskPath, scopeFromAcceptedRoute } from "../../packages/core/src/course-build";
 import { isTeachingStage } from "../../packages/core/src/teaching-policy";
 import { acceptTeachingCandidate, closeTeachingStage, freezeTeachingTask, readTeachingTask, teachingTaskPath, teachingReviewFailures, reopenTeachingBuild, resumeTeachingCognitiveBudget } from "../../packages/core/src/teaching-build";
 import { readTeachingBuildInput } from "../../packages/core/src/build-orchestrator";
@@ -81,6 +81,7 @@ import {
   renderBookStructureGenerationTaskInput,
   writeBookStructureGenerationCandidate,
 } from "../../packages/core/src/book-structure-generation";
+import { readAcceptedCourseRoute } from "../../packages/core/src/accepted-course-route";
 import { attachBuildPlanDigest, type BuildPlanV1 } from "../../packages/core/src/build-intent";
 import type { Pass2PlanChoice } from "../../packages/core/src/build-capability";
 import { mapLegacyBuildInvocation } from "../../packages/core/src/build-intent-controller";
@@ -1329,7 +1330,7 @@ export function automaticBuildPlan(
   const availableAgentSlots = options.available_agent_slots ?? requestedWorkers;
   const budget = options.budget ?? DEFAULT_AUTOMATIC_BUILD_BUDGET;
   const snapshotRoute = preparedRoute ?? routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1,
-    public_stage_closure: options.build_plan?.public_stage_closure, course_goal: options.build_plan?.course_goal,
+    public_stage_closure: options.build_plan?.public_stage_closure, course_goal: options.build_plan?.course_goal, course_route: options.build_plan?.course_route,
     reuse: options.build_plan?.reuse, retrieval: options.build_plan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
@@ -1383,10 +1384,15 @@ export function prepareExplicitLegacyBuildPlan(
     build_tutor?: boolean;
     build_course?: boolean;
     course_goal?: string;
+    course_route?: BuildPlanV1["course_route"];
     execution_profile?: Readonly<BuildExecutionProfileV1>;
   } = {},
 ) {
   const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
+  if (options.course_route) {
+    if (!options.build_course || options.course_goal?.trim()) throw new Error("--course-route requires --course and supplies the course goal");
+    scopeFromAcceptedRoute(readTeachingBuildInput(target), options.course_route);
+  }
   const now = options.now ?? new Date().toISOString();
   const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: "full", execution_profile: options.execution_profile });
   const freshness = inspectAutomaticBuildStageFreshness(snapshot, { quality_profile: "full" });
@@ -1425,10 +1431,10 @@ export function prepareExplicitLegacyBuildPlan(
   }
   if (options.build_course) {
     const {plan_digest:_, ...plan} = selection.plan;
-    selection.plan = attachBuildPlanDigest({...plan,...(options.course_goal?.trim()?{course_goal:options.course_goal.trim()}:{}),public_stage_closure:[...plan.public_stage_closure,"course"],create:[...plan.create,"public.course"],estimate:{...plan.estimate,unknown_stages:[...plan.estimate.unknown_stages,"course"]}});
+    selection.plan = attachBuildPlanDigest({...plan,...(options.course_route ? { course_route: options.course_route } : {}),...(options.course_goal?.trim()?{course_goal:options.course_goal.trim()}:{}),public_stage_closure:[...plan.public_stage_closure,"course"],create:[...plan.create,"public.course"],estimate:{...plan.estimate,unknown_stages:[...plan.estimate.unknown_stages,"course"]}});
   }
   const invocationId = createHash("sha256")
-    .update(canonicalAutomaticBuildJson({ target: target.target_ref, now, pass2: options.pass2 ?? "disabled", build_tutor:options.build_tutor ?? false, build_course:options.build_course ?? false, course_goal:options.course_goal?.trim() ?? '' }), "utf8")
+    .update(canonicalAutomaticBuildJson({ target: target.target_ref, now, pass2: options.pass2 ?? "disabled", build_tutor:options.build_tutor ?? false, build_course:options.build_course ?? false, course_goal:options.course_goal?.trim() ?? '', ...(options.course_route ? {course_route:options.course_route} : {}) }), "utf8")
     .digest("hex")
     .slice(0, 16);
   const directory = path.join(target.workspace_dir, ".build", "automatic-build", "v2", "legacy-plans");
@@ -1535,7 +1541,7 @@ function expandAction(
     && canonicalAutomaticBuildJson(decisionSnapshot.target.target_ref) === canonicalAutomaticBuildJson(target.target_ref)
     ? { status: "ready" as const, value: decisionSnapshot }
     : routeAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, execution_profile: executionProfile,
-      public_stage_closure: buildPlan?.public_stage_closure, course_goal: buildPlan?.course_goal, reuse: buildPlan?.reuse, retrieval: buildPlan?.retrieval?.selection });
+      public_stage_closure: buildPlan?.public_stage_closure, course_goal: buildPlan?.course_goal, course_route: buildPlan?.course_route, reuse: buildPlan?.reuse, retrieval: buildPlan?.retrieval?.selection });
   if (snapshotRoute.status === "blocked") {
     return {
       snapshot: { target, stages: [] },
@@ -1553,7 +1559,7 @@ function expandAction(
   for (const stage of preparationStages) {
     if (!stage.policy_set) throw new Error("preparation stage is missing policy set");
     const prepared = prepareAutomaticBuildSnapshot(target, stage.policy_set.stage, { quality_profile: qualityProfile, execution_profile: executionProfile,
-      public_stage_closure: buildPlan.public_stage_closure, course_goal: buildPlan.course_goal, reuse: buildPlan.reuse });
+      public_stage_closure: buildPlan.public_stage_closure, course_goal: buildPlan.course_goal, course_route: buildPlan.course_route, reuse: buildPlan.reuse });
     if (prepared.status === "blocked") return { snapshot, action: automaticBuildRecoveryAction(prepared.recovery) };
     snapshot = prepared.value;
   }
@@ -2331,13 +2337,13 @@ export async function automaticBuildNextWithPreparation(targetInput: string, roo
   if (!plan?.retrieval) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const target = resolveAutomaticBuildTarget(targetInput, rootDir, { book_id: options.book_id });
   const snapshot = routeAutomaticBuildSnapshot(target, { quality_profile: options.quality_profile,
-    execution_profile: options.execution_profile, public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, reuse: plan.reuse, retrieval: plan.retrieval.selection });
+    execution_profile: options.execution_profile, public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, course_route: plan.course_route, reuse: plan.reuse, retrieval: plan.retrieval.selection });
   if (snapshot.status !== "ready") return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const reachable = snapshot.value.stages.find(s => !s.closed && (s.retrieval_preparation || s.preparation_required));
   if (!reachable || (reachable.stage !== "book_structure" && reachable.stage !== "formal_objects")) return automaticBuildNext(targetInput, rootDir, maxParallel, options);
   const prepared = await prepareAutomaticBuildSnapshot(target, reachable.stage, {
     quality_profile: options.quality_profile, execution_profile: options.execution_profile,
-    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal,
+    public_stage_closure: plan.public_stage_closure, course_goal: plan.course_goal, course_route: plan.course_route,
     authorization: { plan, runtime: options.retrieval_runtime ?? configuredBuildRetrievalRuntime(plan), signal: options.signal },
   });
   if (prepared.status !== "ready") return { version: "automatic_build_next.v1", snapshot: { target, stages: [] },
@@ -2425,9 +2431,9 @@ export function runAutomaticBuildCloseStage(
     return verifyAutomaticBuildStageClose(target);
   }
 
-  if (stage === "course") return { next: "replan", publication: closeCourseBuild(readTeachingBuildInput(target), options.build_plan?.course_goal) };
+  if (stage === "course") return { next: "replan", publication: closeCourseBuild(readTeachingBuildInput(target), options.build_plan?.course_goal, options.build_plan?.course_route) };
   if (isTeachingStage(stage)) {
-    const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, public_stage_closure: options.build_plan?.public_stage_closure, course_goal: options.build_plan?.course_goal, reuse: options.build_plan?.reuse,
+    const snapshot = buildAutomaticBuildSnapshot(target, { quality_profile: qualityProfile, public_stage_closure: options.build_plan?.public_stage_closure, course_goal: options.build_plan?.course_goal, course_route: options.build_plan?.course_route, reuse: options.build_plan?.reuse,
       retrieval: options.build_plan?.retrieval?.selection });
     const state = snapshot.stages.find(s => s.stage === stage);
     if (!state) throw new Error("teaching stage is not reachable");
@@ -3282,6 +3288,11 @@ function resolveAutomaticBuildTargetFromArgs(
 }
 
 export async function runAutomaticBuildCli(argv = process.argv.slice(2)) {
+if (argv[0] === 'course-trial') {
+  const { courseTrialCommand } = await import('../../packages/core/src/course-trial');
+  printAutomaticBuildJson(courseTrialCommand(argv.slice(1)));
+  return;
+}
 if (argv[0] === 'video-doctor') {
   const report = await (await import('../../packages/core/src/video-dependencies')).inspectVideoDependencies({
     python: valueArg(argv, '--python'), modelDir: valueArg(argv, '--model-dir'), codex: valueArg(argv, '--codex') });
@@ -3320,7 +3331,7 @@ if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "vid
 } else if (argv[0] === "legacy-plan") {
   const targetInput = argv[1];
   if (!targetInput) {
-    console.error("usage: tsx skills/build/automatic-build.ts legacy-plan <target> [--root <dir>] [--book-id <id>] [--now <ISO timestamp>] [--pass2 enabled|disabled] [--course] [--course-goal <goal>] [budget flags]");
+    console.error("usage: tsx skills/build/automatic-build.ts legacy-plan <target> [--root <dir>] [--book-id <id>] [--now <ISO timestamp>] [--pass2 enabled|disabled] [--course] [--course-goal <goal> | --course-route <accepted-route.json>] [budget flags]");
     process.exit(2);
   }
   printAutomaticBuildJson(prepareExplicitLegacyBuildPlan(
@@ -3332,6 +3343,8 @@ if (argv[0] === "video-import" || argv[0] === "video-resume" || argv[0] === "vid
       pass2: pass2ChoiceFromArgs(argv),
       build_course: argv.includes("--course"),
       course_goal: valueArg(argv,"--course-goal"),
+      course_route: argv.includes("--course-route")
+        ? readAcceptedCourseRoute(valueArg(argv, "--course-route") ?? "") : undefined,
       budget: {
         ...(valueArg(argv, "--max-estimated-total-tokens")
           ? { max_total_tokens: Number(valueArg(argv, "--max-estimated-total-tokens")) }

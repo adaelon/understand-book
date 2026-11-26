@@ -433,7 +433,18 @@ fn start_reader(app: &tauri::AppHandle, selected_library: Option<PathBuf>, selec
     }
     let mut config = ServerHostConfig::desktop(root.clone(), web_dist);
     config.book_dir = initial_book;
+    #[cfg(windows)]
+    if launch.edition == LocalEdition::Installed {
+        config.bundled_voice_runtime = Some(launch.resources.join("voice-runtime"));
+    }
+    config.voice_model_dir = settings.voice_model_dir()?;
+    config.voice_model_default_dir = Some(data_dir.join("voice-model"));
     let server = start_server_with_model_settings(config,model_settings)?;
+    let voice_settings_store = settings.clone();
+    server.configure_voice_model_persistence(std::sync::Arc::new(move |dir| {
+        let root = voice_settings_store.load()?.ok_or("Local library is unavailable")?;
+        voice_settings_store.apply_voice_model_dir(&root, dir)
+    }));
     let settings_store=settings.clone();
     server.configure_model_settings(None,"settings",std::sync::Arc::new(move |models| {
         let root=settings_store.load()?.ok_or("Local library is unavailable")?;

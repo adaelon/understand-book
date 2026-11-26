@@ -387,28 +387,125 @@ describe('LE3/LE4 learning actions in the current conversation', () => {
     expect(wrapper.emitted('learning-purpose')?.[0].slice(0, 2)).toEqual(['understand', 'section']);
   });
 
-  it('offers explanation and application for the exact delivered answer with an explicit closed-book notice', async () => {
-    const wrapper = mountLearning({ chat: [guidanceChat()], agentInput: '保留这份草稿' });
+  it('opens the bound composer, closed-book practice and application as three distinct actions', async () => {
+    const wrapper = mountLearning({ explainBackAvailable: true, chat: [{ ...guidanceChat(), canExplainBack: true }], agentInput: '保留这份草稿' });
     await nextTick();
     expect(wrapper.get('.learning-practice-note').text()).toContain('收起资料');
     expect(wrapper.get('.learning-practice-note').text()).toContain('可随时暂停');
     expect(wrapper.emitted('explain-answer')).toBeUndefined();
     expect(wrapper.emitted('practice-answer')).toBeUndefined();
     await wrapper.get('.learning-explain').trigger('click');
+    expect(document.activeElement).toBe(wrapper.get('.agent-input textarea').element);
+    await wrapper.setProps({ explainAnswerId: 'discussion-1' });
+    expect(wrapper.get('.teach-back-binding').text()).toContain('正在解释这条回答');
+    await wrapper.get('.teach-back-cancel').trigger('click');
+    expect(wrapper.emitted('cancel-explain-answer')).toHaveLength(1);
+    await wrapper.setProps({ explainAnswerId: null });
+    await wrapper.get('.learning-closed-book').trigger('click');
     await wrapper.get('.learning-apply').trigger('click');
     expect(wrapper.emitted('explain-answer')).toEqual([['discussion-1']]);
+    expect(wrapper.emitted('closed-book-answer')).toEqual([['discussion-1']]);
     expect(wrapper.emitted('practice-answer')).toEqual([['discussion-1']]);
     expect(wrapper.emitted('update:agentInput')).toBeUndefined();
     expect(wrapper.emitted('send-agent')).toBeUndefined();
   });
 
+  it('omits the comparison entry for ineligible sources or an unsupported reading context', async () => {
+    const wrapper = mountLearning({ explainBackAvailable: true, chat: [guidanceChat()] });
+    expect(wrapper.find('.learning-explain').exists()).toBe(false);
+    await wrapper.setProps({ explainBackAvailable: false, chat: [{ ...guidanceChat(), canExplainBack: true }] });
+    expect(wrapper.find('.learning-explain').exists()).toBe(false);
+    expect(wrapper.find('.learning-closed-book').exists()).toBe(true);
+    expect(wrapper.find('.learning-apply').exists()).toBe(true);
+  });
+
+  it('binds the original historical explanation when its answer menu is selected', async () => {
+    const original = { ...guidanceChat(), canExplainBack: true };
+    const later = { ...guidanceChat('带宽是什么意思？'), turnId: 'newer' };
+    const wrapper = mountLearning({ chat: [original, later], explainBackAvailable: true });
+    const menu = wrapper.get('[data-turn-id="discussion-1"] details.answer-actions');
+    await menu.get('summary').trigger('click');
+    await menu.get('.history-explain').trigger('click');
+    expect(wrapper.emitted('explain-answer')).toEqual([['discussion-1']]);
+    expect(document.activeElement).toBe(wrapper.get('.agent-input textarea').element);
+    expect(wrapper.find('[data-turn-id="newer"] .history-explain').exists()).toBe(false);
+  });
+
+  it('mounts a saved comparison only on the visible, open-book surface after delivery', async () => {
+    const comparison = { round_id: 'tb:student:r1', source: { source_id: 'book', source_revision: 'rev' },
+      rows: [], book_graph: { nodes: [], edges: [] }, student_graph: { nodes: [], edges: [] }, side_notes: [] };
+    const turn = guidanceChat();
+    const completed = { ...turn, runStatus: '运行已结束', outcome: { ...turn.outcome,
+      answer_view: { parts: [{ kind: 'teach_back_comparison' as const, comparison }], sources: [] },
+    } };
+    const wrapper = mountLearning({ chat: [{ ...completed, pending: true }], currentSourceId: 'book', noteSourceFingerprint: 'rev' });
+    const card = () => wrapper.findComponent({ name: 'TeachBackComparisonCard' });
+    expect(card().exists()).toBe(false);
+    await wrapper.setProps({ chat: [completed], closedCover: true });
+    expect(card().exists()).toBe(false);
+    await wrapper.setProps({ closedCover: false, companionVisible: false });
+    expect(card().exists()).toBe(false);
+    await wrapper.setProps({ companionVisible: true });
+    expect(card().props()).toMatchObject({ comparison, turnId: turn.turnId, currentSourceId: 'book', currentSourceRevision: 'rev' });
+    expect(wrapper.text()).not.toContain('运行已结束');
+    await wrapper.setProps({ closedCover: true });
+    expect(card().exists()).toBe(false);
+  });
+
+  it('starts practice from the original answer after a comparison without answer text is displayed', async () => {
+    const original = { ...guidanceChat(), canExplainBack:true };
+    const comparison = {round_id:'tb:card',source:{source_id:'book',source_revision:'rev'},rows:[],book_graph:{nodes:[],edges:[]},student_graph:{nodes:[],edges:[]},side_notes:[]};
+    const card = {...guidanceChat(),turnId:'response',teachBack:{answerTurnId:original.turnId,expressionId:'expression',operationId:'create'},
+      outcome:{...guidanceChat().outcome, answer:null, answer_view:{parts:[{kind:'teach_back_comparison' as const,comparison}],sources:[]}}};
+    const w = mountLearning({chat:[original,card],currentSourceId:'book',noteSourceFingerprint:'rev',closedBookReady:true});
+    expect(w.get('.learning-closed-book').attributes('disabled')).toBeDefined();
+    w.getComponent({name:'TeachBackComparisonCard'}).vm.$emit('displayed',card.turnId,comparison.round_id);
+    await flushPromises();
+    await w.get('.learning-closed-book').trigger('click');
+    expect(w.emitted('closed-book-answer')).toEqual([[original.turnId]]);
+    await w.setProps({courseActive:true});
+    expect(w.find('.learning-closed-book').exists()).toBe(false);
+  });
+
+  it('binds the main composer to the displayed follow-up and releases it while reviewing a prior round', async () => {
+    const message = '两项同时开始就要等较慢的那项。';
+    const round = (id: string, first?: string) => {
+      const turn = guidanceChat();
+      const comparison = { round_id: id, source: { source_id: 'book', source_revision: 'rev' },
+        rows: [], book_graph: { nodes: [], edges: [] }, student_graph: { nodes: [], edges: [] }, side_notes: [], follow_up: { row_id: 'reason', question: '为什么？' },
+        ...(first ? { continuation: { kind: 'revise_understanding' as const, first_round_id: first, parent_round_id: first, row_id: 'reason' } } : {}) };
+      return { ...turn, turnId: id, teachBack: { expressionId: id, operationId: id, answerTurnId: 'origin' },
+        outcome: { ...turn.outcome, answer_view: { parts: [{ kind: 'teach_back_comparison' as const, comparison }], sources: [] } } };
+    };
+    const original = { ...guidanceChat(), turnId: 'origin', canExplainBack: true };
+    const wrapper = mountLearning({ chat: [original, round('first'), round('unrelated'), round('latest', 'first')], agentInput: message, continuationEnabled: true,
+      explainBackAvailable: true, currentSourceId: 'book', noteSourceFingerprint: 'rev' });
+    const cards = wrapper.findAllComponents({ name: 'TeachBackComparisonCard' });
+    expect(cards[0].props('correctionEnabled')).toBe(true);
+    expect(cards[2].props('rounds').map((r: { turnId: string }) => r.turnId)).toEqual(['first', 'latest']);
+    const send = wrapper.get('.send-agent');
+    await send.trigger('click');
+    expect(wrapper.emitted('comparison-response')).toBeUndefined();
+    cards[2].vm.$emit('displayed', 'latest', 'latest');
+    await send.trigger('click');
+    expect(wrapper.emitted('comparison-response')).toEqual([[{ action: 'follow_up', text: message, turnId: 'latest', roundId: 'latest', rowId: 'reason' }]]);
+    cards[2].vm.$emit('view-round', 'first');
+    cards[2].vm.$emit('displayed', 'first', 'first');
+    await send.trigger('click');
+    expect(wrapper.emitted('send-agent')).toHaveLength(2);
+    cards[2].vm.$emit('displayed', 'latest', 'latest');
+    await wrapper.setProps({ noteSourceFingerprint: 'new-edition' });
+    await send.trigger('click');
+    expect(wrapper.emitted('send-agent')).toHaveLength(3);
+  });
+
   it('keeps application available while closed-book state loads and disables both actions during a run', async () => {
-    const wrapper = mountLearning({ chat: [guidanceChat()], closedBookReady: false });
+    const wrapper = mountLearning({ explainBackAvailable: true, chat: [{ ...guidanceChat(), canExplainBack: true }], closedBookReady: false });
     await nextTick();
-    expect(wrapper.get('.learning-explain').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('.learning-closed-book').attributes('disabled')).toBeDefined();
     expect(wrapper.get('.learning-apply').attributes('disabled')).toBeUndefined();
-    await wrapper.get('.learning-explain').trigger('click');
-    expect(wrapper.emitted('explain-answer')).toBeUndefined();
+    await wrapper.get('.learning-closed-book').trigger('click');
+    expect(wrapper.emitted('closed-book-answer')).toBeUndefined();
     await wrapper.setProps({ closedBookReady: true, canStop: true });
     expect(wrapper.get('.learning-explain').attributes('disabled')).toBeDefined();
     expect(wrapper.get('.learning-apply').attributes('disabled')).toBeDefined();
@@ -444,6 +541,14 @@ describe('LE3/LE4 learning actions in the current conversation', () => {
     await nextTick();
     expect(wrapper.find('.answer-practice-actions').exists()).toBe(false);
     expect(wrapper.get('.learning-respond').text()).toContain('回答问题');
+    await wrapper.setProps({ explainBackAvailable: true, chat: [{ ...turn, canExplainBack: true, outcome: { ...turn.outcome,
+      answer_view: { parts: [
+        { kind: 'markdown', text: turn.outcome.answer }, { kind: 'socratic_question', text: '为什么停留时间也算在内？' },
+      ], sources: [] },
+    } }] });
+    expect(wrapper.find('.learning-explain').exists()).toBe(true);
+    expect(wrapper.find('.learning-closed-book').exists()).toBe(true);
+    expect(wrapper.find('.learning-apply').exists()).toBe(true);
   });
 
   it.each(['pending', 'error', 'incomplete', 'history'] as const)('does not start a new practice from an unresolved %s answer', async state => {
@@ -1146,6 +1251,7 @@ describe("RightRail agent sources", () => {
       ["COMPACTION_FAILED", "已提供当前可用的回答；剩余内容暂未完成，可以继续补充。"],
       ["ACTIVE_CONTEXT_EXHAUSTED", "这次内容较长，先提供当前可用的回答；其余部分可以继续补充。"],
       ["TURN_LIMIT_EXCEEDED", "已提供当前可用内容；未完成的讲解、演示或其他操作可以接着完善。"],
+      ["MODEL_OUTPUT_LIMIT", null],
     ] as const;
     const wrapper = mount(RightRail, {
       attachTo: document.body,
@@ -1171,7 +1277,7 @@ describe("RightRail agent sources", () => {
     });
 
     expect(wrapper.findAll(".incomplete").map((notice) => notice.text())).toEqual(
-      warnings.map(([, label]) => label),
+      warnings.flatMap(([, label]) => label ? [label] : []),
     );
     for (const [warning] of warnings) expect(wrapper.text()).not.toContain(warning);
     expect(wrapper.text()).not.toContain("请重试");
@@ -1587,9 +1693,16 @@ describe("RightRail AskQuote", () => {
 
     expect(wrapper.get(".memory-update-row").text()).toContain("画像已记住");
     expect(wrapper.get(".profile-usage").attributes()).not.toHaveProperty("open");
-    expect(wrapper.get(".profile-usage summary").text()).toContain("学习偏好与背景 · 1 条");
+    expect(wrapper.get(".profile-usage summary").text()).toBe("学习背景对本次回答的影响");
+    expect(wrapper.get(".profile-usage p").text()).toBe("讲解深度");
     expect(wrapper.get('.profile-usage').text()).not.toContain('快照');
     expect(wrapper.get('.profile-usage').text()).not.toContain('fact-1');
+    const turn = wrapper.props('chat')[0]!;
+    await wrapper.setProps({chat:[{...turn, outcome:{...turn.outcome!, profile_usage:{
+      snapshot_revision:2, injected_fact_ids:Array.from({length:14}, (_,i)=>`policy_${i}`),
+      claimed_used_fact_ids:[], influences:[],
+    }}}]});
+    expect(wrapper.find(".profile-usage").exists()).toBe(false);
     await wrapper.get('.memory-update-row button[aria-label="撤销画像更新"]').trigger("click");
     expect(wrapper.emitted("undo-profile-update")?.[0]).toEqual([0, 0, memoryUpdate]);
 

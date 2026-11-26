@@ -185,7 +185,7 @@ understand-book plugin
         "executor.submit_candidate"
       ],
       "default_tools_approval_mode": "approve",
-      "startup_timeout_sec": 10,
+      "startup_timeout_sec": 30,
       "tool_timeout_sec": 120,
       "env_vars": [
         "UNDERSTAND_BOOK_BUILD_EXE",

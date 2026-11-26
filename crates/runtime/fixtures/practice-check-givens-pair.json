@@ -1,0 +1,42 @@
+{
+  "packet": {
+    "problem": {
+      "delivery_text": "请在练习卡中作答。",
+      "answer_input": {
+        "kind": "single_choice",
+        "options": [
+          { "id": "A", "text": "船底的净空达到通航要求。" },
+          { "id": "B", "text": "船底的净空未达到通航要求。" }
+        ]
+      }
+    },
+    "practiced_relationship": {
+      "learning_focus": "判断船底净空是否达到通航要求",
+      "expected_performance": "结合水深、吃水和通航标准作出判断。"
+    },
+    "mode": "discriminate",
+    "committed_solution": "水深 5 米，吃水 2 米，船底净空为 3 米，达到至少 2.5 米的要求，选 A。",
+    "answer_contract": {
+      "rule": { "kind": "choice_set", "choices": ["A", "B"], "correct": ["A"] },
+      "feedback": "on_reveal",
+      "source_lids": ["1"],
+      "source_sufficient": true
+    },
+    "frozen_sources": { "1": "船底净空等于船所在点的水深减去船的吃水。通航时船底净空必须达到航道规定的最低值。" },
+    "hints": []
+  },
+  "cases": [
+    {
+      "name": "conflicting measurements",
+      "prompt": "一艘吃水 2 米的货船停在测深点。通航要求船底净空至少 2.5 米。两份精确记录测的是此船所在点上午 9 时的同一次水深：甲记录为 5 米，乙记录为 4 米。依据这两份记录，选出船在该时刻的通航结论。",
+      "conflicting": true,
+      "expected_verdict": "questionable"
+    },
+    {
+      "name": "matching measurements",
+      "prompt": "一艘吃水 2 米的货船停在测深点。通航要求船底净空至少 2.5 米。两份精确记录测的是此船所在点上午 9 时的同一次水深：甲记录为 5 米，乙记录为 5 米。依据这两份记录，选出船在该时刻的通航结论。",
+      "conflicting": false,
+      "expected_verdict": "sound"
+    }
+  ]
+}

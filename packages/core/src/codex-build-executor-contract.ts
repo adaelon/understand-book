@@ -94,7 +94,7 @@ export function validateBuildExecutorSharedMcpConfigV3(
   if (server.default_tools_approval_mode !== "approve") {
     throw new Error("Build Executor shared MCP approval mode must be approve");
   }
-  if (server.startup_timeout_sec !== 10 || server.tool_timeout_sec !== 120) {
+  if (server.startup_timeout_sec !== 30 || server.tool_timeout_sec !== 120) {
     throw new Error("Build Executor shared MCP timeout surface is incompatible");
   }
   if (!exactArray(server.env_vars, SHARED_EXECUTOR_ENV_VARS)) {

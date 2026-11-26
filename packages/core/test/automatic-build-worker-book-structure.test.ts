@@ -69,7 +69,11 @@ describe("continuous worker BookStructure integration", () => {
       let previousTask: { id: string; knownTaskIds: Set<string>; handoffRef: string } | undefined;
       // This guard catches a stalled protocol; it does not supply a preselected
       // task list. Every task and dependency comes from the production router.
-      for (let turn = 0; turn < 30 && action.kind !== "DONE"; turn++) {
+      for (let turn = 0; turn < 60 && action.kind !== "DONE"; turn++) {
+        if (action.kind === "WAIT") {
+          action = await call("executor.open", { version: "automatic_build_executor_open_request.v3", opaque_handoff_ref: rootRef });
+          continue;
+        }
         expect(action.kind, JSON.stringify(action)).toBe("DELIVER_INPUT");
         if (action.kind !== "DELIVER_INPUT") throw new Error(`unexpected worker action ${action.kind}`);
         const manifest = action.input_manifest;
@@ -233,6 +237,7 @@ describe("continuous worker BookStructure integration", () => {
       const idle = await waiting.submit(first);
       expect(idle.kind, JSON.stringify(idle)).toBe("WAIT");
       expect(waiting.connection.is_terminal()).toBe(false);
+      expect(await waiting.open()).toMatchObject({ kind: "WAIT" });
       expect(readAutomaticBuildWorker(waiting.rootRef)).toMatchObject({
         root_handoff_ref: waiting.rootRef, status: "waiting", assignments: [firstAssignment],
         completed_assignments: [firstAssignment],
@@ -243,12 +248,13 @@ describe("continuous worker BookStructure integration", () => {
       const knownBeforeLastCommit = new Set(Object.keys(beforeLastCommit.generation_tasks ?? {}));
 
       // Reopen the original connection while its peer can still make progress.
-      // The first submit deliberately waited out the bounded server wait above;
-      // this second wait must not hold up the commit which creates both chapters.
-      const [resumedInput, nextForPredecessor] = await Promise.all([
+      // The dependency wait must not hold up the peer's commit.
+      const [resumedInput, predecessorCommit] = await Promise.all([
         waiting.open(), predecessor.submit(last),
       ]);
       expect(resumedInput.kind, JSON.stringify(resumedInput)).toBe("DELIVER_INPUT");
+      expect(predecessorCommit.kind).toBe("WAIT");
+      const nextForPredecessor = await predecessor.open();
       expect(nextForPredecessor.kind, JSON.stringify(nextForPredecessor)).toBe("DELIVER_INPUT");
       const afterLastCommit = fixture.get();
       expect(afterLastCommit.pending_tasks).toHaveLength(2);

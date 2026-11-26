@@ -478,7 +478,7 @@ function writeMarketplace(root: string): void {
         required: true,
         enabled_tools: [directReadTool, ackTool],
         default_tools_approval_mode: "approve",
-        startup_timeout_sec: 10,
+        startup_timeout_sec: 30,
         tool_timeout_sec: 120,
         env_vars: ["UB_CARRIER_MODE", "UB_CARRIER_SHAPE", "UB_CARRIER_LEDGER_ROOT", "USERPROFILE"],
       },

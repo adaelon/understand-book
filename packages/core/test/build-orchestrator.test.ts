@@ -10,6 +10,7 @@ import {
   buildAutomaticBuildSnapshot,
   prepareAutomaticBuildSnapshot,
   readAutomaticBuildTaskStage,
+  readTeachingBuildInput,
   resolveAutomaticBuildTarget,
   type AutomaticBuildTarget,
   type AutomaticBuildSnapshot,
@@ -72,7 +73,7 @@ import { resolveAutomaticBuildExecutorRegistryRoot } from '../src/automatic-buil
 // its pending completion messages between cases instead of starving RPC replies.
 afterEach(async () => { await yieldToRunner(); });
 
-it('dispatches a selected course goal through the real executor session after reusing BookStructure',async()=>{
+it.each(['goal','route'] as const)('dispatches a selected course %s through the real executor session after reusing BookStructure',async(mode)=>{
   const root=tempDir(),{workspace}=writeTechnicalLearningWorkspace(root,'course-executor');
   const target=resolveAutomaticBuildTarget(workspace,root);closeV3Pass1(target);closeV3ProfileSidecar(target);
   for(let round=0;round<24;round++){
@@ -83,8 +84,14 @@ it('dispatches a selected course goal through the real executor session after re
     }
   }
   runAutomaticBuildCloseStage(workspace,root,'book_structure');
-  const selected=prepareExplicitLegacyBuildPlan(workspace,root,{build_course:true,course_goal:'围绕材料中的定义与条件编排课程'});
-  expect(selected.plan.course_goal).toBe('围绕材料中的定义与条件编排课程');
+  const material = readTeachingBuildInput(target);
+  const courseRoute = { status:'accepted' as const,source_id:material.source.source_id,source_revision:material.source.source_revision,
+    title:'定义与条件',question:'什么时候能使用定义？',audience:'初学者',final_task:'用定义解释新案例',
+    unit_lids:[material.structure.spine[0].lid],example_lessons:['原定义有哪些前提？'] };
+  const selected=prepareExplicitLegacyBuildPlan(workspace,root,{build_course:true,...(mode==='route'
+    ? {course_route:courseRoute} : {course_goal:'围绕材料中的定义与条件编排课程'})});
+  if (mode==='route') expect(selected.plan.course_route).toEqual(courseRoute);
+  else expect(selected.plan.course_goal).toBe('围绕材料中的定义与条件编排课程');
   expect(selected.plan.public_stage_closure).toContain('course');expect(selected.plan.public_stage_closure).not.toContain('formal_objects');
   vi.stubEnv('UNDERSTAND_BOOK_AUTOMATIC_BUILD_DRIVER_ROOT',path.join(root,'registry'));
   try{

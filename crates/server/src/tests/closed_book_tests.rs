@@ -245,6 +245,7 @@ fn model_provider_live_tool_and_structured_trial() {
                 ModelDelta::Request(value)=>{self.request_events+=1;json!({"kind":"request","body":value.as_ref()})},
                 ModelDelta::Response(value)=>json!({"kind":"response","body":value.as_ref()}),
                 ModelDelta::RetryReset=>{self.text.clear();json!({"kind":"retry_reset"})},
+                ModelDelta::OutputLimitReached{total_tokens}=>json!({"kind":"output_limit_reached","total_tokens":total_tokens}),
                 ModelDelta::Text(text)=>{
                     if !text.is_empty() && self.first_text_ms.is_none(){self.first_text_ms=Some(self.started.elapsed().as_millis());}
                     self.text.push_str(&text);json!({"kind":"text","text":text})

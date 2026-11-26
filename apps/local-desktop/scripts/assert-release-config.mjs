@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { desktopTarget } from '../../../scripts/desktop/platform.mjs';
+import { assertVoiceRuntime } from '../../../scripts/desktop/build-voice-runtime.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
 const config = JSON.parse(readFileSync(path.join(root, 'src-tauri/tauri.conf.json'), 'utf8'));
@@ -31,5 +32,6 @@ if (process.argv.includes('--resources')) {
   assert.equal(runtime.arch, target.arch, 'Rebuild resources using Node for the target architecture.');
   assert(runtime.packages.includes(target.canvas));
   assert(existsSync(path.join(resources, 'reader-runtime/node_modules', target.canvas, 'package.json')));
+  if (target.platform === 'win32') assertVoiceRuntime(path.join(resources, 'voice-runtime'));
 }
 console.log('Local desktop release configuration ready.');

@@ -1,7 +1,7 @@
 use super::mu5_tests::Fixture;
 use serde_json::{json, Value};
 
-fn publish(f: &Fixture, version: u32) -> Value {
+pub(super) fn publication_input(f: &Fixture, version: u32) -> Value {
     let mut course: Value = serde_json::from_str(include_str!(
         "../../../../docs/examples/inquiry-course/ai-infra-resource-bounds.v1.course.json"
     ))
@@ -20,7 +20,11 @@ fn publish(f: &Fixture, version: u32) -> Value {
         version,
     );
     input["manifest"]["inquiry_course"] = course;
-    f.ok(&f.b, "POST", "/api/admin/workspace-releases", input)
+    input
+}
+
+fn publish(f: &Fixture, version: u32) -> Value {
+    f.ok(&f.b, "POST", "/api/admin/workspace-releases", publication_input(f, version))
 }
 
 #[test]

@@ -228,6 +228,9 @@ pub struct ServerHostConfig {
     pub library_root: Option<PathBuf>,
     pub addr: String,
     pub web_dist: PathBuf,
+    pub bundled_voice_runtime: Option<PathBuf>,
+    pub voice_model_dir: Option<PathBuf>,
+    pub voice_model_default_dir: Option<PathBuf>,
 }
 
 impl ServerHostConfig {
@@ -241,6 +244,9 @@ impl ServerHostConfig {
             web_dist: std::env::var("UNDERSTAND_BOOK_WEB_DIST")
                 .map(PathBuf::from)
                 .unwrap_or_else(|_| PathBuf::from("packages").join("web").join("dist")),
+            bundled_voice_runtime: None,
+            voice_model_dir: None,
+            voice_model_default_dir: None,
         }
     }
 
@@ -252,6 +258,9 @@ impl ServerHostConfig {
             library_root: Some(library_root),
             addr: "127.0.0.1:0".into(),
             web_dist,
+            bundled_voice_runtime: None,
+            voice_model_dir: None,
+            voice_model_default_dir: None,
         }
     }
 }
@@ -265,6 +274,7 @@ pub struct RunningServer {
     review_coordinator: Arc<ReviewCoordinator>,
     pub run_coordinator: Arc<crate::agent_run::RunCoordinator>,
     observability: Arc<crate::observability::ObservabilityRuntime>,
+    voice_manager: Arc<crate::voice_model::VoiceModelManager>,
 }
 
 pub struct ReviewRunOutcome {
@@ -1282,6 +1292,10 @@ impl RunningServer {
         Ok(())
     }
 
+    pub fn configure_voice_model_persistence(&self, save: crate::voice_model::SaveVoiceModelDir) {
+        self.voice_manager.set_persistence(save);
+    }
+
     pub fn model_settings_status(&self) -> serde_json::Value {
         self.review_coordinator.settings_status()
     }
@@ -1671,6 +1685,12 @@ fn start_server_with_initial_models(
     // Playback needs only the selected directory. A private-history or build-intent
     // request can hold AppState for seconds while a score or an audio range is due.
     let music_book_dir = Arc::new(Mutex::new(PathBuf::from(&dir)));
+    let voice_manager = crate::voice_model::VoiceModelManager::new(
+        config.bundled_voice_runtime.clone(),
+        config.voice_model_default_dir.clone(),
+        config.voice_model_dir.clone(),
+        stop.clone(),
+    );
     for _ in 0..4 {
         let profile_root = profile_root.clone();
         let server = server.clone();
@@ -1681,6 +1701,7 @@ fn start_server_with_initial_models(
         let run_coordinator = run_coordinator.clone();
         let observability = observability.clone();
         let dist = config.web_dist.clone();
+        let voice_manager = voice_manager.clone();
         let reader_only = config.reader_only;
         let prepared_video = prepared_video.clone();
         let stop_signal = stop.clone();
@@ -1918,9 +1939,79 @@ fn start_server_with_initial_models(
                             continue;
                         }
                         if api_url == "/reader/voice-status" {
-                            let reply = if method == "GET" { crate::ok_json(&crate::voice_input::status()) }
+                            let reply = if method == "GET" {
+                                crate::ok_json(&voice_manager.voice_status_json())
+                            }
                                 else { Reply {status:405,body:"{}".into()} };
                             let _ = request.respond(response_from_json(reply.status,reply.body));
+                            continue;
+                        }
+                        if api_url == "/reader/voice-model" {
+                            let reply = if method == "GET" {
+                                crate::ok_json(&voice_manager.status_json())
+                            } else {
+                                Reply { status: 405, body: "{}".into() }
+                            };
+                            let _ = request.respond(response_from_json(reply.status, reply.body));
+                            continue;
+                        }
+                        if api_url == "/reader/voice-model/download" {
+                            let reply = if method != "POST" {
+                                Reply { status: 405, body: "{}".into() }
+                            } else {
+                                let req = if body.trim().is_empty() {
+                                    Ok(crate::voice_model::DownloadRequest { target_dir: None, source: None, base_url: None })
+                                } else {
+                                    serde_json::from_str::<crate::voice_model::DownloadRequest>(&body)
+                                        .map_err(|_| crate::user_storage_paths::error("VOICE_MODEL_INVALID_REQUEST", "validation", "下载参数格式无效。"))
+                                };
+                                match req.and_then(|input| voice_manager.start_download(input)) {
+                                    Ok(value) => crate::ok_json(&value),
+                                    Err(error) => crate::err_reply(&error),
+                                }
+                            };
+                            let _ = request.respond(response_from_json(reply.status, reply.body));
+                            continue;
+                        }
+                        if api_url == "/reader/voice-model/select" {
+                            let reply = if method != "POST" {
+                                Reply { status: 405, body: "{}".into() }
+                            } else {
+                                let req = serde_json::from_str::<crate::voice_model::SelectDirRequest>(&body)
+                                    .map_err(|_| crate::user_storage_paths::error("VOICE_MODEL_INVALID_REQUEST", "validation", "请提供有效的模型目录路径。"));
+                                match req.and_then(|input| voice_manager.select_dir(input)) {
+                                    Ok(value) => crate::ok_json(&value),
+                                    Err(error) => crate::err_reply(&error),
+                                }
+                            };
+                            let _ = request.respond(response_from_json(reply.status, reply.body));
+                            continue;
+                        }
+                        if api_url == "/reader/voice-model/cancel" {
+                            let reply = if method != "POST" {
+                                Reply { status: 405, body: "{}".into() }
+                            } else {
+                                crate::ok_json(&voice_manager.cancel_download())
+                            };
+                            let _ = request.respond(response_from_json(reply.status, reply.body));
+                            continue;
+                        }
+                        if api_url == "/reader/voice-model/remove" {
+                            let reply = if method != "POST" {
+                                Reply { status: 405, body: "{}".into() }
+                            } else {
+                                let req = if body.trim().is_empty() {
+                                    Ok(crate::voice_model::RemoveModelRequest { delete_files: true })
+                                } else {
+                                    serde_json::from_str::<crate::voice_model::RemoveModelRequest>(&body)
+                                        .map_err(|_| crate::user_storage_paths::error("VOICE_MODEL_INVALID_REQUEST", "validation", "删除参数格式无效。"))
+                                };
+                                match req.and_then(|input| voice_manager.remove_model(input)) {
+                                    Ok(value) => crate::ok_json(&value),
+                                    Err(error) => crate::err_reply(&error),
+                                }
+                            };
+                            let _ = request.respond(response_from_json(reply.status, reply.body));
                             continue;
                         }
                         if api_url == "/reader/voice-transcribe" {
@@ -1928,7 +2019,7 @@ fn start_server_with_initial_models(
                                 Err(crate::user_storage_paths::error("METHOD_NOT_ALLOWED","validation","Voice input accepts POST"))
                             } else {
                                 serde_json::from_str(&body).map_err(|_|crate::user_storage_paths::error("VOICE_INVALID","validation","录音读取失败。"))
-                                    .and_then(|input|crate::voice_input::Work::prepare(&input))
+                                    .and_then(|input| crate::voice_input::Work::prepare_with_manager(&input, &voice_manager))
                                     .and_then(|work|work.execute(&runtime::run_context::CancellationToken::with_host_stop(stop_signal.clone())))
                             };
                             let reply = match result { Ok(value)=>crate::ok_json(&value),Err(error)=>crate::err_reply(&error) };
@@ -2058,6 +2149,7 @@ fn start_server_with_initial_models(
         review_coordinator,
         run_coordinator,
         observability,
+        voice_manager,
     })
 }
 
@@ -2891,6 +2983,9 @@ mod tests {
                 library_root: Some(root.join("library")),
                 addr: "127.0.0.1:0".into(),
                 web_dist: root.join("web-dist"),
+                bundled_voice_runtime: None,
+                voice_model_dir: None,
+                voice_model_default_dir: None,
             },
             memory_path,
         );
@@ -3318,6 +3413,9 @@ mod tests {
             library_root: None,
             addr: "127.0.0.1:0".into(),
             web_dist: PathBuf::from("dist"),
+            bundled_voice_runtime: None,
+            voice_model_dir: None,
+            voice_model_default_dir: None,
         };
         let first = bind_host_http(&config.addr, config.desktop_host).unwrap();
         let second = bind_host_http(&config.addr, config.desktop_host).unwrap();

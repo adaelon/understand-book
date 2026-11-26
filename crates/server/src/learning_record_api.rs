@@ -30,7 +30,7 @@ pub(crate) fn read(access: &Authorization, context: &AuthorizedContext, id: Opti
         return Ok(json!({"records":records}));
     };
     let through = query.get("through_seq").map(|value| value.parse::<u64>().ok().filter(|n| *n > 0).ok_or_else(invalid)).transpose()?;
-    let projection = session_recap::snapshot(&user, id, through)?;
+    let projection = session_recap::reader_snapshot(&user, id, through)?;
     let session = projection.session.as_ref().ok_or_else(authorization::missing)?;
     let mut recap = session_recap::project(&projection, &now.to_string());
     {
@@ -82,7 +82,7 @@ pub(crate) fn linked_request(access: &Authorization, context: &AuthorizedContext
             if workspace.goal.revision != request.goal_revision {
                 return Err(error("WORKSPACE_GOAL_REVISION_CONFLICT", "conflict", "工作区目标已更新，请查看新目标后再带入记录"));
             }
-            let projection = session_recap::snapshot(&user, &request.session_id, Some(request.through_seq))?;
+            let projection = session_recap::reader_snapshot(&user, &request.session_id, Some(request.through_seq))?;
             let session = projection.session.as_ref().ok_or_else(authorization::missing)?;
             if session.turns.is_empty() || session.learning_workspace_id.as_deref() == Some(workspace_id) { return Err(invalid()); }
             let selection = LearningRecordSelection { source_learning_workspace_id:session.learning_workspace_id.clone(),

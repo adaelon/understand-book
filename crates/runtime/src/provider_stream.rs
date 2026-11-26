@@ -93,6 +93,8 @@ pub enum ModelDelta {
     /// Repeated frames replace the previous snapshot; callers must never add them together.
     Usage(ModelUsage),
     Finish(String),
+    /// A settled output-limit failure after all adapter-level retries. No partial turn is executable.
+    OutputLimitReached { total_tokens: Option<u32> },
 }
 pub trait ModelObserver {
     fn observe(&mut self, delta: ModelDelta);

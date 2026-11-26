@@ -120,7 +120,7 @@ function recordStreamResponse(record, text) {
 
 // Local test instrumentation only. Forward request/response bytes unchanged;
 // retain no HTTP credentials and omit provider reasoning text from local records.
-export async function startProviderRecorder(providerBase, { tokenLimit = null, intercept = null } = {}) {
+export async function startProviderRecorder(providerBase, { tokenLimit = null, intercept = null, beforeSend = null, apiKey = null } = {}) {
   const records = [];
   const metadataRequests = [];
   const budgetRejections = [];
@@ -151,6 +151,17 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
         const { reasoning_content, ...publicMessage } = message;
         return { ...publicMessage, ...(Array.isArray(publicMessage.content) ? { content: publicBlocks(publicMessage.content) } : {}) };
       }) } : {}) };
+      if (!metadata && beforeSend) {
+        const rejection = beforeSend(request, record);
+        if (rejection) {
+          budgetRejections.push({ ordinal: record.ordinal, reason: rejection });
+          record.blocked = rejection;
+          record.status = 402;
+          res.writeHead(402, { 'content-type': 'application/json' });
+          res.end(JSON.stringify({ error: { message: rejection } }));
+          return;
+        }
+      }
       const scripted = !metadata && intercept ? await intercept(request, records) : null;
       if (scripted) {
         record.scripted = true;
@@ -169,7 +180,8 @@ export async function startProviderRecorder(providerBase, { tokenLimit = null, i
         method: req.method, ...(metadata ? {} : { body }), signal: controller.signal,
         headers: { 'content-type': req.headers['content-type'] ?? 'application/json',
           ...Object.fromEntries(['authorization', 'x-api-key', 'anthropic-version', 'anthropic-beta']
-            .filter(key => req.headers[key]).map(key => [key, req.headers[key]])) },
+            .filter(key => req.headers[key]).map(key => [key, req.headers[key]])),
+          ...(apiKey ? { authorization: 'Bearer ' + apiKey, ...(req.headers['x-api-key'] ? { 'x-api-key': apiKey } : {}) } : {}) },
       });
       const bytes = Buffer.from(await upstream.arrayBuffer());
       record.status = upstream.status;

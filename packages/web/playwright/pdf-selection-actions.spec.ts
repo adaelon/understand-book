@@ -139,12 +139,17 @@ async function installApiFixture(
     const request = route.request();
     const path = new URL(request.url()).pathname;
     const body = request.postData() ? request.postDataJSON() as Record<string, unknown> : null;
+    if (path === '/api/videos') return json(route, { videos: [], active: null });
+    if (['/api/build_workbench/music/context', '/api/book/video_playback', '/api/book/music_context', '/api/tutor/closed-book'].includes(path)) {
+      return json(route, null);
+    }
     if (path === "/api/book/pdf/original") {
       return route.fulfill({ status: 200, contentType: "application/pdf", body: pdf });
     }
     if (path === "/api/desktop/status") {
       return json(route, {
         desktop_host: false,
+        reader_only: true,
         active_book: true,
         book_dir: null,
         library_root: "",
@@ -474,8 +479,11 @@ async function selectFixtureText(page: Page, start: number, end: number) {
 
 test('prepares one neighbouring PDF page and follows forward and backward navigation', async ({ page }) => {
   await page.setViewportSize({width:1440,height:900});
+  await page.addInitScript(() => localStorage.setItem('understand-book.product-tour.v1.local.reader', 'done'));
   await installApiFixture(page, 'resolved', 0, pdfFixture(undefined, 8), undefined, 8);
   await page.goto('/');
+  const title = page.locator('.reading-titles strong:visible');
+  await expect(title).toHaveText('Selectable PDF fixture text for explicit');
   const pages = page.locator('.pdf-page-shell');
   await expect(pages.nth(1)).toHaveAttribute('aria-busy', 'false');
   await expect(page.locator('canvas[data-render-generation]')).toHaveCount(2);
@@ -486,6 +494,7 @@ test('prepares one neighbouring PDF page and follows forward and backward naviga
   await pages.nth(3).evaluate(el => el.scrollIntoView({block:'start'}));
   await expect(pages.nth(3)).toHaveAttribute('aria-busy', 'false');
   await expect(pages.nth(2)).toHaveAttribute('aria-busy', 'false');
+  await expect(title).toHaveAttribute('title', 'Selectable PDF fixture text for explicit');
   expect(await page.locator('canvas[data-render-generation]').count()).toBeLessThanOrEqual(5);
 });
 

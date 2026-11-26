@@ -64,6 +64,7 @@ function sourceFile(file) {
   if (/^apps\/desktop\/local-reader\//.test(file)) return false;
   if (/^examples\/[^/]+\/verification\//.test(file)) return false;
   const name = path.posix.basename(file);
+  if (file === 'packages/web/tsconfig.local.json') return true;
   if ((name.startsWith('.env') || name.endsWith('.env')) && !name.endsWith('.example')) return false;
   if (/\.(private|local)\.(json|env|log|md)$/.test(name) || /^(SESSION_CHECKPOINT|checkpoint_)/.test(name)) return false;
   return true;

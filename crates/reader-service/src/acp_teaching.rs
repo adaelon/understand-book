@@ -21,7 +21,7 @@ pub(crate) fn prompt(
     };
     if closed_book(prepared) {
         let practice = &tutor["closed_book"];
-        let transport = "For the final response return exactly one JSON object with action, text, provides_help (boolean), reason, and the applicable target, criteria and learner_quote fields. The Reader checks this decision before delivering text. Omit Markdown code fences.";
+        let transport = "For the final response return exactly one JSON object with action, text, provides_help (boolean), reason, and the applicable target, criteria, learner_quote, new_case and followup_focus fields. The Reader checks this decision before delivering text. Omit Markdown code fences.";
         let rules = runtime::tutor::closed_book_instructions(practice, transport);
         let dialogue = port.with_app(|state| {
             prepared.scope.check_owner(state)?;
@@ -66,12 +66,17 @@ pub(crate) fn prompt(
                 let attempts: Vec<_> = facts.iter().filter(|e| e.kind == memory::teaching::TeachingFact::LearnerAction
                     && matches!(e.payload["action"].as_str(), Some("submit" | "revise")))
                     .map(|e| json!({"response": e.payload["response"], "reasoning":e.payload["reasoning"]})).collect();
-                Ok::<_, ToolError>(json!({"question":original.payload["move"]["prompt"],"displayed_help":shown,"submissions":attempts}))
+                Ok::<_, ToolError>(json!({"question":original.payload["move"]["prompt"],"displayed_help":shown,"submissions":attempts,
+                    "action":tutor["learner_context"]["responding_to_practice"]["action"],"practice_history":tutor["learner_context"]["practice_history"],
+                    "submitted_work":tutor["learner_context"]["responding_to_practice"]["submitted_work"]}))
             })?
         } else {
             Value::Null
         };
-        return Ok(format!("\nThe learner is practicing. Respond to the actual attempt and any help already given. If asked for a new variant, give one self-contained question and wait for the learner's response. Reader owns grading and completion. Original exercise (when supplied): {exercise}"));
+        let application = if tutor["application_requested"] == true {
+            " Invent a new concrete situation with changed givens and require the learner to apply the previous relationship. Compare the problem with the prior explanation; if copying or reordering the original passage answers it, replace the problem. Write original prose in the reader's selected language and script, preserving source quotations."
+        } else { "" };
+        return Ok(format!("\nThe learner is practicing. Respond to the actual attempt and any help already given. A skip is a choice to move on; do not infer a difficulty or claim a streak from it. When referring to earlier answers use their actual outcomes and help in this conversation. If submitted_work contains a question in the learner's reasoning, address that question using their selected answer and the original problem. If asked for a new variant, give one self-contained question and wait for the learner's response.{application} Reader owns grading and completion. Original exercise (when supplied): {exercise}"));
     }
     Ok(String::new())
 }
@@ -88,31 +93,56 @@ pub(crate) fn answer(
     prepared: &PreparedAgentChat,
     raw: &str,
 ) -> Result<String, ToolError> {
+    reviewed_answer(port, prepared, raw, None)
+}
+
+pub(crate) fn reviewed_answer(
+    port: &impl AppStatePort,
+    prepared: &PreparedAgentChat,
+    raw: &str,
+    review: Option<Value>,
+) -> Result<String, ToolError> {
     if !closed_book(prepared) {
         return Ok(raw.into());
     }
-    let decision: Value = serde_json::from_str(raw.trim())
-        .map_err(|_| invalid("本机 Agent 的闭卷回复缺少有效的教学决定，可以重试当前问题。"))?;
+    use crate::teaching::invalid_closed_book_decision;
+    let mut decision: Value = serde_json::from_str(raw.trim())
+        .map_err(|_| invalid_closed_book_decision("请直接返回一个闭卷决定 JSON 对象，勿添加代码围栏或其他正文。"))?;
+    if let Some(kind) = decision.get("type") {
+        let Some(kind @ ("clarify" | "question" | "followup" | "help" | "retry" | "complete" | "pause" | "exit")) = kind.as_str() else {
+            return Err(invalid_closed_book_decision("请在 action 中选择一个受支持的闭卷动作。"));
+        };
+        if decision.get("action").is_some_and(|action| action != kind) {
+            return Err(invalid_closed_book_decision("action 与 type 给出了不同的闭卷动作，请只返回一个 action。"));
+        }
+        let kind = kind.to_owned();
+        let fields = decision.as_object_mut().unwrap();
+        fields.remove("type");
+        fields.insert("action".into(), json!(kind));
+    }
     if decision["provides_help"].as_bool().is_none()
         || decision["reason"]
             .as_str()
             .is_none_or(|reason| reason.trim().is_empty())
         || decision["action"] == "start"
+        || !decision["action"].is_string()
     {
-        return Err(invalid("闭卷回复需要标明本次动作、帮助条件及判断依据。"));
+        return Err(invalid_closed_book_decision("闭卷回复需要合法的 action、布尔值 provides_help 和非空 reason。"));
     }
-    if decision["text"]
-        .as_str()
-        .is_some_and(|value| value.contains("[[source:"))
+    if ["new_case", "text"].iter().any(|field| {
+        decision[*field].as_str().is_some_and(|value| value.contains("[[source:"))
+    })
     {
-        return Err(invalid("闭卷题面或反馈必须能在当前对话中独立阅读。"));
+        return Err(invalid_closed_book_decision("闭卷题面或反馈必须能在当前对话中独立阅读。"));
     }
+    let mut request = json!({"operation":"closed_book","closed_book":decision});
+    if let Some(review) = review { request["transfer_review"] = review; }
     let proposal = port.with_app(|state| {
         prepared.scope.check_owner(state)?;
         crate::teaching::step(
             &prepared.scope.private_context(state),
             &prepared.turn_ref,
-            json!({"operation":"closed_book","closed_book":decision}),
+            request,
             &[],
             &[],
         )
@@ -122,6 +152,15 @@ pub(crate) fn answer(
         .and_then(Value::as_str)
         .map(str::to_owned)
         .ok_or_else(|| invalid("未找到已接纳的闭卷题面或反馈。"))
+}
+
+pub(crate) fn revision_prompt(original: &str, draft: &str, error: &ToolError) -> String {
+    format!(r#"{original}
+
+Reader rejected the preceding private draft before delivery. Revise it once for this same learner turn using the frozen context above.
+Rejected draft: {}
+Reader validation: {}
+Return one corrected JSON object. Base shape: {{"action":"<choose a permitted action>","text":"<learner-facing text>","provides_help":false,"reason":"<actual reason>"}}. For question or retry with an answer_origin, add new_case with the entire changed situation. text then contains only the task to solve in that situation. Give the reader new facts that require a fresh judgment. For other actions follow their fields in the original instructions."#, json!(draft), error.message)
 }
 
 #[cfg(test)]
@@ -264,6 +303,86 @@ mod tests {
             .unwrap()
             .contains(&json!(help)));
         assert_eq!(submitted.payload["response"], response);
+    }
+
+    #[test]
+    fn acp_closed_book_revises_only_a_rejected_draft_once_before_delivery() {
+        use crate::agent_run::RunCoordinator;
+        use std::{path::Path, sync::{atomic::AtomicBool, Arc, Mutex}};
+        let (root, mut state) = fixture_with_assets(false);
+        post(&mut state, "/agent/new", "{}");
+        let source = prepare(&mut state, json!({"message":"列子为何仍有所待？"}));
+        deliver(&mut state, &source, "列子需要靠风，风不吹他就不能飞。");
+        control(&mut state, "start", json!({"answer_turn_id":source.turn_ref.turn_id}));
+        let clarification = prepare(&mut state, json!({"message":"我来解释一下"}));
+        let mut draft = json!({"type":"clarify","action":"complete","text":"想练哪个问题？",
+            "reason":"先确认所选目标","provides_help":false});
+        assert!(answer(&BorrowedAppPort(RefCell::new(&mut state)), &clarification, &draft.to_string()).is_err());
+        draft.as_object_mut().unwrap().remove("action");
+        deliver(&mut state, &clarification, &draft.to_string());
+        let started = control(&mut state, "state", json!({}));
+        assert_eq!(started["criteria"], "");
+        assert_eq!(started["visible_turn_ids"].as_array().unwrap().len(), 1);
+        let state = Arc::new(Mutex::new(state));
+        let mut coordinator = RunCoordinator::new(state.clone(), Arc::new(AtomicBool::new(false)),
+            crate::observability::ObservabilityRuntime::disabled(None));
+        coordinator.local_profile = Some(root.path().to_owned());
+        let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("src/tests/fixtures/acp_teaching.cjs");
+        let next = root.path().join("teacher.json");
+        let record = root.path().join("samples.txt");
+        crate::local_acp::update(root.path(), &json!({"action":"save","agent":{
+            "id":"teacher","name":"teacher","command":"node","args":[script,next]}})).unwrap();
+        let rejected = "列子凭什么飞行？";
+        let original = json!({"action":"question","text":rejected,"reason":"判断依赖条件","provides_help":false});
+        let case = "飞艇可在无风时升空，气囊漏气时却会降落。";
+        let public_task = "它的飞行受什么条件限制？请说明理由。";
+        let revised = json!({"action":"question","new_case":case,"text":public_task,
+            "reason":"解释新的依赖关系","provides_help":false});
+        for (stop, correction, expected_samples, passes) in [
+            ("max_tokens", &original, "initial\n", false),
+            ("end_turn", &original, "initial\nrevision\n", false),
+            ("end_turn", &revised, "initial\nrevision\n", true),
+        ] {
+            std::fs::write(&record, "").unwrap();
+            std::fs::write(&next, serde_json::to_vec(&json!({"decision":original,"revision":correction,
+                "context":"风不吹他就不能飞","rejected":rejected,"validation":"请在 new_case 单独给出",
+                "stop":stop,"record":record})).unwrap()).unwrap();
+            let result = coordinator.run(r#"{"local_agent_id":"teacher","message":"我来解释一下"}"#, "now",
+                &crate::tests::ChatStubAdapter::scripted(vec![]), || {}, || {});
+            assert_eq!(std::fs::read_to_string(&record).unwrap(), expected_samples);
+            assert_eq!(result.status == 200, passes, "{}", result.body);
+            let saved = control(&mut state.lock().unwrap(), "state", json!({}));
+            if passes {
+                assert_eq!(saved["transfer_condition"], case);
+                let text = format!("{case}\n\n{public_task}");
+                let delivered = state.with_app(|s| {
+                    let session = s.user.agent_history.sessions.iter()
+                        .find(|session| Some(&session.id) == s.workspace.selected_chat.as_ref())?;
+                    session.turns.last()?.outcome.as_ref()?.answer.clone()
+                });
+                assert_eq!(delivered, Some(text));
+                assert_eq!(saved["visible_turn_ids"].as_array().unwrap().len(), 1);
+                assert!(!result.body.contains(rejected));
+            } else {
+                assert_eq!(saved["revision"], started["revision"]);
+            }
+        }
+        let learner = "没风也能飞；但浮力不足时就会落下。";
+        std::fs::write(&record, "").unwrap();
+        let complete = json!({"action":"complete","learner_quote":"浮力不足时就会落下","text":"你说明了气囊漏气为何影响飞行。",
+            "reason":"PRIVATE_AUTHOR_VERDICT","provides_help":false});
+        std::fs::write(&next, serde_json::to_vec(&json!({"context":case,"decision":complete,"record":record,"learner":learner,
+            "comparison":{"uses_original_relationship":true,"prior_answer_suffices":false,"prior_quote":"列子需要靠风","case_quote":"气囊漏气",
+                "reason":"飞艇有新的浮力条件，原来的御风理由不足以解释后果。"},
+            "review":{"verdict":"independent","case_quote":"气囊漏气","learner_quote":"浮力不足时就会落下",
+            "reason":"学习者由气囊漏气推断浮力不足会造成降落。"}})).unwrap()).unwrap();
+        let result = coordinator.run(&json!({"local_agent_id":"teacher","message":learner}).to_string(),
+            "now", &crate::tests::ChatStubAdapter::scripted(vec![]), || {}, || {});
+        assert_eq!(result.status, 200, "{}", result.body);
+        assert_eq!(std::fs::read_to_string(&record).unwrap(), "initial\ncomparison\nreview\n");
+        let saved = control(&mut state.lock().unwrap(), "state", json!({}));
+        assert_eq!(saved["status"], "complete");
+        assert_eq!(saved["completion_reason"], "学习者由气囊漏气推断浮力不足会造成降落。");
     }
 
     #[test]

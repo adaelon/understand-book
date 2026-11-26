@@ -1,9 +1,10 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { routeCourseBuild, closeCourseBuild, freezeCourseTask, type CourseGenerationTask } from '../src/course-build';
 import { source } from './fixtures/teaching-source';
+import type { AcceptedCourseRoute } from '../src/accepted-course-route';
 import type { TeachingBuildInput } from '../src/teaching-build';
 import { buildReproducibleProfileArtifactHeader } from '../src/profile-artifact';
 import { renderAutomaticBuildTaskInput, runAutomaticBuildStageWriter, resolveAutomaticBuildPromptAsset, resolveAutomaticBuildExecutorPrompt } from '../../../skills/build/automatic-build';
@@ -20,7 +21,7 @@ function fixture():TeachingBuildInput {
     structure:{header:buildReproducibleProfileArtifactHeader({book_id:source.source_id}),spine:['1'].map(lid=>({lid,role:'foundation',summary:{text:'平均速率',evidence_lids:source.passages.filter(p=>p.unit_lid===lid).map(p=>p.lid)},key_stop_ids:[],depends_on:[]})),throughlines:[],key_stops:[]}};
 }
 const scope={title:'平均速率',question:'为什么要比较总路程与总时间？',route:'chapters',unit_lids:['1']};
-function pending(input:TeachingBuildInput){const state=routeCourseBuild(input);if(state.course_blocked)throw new Error(state.course_blocked);return Object.values(state.generation_tasks??{}).flatMap(t=>t.kind==='course'&&state.pending_tasks.includes(t.task.descriptor.work_unit_id)?[t.task]:[]);}
+function pending(input:TeachingBuildInput, route?:AcceptedCourseRoute){const state=routeCourseBuild(input, undefined, route);if(state.course_blocked)throw new Error(state.course_blocked);return Object.values(state.generation_tasks??{}).flatMap(t=>t.kind==='course'&&state.pending_tasks.includes(t.task.descriptor.work_unit_id)?[t.task]:[]);}
 function write(input:TeachingBuildInput,task:CourseGenerationTask,value:unknown){
   freezeCourseTask(input.target,task);
   expect(renderAutomaticBuildTaskInput(input.target,'course',task.descriptor.work_unit_id,{policy_generation_id:task.policy_generation_id}).stdout).toBe(task.rendered_input);
@@ -38,6 +39,55 @@ function candidate(task:CourseGenerationTask):unknown {
   }
 }
 describe('automatic course construction',()=>{
+  it('holds the accepted chapter selection and requires independent verification of a matching trial',()=>{
+    const input = fixture();
+    for (let i=0; i<5; i++) {
+      const task = pending(input)[0];
+      write(input,task,candidate(task));
+    }
+    closeCourseBuild(input);
+    const courseFile = path.join(input.target.workspace_dir,'inquiry_course.json');
+    const draftDir = path.join(input.target.workspace_dir,'.build','course-trials','pilot-1');
+    mkdirSync(draftDir,{recursive:true});
+    writeFileSync(path.join(draftDir,'inquiry_course.json'),readFileSync(courseFile));
+
+    input.structure.spine.push({...input.structure.spine[0],lid:'2'});
+    const route:AcceptedCourseRoute = {status:'accepted',source_id:source.source_id,source_revision:source.source_revision,
+      title:'速率与时间',question:'怎样确认速率比较的条件？',audience:'会除法的读者',final_task:'解释不同测量条件下的比较',
+      unit_lids:['1'],example_lessons:['怎样确认平均速率？'],trial_revision:'pilot-1'};
+    const tasks = pending(input,route);
+    expect(tasks.map(t=>t.task_kind)).toEqual(['plan']);
+    const planInput = JSON.parse(tasks[0].rendered_input);
+    expect(planInput.accepted_route).toEqual(route);
+    expect(planInput.trial_candidate.question).toBe('平均速率如何确定？');
+    expect(planInput.source.passages.every((p:{unit_lid:string})=>p.unit_lid==='1')).toBe(true);
+    const plan = candidate(tasks[0]);
+    write(input,tasks[0],plan);
+    const solve = pending(input,route)[0];
+    expect(solve.task_kind).toBe('solve');
+    const trialArtifact = JSON.parse(readFileSync(courseFile,'utf8'));
+    expect(solve.rendered_input).not.toContain(trialArtifact.course.lessons[0].solution);
+    expect(()=>closeCourseBuild(input,undefined,route)).toThrow();
+    write(input,solve,candidate(solve));
+    const review = pending(input,route)[0];
+    expect(review.task_kind).toBe('review');
+    write(input,review,candidate(review));
+    closeCourseBuild(input,undefined,route);
+    expect(JSON.parse(readFileSync(courseFile,'utf8')).course.routes[0]).toMatchObject({question:route.question,structure_ref:'1'});
+    const report = JSON.parse(readFileSync(path.join(input.target.workspace_dir,'course_build_report.json'),'utf8'));
+    expect(report.accepted_route).toEqual(route);
+    expect(report.lessons[0].trial_revision).toBe('pilot-1');
+    expect(report.task_ids).toHaveLength(3);
+
+    const revised = {...route, final_task:'在新前提下独立评价测量方式'};
+    const amended = pending(input,revised)[0];
+    const otherPlan = candidate(amended) as {lessons:{objective:string}[]};
+    otherPlan.lessons[0].objective = '评价测量方式';
+    write(input,amended,otherPlan);
+    expect(pending(input,revised)[0].task_kind).toBe('lesson');
+    expect(routeCourseBuild(input,undefined,{...route,source_revision:'other'}).course_blocked).toMatch(/版本/);
+    expect(routeCourseBuild(input,undefined,{...route,unit_lids:['missing']}).course_blocked).toContain('missing');
+  });
   it('dispatches a course task with six-minute history and still enforces the approved wall-time budget',()=>{
     const input=fixture();
     const state=routeCourseBuild(input);

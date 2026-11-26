@@ -191,6 +191,35 @@ fn knowledge_observation_attaches_only_the_expressed_claim_and_resumes_without_a
     assert_eq!(resumed["context"]["turn_id"],run.turn_ref.turn_id);
     let frozen=crate::personal_note_context::freeze(&state.user,&json!({"understanding_ref":resumed["understanding_ref"]}),Some(&run.turn_ref.session_id)).unwrap().unwrap();
     assert_eq!(frozen["understanding"]["learner_quote"],words);
+    for (purpose, label, message) in [
+        (Some("practice"), "换个例子练习", ""),
+        (None, "接着这一点", "停车很久时，应该怎样算总时间？"),
+    ] {
+        let request = json!({"entry_action":"continue_answer","learning_purpose":purpose,
+            "message":message,"source_id":state.workspace.book.base.book_id,"source_revision":resumed["source_revision"],
+            "session_id":run.turn_ref.session_id,"client_request_id":label,"expected_chat_head":run.turn_ref.turn_id,
+            "answer_ref":{"turn_id":run.turn_ref.turn_id},"understanding_ref":resumed["understanding_ref"]});
+        let parsed = crate::interaction_input::InteractionInput::parse(&request).unwrap();
+        let Some(runtime::tutor_continuation::InteractionResolution::RunInput {interaction}) =
+            parsed.resolve(&state.user,&state.workspace,&request,None).unwrap() else { panic!("expected an understanding continuation") };
+        assert_eq!(interaction.accepted_request,label);
+        assert_eq!(interaction.user_supplement,message);
+        assert_eq!(serde_json::to_value(interaction.learning_purpose).unwrap(),json!(purpose));
+        assert_eq!(serde_json::to_value(interaction.target).unwrap(),resumed["target"]);
+    }
+    let note = state.user.store.create_personal_note(
+        serde_json::from_value(json!({"content":words,"authorship":"user"})).unwrap(),"time-note","1").unwrap();
+    let note_ref = json!({"note_id":note.note_id,"revision":1});
+    let request = json!({"entry_action":"revisit_note","message":"","note_ref":note_ref,"note_refs":[note_ref],
+        "source_id":state.workspace.book.base.book_id,"source_revision":resumed["source_revision"],
+        "session_id":run.turn_ref.session_id,"client_request_id":"understanding-note","expected_chat_head":run.turn_ref.turn_id,
+        "understanding_ref":resumed["understanding_ref"]});
+    let parsed = crate::interaction_input::InteractionInput::parse(&request).unwrap();
+    let Some(runtime::tutor_continuation::InteractionResolution::RunInput {interaction}) =
+        parsed.resolve(&state.user,&state.workspace,&request,None).unwrap() else {panic!("expected note practice")};
+    assert_eq!(interaction.accepted_request,"换个例子练习");
+    assert_eq!(serde_json::to_value(interaction.note_ref).unwrap(),note_ref);
+    assert_eq!(serde_json::to_value(interaction.target).unwrap(),resumed["target"]);
     let reference:read_tools::knowledge::KnowledgeReference=serde_json::from_value(selected["reference"].clone()).unwrap();
     let fabricated=read_tools::knowledge::KnowledgeLink{reference:reference.clone(),quote:"这句话用户没有说过".into()};
     assert!(crate::knowledge_tree::validate_links(&[fabricated],candidates,words).is_err());

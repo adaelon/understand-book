@@ -44,6 +44,7 @@ Cordis 发布入口为 `dist/index.js`，导出 `name`、`inject`、`Config`、`
 ## 使用流程
 
 1. 根会话调用 `ub_build_prepare_and_confirm`，指定 `target_input`、`root_dir`；`pass2` 可省略，默认 `disabled`，明确选择 `enabled` 才纳入跨段关系复核。可附计划预算与 `max_parallel`（1–3，默认 1）。
+   试课后决定扩建时，传入 `build_course:true` 和 `course_route_path`，指向制课 Agent 交付的本机 `accepted-route.json`。确认框显示选定的总问题与章节顺序，引擎将路线存入这次构建计划。
 2. 完整计划显示材料类型、阶段闭包、生成/复用/排除项、预算与模型配置。明确批准后返回持久 `invocation_ref`。此调用不启动抽取 child。
 3. 调用 `ub_build_run`，只提交上述引用。使用批准时保存的并发上限，最多同时运行三个 child。
 4. 正常让出后继续调用同一引用。取消后资源清理完成，仍保留同一引用供恢复。遇到 Engine 用户边界时由根问答服务请求决定。

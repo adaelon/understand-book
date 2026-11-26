@@ -205,7 +205,7 @@ interface AutomaticBuildDriverModule {
     version: "automatic_build_invocation_ref.v1";
     invocation_ref: string;
   }>;
-  automaticBuildStep(input: AutomaticBuildStepRequestV1): MaybePromise<AutomaticBuildStepResponseV1>;
+  automaticBuildStep(input: AutomaticBuildStepRequestV1, liveRefs?: string[], completedRefs?: string[]): MaybePromise<AutomaticBuildStepResponseV1>;
 }
 
 interface AutomaticBuildExecutorSessionModule {
@@ -1734,7 +1734,7 @@ describe("S0 deterministic automatic-build driver protocol", () => {
     expect(state.task_receipts.map(x => x.state)).toEqual(["committed", "committed"]);
   }, 30_000);
 
-  it.each(["bootstrap", "connection_terminal", "handoff_ref_mismatch", "correction"] as const)("L2 %s: bounds repeated bootstrap failures and resumes only after an explicit recovery decision", async (failureKind) => {
+  it.each(["bootstrap", "connection_terminal", "handoff_ref_mismatch", "correction", "mixed"] as const)("L2 %s: bounds repeated bootstrap failures and resumes only after an explicit recovery decision", async (failureKind) => {
     const driver = expectedDriver();
     const value = fixture("bootstrap-budget");
     const invocation = await createInvocation(driver, value);
@@ -1749,19 +1749,39 @@ describe("S0 deterministic automatic-build driver protocol", () => {
       const ref = step.action.executors[0]!.opaque_handoff_ref;
       expect(launched.has(ref)).toBe(false);
       launched.add(ref);
-      step = await driver.automaticBuildStep({ ...request, ...failureObservation(failureKind, ref) });
+      if (failureKind !== "mixed") {
+        step = await driver.automaticBuildStep({ ...request, ...failureObservation(failureKind, ref) });
+      } else {
+        if (count === 0) expect(openAutomaticBuildExecutorSessionV3(ref).action.kind).toBe("DELIVER_INPUT");
+        step = await driver.automaticBuildStep(request, [], [ref]);
+      }
     }
     expect(step.action.kind).toBe("NEEDS_USER");
     if (step.action.kind !== "NEEDS_USER") throw new Error("expected bounded failure");
     expect(step.action.reason).toBe("executor_bootstrap_failed");
+    const requestId = step.action.request_id;
+    if (failureKind === "mixed") {
+      expect(step.action).toMatchObject({ projection: { code: "executor_recovery_exhausted",
+        events: [{ kind: "opened_session_ended" }, { kind: "unopened_session_ended" }, { kind: "unopened_session_ended" }] } });
+      for (const ref of [...launched].slice(1)) {
+        step = await driver.automaticBuildStep({ ...request, ...failureObservation("correction", ref) });
+        expect(step.action).toMatchObject({ kind: "NEEDS_USER", request_id: requestId });
+      }
+    }
+    const correction = { kind: "open_call_correction", diagnostic_code: "protocol_incompatible" };
+    const events = failureKind === "mixed" ? [{ kind: "opened_session_ended" }, correction, correction]
+      : Array.from({ length: 3 }, () => failureKind === "correction" ? correction
+        : { kind: "open_rejected", diagnostic_code: failureKind });
+    expect(step.action).toMatchObject({ projection: failureKind === "bootstrap"
+      ? { code: "bootstrap_unavailable" } : { code: "executor_recovery_exhausted", events } });
     expect(await driver.automaticBuildStep(request)).toEqual(step);
     const resumed = await driver.automaticBuildStep({ ...request, decision: {
-      request_id: step.action.request_id, choice_id: "retry_bootstrap",
+      request_id: requestId, choice_id: "retry_bootstrap",
     } });
     if (resumed.action.kind !== "SPAWN_EXECUTORS") throw new Error("expected authorized retry");
     expect(launched.has(resumed.action.executors[0]!.opaque_handoff_ref)).toBe(false);
     expect(await driver.automaticBuildStep(request)).toEqual(resumed);
-  });
+  }, 30_000);
 
   it.each(["same", "fresh"])("gives an expired recovery generation a new handoff in the %s invocation while keeping its dispatch slot", async (invocationMode) => {
     vi.useFakeTimers();

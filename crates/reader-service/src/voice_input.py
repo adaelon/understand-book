@@ -1,5 +1,6 @@
 """Decode one browser recording and return literal dictation, without a book prompt."""
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -27,5 +28,10 @@ def transcribe(audio_file, model_dir, language):
 
 if __name__ == "__main__":
     audio_file, model_dir, language, output_file = sys.argv[1:]
-    result = transcribe(audio_file, model_dir, language)
-    Path(output_file).write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")
+    audio_path = os.path.abspath(audio_file)
+    output_path = Path(output_file).absolute()
+    # Windows app resources may use a verbatim path that CTranslate2 cannot open.
+    # This one-request subprocess can load the model relative to its own directory.
+    os.chdir(model_dir)
+    result = transcribe(audio_path, ".", language)
+    output_path.write_text(json.dumps(result, ensure_ascii=False), encoding="utf-8")

@@ -26,6 +26,7 @@ pub(crate) fn has_completed_answer(turn: &AgentChatTurn) -> bool {
         |view| view.parts.iter().any(|part| match part {
             AgentAnswerPart::Markdown { text } | AgentAnswerPart::SocraticQuestion { text, .. } => !text.trim().is_empty(),
             AgentAnswerPart::MusicExample { example } => !example.label.is_empty(),
+            AgentAnswerPart::TeachBackComparison { comparison } => !comparison.rows.is_empty(),
             AgentAnswerPart::Presentation { presentation_id, .. } => !presentation_id.is_empty(),
             AgentAnswerPart::Sources { source_ref_ids } => !source_ref_ids.is_empty(),
         }),

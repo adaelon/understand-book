@@ -1117,6 +1117,25 @@ function bootstrapEpoch(
   return epoch;
 }
 
+export type AutomaticBuildDispatchOpenDiagnostic = "connection_terminal" | "handoff_ref_mismatch";
+
+interface AutomaticBuildDispatchStartupRelease {
+  version: "automatic_build_bootstrap_failure.v1" | "automatic_build_terminal_session.v1";
+  opaque_handoff_ref: string;
+  recovery_identity: AutomaticBuildRecoveryGenerationIdentity;
+  diagnostic_code?: AutomaticBuildDispatchOpenDiagnostic;
+}
+
+export function readAutomaticBuildDispatchStartupReleases(target: AutomaticBuildTarget, stage: AutomaticBuildStage,
+  identity: AutomaticBuildRecoveryGenerationIdentityV2): AutomaticBuildDispatchStartupRelease[] {
+  const directory = bootstrapFailureDirectory(target, stage, identity);
+  const releases: AutomaticBuildDispatchStartupRelease[] = [];
+  for (let epoch = Math.max(0, identity.bootstrap_epoch - 3); epoch < identity.bootstrap_epoch; epoch++) {
+    releases.push(readJson<AutomaticBuildDispatchStartupRelease>(path.join(directory, `${epoch}.json`)));
+  }
+  return releases;
+}
+
 /** Called only after the executor registry proves this handoff has never opened. */
 export function recordAutomaticBuildDispatchBootstrapFailure(
   target: AutomaticBuildTarget,
@@ -1124,9 +1143,10 @@ export function recordAutomaticBuildDispatchBootstrapFailure(
   identity: AutomaticBuildRecoveryGenerationIdentity,
   opaqueHandoffRef: string,
   now: string,
+  diagnosticCode?: AutomaticBuildDispatchOpenDiagnostic,
 ): void {
   recordAutomaticBuildDispatchStartupRelease(target, stage, identity, opaqueHandoffRef, now,
-    "automatic_build_bootstrap_failure.v1");
+    "automatic_build_bootstrap_failure.v1", diagnosticCode);
 }
 
 /** A terminal child's handoff can be replaced before it claims generation, even before open. */
@@ -1147,20 +1167,22 @@ function recordAutomaticBuildDispatchStartupRelease(
   identity: AutomaticBuildRecoveryGenerationIdentity,
   opaqueHandoffRef: string,
   now: string,
-  version: "automatic_build_bootstrap_failure.v1" | "automatic_build_terminal_session.v1",
+  version: AutomaticBuildDispatchStartupRelease["version"],
+  diagnosticCode?: AutomaticBuildDispatchOpenDiagnostic,
 ): boolean {
   const epoch = identity.version === "automatic_build_recovery_generation_identity.v2"
     ? identity.bootstrap_epoch : 0;
   const file = path.join(bootstrapFailureDirectory(target, stage, identity), `${epoch}.json`);
-  const record = { version, opaque_handoff_ref: opaqueHandoffRef,
-    recovery_identity: identity };
+  const record: AutomaticBuildDispatchStartupRelease = { version, opaque_handoff_ref: opaqueHandoffRef,
+    recovery_identity: identity, ...(diagnosticCode ? { diagnostic_code: diagnosticCode } : {}) };
   if (existsSync(file)) {
     const existing = readJson<typeof record>(file);
     // Refill may release a terminal child before its queued startup failure arrives.
     // Both observations release the same handoff generation, regardless of arrival order.
     if ((existing.version !== "automatic_build_bootstrap_failure.v1"
       && existing.version !== "automatic_build_terminal_session.v1")
-      || stableJson({ ...existing, version }) !== stableJson(record)) {
+      || existing.opaque_handoff_ref !== opaqueHandoffRef
+      || stableJson(existing.recovery_identity) !== stableJson(identity)) {
       throw new Error("bootstrap failure conflicts");
     }
     return false;

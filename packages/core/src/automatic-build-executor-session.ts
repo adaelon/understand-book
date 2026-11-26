@@ -1,11 +1,13 @@
 import { fitStructureThemeSession, checkpointStructureThemeAction, StructureThemeActionRejected } from "./book-structure-theme-session";
 import { readCourseTask } from "./course-build";
 import {
+  AUTOMATIC_BUILD_WORKER_REOPEN_DELAY_MS,
   finishAutomaticBuildWorker,
   readAutomaticBuildWorker,
   readAutomaticBuildWorkerForAssignment,
   recordAutomaticBuildWorkerUsage,
   waitForAutomaticBuildWorkerAssignment,
+  type AutomaticBuildWorkerClaim,
   type AutomaticBuildWorkerRecord,
 } from "./automatic-build-worker";
 import { renderBookStructureGenerationTaskInput, type BookStructureGenerationTaskV1 } from "./book-structure-generation";
@@ -55,6 +57,7 @@ import {
   inspectAutomaticBuildDispatch,
   validateAutomaticBuildDispatchHandoff,
   type AutomaticBuildDispatchExecutorHandoffRefV1,
+  type AutomaticBuildDispatchOpenDiagnostic,
   type AutomaticBuildExecutorInterruptionInputV1,
   type AutomaticBuildPersistedDispatchV1,
   type AutomaticBuildRecoveryGenerationIdentity,
@@ -2436,7 +2439,7 @@ function taskDescriptor(
       const stage = readAutomaticBuildTaskStage(target, { stage: manifest.stage, work_unit_id: workUnitId,
         ...(task && task.parent_unit_lid !== "stitch" ? { parent_lid: task.parent_unit_lid } : {}) },
         manifest.policy_fingerprint.quality_profile,
-        courseTask ? { course_goal: courseTask.course_goal } : task && "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
+        courseTask ? { course_goal: courseTask.course_goal, course_route: courseTask.course_route } : task && "phase" in task.input ? { retrieval: task.input.retrieval_selection } : {});
       descriptor = stage?.work_units?.find(candidate => candidate.work_unit_id === workUnitId);
       currentBinding = stage?.task_bindings?.[workUnitId];
       if (task && canonicalAutomaticBuildJson(task.descriptor) !== canonicalAutomaticBuildJson(descriptor)) {
@@ -4401,6 +4404,7 @@ export function recordAutomaticBuildExecutorBootstrapFailure(
   opaqueHandoffRefValue: string,
   expectedTarget: BuildTargetRefV2,
   now: string,
+  diagnosticCode?: AutomaticBuildDispatchOpenDiagnostic,
 ): void {
   const ref = validateOpaqueHandoffRef(opaqueHandoffRefValue);
   const record = readOpaqueHandoffRecord(ref);
@@ -4413,7 +4417,7 @@ export function recordAutomaticBuildExecutorBootstrapFailure(
   const owner = record.owner_identity;
   const inspection = inspectAutomaticBuildDispatch(target, owner.stage, owner.dispatch_id, now, owner.dispatch_run_id);
   if (inspection.state !== "active") return;
-  recordAutomaticBuildDispatchBootstrapFailure(target, owner.stage, record.recovery_identity, ref, now);
+  recordAutomaticBuildDispatchBootstrapFailure(target, owner.stage, record.recovery_identity, ref, now, diagnosticCode);
 }
 
 /** Refill reports a terminal owned ref. An active generation or a newer ref takes precedence. */
@@ -5681,9 +5685,15 @@ export function runAutomaticBuildExecutorSessionCommand(
  * assignment. Raw dispatch sessions retain their frozen recovery generations and
  * candidate sinks; only a successfully committed dispatch can ask for more work.
  */
+export interface AutomaticBuildWorkerExecutorOptions {
+  timing?: AutomaticBuildExecutorServerTimingObserverV1;
+  execution_profile?: Readonly<BuildExecutionProfileV1>;
+  claim_worker_assignment?: (rootRef: string, completedRawRef: string) => Promise<AutomaticBuildWorkerClaim | undefined>;
+}
+
 export function runAutomaticBuildWorkerExecutorSessionCommand(
   value: unknown,
-  options: { timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> } = {},
+  options: AutomaticBuildWorkerExecutorOptions = {},
 ): AutomaticBuildExecutorSessionResponseV1 | AutomaticBuildExecutorSessionResponse
   | Promise<AutomaticBuildExecutorSessionResponse> {
   let worker: AutomaticBuildWorkerRecord | undefined;
@@ -5736,18 +5746,39 @@ export function runAutomaticBuildWorkerExecutorSessionCommand(
     finishAutomaticBuildWorker(readAutomaticBuildWorker(worker.root_handoff_ref)!, "failed");
     return response;
   }
+  if (isRecord(value) && value.version === "automatic_build_executor_candidate_submit.v3") {
+    // The write receipt is already durable. The next open can select another
+    // assignment without holding this submission response on the scheduler.
+    const wait = workerReopenResponse(profile);
+    recordAutomaticBuildWorkerUsage(worker.root_handoff_ref, {
+      wait_response_bytes: Buffer.byteLength(canonicalAutomaticBuildJson(wait), "utf8"),
+    });
+    return wait;
+  }
   return continueAutomaticBuildWorkerExecutorSession(worker.root_handoff_ref, rawHandoffRef, options);
+}
+
+function workerReopenResponse(profile: Readonly<BuildExecutionProfileV1>): AutomaticBuildExecutorSessionResponse {
+  return { version: profile.session_protocol, action: { kind: "WAIT", retry_after_ms: AUTOMATIC_BUILD_WORKER_REOPEN_DELAY_MS } };
 }
 
 async function continueAutomaticBuildWorkerExecutorSession(
   rootHandoffRef: string,
   completedRawRef: string,
-  options: { timing?: AutomaticBuildExecutorServerTimingObserverV1; execution_profile?: Readonly<BuildExecutionProfileV1> },
+  options: AutomaticBuildWorkerExecutorOptions,
 ): Promise<AutomaticBuildExecutorSessionResponse> {
-  const { claimNextAutomaticBuildWorkerAssignment } = await import("../../../skills/build/automatic-build-driver");
   const profile = options.execution_profile ?? CODEX_BUILD_EXECUTION_PROFILE_V1;
-  const claim = await waitForAutomaticBuildWorkerAssignment(rootHandoffRef,
-    () => claimNextAutomaticBuildWorkerAssignment(rootHandoffRef, completedRawRef));
+  let claim: AutomaticBuildWorkerClaim | undefined;
+  if (options.claim_worker_assignment) {
+    claim = await options.claim_worker_assignment(rootHandoffRef, completedRawRef);
+  } else {
+    const { claimNextAutomaticBuildWorkerAssignment } = await import("../../../skills/build/automatic-build-driver");
+    claim = await waitForAutomaticBuildWorkerAssignment(rootHandoffRef,
+      () => claimNextAutomaticBuildWorkerAssignment(rootHandoffRef, completedRawRef));
+  }
+  // The isolated scheduler accounts for these control turns when it finishes,
+  // so the MCP process never rewrites a worker record during assignment.
+  if (!claim) return workerReopenResponse(profile);
   if (claim.kind === "WAIT") {
     const response: AutomaticBuildExecutorSessionResponse = { version: profile.session_protocol, action: claim };
     recordAutomaticBuildWorkerUsage(rootHandoffRef, {

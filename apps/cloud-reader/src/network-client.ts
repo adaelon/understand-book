@@ -341,11 +341,15 @@ export function pendingSubmissions(): PendingSubmission[] {
 export function unconfirmedSubmissions(): PendingSubmission[] {
   return pendingSubmissions().filter(item => !sendingSubmissions.has(pendingPrefix() + item.key));
 }
+function lookupSubmission(item: PendingSubmission) {
+  const operation = typeof item.body.operation_id === 'string' ? '&operation_id=' + encodeURIComponent(item.body.operation_id) : '';
+  return networkFetch<Admission>('GET', `/agent/runs?client_request_id=${encodeURIComponent(item.key)}${operation}`);
+}
 export async function recoverSubmissions(): Promise<RunDescriptor[]> {
   const recovered: RunDescriptor[] = [];
   for (const item of unconfirmedSubmissions()) {
     try {
-      const value = await networkFetch<Admission>('GET', `/agent/runs?client_request_id=${encodeURIComponent(item.key)}`);
+      const value = await lookupSubmission(item);
       if (value.dispatch_state === 'preparing') continue;
       clearPendingSubmission(pendingPrefix() + item.key);
       recovered.push(value);
@@ -414,7 +418,7 @@ async function postSubmission(item: PendingSubmission) {
       if (scene !== sceneKey()) throw new ApiError(409, 'CLIENT_CONTEXT_STALE', 'conflict', uiText('阅读现场已切换'));
       sessionStorage.setItem(storageKey, large ? JSON.stringify({
         key: item.key, workspace: item.workspace, bodyStored: true,
-        body: { message: item.body.message, display_user: item.body.display_user, session_id: item.body.session_id },
+        body: { message: item.body.message, display_user: item.body.display_user, session_id: item.body.session_id, operation_id: item.body.operation_id },
       } satisfies PendingSubmission) : serialized);
     } catch (error) {
       if (large) discardSubmissionBody(storageKey);
@@ -431,7 +435,7 @@ async function postSubmission(item: PendingSubmission) {
         throw error;
       }
       // A lost reply may already have created the run. Query the original key before offering a retry.
-      try { value = await networkFetch<Admission>('GET', `/agent/runs?client_request_id=${encodeURIComponent(item.key)}`); }
+      try { value = await lookupSubmission(item); }
       catch { throw error; }
       if (value.dispatch_state === 'preparing') throw error;
     }

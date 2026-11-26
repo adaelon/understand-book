@@ -947,6 +947,54 @@ fn select_args() -> String {
 }
 
 #[test]
+fn application_repeated_source_read_returns_to_design_and_selected_card() {
+    // Reader trace: an answer continuation, an actual paragraph read and a repeat
+    // previously fell through to available_answer.v2 with the grading key in prose.
+    let source = "是鸟也，海运则将徙于南冥。";
+    let mut base = sample_base();
+    for node in &mut base.lid_nodes { node.span.start = 0; node.span.end = source.chars().count(); }
+    let book = Book::new(base,source);
+    let mut store = MemoryStore::open(tmp("application-source-read-recovery")).unwrap();
+    let mut reader = Reader::new(&book,DEFAULT_RADIUS);
+    let snapshot = default_profile_snapshot(&book,&store,"t0");
+    let prior = "鹏的迁徙需要海动风起的条件。";
+    let case = "湖边的鹭群每年等浅滩露出后才迁到岛上。今年浅滩还在水下。";
+    let mut design = design();
+    design["target"]["learning_focus"] = serde_json::json!("行动所需的外部条件");
+    let selection = serde_json::json!({"operation":"select","application":{"situation":case,
+        "question":"你预计鹭群接下来会怎样行动？","options":["继续等待","立即迁徙"],"correct_option":1,
+        "solution":"应等待浅滩露出。","hint":"留意水位。"}});
+    let args = r#"{"lid":"1.1"}"#;
+    let adapter = ReviewedTeachingAdapter::new(vec![
+        turn_calls(vec![call("read","book.text",args)]), turn_calls(vec![call("repeat","book.text",args)]),
+        turn_calls(vec![call("plan","tutor.step",&serde_json::json!({"operation":"design","operation_id":"lesson","design":design}).to_string())]),
+        turn_calls(vec![call("select","tutor.step",&selection.to_string())]),
+    ],vec![]);
+    let mut context = RunContext::new(new_session(),OuterConfig{max_turns:Some(8),..Default::default()},adapter.model_runtime_profile());
+    context.tool_exposure_state.activate("book.text");
+    context.tutor = Some(serde_json::json!({"status":"practice","learning_purpose":"practice","application_requested":true,
+        "learner_context":{"current_request":"根据这段回答给我一道应用题。","previous_answer":prior,
+            "current_target":{"source_bindings":[{"source_id":book.base.book_id,"source_revision":book.source_fingerprint(),"start_lid":"1.1","end_lid":"1.1"}]}}}));
+    let mut port = TeachingPort{inner:BorrowedResidentState{store:&mut store,reader:&mut reader},accepted:vec![],selections:Default::default(),reviews:vec![]};
+    let outcome = run_context(&book,&mut port,&adapter,&mut context,&snapshot,&ResidentTurnResources::default(),None,
+        &mut EphemeralCompactionCheckpointSink::default(),"根据这段回答给我一道应用题。","now").unwrap();
+    assert!(tool_result(&context.messages,"repeat").contains("AGENT_NO_PROGRESS"));
+    assert_eq!(port.accepted,["design","select"]);
+    assert_eq!(outcome.teaching_delivery_move_refs,["selected:application"]);
+    assert!(!outcome.incomplete);
+    assert_eq!(outcome.answer.as_deref(),Some("请在练习卡中选择你的答案。"));
+    let card = &port.selections["selected:application"];
+    assert_eq!(card["assessment"]["rule"]["correct"],serde_json::json!(["A"]));
+    assert!(card["prompt"].as_str().unwrap().contains(case));
+    assert!(!crate::tutor::public_arguments(&selection.to_string()).contains("correct_option"));
+    for (plan, operation) in adapter.inner.0.seen_plans.borrow().iter().skip(2).zip(["design","select"]) {
+        assert_eq!(plan.tools.len(),1);
+        assert_eq!(plan.tools[0].name,"tutor.step");
+        assert_eq!(plan.tools[0].parameters["properties"]["operation"]["enum"],serde_json::json!([operation]));
+    }
+}
+
+#[test]
 fn teaching_design_loop_direct_reply_does_not_adopt_or_require_a_saved_plan() {
     for saved_plan in [serde_json::Value::Null,serde_json::json!({"design_ref":"design:current","design":design()})] {
         let b=book();
@@ -1034,7 +1082,7 @@ fn teaching_design_loop_help_and_continuation_do_not_lock_a_teaching_method() {
     use crate::tutor_continuation::*;
     for action in [InteractionAction::UiEntry { entry_action: EntryAction::ClarifyAnswer },
         InteractionAction::UiChoice { teaching_choice: TeachingChoice { delivery_ref:"delivery".into(), option_id:"help".into() }, move_kind:ContinuationMoveKind::Explain }] {
-        let resolved = ResolvedInteraction { action, learning_purpose:None, user_supplement:String::new(), accepted_request:"这一步没跟上".into(), answer_ref:None, answer_text:None, source_excerpt:None, source_bindings:Vec::new(), target:None, expected_chat_head:None, presentation_follow_up:None, note_ref:None };
+        let resolved = ResolvedInteraction { action, teach_back_reply: None, course: None, learning_purpose:None, user_supplement:String::new(), accepted_request:"这一步没跟上".into(), answer_ref:None, answer_text:None, source_excerpt:None, source_bindings:Vec::new(), target:None, expected_chat_head:None, presentation_follow_up:None, note_ref:None };
         let context = serde_json::json!({"current_action":resolved});
         assert_eq!(crate::tutor::action_intent(&context), None);
         assert!(resolved.validates_current_action("guided_inquiry", "compare"));

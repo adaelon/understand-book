@@ -43,6 +43,8 @@ mod presentation_coach_prepare {
         plans: RefCell<Vec<AgentRequestPlan>>,
         coach_requests: RefCell<Vec<CompletionRequest>>,
         coach_result: CoachResult,
+        output_limits_at: Vec<usize>,
+        cancel_at_limit: Option<CancellationToken>,
     }
 
     impl Adapter {
@@ -52,6 +54,8 @@ mod presentation_coach_prepare {
                 plans: RefCell::new(Vec::new()),
                 coach_requests: RefCell::new(Vec::new()),
                 coach_result,
+                output_limits_at: Vec::new(),
+                cancel_at_limit: None,
             }
         }
     }
@@ -93,6 +97,19 @@ mod presentation_coach_prepare {
                     spend_stop: None,
                     message: "presentation coach test chat exhausted".into(),
                 })
+        }
+
+        fn chat_observed(&self, request: &AgentRequestPlan, observer: &mut dyn crate::provider_stream::ModelObserver) -> Result<AssistantTurn, AdapterError> {
+            let ordinal = self.plans.borrow().len() + 1;
+            if !self.output_limits_at.contains(&ordinal) { return self.chat(request); }
+            self.plans.borrow_mut().push(request.clone());
+            observer.observe(crate::provider_stream::ModelDelta::ToolArguments {
+                index:0, id:"discarded-write".into(), name:"presentation.author".into(),
+                arguments:r#"{"operation":"write","title":"never execute this partial response"}"#.into(),
+            });
+            observer.observe(crate::provider_stream::ModelDelta::OutputLimitReached { total_tokens:Some(11) });
+            if let Some(token) = &self.cancel_at_limit { token.cancel(); }
+            Err(AdapterError { spend_stop:None, message:"limited fixture".into() })
         }
     }
 
@@ -267,6 +284,59 @@ mod presentation_coach_prepare {
             "the complete private plan must be supplied once, not duplicated into tool receipts"
         );
         serde_json::from_str(handoffs[0]).unwrap()
+    }
+
+    #[test]
+    fn page_output_limit_recovers_once_after_prepare_and_preserves_the_sampled_plan() {
+        let book = book();
+        let mut port = Port::new(&book, "page-output-limit");
+        let method = selected_method();
+        let read = turn_calls(vec![call("accepted-read", "presentation.author", &json!({
+            "operation":"read_method","method_id":method["id"],"revision":method["revision"],"file":"card.md"
+        }).to_string())]);
+        let mut adapter = Adapter::new(vec![discover(),prepare("accepted-prepare"),read],CoachResult::Ready);
+        adapter.output_limits_at = vec![3,5];
+        let mut context = context(&adapter);
+        let outcome = execute(&mut port,&book,&adapter,&mut context).unwrap();
+        assert!(outcome.incomplete && outcome.warning.as_deref() == Some(MODEL_OUTPUT_LIMIT));
+        let plans = adapter.plans.borrow();
+        let limited = &plans[2];
+        let resumed = &plans[3];
+        assert_eq!(limited.input, resumed.input[..limited.input.len()]);
+        assert_eq!(limited.instructions, resumed.instructions);
+        assert_eq!(resumed.input.len(), limited.input.len()+1);
+        let recovered = |plan: &AgentRequestPlan| plan.input.last().and_then(|m| m.content.as_deref())
+            .is_some_and(|text| text.contains("presentation_output_recovery.v1"));
+        assert!(recovered(resumed));
+        assert_eq!(plans.iter().filter(|p| recovered(p)).count(),1);
+        assert!(resumed.tools.iter().any(|t| t.name=="presentation.author"));
+        assert!(!serde_json::to_string(&resumed.input).unwrap().contains("discarded-write"));
+        assert_eq!(port.reads_before_sampling.len(),1);
+    }
+
+    #[test]
+    fn page_output_limit_without_preparation_after_cancellation_or_at_the_turn_limit_never_resamples() {
+        let book = book();
+        for scenario in ["unprepared","cancelled","turn-limit"] {
+            let mut port = Port::new(&book, &format!("page-limit-{scenario}"));
+            let turns = if scenario == "unprepared" { vec![discover()] } else {vec![discover(),prepare("accepted")]};
+            let mut adapter = Adapter::new(turns, CoachResult::Ready);
+            adapter.output_limits_at = vec![if scenario == "unprepared" {2} else {3}];
+            let mut context = context(&adapter);
+            if scenario == "cancelled" { adapter.cancel_at_limit=Some(context.cancellation.clone()); }
+            // Discovery, prepare and the expression coach use the first three slots.
+            // The truncated third outer sampling must occupy the final fourth slot.
+            if scenario == "turn-limit" { context.config.max_turns=Some(4); }
+            let outcome = execute(&mut port,&book,&adapter,&mut context);
+            if scenario == "cancelled" {
+                assert!(outcome.is_err());
+            } else {
+                assert_eq!(outcome.unwrap().warning.as_deref(), Some(MODEL_OUTPUT_LIMIT), "{scenario}");
+            }
+            assert!(adapter.plans.borrow().iter().all(|p| !p.input.iter().any(|m|
+                m.content.as_deref().is_some_and(|text| text.contains("presentation_output_recovery.v1")))));
+            assert!(port.reads_before_sampling.is_empty());
+        }
     }
 
     #[test]
@@ -459,6 +529,7 @@ mod presentation_coach_prepare {
             end_lid: "1.1".into(),
         };
         let resolved = ResolvedInteraction {
+            teach_back_reply: None, course: None,
             action: InteractionAction::UiChoice {
                 teaching_choice: TeachingChoice {
                     delivery_ref: "delivery:offered-comparison".into(),

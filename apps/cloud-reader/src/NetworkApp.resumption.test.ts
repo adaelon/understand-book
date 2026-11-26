@@ -51,7 +51,7 @@ afterEach(() => {
 async function start() {
   // A refreshed page starts without installed private state, retaining only its workspace pointer.
   network.value = { ...network.value, identity: null, workspace: null };
-  wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true } } });
+  wrapper = mount(NetworkApp, { global: { stubs: { BookCover: true, Teleport: true } } });
   await flushPromises();
 }
 async function startMaterials() {

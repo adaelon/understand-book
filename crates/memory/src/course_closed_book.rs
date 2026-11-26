@@ -94,7 +94,7 @@ pub(super) fn read_closed_book_result(
         return Err(invalid("闭卷完成依据没有对应的真实回答"));
     }
     let context = json!({"result_ref":result_ref,"practice_id":practice.id,"attempt":practice.attempt,
-        "course_origin":origin,"target":practice.target,"criteria":practice.criteria,
+        "course_origin":origin,"prior_support_delivery_refs":practice.support_delivery_refs,"target":practice.target,"criteria":practice.criteria,
         "completion_reason":practice.completion_reason,"learner_quote":practice.learner_quote,
         "assisted":practice.assisted,"exchanges":exchanges,"source_expression_refs":expression_refs,
         "assistance_scope":"Only the displayed current attempt is independent. Earlier teaching and earlier attempts remain historical context, not help given during this attempt. Compare this actual problem and reasoning against the original course task before accepting it."});

@@ -9,7 +9,7 @@ pub(crate) fn network(
     let (id, through) = request(query)?;
     let user = context.user.lock().unwrap();
     user.check_owner(context.user_id())?;
-    let projection = snapshot(&user, id, through)?;
+    let projection = reader_snapshot(&user, id, through)?;
     let mut recap = project(&projection, now);
     let mut library = access.library.lock().unwrap();
     let mut materials = BTreeMap::new();

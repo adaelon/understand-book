@@ -227,9 +227,13 @@ export class ReaderPagination {
     this.pending = screen;
     this.pendingResources = undefined;
     this.completedPages.clear();
-    const geometry = focusPageGeometry(layout.width, layout.fontSize, layout.mobile);
+    // Leave space for the first column's note button. Later columns use the existing page gap.
+    const annotationGutter = this.options.decorations ? 28 : 0;
+    const geometry = focusPageGeometry(layout.width - annotationGutter, layout.fontSize, layout.mobile);
     if (layout.maxPageWidthEm) geometry.pageWidth = Math.min(geometry.pageWidth, layout.maxPageWidthEm * layout.fontSize);
     element.style.width = `${layout.width}px`; element.style.height = `${layout.height}px`; element.style.gap = `${geometry.gap}px`;
+    element.style.boxSizing = 'border-box';
+    element.style.paddingLeft = `${annotationGutter}px`;
     this.options.host.append(element);
     let cursor = { ...start };
     try {

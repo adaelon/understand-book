@@ -47,9 +47,10 @@ test('course entry survives an opening retry and refresh at compact widths', asy
 
     await navigation.getByRole('button', { name: '继续自由阅读', exact: true }).click();
     await page.reload();
-    await expect(navigation.getByRole('button', { name: '本书课程 →', exact: true })).toBeVisible();
+    await expect(navigation).toHaveCount(0);
+    await page.getByRole('button', { name: '更多阅读工具', exact: true }).click();
     await expect(page.locator('.course-workspace')).toHaveCount(0);
-    await navigation.getByRole('button', { name: '本书课程 →', exact: true }).click();
+    await page.getByRole('button', { name: '本书课程 →', exact: true }).click();
     await expect(course.locator('.lesson-top')).toBeVisible();
 
     await page.setViewportSize({ width: 390, height: 844 });
@@ -147,6 +148,7 @@ test('three investigations preserve predictions, original reading, experiments a
       await click('保存这个实验配置');
       if(i===1){
         await click('暂停，稍后继续');await page.reload();
+        await page.getByRole('button',{name:'更多阅读工具',exact:true}).click();
         await page.getByRole('button',{name:'本书课程 →',exact:true}).click();
         await expect(course.getByText('停在这里也没关系')).toBeVisible();await click('从这里继续');
         await expect(course.locator('.round-caption')).toContainText('第 2 / 3 轮');

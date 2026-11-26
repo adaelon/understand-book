@@ -3,6 +3,13 @@ use read_tools::ToolError;
 use serde_json::{json, Value};
 fn invalid(message: &str) -> ToolError { crate::user_storage_paths::error("COURSE_INVALID", "validation", message) }
 
+/// Visible examples and explanations already supplied before the learner requests a new case.
+pub(crate) fn application_material(lesson: &Value) -> impl Iterator<Item = &str> {
+    [&lesson["introduction"], &lesson["prediction"]["question"], &lesson["explanation"],
+     &lesson["task"]["question"], &lesson["solution"], &lesson["source_excerpt"]]
+        .into_iter().filter_map(Value::as_str)
+}
+
 /// A private book scopes chat history by book. A learning workspace shares
 /// its chats across sources, including an attempt started on a different book.
 pub fn covered_follow_up_chats(

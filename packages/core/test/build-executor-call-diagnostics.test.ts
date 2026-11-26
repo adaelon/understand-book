@@ -34,6 +34,9 @@ describe("bounded executor call diagnostics", () => {
     writeFileSync(parentFile, [
       { type: "session_meta", payload: { id: parent } },
       { type: "response_item", payload: { content: "PRIVATE_PARENT_HISTORY" } },
+    ].map(x => JSON.stringify(x)).join("\n"));
+    writeFileSync(path.join(root, `rollout-${parent}_01a09a62-70ee-7603-b00f-73482425eaab.jsonl`), [
+      { type: "session_meta", payload: { id: parent } },
       { type: "event_msg", payload: { type: "item_completed", thread_id: parent,
         item: { type: "SubAgentActivity", kind: "started", agent_thread_id: child, agent_path: "/root/book_exec_9" } } },
     ].map(x => JSON.stringify(x)).join("\n"));

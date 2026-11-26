@@ -5,9 +5,11 @@ import { api as sharedApi } from './api';
 import { bindSceneApi } from './reader-context';
 
 export interface UnderstandingReference { note_id?: string; workspace_id: string | null; evidence_ref: string }
+export interface UnderstandingChoiceAnswer { options: { id: string; text: string | null }[]; reasoning: string | null }
 export interface UnderstandingSummary {
   learner_summary?: { headline: string; explanation: string; next_step: string | null } | null;
-  previous?: { evidence_ref: string; learner_quote: string; assistance: string } | null;
+  choice_answer?: UnderstandingChoiceAnswer | null;
+  previous?: { evidence_ref: string; learner_quote: string; assistance: string; choice_answer?: UnderstandingChoiceAnswer | null } | null;
   later_evidence_ref?: string | null;
   knowledge_links?: import('./generated/KnowledgeLink').KnowledgeLink[];
   focus_ref: string; source_id: string; source_revision: string; workspace_id: string | null;
@@ -35,16 +37,16 @@ export interface NoteThinkingView {
 }
 export interface UnderstandingAction {
   context: NoteContext; note_ref?: NoteRef; source_revision: string; target: TeachingTarget;
-  understanding_ref: UnderstandingReference; mode: 'discuss' | 'practice';
+  understanding_ref: UnderstandingReference; mode: 'discuss' | 'practice'; message?: string;
 }
 export const pendingUnderstandingAction = ref<UnderstandingAction | null>(null);
-export async function continueUnderstanding(item: UnderstandingSummary, noteId: string | undefined, mode: UnderstandingAction['mode']) {
+export async function continueUnderstanding(item: UnderstandingSummary, noteId: string | undefined, mode: UnderstandingAction['mode'], message?: string) {
   const reference = { ...(noteId ? { note_id: noteId } : {}), workspace_id: item.workspace_id, evidence_ref: item.evidence_ref };
   const result = noteId ? await noteRequest<Omit<UnderstandingAction, 'mode'>>('thinking_start', reference)
     : await bindSceneApi(sharedApi).knowledgeResume(reference);
   noteSourceError.value = '';
   const context = { ...emptyNoteContext(), ...result.context };
-  pendingUnderstandingAction.value = { ...result, context, mode };
+  pendingUnderstandingAction.value = { ...result, context, mode, message };
   pendingNoteSource.value = context;
 }
 export function thinkingTime(value?: string | null) {

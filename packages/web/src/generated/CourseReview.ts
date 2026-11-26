@@ -3,4 +3,4 @@ import type { CourseExpression } from "./CourseExpression";
 import type { CourseFeedback } from "./CourseFeedback";
 import type { CourseUnderstanding } from "./CourseUnderstanding";
 
-export type CourseReview = { expression: CourseExpression, status: string, displayed: boolean, feedback: CourseFeedback | null, understanding: Array<CourseUnderstanding>, error: string | null, };
+export type CourseReview = { comparison?: import('./TeachBackComparison').TeachBackComparison, expression: CourseExpression, status: string, displayed: boolean, feedback: CourseFeedback | null, understanding: Array<CourseUnderstanding>, error: string | null, };

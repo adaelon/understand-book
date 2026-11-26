@@ -69,6 +69,13 @@ impl SessionProjection {
                 }
                 validate_goals(s, &a.goals, a.turn.goal_ref.as_ref())?;
             }
+            EventBody::ExplanationRetried(attempt) => {
+                let turn = self.turn(event)?;
+                if self.session.as_ref().unwrap().turns.last().map(|head| &head.turn_id) != Some(&turn.turn_id)
+                    || !crate::interaction_input::explanation::can_retry(turn, attempt) {
+                    return Err(invalid("explanation retry must reopen the same failed expression at the chat head"));
+                }
+            }
             EventBody::TurnFinished(f) => {
                 let mut turn = self.turn(event)?.clone();
                 if turn.status != AgentAssistantStatus::PendingAssistant
@@ -281,7 +288,12 @@ impl SessionProjection {
                 match &event.body {
                     EventBody::SessionUpdated { title } => session.title = title.clone(),
                     EventBody::TurnAccepted(a) => {
-                        session.turns.push(a.turn.clone());
+                        let mut turn = a.turn.clone();
+                        if turn.domain.interaction.as_ref().is_some_and(|action| action.course.is_some()) {
+                            turn.domain.course_retry_context = a.input.as_ref()
+                                .and_then(|input| input.normalized.get("course_context")).cloned();
+                        }
+                        session.turns.push(turn);
                         session.title = a.title.clone();
                         upsert_goals(session, &a.goals);
                         if let Some(input) = &a.input {
@@ -290,6 +302,10 @@ impl SessionProjection {
                     }
                     EventBody::MessageAppended { messages } => {
                         session.messages.extend(messages.iter().cloned())
+                    }
+                    EventBody::ExplanationRetried(attempt) => {
+                        self.active_model_projection = None;
+                        crate::interaction_input::explanation::reset_failed(session, attempt.clone());
                     }
                     EventBody::HistoryRevised(r) => {
                         if self.active_model_projection.as_ref().is_some_and(|projection|

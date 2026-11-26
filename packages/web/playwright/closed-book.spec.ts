@@ -57,9 +57,9 @@ for (const width of [1366, 390, 320]) test(`closed-book dialogue hides sources a
   });
   await page.setViewportSize({width,height:width<600?844:900});await page.reload();
   if (width<600) await page.getByRole('navigation',{name:'阅读工作区'}).getByRole('button',{name:'问答',exact:true}).click();
-  const entry=page.getByRole('button',{name:'我来解释一下',exact:true});
+  const entry=page.getByRole('button',{name:'练到会',exact:true});
   await expect(entry).toBeVisible();await expect(entry).toBeEnabled();
-  await expect(page.getByRole('group',{name:'当前回答的学习操作'})).toContainText('解释练习会收起资料');
+  await expect(page.getByRole('group',{name:'当前回答的学习操作'})).toContainText('收起资料');
   await entry.scrollIntoViewIfNeeded();await page.screenshot({path:info.outputPath(`closed-book-entry-${width}.png`)});
   await entry.click();
   const dialog=page.getByRole('dialog',{name:'练到会',exact:true});

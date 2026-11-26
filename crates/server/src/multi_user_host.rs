@@ -1028,6 +1028,7 @@ pub(crate) fn dispatch(
                     return Ok(HttpReply::json(reader_run_view(access, &context, access.runs.lookup(
                         &context,
                         query.get("client_request_id").ok_or_else(invalid)?,
+                        query.get("operation_id").map(String::as_str),
                     )?)?));
                 }
                 expect_method(method, "POST")?;

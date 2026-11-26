@@ -8,6 +8,7 @@ import type { CourseLessonView } from './generated/CourseLessonView';
 import type { ClosedBookPractice } from './generated/ClosedBookPractice';
 import type { LearningTaskView } from './learning-tasks';
 import { network, submittedRunDrafts } from './reader-context';
+import { installReaderHost } from './reader-host';
 import { notesPanel, pendingNoteSource } from './personal-notes';
 import { inquiryCourse } from './inquiry-course';
 
@@ -27,7 +28,7 @@ vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }));
 vi.mock('./components/PdfReaderPane.vue', () => ({ default: { name: 'PdfReaderPane', template: '<div />' } }));
 
 const publication = { book_id: 'startup', publication_id: 'local' };
-const deliveredAnswer = { turn_id: 'selected-explanation', user: '为什么要比较完成时间？', status: 'completed', effect_labels: [],
+const deliveredAnswer = { turn_id: 'selected-explanation', can_explain_back: true, user: '为什么要比较完成时间？', status: 'completed', effect_labels: [],
   outcome: { answer: '两项同时开始，全部完成需要等待更慢的那一项。', effects: [] } };
 const deliveredQuestion = { turn_id: 'delivered-first-question', user: '我来解释一下', status: 'completed', effect_labels: [],
   outcome: { answer: '如果两项分别需要 5 分钟和 8 分钟，什么时候全部完成？', effects: [] } };
@@ -51,7 +52,7 @@ function practiceState(overrides: Partial<ClosedBookPractice> = {}): ClosedBookP
   };
 }
 const coursePlayer = defineComponent({
-  name: 'InquiryCoursePlayer', props: ['workspace', 'publication', 'embedded'],
+  name: 'InquiryCoursePlayer', props: ['workspace', 'publication', 'embedded', 'submitTeachBack'],
   emits: ['available', 'blocked', 'error', 'change', 'engaged', 'practice', 'closed-book'],
   methods: {
     async openLesson(lessonId?: string, runId?: string) {
@@ -149,10 +150,10 @@ afterEach(() => {
   window.history.replaceState({}, '', '/'); vi.restoreAllMocks(); vi.unstubAllGlobals();
 });
 
-async function start() {
-  wrapper = mount(App, { shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+async function start(courseTrial?: { bookId: string; revision: string }) {
+  wrapper = mount(App, { props: { courseTrial }, shallow: true, global: { renderStubDefaultSlot: true, stubs: {
     InquiryCoursePlayer: coursePlayer,
-    ReaderWorkspace: defineComponent({ name: 'ReaderWorkspace', template: '<div><slot /></div>',
+    ReaderWorkspace: defineComponent({ name: 'ReaderWorkspace', template: '<div><slot name="reader-navigation" /><slot /></div>',
       setup(_, { expose }) { expose({ showReader: mocks.showReader, showAssistant: mocks.showAssistant }); } }),
     ReaderPane: defineComponent({ template: '<div />', setup(_, { expose }) { expose({ captureScrollAnchor: () => null }); } }),
   } } });
@@ -176,6 +177,17 @@ it('creates a private conversation for a first course before saving its continua
   expect(mocks.order.indexOf('create-chat')).toBeLessThan(mocks.order.findIndex(value=>value.startsWith('open-course:')));
   expect(mocks.api.selectLearningTask).toHaveBeenCalledWith({chat_session_id:'first-course-chat',course_run_id:'original-course-run'});
   expect(mocks.api.agentRunCreate).not.toHaveBeenCalled();
+});
+
+it('opens the requested sample lesson without selecting a formal learning task or changing its saved view', async () => {
+  const formalView = 'understand-book:learning:local:course-view:local-course:startup:local';
+  sessionStorage.setItem(formalView, 'reading');
+  await start({ bookId: 'startup', revision: 'pilot-2' });
+  expect(inquiryCourse.catalog).toHaveBeenCalledWith('local-course-trial:startup:pilot-2');
+  expect(mocks.order).toContain('open-course:original-lesson:undefined');
+  expect(sessionStorage.getItem('understand-book:learning:local:course-view:local-course-trial:startup:pilot-2:local')).toBe('course');
+  expect(sessionStorage.getItem(formalView)).toBe('reading');
+  expect(mocks.api.selectLearningTask).not.toHaveBeenCalled();
 });
 
 it('opens explicit reading outside a saved course view after preserving the course and closed-book draft',async()=>{
@@ -260,12 +272,133 @@ it('requests an application question for the exact delivered answer without star
   expect(closedMutations()).toEqual([]);
 });
 
-it('starts explanation practice only after the explicit answer action and preserves the selected answer origin', async () => {
+it('binds the open composer, lets the reader cancel, and submits their own expression once', async () => {
+  const app = await start();
+  const rail = app.getComponent({ name: 'RightRail' });
+  const expression = '两件事同时开始，慢的那件结束才算都完成。';
+  rail.vm.$emit('explain-answer', deliveredAnswer.turn_id);
+  await flushPromises();
+  expect(rail.props('explainAnswerId')).toBe(deliveredAnswer.turn_id);
+  rail.vm.$emit('update:agentInput', expression);
+  rail.vm.$emit('cancel-explain-answer');
+  await flushPromises();
+  expect(rail.props('explainAnswerId')).toBeNull();
+  expect(rail.props('agentInput')).toBe(expression);
+  expect(mocks.api.agentRunCreate).not.toHaveBeenCalled();
+  rail.vm.$emit('explain-answer', deliveredAnswer.turn_id);
+  rail.vm.$emit('send-agent');
+  await flushPromises();
+  const [[text, meta]] = mocks.api.agentRunCreate.mock.calls;
+  expect(text).toBe(expression);
+  expect(meta).toMatchObject({ display_user: expression, entry_action: 'explain_back', answer_ref: { turn_id: deliveredAnswer.turn_id },
+    source_id: 'startup', source_revision: 'startup', session_id: 'startup-chat', expected_chat_head: deliveredAnswer.turn_id,
+    expression_id: meta.client_request_id, operation_id: expect.any(String) });
+  expect(meta.client_request_id).toBeTruthy();
+  expect(meta).not.toHaveProperty('retry_of');
+  expect(meta).not.toHaveProperty('learning_purpose');
+  expect(rail.props('explainAnswerId')).toBeNull();
+  expect(rail.props('chat').filter((turn: { user: string }) => turn.user === expression)).toHaveLength(1);
+  expect(closedMutations()).toEqual([]);
+});
+
+it('retries a saved failed comparison in the original chat turn after reopening the reader', async () => {
+  const expression = '慢的那项决定完成时间。';
+  const reply = { kind: 'revise_understanding', round_id: 'tb:previous', row_id: 'why' };
+  const failed = { turn_id: 'first-expression', user: expression, status: 'failed', effect_labels: [],
+    error: { error_code: 'TEACH_BACK_INVALID', category: 'protocol', message: 'invalid comparison' },
+    domain: { effects: [], interaction: { answer_ref: { turn_id: deliveredAnswer.turn_id }, teach_back_reply: reply },
+      teach_back_attempts: [{ expression_id: 'saved-expression-id', operation_id: 'first-attempt' }] } };
+  const history = historyFor();
+  mocks.api.agentHistory.mockResolvedValue({ ...history, current: { ...history.current, turns: [deliveredAnswer, failed] } });
+  const app = await start();
+  const rail = app.getComponent({ name: 'RightRail' });
+  const original = rail.props('chat').at(-1);
+  expect(original?.error).toBeTruthy();
+  rail.vm.$emit('retry-explain-answer', original);
+  await flushPromises();
+  expect(mocks.api.agentRunCreate).toHaveBeenCalledExactlyOnceWith(expression, expect.objectContaining({
+    expression_id: 'saved-expression-id', client_request_id: 'saved-expression-id', retry_of: failed.turn_id,
+    expected_chat_head: failed.turn_id, operation_id: expect.any(String), answer_ref: { turn_id: deliveredAnswer.turn_id }, teach_back_reply: reply,
+  }));
+  expect(mocks.api.agentRunCreate.mock.calls[0][1].operation_id).not.toBe('first-attempt');
+  expect(rail.props('chat').map((turn: { user: string }) => turn.user)).toEqual([deliveredAnswer.user, expression]);
+  expect(closedMutations()).toEqual([]);
+});
+
+it('retries a failed course explanation with its saved experiment and course revision after reopening', async () => {
+  const course = {run_id:lesson.progress.run_id, lesson_id:lesson.summary.id, round_index:0, stage:'explanation', delivery_ref:'explanation:1'};
+  const exploration = {work_gflops:140, read_gb:70, compute_tflops:989, bandwidth_tb_s:3.35, target_ms:9};
+  const original = {run_id:course.run_id, revision:2, surface:'course', exploration};
+  const failed = {turn_id:'failed-course', user:'容量影响能否容纳。', status:'failed', effect_labels:[],
+    error:{error_code:'TEACH_BACK_INVALID', category:'protocol', message:'invalid comparison'},
+    domain:{effects:[], interaction:{course, answer_ref:null}, course_retry_context:original,
+      teach_back_attempts:[{expression_id:'expression', operation_id:'first'}]}};
+  const history = historyFor();
+  mocks.api.agentHistory.mockResolvedValue({...history, current:{...history.current, turns:[failed]}});
+  lesson.exploration = {...exploration, bandwidth_tb_s:6.7};
+  const app = await start();
+  await openCourse();
+  const submit = app.getComponent(coursePlayer).props('submitTeachBack');
+  await submit({text:failed.user, retry:true});
+  expect(mocks.api.agentRunCreate).toHaveBeenLastCalledWith(failed.user, expect.objectContaining({
+    course_context:original, client_request_id:'expression', expression_id:'expression', retry_of:failed.turn_id,
+  }));
+  await submit({text:'带宽决定读取时间下界。'});
+  expect(mocks.api.agentRunCreate).toHaveBeenLastCalledWith('带宽决定读取时间下界。', expect.objectContaining({
+    course_context:{...original,revision:lesson.progress.revision, exploration:lesson.exploration},
+  }));
+});
+
+it.each(['dispute_interpretation', 'revise_understanding', 'follow_up'] as const)(
+  'sends %s from a restored comparison with the selected row and a fresh expression identity', async action => {
+    const card = { round_id: 'tb:earlier', source: { source_id: 'startup', source_revision: 'startup' },
+      rows: [], student_graph: { nodes: [], edges: [] }, book_graph: { nodes: [], edges: [] }, side_notes: [], follow_up: { row_id: 'why', question: '为什么？' } };
+    const saved = { turn_id: 'earlier', user: '先前的想法', status: 'completed', effect_labels: [], domain: {
+      interaction: { answer_ref: { turn_id: deliveredAnswer.turn_id } }, teach_back_attempts: [{ expression_id: 'first', operation_id: 'submit' }],
+    }, outcome: { effects: [], answer_view: { parts: [{kind: 'teach_back_comparison', comparison: card}], sources: [] } } };
+    const history = historyFor();
+    const next = { ...saved, turn_id: 'later', outcome: { effects: [], answer_view: { parts: [{kind: 'teach_back_comparison',
+      comparison: { ...card, round_id: 'tb:later', continuation: { first_round_id: card.round_id, parent_round_id: card.round_id,
+        kind: 'revise_understanding', row_id: 'why' } } }], sources: [] } } };
+    const turns = action === 'follow_up' ? [deliveredAnswer, saved] : [deliveredAnswer, saved, next];
+    mocks.api.agentHistory.mockResolvedValue({ ...history, current: { ...history.current, turns } });
+    const rail = (await start()).getComponent({ name: 'RightRail' });
+    const text = '两项都结束时，慢的那一项刚完成。';
+    rail.vm.$emit('update:agentInput', action === 'follow_up' ? text : '另一个问题的草稿');
+    rail.vm.$emit('comparison-response', { action, text, turnId: 'earlier', roundId: card.round_id, rowId: 'why' });
+    await flushPromises();
+    expect(mocks.api.agentRunCreate).toHaveBeenCalledExactlyOnceWith(text, expect.objectContaining({
+      entry_action: 'explain_back', answer_ref: { turn_id: deliveredAnswer.turn_id }, expected_chat_head: turns.at(-1)!.turn_id,
+      teach_back_reply: { kind: action, row_id: 'why', round_id: card.round_id },
+    }));
+    expect(mocks.api.agentRunCreate.mock.calls[0][1].expression_id).not.toEqual('first');
+    expect(rail.props('agentInput')).toBe(action === 'follow_up' ? '' : '另一个问题的草稿');
+    expect(closedMutations()).toEqual([]);
+  });
+
+it('explains a selected earlier answer while submitting against the current conversation head', async () => {
+  const history = historyFor();
+  const latest = { ...deliveredAnswer, turn_id: 'later-answer', user: '带宽是什么？' };
+  mocks.api.agentHistory.mockResolvedValue({ ...history, current: { ...history.current, turns: [deliveredAnswer, latest] } });
+  const app = await start();
+  const rail = app.getComponent({ name: 'RightRail' });
+  rail.vm.$emit('explain-answer', deliveredAnswer.turn_id);
+  await flushPromises();
+  expect(rail.props('explainAnswerId')).toBe(deliveredAnswer.turn_id);
+  rail.vm.$emit('update:agentInput', '等最后完成的那项。');
+  rail.vm.$emit('send-agent');
+  await flushPromises();
+  expect(mocks.api.agentRunCreate).toHaveBeenCalledExactlyOnceWith('等最后完成的那项。', expect.objectContaining({
+    entry_action: 'explain_back', answer_ref: { turn_id: deliveredAnswer.turn_id }, expected_chat_head: latest.turn_id,
+  }));
+});
+
+it('starts closed-book practice only after the explicit answer action and preserves the selected answer origin', async () => {
   const app = await start();
   expect(closedMutations()).toEqual([]);
   expect(mocks.api.agentRunCreate).not.toHaveBeenCalled();
   expect(app.getComponent({ name: 'RightRail' }).props('closedBookReady')).toBe(true);
-  app.getComponent({ name: 'RightRail' }).vm.$emit('explain-answer', deliveredAnswer.turn_id);
+  app.getComponent({ name: 'RightRail' }).vm.$emit('closed-book-answer', deliveredAnswer.turn_id);
   await flushPromises();
 
   expect(closedMutations('start')).toHaveLength(1);
@@ -281,7 +414,8 @@ it('keeps course application practice in the ordinary learning flow', async () =
   await flushPromises();
 
   expect(mocks.api.agentRunCreate).toHaveBeenCalledTimes(1);
-  expect(mocks.api.agentRunCreate.mock.calls[0][1]).toMatchObject({ entry_action: 'learn_with_purpose', learning_purpose: 'practice',
+  expect(mocks.api.agentRunCreate.mock.calls[0][0]).toBe('');
+  expect(mocks.api.agentRunCreate.mock.calls[0][1]).toMatchObject({ question_anchor_lid: undefined, entry_action: 'apply_lesson', learning_purpose: 'practice',
     course_context: { run_id: 'original-course-run' } });
   expect(closedMutations()).toEqual([]);
 });
@@ -379,4 +513,58 @@ it('restores the original chat before opening its course run and resumes a deliv
     draft: '我认为需要等到八分钟，因为', messages: [{ id: deliveredQuestion.turn_id, answer: deliveredQuestion.outcome.answer }],
   });
   expect(mocks.api.selectLearningTask).toHaveBeenLastCalledWith({ chat_session_id: 'original-chat', course_run_id: 'original-course-run' });
+});
+
+it('moves cloud free-reading book home and course entries into TopBar without rendering the second navigation bar', async () => {
+  installReaderHost({
+    request: vi.fn(), fetch: vi.fn(), ownerHeaders: () => ({}), publishedUrl: leaf => leaf,
+    workspaceAction: vi.fn(), recoverSubmissions: async () => [], recoverWorkspaceBinding: async () => {},
+    requestWorkspaceRecovery: vi.fn(), pendingSubmissions: () => [], retrySubmission: vi.fn(),
+    readCourseInstance: async () => ({ instance: null }), readCourseRelease: vi.fn(),
+    openLinkedPresentation: vi.fn(), runNotice: () => undefined, runFailureMessage: () => undefined,
+  });
+  const history = historyFor();
+  mocks.api.agentHistory.mockResolvedValue({ ...history, current: { ...history.current, learning_workspace_id: 'lw-1' } });
+  const cloudPublication = { book_id: 'startup', publication_id: 'pub-1' };
+  const learningWorkspace = {
+    learning_workspace_id: 'lw-1',
+    goal: { text: '理解原理', constraints: [], revision: 1, created_at: 0 },
+    goal_history: [], members: [{ published_book_ref: cloudPublication, readable: true, added_at: 0 }],
+    archived: false, created_at: 0, updated_at: 0,
+  };
+  network.value = {
+    ...network.value, enabled: true, linked: true,
+    identity: { user_id: 'u1', csrf_token: 'csrf' },
+    workspace: {
+      workspace_id: 'ws-1', generation: 1, revision: 1, learning_workspace_id: 'lw-1',
+      published_book_ref: cloudPublication, selected_chat: 'startup-chat',
+      reader: { book_id: 'startup', revision: 0, viewport: { anchor_lid: '1.1', top_lid: '1.1', bottom_lid: '1.1', width: 1, visible_lids: ['1.1'] },
+        profile: { profile_id: 'technical_learning', profile_version: '1' }, layout: { rev: 0, open_slots: [] } },
+    },
+  };
+  wrapper = mount(App, { props: { learningWorkspace }, shallow: true, global: { renderStubDefaultSlot: true, stubs: {
+    InquiryCoursePlayer: coursePlayer,
+    ReaderWorkspace: defineComponent({ name: 'ReaderWorkspace', template: '<div><slot name="reader-navigation" /><slot /></div>',
+      setup(_, { expose }) { expose({ showReader: mocks.showReader, showAssistant: mocks.showAssistant }); } }),
+    ReaderPane: defineComponent({ template: '<div />', setup(_, { expose }) { expose({ captureScrollAnchor: () => null }); } }),
+  } } });
+  await flushPromises();
+  const topBar = wrapper.getComponent({ name: 'TopBar' });
+  expect(wrapper.find('.book-course-navigation').exists()).toBe(false);
+  expect(topBar.props('bookHomeAvailable')).toBe(true);
+  expect(topBar.props('bookCourseAvailable')).toBe(false);
+  topBar.vm.$emit('open-book-home');
+  await flushPromises();
+  expect(wrapper.emitted('learning-collection')).toEqual([[{ kind: 'book', publication: cloudPublication, learningWorkspaceId: 'lw-1' }]]);
+
+  wrapper.getComponent(coursePlayer).vm.$emit('available', true);
+  await flushPromises();
+  expect(wrapper.find('.book-course-navigation').exists()).toBe(false);
+  expect(topBar.props('bookHomeAvailable')).toBe(true);
+  expect(topBar.props('bookCourseAvailable')).toBe(true);
+  topBar.vm.$emit('open-book-course');
+  await flushPromises();
+  expect(wrapper.find('.book-course-navigation').exists()).toBe(true);
+  expect(topBar.props('bookHomeAvailable')).toBe(false);
+  expect(topBar.props('bookCourseAvailable')).toBe(false);
 });

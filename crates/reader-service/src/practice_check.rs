@@ -32,7 +32,8 @@ fn packet(selected: &TeachingEvent) -> Value {
     json!({"problem":{"prompt":movement["prompt"],"delivery_text":movement["delivery_text"],"answer_input":movement["answer_input"]},
         "practiced_relationship":{"learning_focus":movement["target"]["learning_focus"],"expected_performance":movement["target"]["expected_performance"]},
         "mode":movement["practice"]["mode"],"committed_solution":movement["explanation"],"answer_contract":movement["assessment"],
-        "hints":movement["practice"]["hints"],"frozen_sources":selected.payload["scoring_sources"]})
+        "hints":movement["practice"]["hints"],"frozen_sources":selected.payload["scoring_sources"],
+        "source_references":selected.payload["scoring_source_refs"]})
 }
 
 pub fn next(user: &user_runtime::UserRuntime) -> Result<Option<PendingCheck>, ToolError> {
@@ -41,7 +42,17 @@ pub fn next(user: &user_runtime::UserRuntime) -> Result<Option<PendingCheck>, To
         let store = user.learning_store_for_workspace(workspace.as_deref())?;
         let Some(delivery) = store.unchecked_practice_deliveries(MAX_FAILURES, 1)?.into_iter().next() else { continue; };
         let selected = store.teaching_event(delivery.causal_refs.first().map(String::as_str).unwrap_or_default())?;
-        return Ok(Some(PendingCheck { workspace, packet: packet(&selected), delivery }));
+        let mut packet = packet(&selected);
+        if let Some(case) = selected.payload["move"]["practice"]["application_situation"].as_str() {
+            let binding = store.teaching_event(&format!("binding:{}", selected.binding.turn_id))?;
+            if binding.payload["application_requested"] == true {
+                let action = &binding.payload["current_action"];
+                packet["application"] = json!({"new_case":case,"previous_answer":action["answer_text"],
+                    "source_excerpt":action["source_excerpt"],
+                    "visible_lesson_material":crate::course_context::application_material(&binding.payload["inquiry_course"]["lesson"]).collect::<Vec<_>>()});
+            }
+        }
+        return Ok(Some(PendingCheck { workspace, packet, delivery }));
     }
     Ok(None)
 }

@@ -55,11 +55,26 @@ const guidanceAvailable = computed(() => activitiesReady.value && !activities.va
     || activity.move.actions.some(action => ['submit', 'revise', 'self_report'].includes(action))))
   || ['eligible', 'offered'].includes(activity.continuation?.availability.status ?? '')));
 watch(guidanceAvailable, available => emit('guidance-available', available), { immediate: true });
-function focusResponse() {
+function responseArticle() {
   const activity = responseActivity.value;
-  if (!activity) return false;
-  const article = Array.from(root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref]') ?? [])
+  if (!activity) return;
+  return Array.from(root.value?.querySelectorAll<HTMLElement>('[data-delivery-ref]') ?? [])
     .find(node => node.dataset.deliveryRef === activity.delivery_ref);
+}
+function revealPractice() {
+  const move = responseActivity.value?.move;
+  if (!move?.practice && !move?.answer_input) return;
+  const article = responseArticle();
+  const pane = article?.closest('.transcript')?.getBoundingClientRect();
+  if (!article || !pane) return;
+  const start = article.getBoundingClientRect().top;
+  const firstAnswer = article.querySelector('input, .practice-card, textarea, .activity-actions button');
+  if (start < pane.top || (firstAnswer?.getBoundingClientRect().bottom ?? start) > pane.bottom) {
+    article.scrollIntoView({ block:'start', behavior:'instant' });
+  }
+}
+function focusResponse() {
+  const article = responseArticle();
   const input = article?.querySelector('textarea');
   input?.scrollIntoView({ block: 'center' });
   input?.focus({ preventScroll: true });
@@ -177,6 +192,12 @@ let savingPageHelp: Promise<void> | undefined;
 let pending: Parameters<typeof api.tutorAction>[0] | null = null;
 const labels: Record<string, string> = { submit: uiText('提交回答'), revise: uiText('改答'), request_hint: uiText('提示'), reveal: uiText('直接讲解'), skip: uiText('跳过'), self_report: uiText('记录自评') };
 const assessmentLabels: Record<string,string> = { correct: uiText('本次回答符合标准'), partial: uiText('本次回答部分符合标准'), incorrect: uiText('本次回答未符合标准'), uncertain: uiText('目前依据不足，暂不能判断'), unassessed: uiText('回答已记录，尚未评分。') };
+const pendingAssessments = new Map<string, string>();
+function refreshAssessment(event: Event) {
+  const actionRef = (event as CustomEvent<{ assessmentRef?: string }>).detail?.assessmentRef;
+  if (!actionRef || [...pendingAssessments.values()].includes(actionRef)
+    || activities.value.some(a => a.assessment?.action_ref === actionRef && a.assessment.status === 'unassessed')) void load();
+}
 async function load() {
   const current = ++generation;
   activitiesReady.value = false;
@@ -184,6 +205,8 @@ async function load() {
     const result = await api.tutorActivities(props.sessionId, props.turnId, props.reference);
     if (current !== generation) return;
     for (const activity of result.activities) {
+      if (activity.assessment && activity.assessment.status !== 'unassessed'
+        && pendingAssessments.get(activity.delivery_ref) === activity.assessment.action_ref) pendingAssessments.delete(activity.delivery_ref);
       if (activity.help) helps.value[activity.delivery_ref] = activity.help;
       const previous = activities.value.find(saved => saved.delivery_ref === activity.delivery_ref);
       if (activity.move.practice && activity.assessment?.status === 'correct'
@@ -244,7 +267,7 @@ async function waitForHelp() {
   })();
   try { await savingPageHelp; } finally { savingPageHelp = undefined; }
 }
-defineExpose({ focusActivity, focusResponse, endResponseEditing, reportPageHelp, waitForHelp });
+defineExpose({ focusActivity, focusResponse, revealPractice, endResponseEditing, reportPageHelp, waitForHelp });
 function continueLearning(eventId: string, text: string, scene?: PresentationFollowUp, responseOrigin?: TeachingResponseOrigin) {
   root.value?.dispatchEvent(new CustomEvent('tutor-response', { bubbles: true, detail: { eventId, text, scene, responseOrigin } }));
 }
@@ -284,8 +307,8 @@ async function act(activity: TutorActivity, action: string) {
     const scene = await props.snapshot?.();
     pending = { operation_id: crypto.randomUUID(), delivery_ref: activity.delivery_ref, action,
       response: ['submit', 'revise', 'self_report'].includes(action) ? responses.value[activity.delivery_ref] ?? '' : null,
-      ...(activity.move.answer_input && activity.move.answer_input.kind !== 'worked_solution' && ['submit','revise'].includes(action)
-        ? { reasoning: reasoning.value[activity.delivery_ref] ?? '' } : {}),
+      ...(activity.move.answer_input?.kind !== 'worked_solution' && ['submit', 'revise'].includes(action)
+        && reasoning.value[activity.delivery_ref]?.trim() ? { reasoning: reasoning.value[activity.delivery_ref] } : {}),
       response_origin: responseOrigins.value[activity.delivery_ref], scene };
     await send();
   } catch (failure) { if (failure instanceof ApiError && failure.status < 500) pending = null; error.value = uiText('操作未确认：{0}', [failure instanceof Error ? failure.message : String(failure)]); }
@@ -298,6 +321,10 @@ async function send() {
   pending = null;
   const activity = activities.value.find(a => a.delivery_ref === request.delivery_ref);
   const formal = ['submit', 'revise'].includes(request.action);
+  if (formal) {
+    if (result.assessment === 'unassessed') pendingAssessments.set(request.delivery_ref, result.event_id);
+    else window.dispatchEvent(new CustomEvent('tutor-state-changed', { detail: { assessmentRef: result.event_id } }));
+  }
   // A concluded practice problem lets an active warm-up offer its next problem.
   if (activities.value.some(a => a.delivery_ref === request.delivery_ref && a.move.practice)
     && (result.assessment === 'correct' || ['skip', 'reveal'].includes(request.action))) {
@@ -308,23 +335,33 @@ async function send() {
     await observeVisibleContent();
     await acknowledgeHelp(request.delivery_ref);
   }
-  // A correct practice answer also releases its solution; the answer still gets a reply.
+  // Structured answers are graded on the card. An accompanying note goes to
+  // the tutor with the immutable submission reference, after the grade is saved.
   if (formal && activity?.move.answer_input) {
     await load();
     if (activity.move.answer_input.kind === 'worked_solution' && result.assessment === 'unassessed') {
       await grade(activity, result.event_id);
     }
+    if (request.reasoning) {
+      endResponseEditing();
+      continueLearning(result.event_id, request.reasoning, request.scene, { kind: 'user_text' });
+    }
     return;
   }
   if (!result.help || formal) {
     endResponseEditing();
-    continueLearning(result.event_id, request.response || uiText('我跳过了这个活动，请调整接下来的讲法。'), request.scene, request.response_origin);
+    const message = request.reasoning || request.response || uiText('我跳过了这个活动，请调整接下来的讲法。');
+    continueLearning(result.event_id, message, request.scene, request.reasoning ? { kind: 'user_text' } : request.response_origin);
   }
   await load();
 }
 async function grade(activity: TutorActivity, actionRef: string) {
   gradingId.value = activity.delivery_ref; error.value = '';
-  try { await api.tutorGrade(actionRef, getLocale()); await load(); }
+  try {
+    await api.tutorGrade(actionRef, getLocale());
+    await load();
+    window.dispatchEvent(new CustomEvent('tutor-state-changed', { detail: { assessmentRef: actionRef } }));
+  }
   catch (failure) { error.value = uiText('答案已保存，可重新批改这次提交。{0}', [failure instanceof Error ? failure.message : '']); }
   finally { gradingId.value = ''; }
 }
@@ -341,7 +378,7 @@ async function retry() {
 watch(() => [props.sessionId, props.turnId, props.reference?.presentation_id, props.reference?.revision], () => {
   visible.clear(); visibleHelp.clear(); displayed.clear(); answerDeliveries.clear(); observer?.disconnect();
   exposedSteps.clear(); seenSteps.clear(); stepReceipts.clear(); reasoning.value = {}; askingId.value = ''; gradingId.value = '';
-  pending = null; activities.value = []; helps.value = {}; concluded.clear(); responses.value = {}; responseOrigins.value = {}; void load();
+  pending = null; pendingAssessments.clear(); activities.value = []; helps.value = {}; concluded.clear(); responses.value = {}; responseOrigins.value = {}; void load();
 }, { immediate: true });
 watch(() => props.ready, () => { void markDisplayed(); });
 watch(visibleActivities, () => { void observeVisibleContent(); });
@@ -396,9 +433,9 @@ onMounted(() => {
     void markDisplayed();
   });
   void observeVisibleContent();
-  window.addEventListener('tutor-state-changed', load);
+  window.addEventListener('tutor-state-changed', refreshAssessment);
 });
-onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', load); emit('response-available', false); emit('guidance-available', false); });
+onBeforeUnmount(() => { generation++; observer?.disconnect(); window.removeEventListener('tutor-state-changed', refreshAssessment); emit('response-available', false); emit('guidance-available', false); });
 </script>
 <template>
   <section ref="root" class="tutor-activities" :aria-label="uiText('教学活动')">

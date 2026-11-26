@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { automaticBuildWorkerStep, createAutomaticBuildInvocation } from "../../../skills/build/automatic-build-driver";
 import { createBuildExecutorMcpSession } from "../../../skills/build/build-executor-mcp";
 import { BUILD_EXECUTOR_BOOTSTRAP_CONTRACT_V3 } from "../src/build-executor-connection-capability";
-import { readAutomaticBuildWorker } from "../src/automatic-build-worker";
+import { readAutomaticBuildWorker, withAutomaticBuildWorkerSchedulerLock } from "../src/automatic-build-worker";
 import { readAutomaticBuildAttemptSnapshot } from "../src/automatic-build-task-store";
 import { resolveAutomaticBuildTarget } from "../src/build-orchestrator";
 import type { AutomaticBuildExecutorSessionResponseV3 } from "../src/automatic-build-executor-session";
@@ -66,6 +66,7 @@ describe("persistent worker executor connection", () => {
           opaque_handoff_ref: item.opaque_handoff_ref }) };
     }));
     const taskIds = new Set<string>();
+    let submissionReturnedWhileLocked = false;
     // Run each connection independently: a waiting tool must not prevent its
     // sibling from generating the result that will wake it.
     await Promise.all(workers.map(async worker => {
@@ -89,15 +90,23 @@ describe("persistent worker executor connection", () => {
           const submit = { version: "automatic_build_executor_candidate_submit.v3",
             opaque_session_ref: action.opaque_session_ref, candidate_sink_ref: action.candidate_sink_ref,
             candidate: { nodes: [], edges: [] } };
-          worker.response = await worker.call("executor.submit_candidate", submit);
+          // A real refill can hold this lock longer than the MCP deadline.
+          // Exercise the same commit path while selection is unavailable.
+          worker.response = await withAutomaticBuildWorkerSchedulerLock(invocation.invocation_ref, async () => {
+            let timer: ReturnType<typeof setTimeout> | undefined;
+            const response = await Promise.race([
+              worker.call("executor.submit_candidate", submit),
+              new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("submit waited for the scheduler")), 10_000); }),
+            ]).finally(() => clearTimeout(timer));
+            if (response.action.kind === "WAIT") submissionReturnedWhileLocked = true;
+            return response;
+          });
           const before = readAutomaticBuildWorker(worker.rootRef)!;
-          if (worker.response.action.kind !== "WAIT") {
-            const replay = await worker.call("executor.submit_candidate", submit);
-            expect(replay).toEqual(worker.response);
-            const after = readAutomaticBuildWorker(worker.rootRef)!;
-            expect(after.assignments).toEqual(before.assignments);
-            expect(after.submitted_output_bytes).toBe(before.submitted_output_bytes);
-          }
+          const replay = await worker.call("executor.submit_candidate", submit);
+          expect(replay).toEqual(worker.response);
+          const after = readAutomaticBuildWorker(worker.rootRef)!;
+          expect(after.assignments).toEqual(before.assignments);
+          expect(after.submitted_output_bytes).toBe(before.submitted_output_bytes);
         } else {
           worker.waits++;
           expect(worker.mcp.is_terminal()).toBe(false);
@@ -108,6 +117,7 @@ describe("persistent worker executor connection", () => {
       }
     }));
     expect(taskIds.size).toBeGreaterThan(8);
+    expect(submissionReturnedWhileLocked).toBe(true);
     expect(workers.some(worker => readAutomaticBuildWorker(worker.rootRef)!.assignments.length > 1)).toBe(true);
     for (const worker of workers) {
       expect(worker.response.action).toEqual({ kind: "DONE", status: "committed" });

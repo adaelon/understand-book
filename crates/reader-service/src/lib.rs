@@ -85,6 +85,7 @@ pub mod learning_record_api;
 pub mod workspace_record_context;
 pub mod reading_guidance;
 pub mod voice_input;
+pub mod voice_model;
 pub mod pdf_bytes;
 pub mod local_course;
 pub mod published_library;
@@ -104,6 +105,7 @@ pub mod semantic_retrieval;
 pub mod mcp_output_schema;
 pub mod teaching_coach;
 pub mod practice_check;
+mod teach_back;
 pub mod learning_map_build;
 pub mod learning_map_recall;
 pub mod pending_confirmation;
@@ -1182,6 +1184,7 @@ pub struct AgentChatSessionSummary {
 
 #[derive(Debug, serde::Serialize)]
 pub struct AgentChatTurnView {
+    pub can_explain_back: bool,
     pub board_commits: Vec<memory::boards::BoardDelivery>,
     pub board_follow_up: Option<memory::boards::BoardFollowUp>,
     pub board_delivery: Option<memory::boards::BoardDelivery>,
@@ -2528,14 +2531,21 @@ pub fn scoped_turn_view(book: Option<&Book>, turn: &AgentChatTurn) -> AgentChatT
             public_outcome.answer_view = Some(legacy.view);
         }
     }
+    let mut domain = turn.domain.clone();
+    if domain.course_retry_context.is_none() && domain.interaction.as_ref().is_some_and(|action| action.course.is_some()) {
+        let original = domain.local_action.as_ref().map(|action| &action.normalized)
+            .or_else(|| turn.admission_input.as_ref().map(|input| &input.normalized));
+        domain.course_retry_context = original.and_then(|input| input.get("course_context")).cloned();
+    }
     AgentChatTurnView {
+        can_explain_back: book.is_some_and(|b| interaction_input::explanation::eligible(b, turn)),
         board_commits: session_runtime::board_commits(turn),
         board_follow_up: turn.board_follow_up.clone(),
         board_delivery: turn.board_delivery.clone(),
         board_delivery_error: turn.board_delivery_error.as_ref().map(agent_failure::turn),
         video_question: turn.video_question.clone(),
         music_question: turn.music_question.clone(),
-        domain: turn.domain.clone(),
+        domain,
         published_book_ref: turn.published_book_ref.clone(),
         teaching_ref: turn.teaching_ref.clone(),
         presentation_follow_up: turn.presentation_follow_up.clone(),
@@ -2644,6 +2654,39 @@ pub fn agent_history_response(
         },
         current,
     })
+}
+
+/// Filter the public transcript after publication-specific source views are
+/// resolved. The underlying history remains available for teaching and for exit.
+pub fn cover_practice_history(
+    user: &user_runtime::UserRuntime,
+    book_id: &str,
+    scope: Option<&str>,
+    sessions: &mut [AgentChatSessionSummary],
+    current: Option<&mut AgentChatSessionView>,
+) -> Result<(), ToolError> {
+    let store = user.learning_store_for_workspace(scope)?;
+    let covered = store.covered_follow_up_chats(scope.is_none().then_some(book_id))?;
+    for session in sessions.iter_mut().filter(|s| covered.contains(&s.id)) {
+        session.turns.clear();
+    }
+    if let Some(chat) = current.filter(|s| covered.contains(&s.id)) {
+        let practice = store.closed_book(&chat.id, book_id)?
+            .filter(|p| matches!(p.status.as_str(), "active" | "paused" | "complete") && !p.needs_retry);
+        let visible: std::collections::HashSet<_> = practice.iter()
+            .flat_map(|p| p.visible_turn_ids.iter()).collect();
+        chat.turns.retain(|t| visible.contains(&t.turn_id));
+        chat.goals.clear();
+    }
+    Ok(())
+}
+
+fn reader_history_response(user: &user_runtime::UserRuntime, history: &AgentHistory, book: &Book, selected: Option<&str>)
+    -> Result<AgentHistoryResponse, ToolError> {
+    let mut view = agent_history_response(history, book, selected)?;
+    let scope = view.current.learning_workspace_id.clone();
+    cover_practice_history(user, &book.base.book_id, scope.as_deref(), &mut view.sessions, Some(&mut view.current))?;
+    Ok(view)
 }
 
 fn agent_session_summaries(history: &AgentHistory, book: &Book) -> Vec<AgentChatSessionSummary> {
@@ -3083,7 +3126,7 @@ fn route_inner(state: &mut AppState, req: Req) -> Reply {
         if req.method != "GET" {
             return agent_history_method_not_allowed();
         }
-        return match agent_history_response(&state.user.agent_history, &state.workspace.book, state.workspace.selected_chat.as_deref()) {
+        return match reader_history_response(&state.user, &state.user.agent_history, &state.workspace.book, state.workspace.selected_chat.as_deref()) {
             Ok(response) => ok_json(&response),
             Err(error) => err_reply(&error),
         };
@@ -12264,6 +12307,9 @@ pub fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &re
     let board_context = board_follow_up.as_ref().map(|follow_up|
         board_api::freeze_follow_up(user, workspace, follow_up)).transpose().map_err(|e| err_reply(&e))?;
     runtime::response_language::ResponseLanguage::from_request(&v).map_err(|e| err_reply(&e))?;
+    // Replace the client locator once. Both action resolution and admission use this lesson.
+    let course_context = course_context::freeze_chat(user, workspace, &v["course_context"]).map_err(|e| err_reply(&e))?;
+    v["course_context"] = json!(course_context);
     let wants_presentation = presentation_requested(&v).map_err(|e| err_reply(&e))?;
     let Some(msg) = v.get("message").and_then(|x| x.as_str()) else {
         return Err(validation(
@@ -12304,7 +12350,9 @@ pub fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &re
         Some(runtime::tutor_continuation::InteractionResolution::RunInput { interaction }) => Some(interaction),
         None => None,
     };
-    if let Some(action) = &interaction {
+    if v["entry_action"] == "explain_back" {
+        display_user = msg.into();
+    } else if let Some(action) = &interaction {
         let prefix = if matches!(action.action, runtime::tutor_continuation::InteractionAction::UiChoice { .. }) { "选择" } else { "操作" };
         display_user = format!("{prefix}：{}", action.accepted_request);
         if !msg.trim().is_empty() { display_user.push_str(&format!("\n{msg}")); }
@@ -12480,9 +12528,6 @@ pub fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &re
     // A note revisit reads the exact saved idea like any explicitly brought-in note.
     if let Some(reference)=interaction.as_ref().and_then(|a|a.note_ref.as_ref()) {note_input["note_refs"]=json!([reference]);}
     let personal_notes=personal_note_context::freeze(user,&note_input,workspace.selected_chat.as_deref()).map_err(|e|err_reply(&e))?;
-    let course_context = course_context::freeze_chat(user, workspace, &v["course_context"]).map_err(|e| err_reply(&e))?;
-    // Replace the client locator with an authorized snapshot before admission freezes it.
-    v["course_context"] = json!(course_context);
     if v["socratic_dialogue"].is_object() && v["socratic_dialogue"]["course_run_id"].as_str()
         != v["course_context"]["lesson"]["progress"]["run_id"].as_str() {
         v["socratic_dialogue"] = Value::Null;
@@ -12490,6 +12535,7 @@ pub fn validate_agent_input(user: &mut user_runtime::UserRuntime, workspace: &re
     if let Some(course) = course_context {
         agent_message.push_str(&format!("\n\n[Prepared course at submission]\n{}", course));
     }
+    if v["entry_action"] == "explain_back" { agent_message = message.clone(); }
     Ok(ValidatedAgentInput { first_follow_up, personal_notes, board_context, music_question, video_question, interaction, request: v, message, display_user, question_anchor_lid, question_quote,
         presentation_follow_up, agent_message, presentation_context })
 }
@@ -12506,7 +12552,8 @@ fn prepare_agent_chat_with_selection(
     state: &mut AppState, body: &str, now: &str, local_agent: Option<session_event::LocalAgentIdentity>,
 ) -> Result<agent_run::PreparedAgentChat, Reply> {
     if let Some(reply) = interaction_input::local_repeat(state, body)? { return Err(reply); }
-    if body_value(body)?["scope"] == "personal" { return personal_chat::prepare(state,body,now).map_err(|e|err_reply(&e)); }
+    let submitted = body_value(body)?;
+    if submitted["scope"] == "personal" { return personal_chat::prepare(state,body,now).map_err(|e|err_reply(&e)); }
     if let Some((id, goal)) = state.workspace.learning_workspace_id.as_deref().zip(state.workspace.learning_goal.as_ref()) {
         state.user.learning_store_for_workspace(Some(id)).and_then(|mut store| store.sync_workspace_goal(goal.revision, now))
             .map_err(|error| err_reply(&error))?;
@@ -12516,7 +12563,8 @@ fn prepare_agent_chat_with_selection(
     let msg = message.as_str();
     let current_book_id = state.workspace.book.base.book_id.clone();
     let mut domain = if first_follow_up || interaction.is_some() || board_context.is_some() || personal_notes.is_some() {
-        Some(interaction_input::local_domain_for_request(state, &v, interaction.as_ref()).map_err(|e|err_reply(&e))?)
+        // Replays carry the submitted course locator, not the hydrated lesson snapshot.
+        Some(interaction_input::local_domain_for_request(state, &submitted, interaction.as_ref()).map_err(|e|err_reply(&e))?)
     } else { None };
     if let Some(domain) = &mut domain { domain.board_context = board_context.clone(); domain.personal_notes=personal_notes; }
     if let Some(agent) = local_agent {
@@ -12526,7 +12574,13 @@ fn prepare_agent_chat_with_selection(
         domain.local_agent = Some(agent);
     }
     let related_goal = interaction_input::related_goal(&state.user, state.workspace.selected_chat.as_deref(), interaction.as_ref());
-    let turn_ref = match precommit_agent_turn_with_goal(
+    let retrying_explanation = v["entry_action"] == "explain_back" && v["retry_of"].is_string();
+    let turn_ref = if retrying_explanation {
+        let reference = interaction_input::explanation::reopen(&mut state.user, &v, now).map_err(|e| err_reply(&e))?;
+        let session = state.user.agent_history.sessions.iter().find(|s| s.id == reference.session_id).unwrap();
+        state.workspace.select_chat(reference.session_id.clone(), session.messages.clone());
+        reference
+    } else { match precommit_agent_turn_with_goal(
         state,
         &current_book_id,
         display_user,
@@ -12544,7 +12598,7 @@ fn prepare_agent_chat_with_selection(
     ) {
         Ok(turn_ref) => turn_ref,
         Err(error) => return Err(err_reply(&error)),
-    };
+    }};
     if let Some(question) = &video_question {
         state.workspace.video_drafts.retain(|_, d| d.context.draft_id != question.draft_id);
         if let Err(error) = video_draft::persist(&state.workspace) {
@@ -12575,8 +12629,12 @@ fn prepare_agent_chat_with_selection(
     if scope.presentation_follow_up.is_some() {
         agent_message.push_str(presentation_context.as_deref().expect("validated presentation context"));
     }
+    let language_input = if retrying_explanation {
+        state.user.agent_history.sessions.iter().find(|s| s.id == turn_ref.session_id)
+            .and_then(|s| s.turns.last()).and_then(|t| t.domain.local_action.as_ref()).map(|a| &a.normalized).unwrap_or(&v)
+    } else { &v };
     Ok(agent_run::PreparedAgentChat {
-        response_language: runtime::response_language::ResponseLanguage::from_request(&v).map_err(|e| err_reply(&e))?,
+        response_language: runtime::response_language::ResponseLanguage::from_request(language_input).map_err(|e| err_reply(&e))?,
         exam_calendar: None,
         accepted_workspace_goal: None,
         scope,
@@ -12653,7 +12711,6 @@ pub fn run_precommitted_with_ports(
     context.cancellation.check()?;
     port.check_access()?;
     let msg = prepared.message.as_str();
-    let agent_message = prepared.agent_message.as_str();
     if prepared.scope.book.is_none() {
         let (checkpoint,projection)=port.with_user(|user| {
             prepared.scope.check_user(user)?;
@@ -12662,8 +12719,18 @@ pub fn run_precommitted_with_ports(
         })?;
         context.restore_model_projection(projection,adapter.projection_identity().as_deref());
         let mut sink=agent_run::RunCheckpointSink{port,turn_ref:&prepared.turn_ref};
-        return runtime::personal_run::run(state_port,adapter,context,agent_message,checkpoint,&mut sink);
+        return runtime::personal_run::run(state_port,adapter,context,&prepared.agent_message,checkpoint,&mut sink);
     }
+    let mut classification_usage = (0, 0);
+    let agent_message = if teach_back::requested(prepared) {
+        let (comparison, calls, tokens) = teach_back::execute(prepared, port, adapter, context)?;
+        if let Some(outcome) = comparison { return Ok(outcome); }
+        // The accepted words are an ordinary question. Drop teaching authority
+        // and submit the reader's question through the normal source-grounded run.
+        context.tutor = None;
+        classification_usage = (calls, tokens);
+        msg
+    } else { prepared.agent_message.as_str() };
     let book = prepared.scope.reading_book().as_ref();
     let current_book_id = book.base.book_id.as_str();
     let turn_ref = &prepared.turn_ref;
@@ -12911,7 +12978,7 @@ pub fn run_precommitted_with_ports(
         }
     };
     let mut checkpoint_sink = agent_run::RunCheckpointSink { port, turn_ref };
-    runtime::orchestrator::run_context(
+    let mut outcome = runtime::orchestrator::run_context(
         experimental_book.as_ref().unwrap_or(book),
         state_port,
         adapter,
@@ -12922,7 +12989,10 @@ pub fn run_precommitted_with_ports(
         &mut checkpoint_sink,
         agent_message,
         now,
-    )
+    )?;
+    outcome.turns += classification_usage.0;
+    outcome.tokens_spent = outcome.tokens_spent.saturating_add(classification_usage.1);
+    Ok(outcome)
 }
 
 fn profile_snapshot_request(state: &AppState, book: &Book, book_id: &str, content_profile: &str, now: &str) -> SnapshotRequest {
@@ -13044,7 +13114,7 @@ fn route_agent_new(state: &mut AppState, now: &str) -> Reply {
     let messages = session.messages.clone();
     let selected = session.id.clone();
     candidate.sessions.push(session);
-    let response = match agent_history_response(&candidate, &state.workspace.book, Some(&selected)) {
+    let response = match reader_history_response(&state.user, &candidate, &state.workspace.book, Some(&selected)) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
@@ -13094,11 +13164,11 @@ pub fn user_goal_cancel(user: &mut user_runtime::UserRuntime, workspace: &reader
     if let Some(store) = &mut user.session_store {
         if let Err(e) = store.append(&mut user.agent_history, session_id, now, None,
             session_event::EventBody::GoalUpdated { goal: goal.clone() }) { return err_reply(&e); }
-        return match agent_history_response(&user.agent_history, &workspace.book, Some(session_id)) {
+        return match reader_history_response(user, &user.agent_history, &workspace.book, Some(session_id)) {
             Ok(response) => ok_json(&response), Err(e) => err_reply(&e),
         };
     }
-    let response = match agent_history_response(&candidate, &workspace.book, workspace.selected_chat.as_deref()) {
+    let response = match reader_history_response(user, &candidate, &workspace.book, workspace.selected_chat.as_deref()) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
@@ -13135,7 +13205,7 @@ fn route_agent_history_select(state: &mut AppState, body: &str) -> Reply {
         .active_by_book
         .insert(book_id.clone(), session_id.into());
     let messages = candidate.sessions[idx].messages.clone();
-    let response = match agent_history_response(&candidate, &state.workspace.book, Some(session_id)) {
+    let response = match reader_history_response(&state.user, &candidate, &state.workspace.book, Some(session_id)) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
@@ -13184,7 +13254,7 @@ fn route_agent_history_delete(state: &mut AppState, body: &str, now: &str) -> Re
         .unwrap_or_else(|| ensure_active_agent_session(&mut candidate, &book_id, now));
     let selected = candidate.sessions[idx].id.clone();
     let messages = candidate.sessions[idx].messages.clone();
-    let response = match agent_history_response(&candidate, &state.workspace.book, Some(&selected)) {
+    let response = match reader_history_response(&state.user, &candidate, &state.workspace.book, Some(&selected)) {
         Ok(response) => response,
         Err(error) => return err_reply(&error),
     };
@@ -13564,6 +13634,7 @@ pub(crate) mod follow_up_input;
 pub mod cli;
 pub mod stage_processes;
 pub mod acp_evidence;
+mod acp_history;
 mod acp_teaching;
 pub mod learning_extensions;
 pub mod local_acp;

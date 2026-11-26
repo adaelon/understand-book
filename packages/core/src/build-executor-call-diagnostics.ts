@@ -4,7 +4,8 @@ import path from "node:path";
 import { createInterface } from "node:readline";
 import { validateAutomaticBuildOpenCallCorrection, type AutomaticBuildOpenCallCorrectionV1 } from "./automatic-build-executor-session";
 
-const UUID = /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/u;
+const UUID_SOURCE = "[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}";
+const UUID = new RegExp(`^${UUID_SOURCE}$`, "u");
 const HANDOFF = /^abhandoff1_[a-f0-9]{64}$/u;
 const OPERATIONS = new Set(["executor.open", "executor.input.next", "executor.generation.start", "executor.submit_candidate"]);
 const CODES = new Set(["invalid_arguments", "protocol_incompatible", "handoff_ref_mismatch", "connection_terminal", "executor_internal"]);
@@ -101,15 +102,20 @@ export async function readOwnedExecutorOpenDiagnostic(
   };
 }
 
+async function* findMatchingRollouts(root: string, suffix: RegExp): AsyncGenerator<string> {
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const file = path.join(root, entry.name);
+    if (entry.isDirectory()) {
+      yield* findMatchingRollouts(file, suffix);
+    } else if (suffix.test(entry.name)) {
+      yield file;
+    }
+  }
+}
+
 export async function findExecutorChildRollout(sessionsRoot: string, childId: string): Promise<string | undefined> {
   if (!UUID.test(childId)) throw new Error("invalid child diagnostic identity");
-  for (const entry of await readdir(sessionsRoot, { withFileTypes: true })) {
-    const file = path.join(sessionsRoot, entry.name);
-    if (entry.isDirectory()) {
-      const found = await findExecutorChildRollout(file, childId);
-      if (found) return found;
-    } else if (entry.name.endsWith(`-${childId}.jsonl`)) return file;
-  }
+  for await (const file of findMatchingRollouts(sessionsRoot, new RegExp(`-${childId}\\.jsonl$`, "u"))) return file;
   return undefined;
 }
 
@@ -120,32 +126,33 @@ export async function findOwnedExecutorChildRollout(
   if (!UUID.test(parentId)) throw new Error("invalid child diagnostic parent identity");
   let childId = child;
   if (!UUID.test(child)) {
-    const parentFile = await findExecutorChildRollout(sessionsRoot, parentId);
-    if (!parentFile) return undefined;
-    const stream = createReadStream(parentFile, { encoding: "utf8" });
-    const lines = createInterface({ input: stream, crlfDelay: Infinity });
+    const suffix = new RegExp(`-${parentId}(?:_${UUID_SOURCE})?\\.jsonl$`, "u");
     const matches = new Set<string>();
-    let owned = false;
-    try {
-      for await (const line of lines) {
-        let row: any;
-        try { row = JSON.parse(line); } catch { continue; }
-        if (row.type === "session_meta") {
-          if (row.payload?.id !== parentId) throw new Error("child diagnostic parent ownership mismatch");
-          owned = true;
-          continue;
+    for await (const parentFile of findMatchingRollouts(sessionsRoot, suffix)) {
+      const stream = createReadStream(parentFile, { encoding: "utf8" });
+      const lines = createInterface({ input: stream, crlfDelay: Infinity });
+      let owned = false;
+      try {
+        for await (const line of lines) {
+          let row: any;
+          try { row = JSON.parse(line); } catch { continue; }
+          if (row.type === "session_meta") {
+            if (row.payload?.id !== parentId) throw new Error("child diagnostic parent ownership mismatch");
+            owned = true;
+            continue;
+          }
+          if (!owned || row.type !== "event_msg" || row.payload?.type !== "item_completed"
+            || row.payload.thread_id !== parentId) continue;
+          const item = row.payload.item;
+          if (item?.type !== "SubAgentActivity" || item.kind !== "started"
+            || !UUID.test(item.agent_thread_id ?? "") || typeof item.agent_path !== "string") continue;
+          if (item.agent_path === child || (!child.includes("/") && item.agent_path.split("/").at(-1) === child)) {
+            matches.add(item.agent_thread_id);
+          }
         }
-        if (!owned || row.type !== "event_msg" || row.payload?.type !== "item_completed"
-          || row.payload.thread_id !== parentId) continue;
-        const item = row.payload.item;
-        if (item?.type !== "SubAgentActivity" || item.kind !== "started"
-          || !UUID.test(item.agent_thread_id ?? "") || typeof item.agent_path !== "string") continue;
-        if (item.agent_path === child || (!child.includes("/") && item.agent_path.split("/").at(-1) === child)) {
-          matches.add(item.agent_thread_id);
-        }
-      }
-    } finally { lines.close(); stream.destroy(); }
-    if (!owned) throw new Error("child diagnostic parent ownership evidence is missing");
+      } finally { lines.close(); stream.destroy(); }
+      if (!owned) throw new Error("child diagnostic parent ownership evidence is missing");
+    }
     if (matches.size > 1) throw new Error("child diagnostic name is ambiguous; use the child UUID");
     if (!matches.size) return undefined;
     childId = [...matches][0]!;

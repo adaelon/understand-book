@@ -3,6 +3,7 @@ import path from 'node:path';
 import { z } from 'zod';
 import type { AutomaticBuildStageState, AutomaticBuildTarget } from './build-orchestrator';
 import type { TeachingBuildInput } from './teaching-build';
+import type { AcceptedCourseRoute } from './accepted-course-route';
 import { canonicalBuildJson } from './build-intent';
 import { resolveContentProfile } from './content-profile';
 import { evaluateModelInputBudget } from './model-input-budget';
@@ -53,6 +54,7 @@ export interface CourseGenerationTask {
   descriptor: WorkUnitDescriptorV3; policy_generation_id:string; rendered_input:string;
   task_kind:'scope'|'plan'|'lesson'|'solve'|'review'; source:TeachingBuildInput['source']; blueprint?:Blueprint;
   course_goal?:string;
+  course_route?:AcceptedCourseRoute;
 }
 const generation = 'course.full.v1';
 const read = <T>(file:string):T|undefined => existsSync(file)?JSON.parse(readFileSync(file,'utf8')):undefined;
@@ -64,6 +66,7 @@ const contracts = {
   solve: {solutions:[{question:'与输入题面完全相同',reasoning:'独立求解过程与条件',answer:'结论及合理替代解'}],issues:[]},
   review: {accepted:true,checked_lids:['实际读过的LID'],reasoning:'来源、题解、支持、活动和结果揭示的具体核对',issues:[]},
 };
+export { BlueprintZ as CourseBlueprintZ, contracts as courseGenerationContracts, validateBody as validateCourseLessonBody };
 function make(input:TeachingBuildInput, kind:CourseGenerationTask['task_kind'], id:string, source:TeachingBuildInput['source'], body:object, blueprint?:Blueprint):CourseGenerationTask {
   const policy=automaticBuildExtractionPolicy('course',resolveContentProfile(input.target.profile_id),'full');
   const rendered=canonicalBuildJson({task_kind:kind,source,output_contract:contracts[kind],
@@ -98,10 +101,10 @@ function accepted(input:TeachingBuildInput,task:CourseGenerationTask):Payload|un
     policy_generation_id:generation,semantic_contract:semanticContractFromExtractionPolicy(d.policy_fingerprint)});
   return inspection.policy_fresh && inspection.format==='v3'?artifact.payload:undefined;
 }
-function bindings(task:CourseGenerationTask,lids:string[]) {
+function bindings(task:Pick<CourseGenerationTask,'source'>,lids:string[]) {
   if(new Set(lids).size!==lids.length || lids.some(lid=>!task.source.passages.some(p=>p.lid===lid)))throw new Error('课程引用必须来自本任务实际提供的原文，且不重复');
 }
-function validateBody(task:CourseGenerationTask,body:Body) {
+function validateBody(task:Pick<CourseGenerationTask,'source'>,body:Body) {
   bindings(task,body.assessment.source_lids);
   const questions=[body.prediction,...body.follow_up_rounds.map(r=>r.prediction),body.task];
   for(const p of questions)if(p.options.length===1 || new Set(p.options.map(o=>o.id)).size!==p.options.length)throw new Error('课程选项应为空或至少两个且不重复');
@@ -142,13 +145,61 @@ export function acceptCourseCandidate(target:AutomaticBuildTarget,task:CourseGen
   return writeAutomaticBuildGenerationArtifact(target,buildSemanticArtifactEnvelopeV3({target:target.target_ref,stage:'course',work_unit_id:task.descriptor.work_unit_id,
     input_hash:task.descriptor.input_hash,policy_generation_id:generation,semantic_contract:semanticContractFromExtractionPolicy(task.descriptor.policy_fingerprint),provenance,payload}));
 }
-interface AcceptedLesson { id:string; unit_id:string; blueprint:Blueprint; body:Body; review:Review; task_ids:string[] }
+export function scopeFromAcceptedRoute(input: TeachingBuildInput, route: AcceptedCourseRoute): z.infer<typeof ScopeZ> {
+  if (route.source_id !== input.source.source_id || route.source_revision !== input.source.source_revision) {
+    throw new Error('已选课程路线与当前原文版本不一致，请重新核对路线');
+  }
+  const available = new Set(input.structure.spine.map(unit => unit.lid));
+  for (const lid of route.unit_lids) {
+    if (!available.has(lid)) throw new Error(`已选课程路线中的章节 ${lid} 不在书籍结构中`);
+  }
+  return { title: route.title, question: route.question, route: 'theme', unit_lids: route.unit_lids };
+}
+
+// Read only the shared lesson candidate. The run, learner feedback and proposal history stay private.
+const ReusableTrialLessonZ = CourseBodyZ.extend({
+  summary: BlueprintZ.pick({ question: true, objective: true, prerequisites: true, estimated_minutes: true, duration_basis: true })
+    .extend({ source: z.object({ publication: z.object({book_id: text}), source_revision: text, start_lid: text, end_lid: text }) }).strip(),
+});
+const ReusableTrialArtifactZ = z.object({
+  version: z.literal('course_artifact.v1'), source_id: text, source_revision: text,
+  course: z.object({ lessons: z.array(ReusableTrialLessonZ).length(1) }),
+});
+function readTrialForRoute(input: TeachingBuildInput, route?: AcceptedCourseRoute) {
+  if (!route?.trial_revision) return;
+  const file = path.join(input.target.workspace_dir, '.build', 'course-trials', route.trial_revision, 'inquiry_course.json');
+  const parsed = ReusableTrialArtifactZ.safeParse(read(file));
+  if (!parsed.success) return;
+  const artifact = parsed.data;
+  const {summary, ...body} = artifact.course.lessons[0]!;
+  const binding = summary.source;
+  if (artifact.source_id !== route.source_id || artifact.source_revision !== route.source_revision ||
+      binding.publication.book_id !== route.source_id || binding.source_revision !== route.source_revision) return;
+  const start = input.source.passages.findIndex(p => p.lid === binding.start_lid);
+  const end = input.source.passages.findIndex(p => p.lid === binding.end_lid);
+  if (start < 0 || end < start) return;
+  const passages = input.source.passages.slice(start, end + 1);
+  try { validateBody({source: {...input.source, passages}}, body); }
+  catch { return; } // The accepted route can still commission a fresh lesson for this section.
+  const source_lids = passages.map(p => p.lid);
+  const {source: _, ...description} = summary;
+  return { description: {...description, source_lids}, body };
+}
+
+interface AcceptedLesson { id:string; unit_id:string; blueprint:Blueprint; body:Body; review:Review; task_ids:string[]; trial_revision?:string }
 interface CourseBuildResult { tasks:CourseGenerationTask[]; lessons:AcceptedLesson[]; units:{id:string;title:string}[]; language:string; scope?:z.infer<typeof ScopeZ>; blocked?:string }
-function build(input:TeachingBuildInput, goal?:string):CourseBuildResult {
+function build(input:TeachingBuildInput, goal?:string, route?:AcceptedCourseRoute):CourseBuildResult {
   const result:CourseBuildResult={tasks:[],lessons:[],units:[],language:'zh-CN'};
-  const take=(t:CourseGenerationTask)=>{if(goal)t.course_goal=goal;result.tasks.push(t);return accepted(input,t);};
-  const scope=take(make(input,'scope','scope',{...input.source,passages:[]},{structure:input.structure,whole_source:!goal,request:goal??'按章、节组织本资料的课程，覆盖已有结构。'})) as z.infer<typeof ScopeZ>|undefined;
+  const take = (task: CourseGenerationTask) => {
+    if (goal) task.course_goal = goal;
+    if (route) task.course_route = route;
+    result.tasks.push(task);
+    return accepted(input,task);
+  };
+  const scope = route ? scopeFromAcceptedRoute(input, route) : take(make(input,'scope','scope',{...input.source,passages:[]},
+    {structure:input.structure,whole_source:!goal,request:goal??'按章、节组织本资料的课程，覆盖已有结构。'})) as z.infer<typeof ScopeZ>|undefined;
   if(!scope)return result;result.scope=scope;
+  const trial = readTrialForRoute(input, route);
   for(const lid of scope.unit_lids){
     const unit=input.structure.spine.find(u=>u.lid===lid)!;
     const passages=input.source.passages.filter(p=>p.unit_lid===unit.lid);
@@ -159,21 +210,46 @@ function build(input:TeachingBuildInput, goal?:string):CourseBuildResult {
     for(const [part,group] of groups.entries()){
       const unitId=`unit-${unit.lid.replaceAll('.','-')}-${part+1}`;
       const source={...input.source,passages:group};
-      const planTask=make(input,'plan',unitId,source,{course_goal:goal,route:scope,structure:{unit,throughlines:input.structure.throughlines.filter(t=>t.lids.includes(unit.lid)),key_stops:input.structure.key_stops.filter(s=>group.some(p=>p.lid===s.lid))}});
+      const availableTrial = trial?.description.source_lids.every(lid => group.some(p => p.lid === lid)) ? trial : undefined;
+      const planTask=make(input,'plan',unitId,source,{course_goal:goal,route:scope,
+        ...(route ? {accepted_route:route,route_instruction:'依据已选读者起点、总问题、结课任务和示例问题，确定本单元承担的任务及其所需前提。'} : {}),
+        ...(availableTrial ? {trial_candidate:availableTrial.description,trial_instruction:'仅在该课符合已选路线和本单元目标时，沿用所列问题、目标、起点、预计时间和原文范围；否则重新规划。'} : {}),
+        structure:{unit,throughlines:input.structure.throughlines.filter(t=>t.lids.includes(unit.lid)),key_stops:input.structure.key_stops.filter(s=>group.some(p=>p.lid===s.lid))}});
       const plan=take(planTask) as Plan|undefined;if(!plan)continue;
       result.language=plan.language;result.units.push({id:unitId,title:plan.unit_title});
       for(const blueprint of plan.lessons){
         const id=`${unitId}-${blueprint.id}`,selected={...source,passages:group.filter(p=>blueprint.source_lids.includes(p.lid))};
+        const taskId = route ? `${id}-${planTask.descriptor.input_hash.slice(0,16)}` : id;
+        const description = availableTrial?.description;
+        const trialBody = description && description.question === blueprint.question &&
+          description.objective === blueprint.objective && description.prerequisites === blueprint.prerequisites &&
+          canonicalBuildJson(description.source_lids) === canonicalBuildJson(blueprint.source_lids)
+          ? availableTrial.body : undefined;
         let feedback:unknown;let done=false;
         for(let revision=0;revision<3;revision++){
-          const lessonTask=make(input,'lesson',`${id}-${revision}`,selected,{blueprint,...(feedback?{repair:feedback}:{})},blueprint);
-          const body=take(lessonTask) as Body|undefined;if(!body){done=true;break;}
+          const reuseTrial = revision === 0 && trialBody !== undefined;
+          const task_ids: string[] = [];
+          let body: Body | undefined;
+          if (reuseTrial) {
+            body = trialBody;
+          } else {
+            const lessonTask = make(input,'lesson',`${taskId}-${revision}`,selected,{blueprint,...(feedback?{repair:feedback}:{})},blueprint);
+            body = take(lessonTask) as Body | undefined;
+            task_ids.push(lessonTask.descriptor.work_unit_id);
+          }
+          if (!body) { done = true; break; }
           // No author explanations, hints, solution or rubric enter the independent solving task.
-          const solveTask=make(input,'solve',`${id}-${revision}`,selected,{prerequisites:blueprint.prerequisites,questions:[body.prediction,...body.follow_up_rounds.map(r=>r.prediction),body.task]});
+          const solveTask=make(input,'solve',`${taskId}-${revision}`,selected,{prerequisites:blueprint.prerequisites,questions:[body.prediction,...body.follow_up_rounds.map(r=>r.prediction),body.task]});
           const solve=take(solveTask) as z.infer<typeof SolveZ>|undefined;if(!solve){done=true;break;}
-          const reviewTask=make(input,'review',`${id}-${revision}`,selected,{blueprint,lesson:body,independent_solution:solve});
+          const reviewTask=make(input,'review',`${taskId}-${revision}`,selected,{blueprint,lesson:body,independent_solution:solve,
+            ...(route ? {accepted_route:route,route_instruction:'核对本课是否适合已选读者起点，说明它对总问题和结课任务提供的实际支持。'} : {})});
           const review=take(reviewTask) as Review|undefined;if(!review){done=true;break;}
-          if(review.accepted && solve.issues.length===0){result.lessons.push({id,unit_id:unitId,blueprint,body,review,task_ids:[lessonTask,solveTask,reviewTask].map(t=>t.descriptor.work_unit_id)});done=true;break;}
+          if (review.accepted && solve.issues.length === 0) {
+            task_ids.push(solveTask.descriptor.work_unit_id, reviewTask.descriptor.work_unit_id);
+            result.lessons.push({id, unit_id:unitId, blueprint, body, review, task_ids, ...(reuseTrial ? {trial_revision:route?.trial_revision} : {})});
+            done = true;
+            break;
+          }
           feedback={previous:body,issues:[...solve.issues,...review.issues]};
         }
         if(!done)result.blocked=`课程 ${blueprint.question} 修订三次仍有具体问题：${JSON.stringify(feedback)}`;
@@ -183,12 +259,12 @@ function build(input:TeachingBuildInput, goal?:string):CourseBuildResult {
   if(!result.tasks.length)result.blocked='所选结构没有可读取的课程原文';
   return result;
 }
-export function routeCourseBuild(input:TeachingBuildInput, goal?:string):AutomaticBuildStageState {
+export function routeCourseBuild(input:TeachingBuildInput, goal?:string, route?:AcceptedCourseRoute):AutomaticBuildStageState {
   let result:CourseBuildResult;
-  try{result=build(input,goal);}catch(error){return {stage:'course',closed:false,pending_tasks:[],course_blocked:error instanceof Error?error.message:String(error)};}
+  try{result=build(input,goal,route);}catch(error){return {stage:'course',closed:false,pending_tasks:[],course_blocked:error instanceof Error?error.message:String(error)};}
   const policy=automaticBuildExtractionPolicy('course',resolveContentProfile(input.target.profile_id),'full');
   const pending=result.tasks.filter(t=>!accepted(input,t));
-  const closed=!result.blocked&&!pending.length&&result.lessons.length>0&&Object.entries(courseArtifacts(input,result)).every(([file,value])=>{
+  const closed=!result.blocked&&!pending.length&&result.lessons.length>0&&Object.entries(courseArtifacts(input,result,route)).every(([file,value])=>{
     try{return canonicalBuildJson(read(path.join(input.target.workspace_dir,file))??null)===canonicalBuildJson(value);}catch{return false;}
   });
   return {stage:'course',closed,pending_tasks:pending.map(t=>t.descriptor.work_unit_id),course_blocked:result.blocked,
@@ -197,17 +273,22 @@ export function routeCourseBuild(input:TeachingBuildInput, goal?:string):Automat
     generation_tasks:Object.fromEntries(result.tasks.map(t=>[t.descriptor.work_unit_id,{kind:'course' as const,task:t}])),
     policy_set:createAutomaticBuildStagePolicySet({target_ref:input.target.target_ref,stage:'course',frozen_at:'2026-11-12T00:00:00.000Z',members:[{kind:'course_task',extractor:'course-builder',policy_generation_id:generation,policy_fingerprint:policy}]})};
 }
-function courseArtifacts(input:TeachingBuildInput,result:CourseBuildResult) {
+function courseArtifacts(input:TeachingBuildInput,result:CourseBuildResult,route?:AcceptedCourseRoute) {
   const course={language:result.language,units:result.units,routes:[{id:'course-route',title:result.scope!.title,question:result.scope!.question,structure_ref:result.scope!.unit_lids.join(','),lesson_ids:result.lessons.map(l=>l.id)}],
     lessons:result.lessons.map(l=>({summary:{id:l.id,unit_id:l.unit_id,question:l.blueprint.question,objective:l.blueprint.objective,prerequisites:l.blueprint.prerequisites,
       estimated_minutes:l.blueprint.estimated_minutes,duration_basis:l.blueprint.duration_basis,source:{publication:{book_id:input.source.source_id,publication_id:'build'},source_revision:input.source.source_revision,
         start_lid:input.source.passages.find(p=>l.blueprint.source_lids.includes(p.lid))!.lid,end_lid:input.source.passages.filter(p=>l.blueprint.source_lids.includes(p.lid)).at(-1)!.lid,label:l.blueprint.question,structure_refs:result.scope!.unit_lids}},...l.body}))};
   return {
     'inquiry_course.json':{version:'course_artifact.v1',source_id:input.source.source_id,source_revision:input.source.source_revision,course},
-    'course_build_report.json':{source_id:input.source.source_id,source_revision:input.source.source_revision,task_ids:result.tasks.map(t=>t.descriptor.work_unit_id),lessons:result.lessons.map(l=>({id:l.id,review:l.review,task_ids:l.task_ids}))},
+    'course_build_report.json':{
+      source_id:input.source.source_id, source_revision:input.source.source_revision,
+      ...(route ? {accepted_route:route} : {}),
+      task_ids:result.tasks.map(t=>t.descriptor.work_unit_id),
+      lessons:result.lessons.map(l=>({id:l.id, review:l.review, task_ids:l.task_ids, ...(l.trial_revision ? {trial_revision:l.trial_revision} : {})})),
+    },
   };
 }
-export function closeCourseBuild(input:TeachingBuildInput, goal?:string) {
-  const result=build(input,goal);if(result.blocked || result.tasks.some(t=>!accepted(input,t)) || !result.lessons.length)throw new Error(result.blocked??'课程制作或核验尚未完成');
-  return buildAutomaticBuildStageBatchResult(publishAutomaticBuildArtifactSet({workspace_dir:input.target.workspace_dir,stage:'course',artifacts:Object.fromEntries(Object.entries(courseArtifacts(input,result)).map(([file,value])=>[file,json(value)]))}));
+export function closeCourseBuild(input:TeachingBuildInput, goal?:string, route?:AcceptedCourseRoute) {
+  const result=build(input,goal,route);if(result.blocked || result.tasks.some(t=>!accepted(input,t)) || !result.lessons.length)throw new Error(result.blocked??'课程制作或核验尚未完成');
+  return buildAutomaticBuildStageBatchResult(publishAutomaticBuildArtifactSet({workspace_dir:input.target.workspace_dir,stage:'course',artifacts:Object.fromEntries(Object.entries(courseArtifacts(input,result,route)).map(([file,value])=>[file,json(value)]))}));
 }

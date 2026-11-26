@@ -232,14 +232,15 @@ fn fixture(name: &str) -> (RunningServer, PathBuf) {
 }
 fn http(url: &str, method: &str, path: &str, body: Value) -> (u16, Value) {
     use std::io::{Read, Write};
-    let mut socket = std::net::TcpStream::connect(url.strip_prefix("http://").unwrap()).unwrap();
+    let authority = url.strip_prefix("http://").unwrap();
+    let mut socket = std::net::TcpStream::connect(authority).unwrap();
     socket.set_read_timeout(Some(DEADLINE)).unwrap();
     let body = if method == "GET" {
         String::new()
     } else {
         body.to_string()
     };
-    write!(socket, "{method} {path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
+    write!(socket, "{method} {path} HTTP/1.1\r\nHost: {authority}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
     let mut response = String::new();
     socket.read_to_string(&mut response).unwrap();
     let (header, body) = response.split_once("\r\n\r\n").unwrap();
@@ -1228,13 +1229,13 @@ fn resident_stream_can_finish_after_sixty_seconds() {
         .unwrap(),
     );
     let started = std::time::Instant::now();
-    let mut client =
-        std::net::TcpStream::connect(running.url.strip_prefix("http://").unwrap()).unwrap();
+    let authority = running.url.strip_prefix("http://").unwrap();
+    let mut client = std::net::TcpStream::connect(authority).unwrap();
     client
         .set_read_timeout(Some(Duration::from_secs(90)))
         .unwrap();
     let body = json!({"message":"请简短回答完成。"}).to_string();
-    write!(client, "POST /agent/chat HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
+    write!(client, "POST /agent/chat HTTP/1.1\r\nHost: {authority}\r\nContent-Type: application/json\r\nConnection: close\r\nContent-Length: {}\r\n\r\n{body}", body.len()).unwrap();
     let mut wire = String::new();
     client.read_to_string(&mut wire).unwrap();
     let response: Value = serde_json::from_str(wire.split_once("\r\n\r\n").unwrap().1).unwrap();

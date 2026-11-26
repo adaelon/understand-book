@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue';
 import { inquiryCourse, type CourseCatalog } from '../inquiry-course';
 import { network, type LearningWorkspace, type PublishedBookRef } from '../reader-context';
 import { ApiError } from '../api';
+import type { ComparisonResponse, CourseTeachBackState, CourseTeachBackSubmission } from '../teach-back-chat';
 import { renderMarkdown } from '../md';
 import type { CourseResourceState } from '../generated/CourseResourceState';
 import type { CourseAction } from '../generated/CourseAction';
@@ -27,10 +28,15 @@ import CourseResourceObjects from './CourseResourceObjects.vue';
 import type { CourseReplyIntent } from '../generated/CourseReplyIntent';
 import type { CourseOverview } from '../generated/CourseOverview';
 
-const props = defineProps<{ workspace: LearningWorkspace; releaseVersion?: number; publication?: PublishedBookRef; embedded?: boolean; catalogOnly?: boolean;
+const props = withDefaults(defineProps<{ workspace: LearningWorkspace; releaseVersion?: number; publication?: PublishedBookRef; embedded?: boolean; catalogOnly?: boolean;
   collection?: { kind:'book'|'course'; title:string; external:boolean; overview?:CourseOverview; releaseVersion?:number };
   collectionLoading?:boolean; collectionError?:string;
-}>();
+  submitTeachBack?: (request: CourseTeachBackSubmission) => Promise<boolean>;
+  teachBackState?: CourseTeachBackState;
+  readerBusy?: boolean;
+  presented?: boolean; chatSessionId?: string;
+  currentSourceRevision?: string | null;
+}>(), { presented: true });
 const emit = defineEmits<{
   understanding: [publication: PublishedBookRef];
   launch: [target: { publication: PublishedBookRef; lessonId: string; runId?: string }];
@@ -42,7 +48,8 @@ const emit = defineEmits<{
   source: [source: CourseLessonView['summary']['source'], lid?: string];
   exploration: [state: CourseResourceState];
   discussion: [question?:string];
-  closedBook: [];
+  closedBook: [sessionId?: string];
+  restoreChat: [sessionId: string];
   practice: [];
   returnCollection: [];
   retryCollection: [];
@@ -60,6 +67,7 @@ const experimentLab = ref<InstanceType<typeof ResourceDecisionLab>>();
 const tutoring = computed(() => !reviewingQuestion.value && !!lesson.value?.decision && ['task','feedback'].includes(lesson.value.progress.stage) && !labOpen.value);
 const labOpen = ref(false);
 const roundHistoryOpen = ref(false);
+const feedbackHistoryOpen = ref(false);
 const exploration = ref<CourseResourceState | null>(null);
 const explaining = computed(() => !reviewingQuestion.value && (lesson.value?.progress.stage === 'explanation' || reviewingEarlier.value) && !labOpen.value);
 function updateExploration(state: CourseResourceState) { exploration.value = state; emit('exploration', state); }
@@ -103,7 +111,7 @@ const roundIndex = computed(() => lesson.value?.round_index ?? 0);
 const activityExpression = computed(() => {
   const current=lesson.value;if(!current)return undefined;
   if(reviewingJob.value)return current.expressions.find(e=>e.job_ref===reviewingJob.value);
-  if(current.decision)return undefined;
+  if(current.decision && ['task','feedback','complete'].includes(current.progress.stage))return undefined;
   const activities=current.progress.stage==='experiment'?['prediction','investigation']:current.progress.stage==='explanation'?['reflection']:current.progress.stage==='feedback'?['task','revision']:[];
   return current.expressions.filter(e=>(e.round_index ?? 0)===roundIndex.value && activities.includes(e.activity)).at(-1);
 });
@@ -121,6 +129,8 @@ const reviewingEarlier = computed(() => !!reviewingJob.value && !!lesson.value?.
 const earlierExperiment = computed(() => reviewingEarlier.value ? lesson.value?.round_history[activityExpression.value!.round_index ?? 0]?.exploration : null);
 const earlierMathExperiment = computed(() => reviewingEarlier.value ? lesson.value?.round_history[activityExpression.value!.round_index ?? 0]?.math_exploration : null);
 const activityReview = computed(() => lesson.value?.reviews.find(r=>r.expression.job_ref===activityExpression.value?.job_ref));
+const hostedRound = computed(() => activityTutor.value && props.presented && !sourceOpen.value && !labOpen.value && !lesson.value?.support_visit
+  && activityExpression.value?.teach_back?.session_id === props.chatSessionId ? activityReview.value?.comparison?.round_id : undefined);
 const feedbackHistory = computed(() => lesson.value?.reviews.filter(r=>r.expression.job_ref!==activityExpression.value?.job_ref && (!lesson.value?.decision || !['task','decision','transfer'].includes(r.expression.activity))) ?? []);
 const moreRounds = computed(() => roundIndex.value + 1 < (lesson.value?.round_titles?.length ?? 1));
 const currentReflection = computed(()=>lesson.value?.expressions.filter(e=>e.activity==='reflection' && (e.round_index??0)===roundIndex.value && (!e.intent || e.intent==='answer')).at(-1));
@@ -132,8 +142,10 @@ const reflectionSaved = computed(() => lesson.value?.expressions.some(expression
 const resourceActivity = computed(() => !lesson.value?.inquiry_kind);
 const batchMode = computed(() => lesson.value?.experiment?.kind === 'resource_bounds' && lesson.value.experiment.batch_size !== undefined);
 const experimentReady = computed(() => !!lesson.value && (lesson.value.inquiry_kind ? !!lesson.value.activity_response && !inquiryDirty.value : lesson.value.observed.length >= 3 && (!lesson.value.lab || !!lesson.value.exploration)));
+const trialLesson = computed(() => lesson.value?.progress.release_id.startsWith('local-course-trial:') ?? false);
 const activityContinuation = computed(() => {
   const current=lesson.value;if(!current || !active.value)return undefined;
+  const waitingForFeedback = !trialLesson.value && !activityReview.value?.displayed;
   if(reviewingJob.value)return {label:uiText('回到当前活动 →'),detail:uiText('这一轮的讨论已保留，可以接着当前课程往下学。')};
   if(current.progress.stage==='experiment' && current.inquiry_kind)return {label:experimentReady.value?uiText('对照依据，继续解释 →'):uiText('回到探究活动 →'),detail:uiText('保存自己的取证或推理结果，再与讲解对照。')};
   if(current.progress.stage==='experiment')return experimentReady.value
@@ -142,12 +154,12 @@ const activityContinuation = computed(() => {
   if(current.progress.stage==='explanation')return {
     label:moreRounds.value ? uiText('继续下一轮探究 →') : uiText('进入综合应用 →'),
     detail:moreRounds.value ? uiText('下一轮：{0}',[current.round_titles[roundIndex.value+1]]) : uiText('接下来换一个情境，应用刚才建立的理解。'),
-    disabled:(multiRound.value && !reflectionSaved.value) || !activityReview.value?.displayed,
+    disabled:(multiRound.value && !reflectionSaved.value) || waitingForFeedback,
   };
   if(current.progress.stage==='feedback')return {
-    label:uiText('完成这一课 ✓'),
-    detail:uiText('回答和反馈已保留，接下来可以继续学习或暂停。'),
-    disabled:!activityReview.value?.displayed,
+    label:trialLesson.value ? uiText('完成试课') : uiText('完成这一课 ✓'),
+    detail:trialLesson.value ? uiText('回答已保存。可以结束试课，再和制课 Agent 讨论这一节。') : uiText('回答和反馈已保留，接下来可以继续学习或暂停。'),
+    disabled:waitingForFeedback,
   };
   return undefined;
 });
@@ -183,7 +195,7 @@ const completed = computed(() => course.value?.lessons.filter(l => latest(l.id)?
 const skipped = computed(() => course.value?.lessons.filter(l => latest(l.id)?.status === 'skipped').length ?? 0);
 const oldRuns = computed(() => catalog.value?.progress.filter(p => p.run_id !== latest(p.lesson_id)?.run_id
   && (!props.publication || course.value?.lessons.some(l => l.id === p.lesson_id) || knownPublicationRuns.value.has(p.run_id))) ?? []);
-const blocked = computed(() => busy.value || loading.value || props.workspace.archived || !!pending.value);
+const blocked = computed(() => busy.value || loading.value || props.readerBusy || props.workspace.archived || !!pending.value);
 watch(blocked, value => emit('blocked', value), { immediate: true });
 const active = computed(() => lesson.value?.progress.status === 'active');
 const canRestart = computed(() => course.value?.lessons.some(item => item.id === lesson.value?.summary.id));
@@ -258,7 +270,7 @@ function install(value: CourseLessonView) {
   if (experimentChanged) exploration.value = value.exploration;
   lesson.value = value;
   knownPublicationRuns.value.add(value.progress.run_id);
-  if (changed) { sourceOpen.value = false; labOpen.value = false; roundHistoryOpen.value = false; }
+  if (changed) { sourceOpen.value = false; labOpen.value = false; roundHistoryOpen.value = false; feedbackHistoryOpen.value = false; }
   if (changed) { choice.value = ''; reason.value = ''; reflection.value = ''; }
   if (changed) { try {
     const draft=JSON.parse(localStorage.getItem(answerDraftKey(value)) ?? 'null');
@@ -399,7 +411,7 @@ async function showTask() {
   else if (activityExpression.value) await activityTutor.value?.focus();
   else await focusHeading();
 }
-defineExpose({ act, retry: () => pending.value ? retry() : lesson.value ? open(lesson.value.progress) : load(), openLesson, resumeSaved, applyClosedBookResult, back, returnToCollection, showExperiment: () => { labOpen.value = true; }, showTask });
+defineExpose({ hostedRound, act, retry: () => pending.value ? retry() : lesson.value ? open(lesson.value.progress) : load(), openLesson, resumeSaved, applyClosedBookResult, back, returnToCollection, showExperiment: () => { labOpen.value = true; }, showTask });
 let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let polling = false;
 let disposed = false;
@@ -421,7 +433,7 @@ function scheduleReviews() { if(!disposed)pollTimer = setTimeout(async () => { a
 scheduleReviews();
 async function revisitFeedback(job:string) {
   const expression=lesson.value?.expressions.find(e=>e.job_ref===job);if(!expression)return;
-  if(expression.activity==='question'){reviewingJob.value=job;}else reviewingJob.value=lesson.value?.expressions.filter(e=>e.activity===expression.activity && (e.round_index ?? 0)===(expression.round_index ?? 0)).at(-1)?.job_ref ?? job;
+  if(expression.activity==='question' || expression.teach_back){reviewingJob.value=job;}else reviewingJob.value=lesson.value?.expressions.filter(e=>e.activity===expression.activity && (e.round_index ?? 0)===(expression.round_index ?? 0)).at(-1)?.job_ref ?? job;
   labOpen.value=false;await nextTick();await activityTutor.value?.focus();
 }
 async function askQuestion(response:string) {
@@ -452,12 +464,54 @@ async function continueActivity() {
   }
   await act({kind:'advance'});
 }
+async function refreshTeachBack() {
+  const current = lesson.value, token = generation;
+  if (!current) return;
+  try {
+    const view = await inquiryCourse.read(props.workspace.learning_workspace_id, current.progress.run_id);
+    if (token !== generation || lesson.value?.progress.run_id !== view.progress.run_id || lesson.value.progress.revision > view.progress.revision) return;
+    install(view);
+  } catch (e) { failure(e, token); }
+}
+watch(() => props.teachBackState?.roundId, async roundId => {
+  if (!roundId || lesson.value?.expressions.some(e => e.job_ref === roundId)) return;
+  await refreshTeachBack();
+  if (activityExpression.value?.job_ref === roundId && lesson.value) {
+    emit('engaged', lesson.value);
+    await nextTick();
+    await activityTutor.value?.focus();
+  }
+}, { immediate: true });
+watch([() => props.presented, () => props.chatSessionId], () => {
+  if (props.presented && lesson.value?.reviews.some(review => review.expression.teach_back
+    && review.expression.teach_back.session_id === props.chatSessionId && !review.comparison)) void refreshTeachBack();
+});
+async function submitCourseExplanation(request: CourseTeachBackSubmission) {
+  if (!props.submitTeachBack || blocked.value || goalChanged.value || !active.value) return false;
+  try { return await props.submitTeachBack(request); }
+  catch (e) { failure(e, generation); return false; }
+}
+async function correctCourseExplanation(correction: ComparisonResponse) {
+  const origin = lesson.value?.expressions.find(e => e.teach_back?.round_id === correction.roundId)?.teach_back;
+  if (!origin) return;
+  await submitCourseExplanation({ text: correction.text, sessionId: origin.session_id,
+    reply: { kind: correction.action, round_id: correction.roundId, row_id: correction.rowId } });
+}
 async function replyActivity(intent: CourseReplyIntent, response: string) {
   const expression=activityExpression.value;
   if(!expression || !response.trim() || blocked.value)return;
   const state=exploration.value;
   if(!reviewingEarlier.value && state && Object.keys(state).some(key=>state[key as keyof CourseResourceState]!==lesson.value?.exploration?.[key as keyof CourseResourceState])) {
     await act({kind:'explore',state:{...state}});if(pending.value)return;
+  }
+  if (expression.teach_back) {
+    const comparison = activityReview.value?.comparison;
+    if (!comparison) return;
+    const followUp = comparison.follow_up;
+    const accepted = await submitCourseExplanation({ text: response, sessionId: expression.teach_back.session_id,
+      ...(intent === 'answer' && followUp ? { reply: { kind: 'follow_up', round_id: comparison.round_id, row_id: followUp.row_id } } : {}) });
+    if (accepted && intent !== 'explain' && activityReply.value === response) activityReply.value = '';
+    return;
   }
   await act({kind:'feedback_reply',job_ref:expression.job_ref,response,intent});
   if(!pending.value && reviewingJob.value)reviewingJob.value=lesson.value?.expressions.at(-1)?.job_ref??null;
@@ -484,6 +538,11 @@ async function submitReflection() {
   if (lesson.value?.progress.stage === 'explanation' && state && Object.keys(state).some(key => state[key as keyof CourseResourceState] !== lesson.value?.exploration?.[key as keyof CourseResourceState])) {
     await act({ kind:'explore', state: { ...state } });
     if (pending.value) return;
+  }
+  if (lesson.value?.progress.stage === 'explanation' && props.submitTeachBack) {
+    const text = reflection.value;
+    if (await submitCourseExplanation({ text }) && reflection.value === text) reflection.value = '';
+    return;
   }
   await act({ kind:'reflect', response:reflection.value });
   if (!pending.value) reflection.value = '';
@@ -538,18 +597,26 @@ onBeforeUnmount(() => { disposed=true; generation++; clearTimeout(pollTimer); })
         <div v-if="lesson.progress.stage === 'introduction'" class="stage-content"><span class="eyebrow">{{ uiText('01 / 准备') }}</span><h4>{{ uiText('先认识这个问题') }}</h4><div class="course-prose" v-html="renderMarkdown(lesson.introduction ?? '')" /><CourseResourceObjects v-if="resourceActivity" :scene-key="lesson.progress.run_id + ':intro'" :presented="!sourceOpen" @question="question=>emit('discussion',question)" /><div v-if="lesson.concepts?.length" class="concepts"><article v-for="(concept,i) in lesson.concepts" :key="concept.title"><span class="concept-index">0{{ i + 1 }}</span><div><h5>{{ concept.title }}</h5><div class="course-prose" v-html="renderMarkdown(concept.explanation)" /><div class="relation course-prose" v-html="renderMarkdown(concept.relation)" /></div></article></div><div class="prerequisite"><strong>{{ uiText('开始前') }}</strong><p>{{ lesson.summary.prerequisites }}</p></div><button class="primary" :disabled="blocked || goalChanged" @click="act({ kind: 'advance' })">{{ uiText('做出我的预测 →') }}</button></div>
         <form v-else-if="lesson.progress.stage === 'prediction' || lesson.progress.stage === 'task'" class="stage-content" @submit.prevent="submitChoice">
           <span class="eyebrow">{{ lesson.progress.stage === 'prediction' ? uiText('先猜后验') : uiText('综合应用 / 换个情境') }}</span><h4>{{ lesson.progress.stage === 'prediction' ? uiText(prompt?.options.length ? '现在，你会怎么选？' : '现在，你会怎样判断？') : uiText('这次由你来判断') }}</h4>
-          <div class="course-prose question" v-html="renderMarkdown(prompt?.question ?? '')" /><fieldset :disabled="blocked || goalChanged"><legend class="sr-only">{{ uiText('选择一个回答') }}</legend><label v-for="option in prompt?.options" :key="option.id" class="option" :class="{ selected: choice === option.id }"><input v-model="choice" type="radio" name="course-answer" :value="option.id" required /><span>{{ option.text }}</span></label><label class="reason-label" for="course-reason">{{ lesson.progress.stage === 'prediction' ? uiText('为什么这样猜？') : uiText('写下你的计算或理由') }}<span>{{ uiText('（会收到针对这段思路的反馈）') }}</span></label><textarea id="course-reason" v-model="reason" :rows="lesson.progress.stage === 'task' ? 8 : 3" :placeholder="lesson.progress.stage === 'prediction' ? uiText('可以从直觉说起，不确定也没关系。') : uiText('用题目中的条件说明你的计算和判断。')" /></fieldset>
+          <div class="course-prose question" v-html="renderMarkdown(prompt?.question ?? '')" /><fieldset :disabled="blocked || goalChanged"><legend class="sr-only">{{ uiText('选择一个回答') }}</legend><label v-for="option in prompt?.options" :key="option.id" class="option" :class="{ selected: choice === option.id }"><input v-model="choice" type="radio" name="course-answer" :value="option.id" required /><span>{{ option.text }}</span></label><label class="reason-label" for="course-reason">{{ lesson.progress.stage === 'prediction' ? uiText('为什么这样猜？') : uiText(lesson.inquiry_kind === 'reading' ? '写下你的判断和依据' : '写下你的计算或理由') }}<span v-if="!trialLesson">{{ uiText('（会收到针对这段思路的反馈）') }}</span></label><textarea id="course-reason" v-model="reason" :rows="lesson.progress.stage === 'task' ? 8 : 3" :placeholder="lesson.progress.stage === 'prediction' ? uiText('可以从直觉说起，不确定也没关系。') : uiText(lesson.inquiry_kind === 'reading' ? '哪些条件支持你的判断？' : '用题目中的条件说明你的计算和判断。')" /></fieldset>
           <p v-if="lesson.progress.stage === 'prediction'" class="muted">{{ uiText('预测用来和观察对照，猜错也可以继续。') }}</p><p v-else class="muted">{{ prompt?.options.length ? uiText('选择只核对方案；你的文字会单独分析，并保存到“我的理解”。不写理由时不会据选择推断理解。') : uiText('请写出推理和依据。回应会保留到“我的理解”，提交本身不代表已通过判断。') }}</p>
           <div v-if="lesson.hint" class="hint-card"><strong>{{ uiText('提示') }}</strong><div class="course-prose" v-html="renderMarkdown(lesson.hint ?? '')" /><small>{{ uiText('这次作答会保留“看过提示”的记录。') }}</small></div>
           <div class="actions"><button class="primary" type="submit" :disabled="blocked || (prompt?.options.length ? !choice : !reason.trim()) || goalChanged">{{ lesson.progress.stage === 'prediction' ? uiText('保存初步判断，开始探究 →') : uiText('提交并查看反馈 →') }}</button><button v-if="lesson.progress.stage === 'task' && !lesson.hint" type="button" :disabled="blocked || goalChanged" @click="act({ kind: 'hint' })">{{ uiText('给我一点提示') }}</button></div>
         </form>
 
-        <div v-else-if="lesson.progress.stage === 'explanation'" class="stage-content"><span class="eyebrow">{{ uiText('把观察连起来') }}</span><h4>{{ multiRound ? lesson.round_titles[roundIndex] : resourceActivity ? uiText('等得最久的那一项，决定了下界') : lesson.summary.question }}</h4><details v-if="activityExpression" class="prepared-explanation"><summary>{{ uiText('回看本轮讲解') }}</summary><div class="course-prose" v-html="renderMarkdown(lesson.explanation ?? '')" /></details><div v-else class="course-prose" v-html="renderMarkdown(lesson.explanation ?? '')" /><form v-if="lesson.reflection_prompt && !activityExpression" class="reflection-form" @submit.prevent="submitReflection"><label for="course-reflection"><strong>{{ uiText('把观察变成自己的解释') }}</strong><div class="course-prose" v-html="renderMarkdown(lesson.reflection_prompt)" /></label><textarea id="course-reflection" v-model="reflection" rows="3" :disabled="blocked || goalChanged" :placeholder="uiText('把观察或材料中的依据与你的判断连起来。')" /><button :disabled="blocked || !reflection.trim() || goalChanged">{{ uiText('提交我的解释') }}</button><small v-if="lesson.lab">{{ uiText('提交解释时，会一并保存图中使用的实验配置。') }}</small><small v-if="reflectionSaved">{{ uiText('回应会直接出现在当前活动中。') }}</small></form><p v-if="multiRound && !reflectionSaved" class="muted">{{ uiText('写下本轮的解释后继续；不确定的地方也可以如实记录。') }}</p></div>
+        <div v-else-if="lesson.progress.stage === 'explanation'" class="stage-content"><span class="eyebrow">{{ uiText('把观察连起来') }}</span><h4>{{ multiRound ? lesson.round_titles[roundIndex] : resourceActivity ? uiText('等得最久的那一项，决定了下界') : lesson.summary.question }}</h4><details v-if="activityExpression" class="prepared-explanation"><summary>{{ uiText('回看本轮讲解') }}</summary><div class="course-prose" v-html="renderMarkdown(lesson.explanation ?? '')" /></details><div v-else class="course-prose" v-html="renderMarkdown(lesson.explanation ?? '')" /><form v-if="lesson.reflection_prompt && !activityExpression && !teachBackState?.pending" class="reflection-form" @submit.prevent="submitReflection"><label for="course-reflection"><strong>{{ uiText('把观察变成自己的解释') }}</strong><div class="course-prose" v-html="renderMarkdown(lesson.reflection_prompt)" /></label><textarea id="course-reflection" v-model="reflection" rows="3" :disabled="blocked || goalChanged" :placeholder="uiText('把观察或材料中的依据与你的判断连起来。')" /><button :disabled="blocked || !reflection.trim() || goalChanged">{{ uiText('提交我的解释') }}</button><small v-if="lesson.lab">{{ uiText('提交解释时，会一并保存图中使用的实验配置。') }}</small><small v-if="reflectionSaved">{{ uiText('回应会直接出现在当前活动中。') }}</small></form><p v-if="multiRound && !reflectionSaved" class="muted">{{ uiText('写下本轮的解释后继续；不确定的地方也可以如实记录。') }}</p></div>
         <CourseDecisionTutor v-else-if="lesson.decision && ['feedback','complete'].includes(lesson.progress.stage)" :finished="lesson.progress.stage === 'complete'" ref="decisionTutor" :decision="lesson.decision" :reviews="lesson.reviews" v-model:draft="replyDraft" :disabled="blocked || goalChanged" @support="openSupport" @understanding="emit('understanding',lesson.summary.source.publication)" @reply="replyDecision" @read="job_ref => act({kind:'read_feedback',job_ref})" @retry="job_ref => act({kind:'retry_feedback',job_ref})" @advance="act({kind:'advance'})" @pause="act({kind:'pause'})" @inspect="lesson.lab && experimentLab?.useState(lesson.lab)" />
         <div v-else-if="lesson.progress.stage === 'feedback' || lesson.progress.stage === 'complete'" class="stage-content"><span class="eyebrow">{{ lesson.progress.status === 'completed' ? uiText('本课已完成') : uiText('06 / 回看你的判断') }}</span><h4>{{ lesson.assessment_status === 'unassessed' ? uiText('对照参考推理，回看自己的回答') : lesson.assessment_status === 'correct' ? uiText('方案选择正确，再看理由是否成立') : uiText('一起看看，差别出在哪里') }}</h4><div class="answer-review"><strong>{{ uiText('你的回答') }}</strong><p v-if="selectedAnswer">{{ selectedAnswer }}</p><p v-if="lesson.answer?.reason" class="course-prose">{{ uiText('你的思路：') }}{{ lesson.answer.reason }}</p><small>{{ lesson.hint ? uiText('看过提示后作答') : uiText('完成讲解后作答') }} {{ uiText('· 记录属于这一题的表现') }}</small></div><div class="solution"><h5>{{ uiText('完整推理与参考方案') }}</h5><div class="course-prose" v-html="renderMarkdown(lesson.solution ?? '')" /></div><form v-if="active && !activityExpression" class="reflection-form" @submit.prevent="submitReflection"><label for="course-revision"><strong>{{ uiText('现在，你会怎样修正或补充？') }}</strong></label><textarea id="course-revision" v-model="reflection" rows="3" :disabled="blocked || goalChanged" :placeholder="uiText('回应反馈中的追问，或补充你的推理依据。')" /><button :disabled="blocked || !reflection.trim() || goalChanged">{{ uiText('保存这次理解变化') }}</button></form><button v-if="active && !activityExpression" class="primary" :disabled="blocked || goalChanged" @click="act({ kind: 'advance' })">{{ uiText('完成这一课 ✓') }}</button><p v-else class="course-prose">{{ lesson.summary.objective }}</p></div>
         </div>
         <p v-if="reviewingEarlier" class="earlier-feedback-note">{{ uiText('先接上这一轮的回应，当前课程进度会保留。') }}</p>
-        <CourseActivityTutor v-if="activityExpression" ref="activityTutor" :expression="activityExpression" :review="activityReview" v-model:draft="activityReply" :disabled="blocked || goalChanged" :readonly="!active" :presented="!sourceOpen && !labOpen && !lesson.support_visit" :continuation="activityContinuation" @continue="continueActivity" @read="job_ref => act({kind:'read_feedback',job_ref})" @retry="job_ref => act({kind:'retry_feedback',job_ref})" @support="openSupport" @reply="replyActivity" @understanding="emit('understanding',lesson.summary.source.publication)" />
+        <div v-if="teachBackState?.pending || teachBackState?.error || teachBackState?.ordinaryAnswer" class="course-explanation-status" role="status">
+          <p v-if="teachBackState.pending">{{ teachBackState.status || uiText('正在提交问题…') }}</p>
+          <template v-else-if="teachBackState.error"><blockquote>{{ teachBackState.text }}</blockquote><p>{{ teachBackState.error }}</p>
+            <button v-if="teachBackState.canRetry" type="button" :disabled="blocked || goalChanged" @click="submitCourseExplanation({ text: teachBackState.text, retry: true })">{{ uiText('重试这次解释') }}</button>
+          </template>
+          <div v-else class="course-prose" v-html="renderMarkdown(teachBackState.ordinaryAnswer ?? '')" />
+        </div>
+        <CourseActivityTutor v-if="activityExpression" :reviews="lesson.reviews" :presented-source-id="publication?.book_id" :presented-source-revision="currentSourceRevision"
+          @displayed="refreshTeachBack" @jump="openSourceInReader" @correct="correctCourseExplanation" :chat-session-id="chatSessionId" @restore-chat="sessionId => emit('restoreChat',sessionId)" ref="activityTutor" :expression="activityExpression" :review="activityReview" v-model:draft="activityReply" :disabled="blocked || goalChanged" :readonly="!active" :historical-comparison="!!activityExpression.teach_back && (reviewingEarlier || lesson.progress.stage !== 'explanation')" :presented="presented !== false && !sourceOpen && !labOpen && !lesson.support_visit" :continuation="activityContinuation" @continue="continueActivity" @read="job_ref => act({kind:'read_feedback',job_ref})" @retry="job_ref => act({kind:'retry_feedback',job_ref})" @support="openSupport" @reply="replyActivity" @understanding="emit('understanding',lesson.summary.source.publication)" />
         <button v-if="lesson.progress.stage === 'explanation' && !reviewingEarlier && !activityExpression" class="primary" :disabled="blocked || goalChanged || (multiRound && !reflectionSaved) || (!!activityExpression && !activityReview?.displayed)" @click="act({kind:'advance'})">{{ moreRounds ? uiText('继续下一轮探究 →') : uiText('进入综合应用 →') }}</button>
         <button v-if="reviewingJob && !active" class="text-button" @click="reviewingJob=null; activityReply=''; focusHeading()">{{ uiText('回到当前活动 →') }}</button>
         </div>
@@ -557,7 +624,7 @@ onBeforeUnmount(() => { disposed=true; generation++; clearTimeout(pollTimer); })
       </template>
       <aside v-if="contextualPractice" class="contextual-practice" :aria-label="uiText('试着自己解释或应用')">
         <div><strong>{{ uiText('想检验刚才的理解？') }}</strong><p>{{ uiText('闭卷表达会收起资料，按回答追问或补讲，可随时暂停。') }}</p></div>
-        <div class="actions"><button type="button" :disabled="blocked" @click="emit('closedBook')">{{ lesson.progress.stage === 'explanation' ? uiText('我来解释一下') : uiText('练到会') }}</button><button type="button" :disabled="blocked" @click="emit('practice')">{{ uiText('给我一道应用题') }}</button></div>
+        <div class="actions"><button type="button" :disabled="blocked" @click="activityExpression?.teach_back ? emit('closedBook', activityExpression.teach_back.session_id) : emit('closedBook')">{{ uiText('练到会') }}</button><button type="button" :disabled="blocked" @click="emit('practice')">{{ uiText('给我一道应用题') }}</button></div>
       </aside>
       <section v-if="currentReflection && lesson.prediction_response?.reason && !lesson.support_visit" class="thought-comparison" aria-label="对照最初猜想与现在解释"><div><span>一开始的猜想</span><blockquote>{{lesson.prediction_response.reason}}</blockquote></div><div><span>观察后的解释</span><blockquote>{{currentReflection.response}}</blockquote><small>保留当时表达，具体变化见本课理解。</small></div></section>
       <CourseQuestions v-show="!lesson.support_visit" :key="lesson.progress.run_id" ref="questions" :expressions="lesson.expressions" :resolved="lesson.resolved_questions ?? []" :disabled="blocked || goalChanged || !active" @ask="askQuestion" @revisit="revisitFeedback" @resolve="(fact_ref,resolved)=>act({kind:'resolve_question',fact_ref,resolved})" />
@@ -571,7 +638,15 @@ onBeforeUnmount(() => { disposed=true; generation++; clearTimeout(pollTimer); })
         <div class="actions"><button class="text-button" :disabled="blocked" @click="back">{{ uiText('今天先到这里') }}</button><button class="text-button" :disabled="blocked" @click="emit('understanding',lesson.summary.source.publication)">{{ uiText('查看本次表现与依据') }}</button></div>
       </section>
       <details v-if="lesson.round_history?.length" class="round-history" :open="roundHistoryOpen" @toggle="roundHistoryOpen = ($event.target as HTMLDetailsElement).open"><summary>{{ uiText('回看前面的探究（{0}）', [lesson.round_history.length]) }}</summary><article v-for="(record,index) in lesson.round_history" :key="index"><h5>{{ index + 1 }} · {{ record.title }}</h5><div class="course-prose" v-html="renderMarkdown(record.prediction.question)" /><strong>{{ uiText('当时的预测') }}</strong><p>{{ record.prediction.options.find(o => o.id === record.response.choice)?.text }}</p><p v-if="record.response.reason" class="course-prose">{{ record.response.reason }}</p><p v-if="record.exploration" class="history-config">F = {{ record.exploration.work_gflops }} GFLOPs · R = {{ record.exploration.read_gb }} GB · C = {{ record.exploration.compute_tflops }} TFLOP/s · W = {{ record.exploration.bandwidth_tb_s }} TB/s · T = {{ record.exploration.target_ms }} ms</p><CourseMathExperiment v-if="roundHistoryOpen && record.math_exploration" :model-value="record.math_exploration" disabled /><template v-if="record.activity_response"><strong>{{ uiText('当时的探究记录') }}</strong><div class="course-prose" v-html="renderMarkdown(record.activity_response)" /></template><strong v-if="record.reflection">{{ uiText('实验后的解释') }}</strong><p v-if="record.reflection" class="course-prose">{{ record.reflection }}</p><details><summary>{{ uiText('回看本轮讲解') }}</summary><div class="course-prose" v-html="renderMarkdown(record.explanation)" /></details></article></details>
-      <details v-if="feedbackHistory.length" class="feedback-history"><summary>{{ uiText('回看前面的反馈（{0}）', [feedbackHistory.length]) }}</summary><CourseReviews @continue="revisitFeedback" :reviews="feedbackHistory" :expressions="feedbackHistory.map(r=>r.expression)" :disabled="blocked" @retry="job_ref => act({ kind:'retry_feedback', job_ref })" @read="job_ref => act({ kind:'read_feedback', job_ref })" @understanding="emit('understanding', lesson.summary.source.publication)" /></details>
+      <details v-if="feedbackHistory.length && presented && !sourceOpen && !labOpen && !lesson.support_visit" class="feedback-history"
+        :open="feedbackHistoryOpen" @toggle="feedbackHistoryOpen = ($event.target as HTMLDetailsElement).open">
+        <summary>{{ uiText('回看前面的反馈（{0}）', [feedbackHistory.length]) }}</summary>
+        <CourseReviews v-if="feedbackHistoryOpen" :reviews="feedbackHistory" :expressions="lesson.expressions" :disabled="blocked"
+          :chat-session-id="chatSessionId" :source-id="publication?.book_id" :source-revision="currentSourceRevision"
+          @jump="openSourceInReader" @displayed="refreshTeachBack" @restore-chat="sessionId => emit('restoreChat',sessionId)"
+          @continue="revisitFeedback" @retry="job_ref => act({ kind:'retry_feedback', job_ref })" @read="job_ref => act({ kind:'read_feedback', job_ref })"
+          @understanding="emit('understanding', lesson.summary.source.publication)" />
+      </details>
       <footer class="lesson-footer">
         <div><span>{{ lesson.summary.source.label }}</span><small>{{ uiText('原文 {0}–{1} · 课程第 {2} 版', [lesson.summary.source.start_lid, lesson.summary.source.end_lid, lesson.progress.release_version]) }}</small><button v-if="active || lesson.source_excerpt" class="text-button" :disabled="busy || !!pending || (!lesson.source_excerpt && (workspace.archived || goalChanged))" @click="showSource">{{ uiText('查看本课来源') }}</button></div>
         <div v-if="active" class="actions"><button class="text-button" :disabled="blocked" @click="act({ kind: 'pause' })">{{ uiText('暂停，稍后继续') }}</button><button class="text-button" :disabled="blocked" @click="act({ kind: 'skip' })">{{ uiText('跳过这一课') }}</button></div>

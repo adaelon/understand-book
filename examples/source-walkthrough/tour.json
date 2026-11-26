@@ -1,0 +1,67 @@
+{
+  "project": "Understand Book",
+  "title": "Markdown 怎样变成可引用的段落？",
+  "summary": "假设一篇短文只有标题「光」和一句「光会反射。」。跟着这两块文字，看程序怎样为整章和每一段分别留下原文位置。",
+  "steps": [
+    {
+      "id": "read-markdown",
+      "title": "读取原文",
+      "symbol": "loadBookSource",
+      "file": "packages/core/src/book-source.ts",
+      "start": 28,
+      "end": 30,
+      "explanation": "导入从同一份文本开始。markdownToBlocks 读出一串带位置的内容块，segment 再用这些块建树。下面沿「# 光」和「光会反射。」两条路径看它们怎样入树。",
+      "next": ["read-heading", "read-paragraph"]
+    },
+    {
+      "id": "read-heading",
+      "title": "识别标题",
+      "symbol": "projectRootNode",
+      "file": "packages/core/src/md-adapter.ts",
+      "start": 201,
+      "end": 204,
+      "explanation": "语法树把「# 光」认作一级标题。这里把标题级别和用来显示的「光」记入内容块，同时保留它在原文中的完整范围，井号也在这个范围里。",
+      "next": ["attach-blocks"]
+    },
+    {
+      "id": "read-paragraph",
+      "title": "识别正文",
+      "symbol": "projectRootNode",
+      "file": "packages/core/src/md-adapter.ts",
+      "start": 221,
+      "end": 226,
+      "explanation": "轮到「光会反射。」时，语法树给出的类型是 paragraph。这里先检查整段是否为图片，再交给行内公式处理函数。这句话是纯文本，整句保留为一个正文块。",
+      "next": ["attach-blocks"]
+    },
+    {
+      "id": "attach-blocks",
+      "title": "建立章节层级",
+      "symbol": "segment",
+      "file": "packages/core/src/segment.ts",
+      "start": 79,
+      "end": 87,
+      "explanation": "遇到标题，先创建一个章节容器，再把标题文字作为它的第一个子段。随后读到正文时，栈顶仍是刚建好的章节，「光会反射。」就成为同一章的第二个子段。",
+      "next": ["assign-lid"]
+    },
+    {
+      "id": "assign-lid",
+      "title": "分配段落编号",
+      "symbol": "make",
+      "file": "packages/core/src/segment.ts",
+      "start": 56,
+      "end": 67,
+      "explanation": "每次创建节点，make 都把它在父节点下的序号追加到路径，并保存原文起止位置。本例的章编号是 1，标题「光」是 1.1，正文「光会反射。」是 1.2。",
+      "next": ["cover-chapter"]
+    },
+    {
+      "id": "cover-chapter",
+      "title": "合并章节范围",
+      "symbol": "segment",
+      "file": "packages/core/src/segment.ts",
+      "start": 91,
+      "end": 103,
+      "explanation": "最后从树的深处往上走，用子节点最早的起点和最晚的终点扩展父节点的原文范围。这样用 1 可以取回整章，用 1.2 则能单独取回「光会反射。」。",
+      "next": []
+    }
+  ]
+}

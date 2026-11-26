@@ -48,7 +48,7 @@ fn locations(node: &GraphNode) -> impl Iterator<Item = &str> {
         .map(String::as_str)
 }
 
-fn mentions(query: &str, label: &str) -> bool {
+pub(super) fn mentions(query: &str, label: &str) -> bool {
     let label = label.trim().to_lowercase();
     if label.is_empty() || label.chars().count() == 1 {
         return !label.is_empty() && query == label;

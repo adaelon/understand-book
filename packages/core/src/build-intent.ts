@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { z } from "zod";
+import { AcceptedCourseRouteZ } from "./accepted-course-route";
 import type { BuildDecisionKind, BuildStageId } from "./build-workbench";
 
 const BUILD_INTENT_STATUSES = ["draft", "confirmed", "superseded", "stale_source", "deleted"] as const;
@@ -317,6 +318,7 @@ const BuildPlanShapeZ = z.object({
   intent_digest: Sha256Z.optional(),
   public_stage_closure: z.array(NonBlankStringZ),
   course_goal: NonBlankStringZ.optional(),
+  course_route: AcceptedCourseRouteZ.optional(),
   private_artifacts: z.array(PrivateIntentArtifactZ),
   reuse: z.array(ReusedBuildArtifactZ),
   create: z.array(NonBlankStringZ),
@@ -332,6 +334,9 @@ const BuildPlanShapeZ = z.object({
 }).strict();
 
 export const BuildPlanV1Z = BuildPlanShapeZ.superRefine((plan, context) => {
+  if (plan.course_route && (plan.course_goal || !plan.public_stage_closure.includes("course") || plan.course_route.source_id !== plan.book_id)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, path: ["course_route"], message: "accepted route must select this book's course stage and be the sole course brief" });
+  }
   addDuplicateIssues(plan.public_stage_closure, context, ["public_stage_closure"], "public stage");
   addDuplicateIssues(plan.private_artifacts.map((artifact) => artifact.artifact_id), context, ["private_artifacts"], "artifact_id");
   addDuplicateIssues(plan.reuse.map((artifact) => artifact.artifact), context, ["reuse"], "reused artifact");
@@ -385,6 +390,7 @@ export type BuildPlanDigestSource = Pick<
   | "recipe_id"
   | "intent_digest"
   | "course_goal"
+  | "course_route"
   | "public_stage_closure"
   | "private_artifacts"
   | "reuse"
@@ -402,6 +408,7 @@ export function buildPlanIdentity(plan: BuildPlanDigestSource): BuildPlanDigestS
     ...(plan.intent_digest ? { intent_digest: plan.intent_digest } : {}),
     public_stage_closure: plan.public_stage_closure,
     ...(plan.course_goal ? {course_goal:plan.course_goal} : {}),
+    ...(plan.course_route ? { course_route: plan.course_route } : {}),
     private_artifacts: plan.private_artifacts,
     reuse: plan.reuse,
     create: plan.create,

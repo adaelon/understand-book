@@ -80,7 +80,7 @@ function assertSharedExecutorMcp(config, label) {
     "approve",
     `${label} shared Executor approval mode must be approve`,
   );
-  assert.equal(server.startup_timeout_sec, 10, `${label} shared Executor startup timeout drifted`);
+  assert.equal(server.startup_timeout_sec, 30, `${label} shared Executor startup timeout drifted`);
   assert.equal(server.tool_timeout_sec, 120, `${label} shared Executor tool timeout drifted`);
   assert.deepEqual(
     server.env_vars,
