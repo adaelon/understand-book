@@ -44,6 +44,7 @@ Agent 让我们可以尝试为一个具体的理解困难，制作一件专门�
 
 | 材料 | 下载 |
 | --- | --- |
+| 复旦统计（校准版）：18 节医学统计整理原稿、153 张配图与预构建 | [下载 ZIP · 30.0 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-26/fudan-statistics.zip) |
 | 最优化方法 I：复习讲义与历年考试题，含 Markdown、PDF 与预构建 | [下载 ZIP · 1.4 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/optimization-review.zip) |
 | 贝多芬第九交响曲全部四个乐章，含音频、乐谱与音乐预构建 | [下载 ZIP · 311.1 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/beethoven-symphony-9.zip) |
 | 深入理解 AI Infra：量化分析与系统设计，含原书、插图与预构建 | [下载 ZIP · 15.7 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/ai-infra-book.zip) |
