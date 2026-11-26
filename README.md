@@ -8,7 +8,7 @@ Understand Book 从书籍、课程和学习者自己的问题出发，探索一�
 
 我们希望借助 Agent 降低教学内容与工具的制作成本，让更多具体的学习问题，都能得到合适的例子、实验、可视化和练习。我们欢迎任何领域的学习者、教师、研究者与开发者一起参与，把自己的知识和经验变成他人能够学懂、动手尝试的内容。
 
-[教学原则](#教学原则) · [教学示例](#教学示例) · [学习材料](#下载学习材料) · [Quick Start](#quick-start) · [参与贡献](#参与贡献) · [技术实现](#30-秒技术摘要) · [当前限制](#当前限制)
+[给 Agent 的指南](docs/AGENT_GUIDE.md) · [教学原则](#教学原则) · [教学示例](#教学示例) · [学习材料](#下载学习材料) · [Quick Start](#quick-start) · [参与贡献](#参与贡献) · [技术实现](#30-秒技术摘要) · [当前限制](#当前限制)
 
 ## 教学原则
 
@@ -51,6 +51,8 @@ Agent 让我们可以尝试为一个具体的理解困难，制作一件专门�
 | A Survey of Agent Memory in the Second Half，含原 PDF 与阅读预构建 | [下载 ZIP · 22.5 MiB](https://github.com/adaelon/understand-book/releases/download/learning-materials-2026-11-16/agent-memory-paper.zip) |
 
 ## Quick Start
+
+> **让你的 AI Agent 帮你配置与上手**：可以直接把 [Understand Book · Agent 使用与配置指南](docs/AGENT_GUIDE.md) 交给 Claude Code、Codex、OpenCode、Antigravity 等 Agent，里面完整说明了项目定位、下载 GitHub 书库并放入本机书库、模型 API 与 [Magpie](https://github.com/yetone/magpie) 搭配、离线语音模型按需配置，以及「我来解释一下」「练到会」「给我一道应用题」的交互与原理。
 
 Windows 正式本地版的安装、设置与旧数据接续见[本地版使用说明](apps/local-desktop/README.md)。安装后从应用图标进入，使用自己的资料和模型配置；本地版与现有云服务客户端分别安装。当前平台验证状态见[双发行方案](docs/切片方案-开源本地应用与云端服务双发行.md#9-当前状态与已知限制)。开发调试继续使用[本地 Debug](apps/local-debug/README.md)。 模型服务、协议、用途与云部署的设置方法见[模型配置使用说明](docs/模型配置使用说明.md)。
 
